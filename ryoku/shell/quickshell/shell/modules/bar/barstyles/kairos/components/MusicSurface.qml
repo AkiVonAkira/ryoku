@@ -24,6 +24,7 @@ Rectangle {
 
     property color ink: "#ffffff"
     property color accent: "#7fd4d4"
+    property real peekHeight: Island.musicPeekHeight
 
     signal activated()
 
@@ -66,7 +67,7 @@ Rectangle {
 
     width: Island.bubbleSize + (Island.musicWidth - Island.bubbleSize) * surface.extend
     height: Island.bubbleSize
-        + (Island.musicPeekHeight - Island.bubbleSize) * surface.peek
+        + (surface.peekHeight - Island.bubbleSize) * surface.peek
         + (Island.musicHeight - Island.bubbleSize) * surface.full
     radius: Island.bubbleSize / 2
         + (Island.musicPeekRadius - Island.bubbleSize / 2) * surface.peek

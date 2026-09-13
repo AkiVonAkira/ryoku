@@ -570,6 +570,40 @@ settings [route]`. The picker style and desktop widgets it used to carry now liv
 in the Hub (Desktop and Widgets pages); session and mid-work toggles live in the
 Super+Escape quick settings.
 
+## Kairos Settings
+
+Kairos carries its own island settings, opened from the gear in the top-right of
+the expanded clock island and only by that gear. It is a small surface styled
+like the island -- near-black, hairline rim, the same accent -- with three routes
+over the same `shell.json` namespace:
+
+| Route | Holds |
+|---|---|
+| Island | clock island size, top offset |
+| Clock | 12-hour time, seconds, the date wheel |
+| Music | the now-playing bubble and its hover peek |
+
+Every control writes the `kairos` key in `shell.json` through the shell daemon
+(the sole writer) and applies live through `Config.kairos`; Ryoku Settings is
+untouched. A style with no settings omits this, and only the active style's
+`Scene` instantiates the surface, so it exists only while Kairos is the bar.
+
+### Kairos quick settings
+
+Left of the gear, the **tune** icon grows the expanded clock island into the
+style's own quick settings. This is not a second window: the island's own pill
+morphs to the panel size on the same surface, with the clock and date wheel
+fading out and the panel fading in, so open and close read as one body (the same
+`Motion.morph` the clock uses). It carries the radio tiles, a weather card in
+place of a media card, Display and Sound fader rows, and the notification list;
+each tile opens a page in place -- **Wi-Fi** (networks, password, disconnect),
+**Bluetooth** (connected/saved/nearby, pair and disconnect), **Sound** (output
+and input volume, mute, device pick) and **Display** (per-output brightness,
+scale, resolution and Night Light). It is written and drawn inside the island
+(`barstyles/kairos/quicksettings/`) and dismissed by clicking anywhere outside
+it, by moving the pointer away, by Escape, or by tapping the tune icon again; it
+never replaces Ryoku Settings.
+
 ## Frame menus
 
 The wallpaper picker (Super+W), quick settings (Super+Escape), the feature sidebar

@@ -8,6 +8,9 @@
 import QtQuick
 import QtQuick.Effects
 import shell.services
+import shell.barkit as Pill
+import "../settings" as S
+import "../quicksettings" as Q
 import "../IslandMetrics.js" as Island
 import "." as C
 
@@ -17,14 +20,33 @@ Item {
     // True while the launcher owns the island; both then rest, and the launcher's
     // own pill (which starts at the clock's exact size) covers the clock.
     property bool suspended: false
+    // Quick settings is the island itself growing into the panel: one surface,
+    // one pill, one animation. Open pins the clock out and the music aside.
+    property bool quickOpen: false
+    property real quickProgress: island.quickOpen ? 1 : 0
+    readonly property real quickWidth: 472
+    readonly property real quickHeight: 500
+    Behavior on quickProgress {
+        enabled: !Motion.reduce
+        NumberAnimation { duration: Motion.morph; easing.type: Motion.easeStandard }
+    }
+
+    signal settingsToggled()
+    signal quickSettingsToggled()
+    signal quickCloseRequested()
+
+    S.IslandSettings { id: cfg }
 
     readonly property var player: Media.player
     readonly property bool hasTrack: Media.present
-    readonly property real topGap: Island.topGap
-    readonly property real restHeight: Island.restHeight
-    readonly property real restFontSize: Island.restFontSize
+    readonly property real topGap: cfg.topGap
+    readonly property real restHeight: cfg.restHeight
+    readonly property real restFontSize: cfg.restFontSize
     readonly property real band: topGap + restHeight
-    readonly property real reach: topGap + Math.max(Island.hoverHeight, Island.musicHeight)
+    // Reserve the tallest state so the surface never resizes mid-morph: only the
+    // pill grows.
+    readonly property real reach: topGap
+        + Math.max(cfg.hoverHeight, Island.musicHeight, island.quickHeight)
         + Island.shadowBleed
 
     // ── the music island ─────────────────────────────────────────────────────
@@ -45,7 +67,7 @@ Item {
     property real fullProgress: island.full ? 1 : 0
     property real peekProgress:
         (island.musicHovered && island.hasTrack && !island.full && !island.suspended) ? 1 : 0
-    property real trackPresence: island.hasTrack ? 1 : 0
+    property real trackPresence: (island.hasTrack && cfg.music) ? 1 : 0
 
     Behavior on fullProgress {
         enabled: !Motion.reduce
@@ -61,11 +83,28 @@ Item {
     }
 
     // ── the clock island ─────────────────────────────────────────────────────
-    property real clockProgress: (island.clockHovered && !island.suspended) ? 1 : 0
+    property real clockProgress: ((island.clockHovered || island.quickOpen) && !island.suspended) ? 1 : 0
     Behavior on clockProgress {
         enabled: !Motion.reduce && !island.suspended
         NumberAnimation { duration: Motion.morph; easing.type: Motion.easeStandard }
     }
+    onQuickOpenChanged: {
+        island.quickArmed = false;
+        if (island.quickOpen) {
+            armTimer.restart();
+            Qt.callLater(function () { clockPill.forceActiveFocus(); });
+        }
+    }
+    property bool quickArmed: false
+    Timer {
+        id: armTimer
+        interval: 500
+        onTriggered: island.quickArmed = true
+    }
+    // Leaving the island closes quick settings, so it never lingers after the
+    // pointer walks away. Armed only after the open settles, so the click that
+    // opened it can never immediately close it.
+    onClockHoveredChanged: if (!island.clockHovered && island.quickOpen && island.quickArmed) island.quickCloseRequested();
 
     // Hover intent, one timer each: a pointer crossing the gap between the two
     // islands must not collapse the one it left mid-reach, and leaving one must
@@ -86,20 +125,26 @@ Item {
     // ── geometry ─────────────────────────────────────────────────────────────
     // Measured at a fixed size, so the growing clock cannot feed back into the
     // width it is growing inside.
-    readonly property real restWidth: Math.round(metrics.implicitWidth + 2 * Island.restPadX)
-    readonly property real clockWidth: Math.round(island.restWidth
-        + (Island.hoverWidth - island.restWidth) * island.clockProgress)
-    readonly property real clockHeight: Math.round(island.restHeight
-        + (Island.hoverHeight - island.restHeight) * island.clockProgress)
-    readonly property real clockRadius: Island.restHeight / 2
-        + (Island.hoverRadius - Island.restHeight / 2) * island.clockProgress
+    readonly property real restWidth: Math.round(metrics.implicitWidth + 2 * cfg.restPadX)
+    readonly property real hoverWidth: Math.round(island.restWidth
+        + (cfg.hoverWidth - island.restWidth) * island.clockProgress)
+    readonly property real hoverHeight: Math.round(island.restHeight
+        + (cfg.hoverHeight - island.restHeight) * island.clockProgress)
+    readonly property real baseRadius: cfg.restHeight / 2
+        + (cfg.hoverRadius - cfg.restHeight / 2) * island.clockProgress
+    readonly property real clockWidth: Math.round(island.hoverWidth
+        + (island.quickWidth - island.hoverWidth) * island.quickProgress)
+    readonly property real clockHeight: Math.round(island.hoverHeight
+        + (island.quickHeight - island.hoverHeight) * island.quickProgress)
+    readonly property real clockRadius: island.baseRadius
+        + (40 - island.baseRadius) * island.quickProgress
 
     // How far to the left of the clock the music reaches (0 with no track).
     readonly property real musicExtent: (music.width + Island.bubbleGap) * island.trackPresence
     // The clock rests centred and expands symmetric, so it reaches this far left
     // of its resting edge; reserve that (or the music's extent) so it has room to
     // grow left without leaving the item.
-    readonly property real clockGrowMax: (Island.hoverWidth - island.restWidth) / 2
+    readonly property real clockGrowMax: (Math.max(cfg.hoverWidth, island.quickWidth) - island.restWidth) / 2
     readonly property real clockRestLeft: Math.max(island.clockGrowMax, island.musicExtent)
     // The clock's resting centre, fixed in item coordinates: the scene lands it on
     // the screen's centre line, so the clock never drifts as the music opens and
@@ -120,10 +165,11 @@ Item {
         z: 0
         player: island.player
         peek: island.peekProgress
+        peekHeight: cfg.musicPeek
         full: island.fullProgress
         ink: island.ink
         accent: Theme.primary
-        opacity: island.trackPresence
+        opacity: island.trackPresence * (island.quickOpen ? 0 : 1)
         onActivated: island.toggleFull()
 
         HoverHandler {
@@ -167,6 +213,15 @@ Item {
             }
         }
 
+        focus: island.quickOpen
+        Keys.onPressed: function (e) {
+            if (!island.quickOpen) return;
+            if (e.key !== Qt.Key_Escape) return;
+            if (pane.page !== "home") pane.back();
+            else island.quickCloseRequested();
+            e.accepted = true;
+        }
+
         C.Clock { id: clock }
 
         Text {
@@ -174,36 +229,133 @@ Item {
             visible: false
             text: clock.time
             font.family: Theme.mono
-            font.pixelSize: Island.restFontSize
+            font.pixelSize: cfg.restFontSize
         }
 
         // One Text at native size per step, never two copies crossfading: a
         // whole-pixel step keeps the growth crisp and cannot ghost.
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            y: Math.round(Island.restHeight / 2
-                + (Island.hoverClockCentreY - Island.restHeight / 2) * island.clockProgress
+            y: Math.round(cfg.restHeight / 2
+                + (cfg.hoverClockCentreY - cfg.restHeight / 2) * island.clockProgress
                 - height / 2)
             text: clock.time
             color: island.ink
             font.family: Theme.mono
-            font.pixelSize: Math.round(Island.restFontSize
-                + (Island.hoverFontSize - Island.restFontSize) * island.clockProgress)
+            font.pixelSize: Math.round(cfg.restFontSize
+                + (cfg.hoverFontSize - cfg.restFontSize) * island.clockProgress)
             font.letterSpacing: 0.5 + 0.5 * island.clockProgress
+            opacity: 1 - island.quickProgress
         }
 
         C.DateWheel {
             id: wheel
-            visible: island.clockProgress > 0.01
+            visible: cfg.dateWheel && island.clockProgress > 0.01
             anchors.horizontalCenter: parent.horizontalCenter
-            y: Island.wheelTop
+            y: cfg.wheelTop
             width: parent.width
-            height: Island.wheelHeight
+            height: cfg.wheelHeight
             ink: island.ink
             accent: Theme.primary
             locale: Config.formatLoc
             reveal: Math.max(0, Math.min(1, (island.clockProgress - 0.3) / 0.55))
-            opacity: wheel.reveal
+            opacity: wheel.reveal * (1 - island.quickProgress)
+        }
+
+        // The quick-settings face, drawn inside the same pill so the island reads
+        // as one body opening.
+        Q.QuickSettingsPane {
+            id: pane
+            anchors.fill: parent
+            anchors.topMargin: 50
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            anchors.bottomMargin: 16
+            visible: island.quickProgress > 0.01
+            opacity: Math.max(0, Math.min(1, (island.quickProgress - 0.35) / 0.5))
+            enabled: island.quickProgress > 0.95
+            host: island
+        }
+
+        // Quick settings sit just left of the gear; both ride the expansion.
+        Item {
+            id: quickButton
+            anchors.top: parent.top
+            anchors.right: settingsButton.left
+            anchors.rightMargin: 6
+            anchors.topMargin: 8
+            width: 32
+            height: 32
+            visible: island.clockProgress > 0.01
+            opacity: Math.max(0, Math.min(1, (island.clockProgress - 0.35) / 0.4))
+
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: Qt.rgba(island.ink.r, island.ink.g, island.ink.b,
+                    quickHover.hovered ? 0.14 : 0)
+                Behavior on color {
+                    enabled: !Motion.reduce
+                    ColorAnimation { duration: Motion.fast; easing.type: Motion.easeStandard }
+                }
+            }
+
+            Pill.MaterialIcon {
+                anchors.centerIn: parent
+                text: "tune"
+                color: island.ink
+                opacity: 0.75
+                font.pixelSize: 18
+            }
+
+            HoverHandler { id: quickHover }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: island.quickSettingsToggled()
+            }
+        }
+
+        // A gear in the top-right corner opens Ryoku Settings; it fades in as the
+        // island expands, so the resting pill stays a bare clock.
+        Item {
+            id: settingsButton
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: 8
+            anchors.rightMargin: 10
+            width: 32
+            height: 32
+            visible: island.clockProgress > 0.01
+            opacity: Math.max(0, Math.min(1, (island.clockProgress - 0.35) / 0.4))
+
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: Qt.rgba(island.ink.r, island.ink.g, island.ink.b,
+                    settingsHover.hovered ? 0.14 : 0)
+                Behavior on color {
+                    enabled: !Motion.reduce
+                    ColorAnimation { duration: Motion.fast; easing.type: Motion.easeStandard }
+                }
+            }
+
+            Pill.MaterialIcon {
+                anchors.centerIn: parent
+                text: "settings"
+                color: island.ink
+                opacity: 0.75
+                font.pixelSize: 18
+            }
+
+            HoverHandler { id: settingsHover }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: island.settingsToggled()
+            }
         }
     }
 
@@ -217,7 +369,7 @@ Item {
         spread: 2
         offset: Qt.vector2d(0, 6)
         color: Qt.rgba(0, 0, 0, 0.6)
-        opacity: island.trackPresence
+        opacity: island.trackPresence * (island.quickOpen ? 0 : 1)
         z: -1
     }
     RectangularShadow {

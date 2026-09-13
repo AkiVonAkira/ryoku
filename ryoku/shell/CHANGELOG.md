@@ -45,6 +45,26 @@
   desktop around the island stays usable. Select it as **Kairos** in Ryoku
   Settings' App Launcher (`modules/launcher/variants/kairos`, `catalog.json`).
 
+- **Kairos has its own island settings, opened from the gear in the clock pill.**
+  The top-right gear on the expanded clock island opens a surface that belongs to
+  the style alone -- a near-black plate styled like the island, with three routes:
+  Island (size, top offset), Clock (12-hour, seconds, date wheel) and Music (the
+  now-playing bubble and its hover peek). Every control writes the `kairos` key in
+  `shell.json` through the shell daemon and applies live; Ryoku Settings is
+  untouched (`barstyles/kairos/settings/`, `services/Config.qml`).
+
+- **Kairos quick settings grow out of the island itself.** A tune icon beside the
+  gear extends the expanded clock island into the style's own quick settings; one
+  surface, one pill, one `Motion.morph`, so open and close read as the island
+  stretching rather than another window appearing. It carries Wi-Fi and Bluetooth
+  tiles, a weather card (the music card's place), Display and Sound fader rows and
+  the notification list; each tile opens a page in place -- Wi-Fi networks with a
+  password prompt, Bluetooth connected/saved/nearby pairing, Sound output/input
+  volume and devices, and Display brightness, scale, resolution and Night Light.
+  Pages push in from the side rather than cutting. Dismiss by clicking outside,
+  moving the pointer away, Escape, or the tune icon; Ryoku Settings is untouched
+  (`barstyles/kairos/quicksettings/`, `components/Island.qml`).
+
 - **Rashin works with any coding agent now, not just Hermes.** The Hub's Rashin
   page and the dashboard both list your detected agents with a one-click Wire
   (it drops a pointer, the ryoku skill, and prowl-agent's code-intelligence
