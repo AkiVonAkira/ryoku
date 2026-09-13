@@ -4594,7 +4594,7 @@
   "auto-snapshot every update": "auto-snapshot a cada atualização",
   "autologin is configured but mode is unlock-on-login, which has no login password to reuse; switch to never-ask": "autologin configurado mas modo unlock-on-login não tem senha de login; use never-ask",
   "autologin is configured; unlock-on-login has no login password to reuse, so it cannot unlock silently -- use never-ask under autologin": "autologin configurado; unlock-on-login sem senha; use never-ask em autologin",
-  "autologin: %s": "autologin: %s",
+  "autologin: %s": "login automático: %s",
   "autostart": "inicialização automática",
   "av1": "av1",
   "available:     %s": "disponível:     %s",

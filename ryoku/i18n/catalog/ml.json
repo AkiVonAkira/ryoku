@@ -53,7 +53,7 @@
   "1. edit: service/Main.qml, content/Widget.qml": "1. എഡിറ്റ്: service/Main.qml, content/Widget.qml",
   "1. get a key:  %s": "1. കീ ലഭ്യമാക്കുക:  %s",
   "1080  (a local SOCKS proxy)": "1080  (പ്രാദേശിക SOCKS പ്രോക്സി)",
-  "12-hour clock": "12-hour clock",
+  "12-hour clock": "12-hour ക്ലോക്ക്",
   "2. In that session run:  sudo limine-snapper-restore": "2. ആ സെഷനിൽ പ്രവർത്തിപ്പിക്കുക:  sudo limine-snapper-restore",
   "2. capture assets/preview-widget.png (see README.md), then list it in manifest files": "2. assets/preview-widget.png പകർത്തുക (README.md കാണുക), പിന്നെ manifest ഫയലുകളിൽ പട്ടികപ്പെടുത്തുക",
   "2.4 GHz": "2.4 GHz",

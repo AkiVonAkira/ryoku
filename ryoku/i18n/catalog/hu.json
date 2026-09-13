@@ -4490,7 +4490,7 @@
   "[ryoku] repository already present in %s": "[ryoku] tároló már létezik itt: %s",
   "[ryoku] repository already present in /etc/pacman.conf": "[ryoku] tár már jelen van a /etc/pacman.conf-ben",
   "[ryoku] repository in /etc/pacman.conf": "[ryoku] tár a /etc/pacman.conf-ben",
-  "__header": "__header",
+  "__header": "__fejléc",
   "` opens the Ryostore pull request for you.": "` megnyitja a Ryostore pull requestet.",
   "`--source` builds from a checkout and takes main or unstable-dev, not %q": "`--source` checkout-ból építkezik, main vagy unstable-dev, nem %q",
   "`ryoku status` cannot count snapshots without a cached sudo credential, so it can read as \\\"0\\\" on a machine that has them": "`ryoku status` nem tudja megszámolni a pillanatképeket gyorsítótárazott sudo hitelesítő adatok nélkül, így \\\"0\\\"-t mutathat egy olyan gépen, amelyen vannak pillanatképek",

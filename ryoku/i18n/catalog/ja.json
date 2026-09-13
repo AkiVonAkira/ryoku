@@ -36,7 +36,7 @@
   ", with the card open in %s": ", %s でカード開く",
   ". Disposable runs never touch the seal; a normal run that dirties the machine can be rolled back to it.": ". 使い捨て実行はシールに触れません; マシンを汚す通常実行は元に戻せます.",
   "0 (Primary)": "0 (プライマリ)",
-  "01 DOCK": "01 DOCK",
+  "01 DOCK": "01 ドック",
   "01 POSITION": "01 位置",
   "02 BEHAVIOUR": "02 動作",
   "02 MOTION": "02 モーション",

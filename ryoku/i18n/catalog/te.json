@@ -4559,7 +4559,7 @@
   "already installed; this run repairs and reconciles it": "ఇప్పటికే ఇన్‌స్టాల్ చేయబడింది; ఈ రన్ దీన్ని మరమ్మత్ చేసి సమన్వయం చేస్తుంది",
   "already on %s": "ఇప్పటికే %s పై ఉంది",
   "always": "ఎల్లప్పుడు",
-  "am": "am",
+  "am": "ఉదయం",
   "amd-pstate EPP hint for the edited profile, from power-saving to performance; re-applied on profile switch": "సవరించిన ప్రొఫైల్ కోసం amd-pstate EPP సంకేతం, శక్తి-సంరక్షణ నుండి పనితీరు వరకు; ప్రొఫైల్ స్విచ్‌పై పునర్-వర్తించబడింది",
   "an SDDM drop-in still selects greeter theme %s; check /etc/sddm.conf.d": "SDDM డ్రాప్-ఇన్ ఇప్పటికీ గ్రీటర్ థీమ్ %s ఎంచుకుంటుంది; /etc/sddm.conf.d చెక్ చేయండి",
   "an update is running; run-state is live": "అప్‌డేట్ నడుస్తుంది; రన్-స్టేట్ లైవ్ ఉంది",
