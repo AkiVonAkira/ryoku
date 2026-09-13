@@ -117,12 +117,24 @@ Singleton {
         return Math.round(b);
     }
 
+    // BlueZ has no name for a device it only just saw, and leaves the alias as
+    // the device's own address (dashed, e.g. "73-EC-EF-CD-48-8C"). That is an
+    // address, not a name, so label() must not print it as one: it reads the
+    // device-provided name instead and only falls back to the address last.
+    function looksLikeAddress(name) {
+        return /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(String(name || "").trim());
+    }
+
     function label(d) {
         if (!d)
             return I18n.tr("Unknown");
-        return (d.name && d.name.length) ? d.name
-            : (d.deviceName && d.deviceName.length) ? d.deviceName
-            : (d.address || I18n.tr("Unknown"));
+        if (d.name && d.name.length && !looksLikeAddress(d.name))
+            return d.name;
+        if (d.deviceName && d.deviceName.length)
+            return d.deviceName;
+        if (d.name && d.name.length)
+            return d.name;
+        return d.address || I18n.tr("Unknown");
     }
 
 

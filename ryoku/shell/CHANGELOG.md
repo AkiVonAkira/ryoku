@@ -174,6 +174,18 @@
   config migrates (`ryogami/wall-ui/qml/Config.qml`).
 
 ### Fixed
+- **Bluetooth devices no longer show as MAC addresses when BlueZ has no name
+  for them.** BlueZ leaves a device's alias equal to its own address (dashed,
+  such as `73-EC-EF-CD-48-8C`) until it learns a name, and Quickshell exposes
+  that alias as `name` while the device-reported name is `deviceName`. Both the
+  Kairos quick settings and the QS Bar Bluetooth panel read the name from the
+  alias alone, so an unnamed device printed its MAC even when `deviceName` held
+  the real name. Both now resolve through the shared helper, which skips an
+  address-shaped alias, prefers the device's own reported name, and falls back
+  to the address only when a device truly has no name
+  (`services/BtLink.qml`,
+  `barstyles/kairos/quicksettings/pages/{BluetoothPage,HomePage}.qml`,
+  `barstyles/qsbar/panels/BluetoothPanel.qml`).
 - **Turning on the Cobalt download engine no longer adds you to the `docker`
   group.** Docker group membership is passwordless root for every process in
   your session, so a GUI toggle should never grant it. The engine already does
