@@ -6529,6 +6529,7 @@
   "the live Arch image now, and this installer turns it into": "现在 live Arch 镜像，此安装程序将其转变为",
   "the offline install could not lay the base system from the ISO": "离线安装无法从ISO部署基础系统",
   "the offline install laid the base system but could not install the Ryoku desktop set (%s) from the ISO": "离线安装已部署基础系统但无法从ISO安装Ryoku桌面集（%s）",
+  "the offline install stopped on %s, which fails its recorded checksum. Every package lives on the disc, so the copy that reached the installer is bad: the ISO download or the USB write, most likely. Check the ISO checksum against the release page, rewrite the install medium, and run the installer again. If the checksum already matches, report it with /var/log/ryoku-install.log.": "离线安装在%s处停止，其记录的校验和失败。每个包都在磁盘上，因此到达安装程序的副本是损坏的：最可能是ISO下载或USB写入。请根据发布页面检查ISO校验和，重写安装介质，然后再次运行安装程序。如果校验和已匹配，请通过/var/log/ryoku-install.log报告。",
   "the open pull request for": "打开拉取请求以",
   "the overlay is missing its how-to guide": "叠加层缺少操作指南",
   "the pacman keyring is still empty after init + populate; package signatures cannot be verified. The live image's archlinux-keyring is broken; re-download or rewrite the ISO.": "初始化+填充后pacman钥匙圈仍为空；无法验证包签名。Live镜像的archlinux-keyring已损坏；请重新下载或重写ISO。",
