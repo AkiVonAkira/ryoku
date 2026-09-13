@@ -4,6 +4,20 @@
 
 ### Added
 
+- **Upscaling runs in its own worker process and reports its progress.** The
+  waifu2x/ffmpeg enhance ran inside the daemon: a panicking job took the whole
+  daemon (and the picker with it) down, a crash mid-run wedged the job lock so
+  every later upscale answered "already running", and nothing showed a user
+  where their job had gone. The pipeline now lives in a child (`ryogami
+  upscale-worker`) the daemon supervises over its stdout: the child carries
+  its own process group, so a cancel or the failsafe ceiling kills waifu2x and
+  ffmpeg with it; a worker crash is just a failed verdict; and if the daemon
+  dies first the worker notices its stdin closing and tears the job down
+  instead of orphaning the GPU. The same phase/progress events reach the
+  picker's edit panel as before, and a terminal view lands beside them:
+  `ryogami upscale start <file> [scale]`, `ryogami upscale status`,
+  `ryogami upscale cancel` (`ryogami/daemon/upscale_worker.go`, `daemon/main.go`).
+
 - **Kairos, a third built-in bar style: one dynamic island carrying the clock.**
   A single near-black pill floats at the top centre showing the time, and opens
   on hover into that clock over a rolling date wheel: the centred day is the
