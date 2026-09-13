@@ -61,6 +61,53 @@ Column {
         s.audio.volume = Math.max(0, Math.min(1, v));
     }
 
+    // Weather: the full WMO set, day/night split, plus a mood tint (night cool
+    // and dark, a hot day warm, a cold day blue, otherwise the wallpaper accent).
+    readonly property int wxCode: (Weather.available && Weather.current)
+        ? (Number(Weather.current.code) | 0) : -1
+    readonly property bool wxDay: !Weather.available || Weather.isDay
+    readonly property bool wxNight: Weather.available && !Weather.isDay
+    readonly property real wxTempC: {
+        var t = Number(Weather.tempNow);
+        return String(Config.weatherUnit) === "fahrenheit" ? (t - 32) * 5 / 9 : t;
+    }
+    readonly property bool wxHot: Weather.available && page.wxDay && page.wxTempC >= 30
+    readonly property bool wxCold: Weather.available && page.wxDay && page.wxTempC <= 5
+
+    function wxGlyph(code, day) {
+        if (code < 0) return "wx-unknown";
+        if (code === 0) return day ? "wx-clear-day" : "wx-clear-night";
+        if (code === 1) return day ? "wx-partly-cloudy-day" : "wx-partly-cloudy-night";
+        if (code === 2) return "wx-cloudy";
+        if (code === 3) return "wx-overcast";
+        if (code === 45) return "wx-mist";
+        if (code === 48) return "wx-fog";
+        if (code === 51 || code === 53 || code === 55) return "wx-drizzle";
+        if (code === 56 || code === 57 || code === 66 || code === 67) return "wx-sleet";
+        if (code === 61 || code === 80) return "wx-rain-light";
+        if (code === 63 || code === 81) return "wx-rain";
+        if (code === 65 || code === 82) return "wx-rain-heavy";
+        if (code === 71 || code === 77 || code === 85) return "wx-snow-light";
+        if (code === 73 || code === 86) return "wx-snow";
+        if (code === 75) return "wx-snow-heavy";
+        if (code === 95) return "wx-thunderstorm";
+        if (code === 96 || code === 99) return "wx-hail";
+        return "wx-cloudy";
+    }
+
+    readonly property color wxBase: page.wxNight ? "#161a2c"
+        : page.wxHot ? "#3a1710"
+        : page.wxCold ? "#122430"
+        : Qt.darker(page.accent, 1.7)
+    readonly property color wxTop: page.wxNight ? Qt.rgba(0.22, 0.27, 0.45, 0.85)
+        : page.wxHot ? Qt.rgba(0.96, 0.47, 0.20, 0.55)
+        : page.wxCold ? Qt.rgba(0.30, 0.62, 0.86, 0.45)
+        : Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.42)
+    readonly property color wxBottom: page.wxNight ? Qt.rgba(0, 0, 0, 0.55)
+        : page.wxHot ? Qt.rgba(0.22, 0.05, 0, 0.5)
+        : page.wxCold ? Qt.rgba(0, 0.05, 0.12, 0.5)
+        : Qt.rgba(0, 0, 0, 0.36)
+
     Component.onCompleted: Devices.startProbes(page)
     Component.onDestruction: Devices.stopProbes(page)
 
@@ -96,14 +143,14 @@ Column {
             height: 152
             radius: 20
             clip: true
-            color: Qt.darker(page.accent, 1.7)
+            color: page.wxBase
 
             Rectangle {
                 anchors.fill: parent
                 radius: weatherCard.radius
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.42) }
-                    GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.36) }
+                    GradientStop { position: 0.0; color: page.wxTop }
+                    GradientStop { position: 1.0; color: page.wxBottom }
                 }
             }
 
@@ -111,8 +158,8 @@ Column {
                 anchors { right: parent.right; rightMargin: -12; bottom: parent.bottom; bottomMargin: -16 }
                 width: 108
                 height: 108
-                name: Weather.available ? Weather.glyph : "cloud"
-                color: Qt.rgba(page.ink.r, page.ink.g, page.ink.b, 0.16)
+                name: page.wxGlyph(page.wxCode, page.wxDay)
+                color: Qt.rgba(page.ink.r, page.ink.g, page.ink.b, page.wxNight ? 0.20 : 0.16)
             }
 
             Column {
