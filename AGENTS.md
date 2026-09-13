@@ -109,11 +109,11 @@ there; the CLI needs no server and is the first choice.
 
 Auto-generated from the Prowl index, refreshed on each `overview`/`init`. Prefer retrieving from Prowl (and reading the cited files) over grepping or relying on training memory; this is the current shape of the repo.
 
-- size: 2917 files, 77639 symbols, 8224 edges (resolved 2913, external deps 4011, unresolved 1300)
-- languages: go:1382 qml:753 bash:217 javascript:175 markdown:91 rust:70 yaml:53 lua:42
-- subsystems: ryoku/shell(519,qml) · ryoku/shell(65,rust) · ryoku/apps(62,qml) · ryoku/hub(61,qml) · ryoku/ui(52,qml) · ryoku/shell(21,css) · ryoku/rashin(16,javascript) · ryoku/hyprland(15,lua)
-- entrypoints: ryoku/shell/quickshell/shell/shell.qml · ryoku/hub/quickshell/pages/InputPage.qml · ryoku/hub/quickshell/pages/AppearancePage.qml · ryoku/shell/quickshell/shell/modules/bar/MenuWidgetHost.qml · ryoku/hub/quickshell/pages/RecordingPage.qml · ryoku/hub/quickshell/pages/AddonsPage.qml · ryoku/hub/quickshell/pages/DisplaysPage.qml · ryoku/hyprland/hyprland.lua · (+140 more)
-- central files (most depended-on): ryoku/ui/Singletons/Tokens.qml · ryoku/shell/quickshell/shell/services/Perf.qml · ryoku/shell/quickshell/shell/modules/bar/barstyles/qsbar/Theme.qml · ryoku/ui/Singletons/I18n.qml · ryoku/shell/quickshell/shell/modules/depth/Singletons/Config.qml
+- size: 3156 files, 310553 symbols, 9366 edges (resolved 3192, external deps 4503, unresolved 1671)
+- languages: go:1512 qml:851 bash:237 javascript:174 markdown:103 json:70 yaml:57 lua:42
+- subsystems: ryoku/shell(620,qml) · ryoku/hub(63,qml) · ryoku/ui(53,qml) · ryoku/apps(50,qml) · ryoku/rashin(16,javascript) · ryoku/hyprland(15,lua) · ryoku/shell(15,css) · ryoku/lockscreen(12,qml)
+- entrypoints: ryoku/shell/quickshell/shell/shell.qml · ryoku/shell/ryogami/wall-ui/qml/wallpaper/WallpaperSelector.qml · ryoku/hub/quickshell/pages/InputPage.qml · ryoku/shell/quickshell/shell/modules/bar/MenuWidgetHost.qml · ryoku/hub/quickshell/pages/RecordingPage.qml · ryoku/hub/quickshell/pages/AddonsPage.qml · ryoku/hub/quickshell/pages/DisplaysPage.qml · ryoku/hyprland/hyprland.lua · (+191 more)
+- central files (most depended-on): ryoku/lockscreen/qylock/themes/clockwork/orbital/i18n/I18n.qml · ryoku/shell/ryogami/wall-ui/qml/Config.qml · ryoku/ui/Singletons/Tokens.qml · ryoku/shell/ryogami/wall-ui/qml/services/BootstrapService.qml · ryoku/shell/quickshell/shell/modules/bar/barstyles/qsbar/Theme.qml
 - read these guides first: README.md · AGENTS.md · CONTRIBUTING.md · docs/development.md · docs/structure.md
 
 Depth on demand: `prowl-agent find|def|outline|references <name>`, `search <text>`, `context search "<question>"`, `sketch <ui>`.
