@@ -317,6 +317,19 @@ Item {
             }
         }
 
+        // The power readout sits in the top-left corner, opposite the gear: a
+        // laptop shows its battery and charge, a desktop the all-inclusive
+        // glyph. It fades in with the expansion, so the resting pill stays a
+        // bare clock.
+        C.BatteryIndicator {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.topMargin: 12
+            anchors.leftMargin: 18
+            ink: island.ink
+            reveal: Math.max(0, Math.min(1, (island.clockProgress - 0.35) / 0.4))
+        }
+
         // A gear in the top-right corner opens Ryoku Settings; it fades in as the
         // island expands, so the resting pill stays a bare clock.
         Item {
@@ -356,6 +369,26 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: island.settingsToggled()
             }
+        }
+    }
+
+    // A battery at 20% or lower rings the island in error red, pulsing gently,
+    // so the warning reads from across the room without touching the clock.
+    Rectangle {
+        anchors.fill: clockPill
+        anchors.margins: -5
+        radius: clockPill.radius + 5
+        color: "transparent"
+        border.width: 2
+        border.color: Theme.error
+        visible: Battery.present && Battery.low
+        z: 1
+
+        SequentialAnimation on opacity {
+            running: Battery.present && Battery.low
+            loops: Animation.Infinite
+            NumberAnimation { from: 1; to: 0.35; duration: 1100; easing.type: Easing.InOutSine }
+            NumberAnimation { from: 0.35; to: 1; duration: 1100; easing.type: Easing.InOutSine }
         }
     }
 
