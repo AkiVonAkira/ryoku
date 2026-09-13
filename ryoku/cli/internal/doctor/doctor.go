@@ -2366,7 +2366,35 @@ const sddmWaylandConf = "/etc/sddm.conf.d/10-ryoku-wayland.conf"
 // ryoku-desktop) it runs weston --shell=kiosk at each output's top mode; else
 // plain weston at its preferred mode. Never set DisplayServer=wayland without
 // weston present -- the greeter could not start.
-const greeterCompositorBin = "/usr/share/ryoku/lockscreen/ryoku-greeter"
+var greeterCompositorBin = "/usr/share/ryoku/lockscreen/ryoku-greeter"
+
+// nvidiaVendorGlob is where sysfs exposes each DRM card's PCI vendor id.
+var nvidiaVendorGlob = "/sys/class/drm/card*/device/vendor"
+
+// greeterCompositor picks the SDDM greeter compositor command. On NVIDIA the
+// weston cursor-plane path silently drops the greeter pointer (#184), so the
+// fallback runs the pixman renderer: a software cursor, always visible. The
+// wrapper script makes the same call at run time.
+func greeterCompositor() string {
+	if sys.Exists(greeterCompositorBin) {
+		return greeterCompositorBin
+	}
+	if nvidiaDRMPresent() {
+		return "weston --shell=kiosk --renderer=pixman"
+	}
+	return "weston --shell=kiosk"
+}
+
+// nvidiaDRMPresent reports whether a DRM card carries NVIDIA's vendor id.
+func nvidiaDRMPresent() bool {
+	vendors, _ := filepath.Glob(nvidiaVendorGlob)
+	for _, v := range vendors {
+		if b, err := os.ReadFile(v); err == nil && strings.TrimSpace(string(b)) == "0x10de" {
+			return true
+		}
+	}
+	return false
+}
 
 // sessionWrapperBin waits for the greeter to release the GPU before the session
 // compositor probes KMS (see sddmWaylandBody). sddmDefaultWaylandSession is
@@ -2389,10 +2417,7 @@ const sddmDefaultWaylandSession = "/usr/share/sddm/scripts/wayland-session"
 const greeterEnvironment = "QT_QPA_PLATFORM=wayland,XCURSOR_THEME=Bibata-Modern-Ice,XCURSOR_SIZE=24,QML_XHR_ALLOW_FILE_READ=1"
 
 func sddmWaylandBody() string {
-	compositor := "weston --shell=kiosk"
-	if sys.Exists(greeterCompositorBin) {
-		compositor = greeterCompositorBin
-	}
+	compositor := greeterCompositor()
 	// SessionCommand wraps the session start with a wait for the greeter (weston)
 	// to exit before the compositor probes KMS: on a hybrid-GPU laptop weston can
 	// still hold a DRM device when SDDM starts the session on the next VT, so the

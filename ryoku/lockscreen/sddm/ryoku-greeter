@@ -25,13 +25,24 @@
 # never powers down at the login screen.
 set -u
 
-# weston draws the pointer itself (DRM backend) from the XCursor theme named in
-# its environment, and SDDM starts the compositor with none: pin the shipped
-# Bibata set (ryoku-cursors) so the login screen has a visible pointer whatever
-# the "default" theme chain resolves to. Matches GreeterEnvironment in
-# /etc/sddm.conf.d/10-ryoku-wayland.conf for the greeter client.
+# The login pointer is the greeter client's own cursor: Qt pushes a themed
+# cursor surface and weston's kiosk shell has no cursor of its own. Pin the
+# shipped Bibata set (ryoku-cursors) so that surface renders from a real
+# theme. Matches GreeterEnvironment in /etc/sddm.conf.d/10-ryoku-wayland.conf.
 export XCURSOR_THEME="${XCURSOR_THEME:-Bibata-Modern-Ice}"
 export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+
+# On NVIDIA the DRM backend hands that surface to the hardware cursor plane
+# and the driver accepts it without ever displaying it, so the login pointer
+# vanishes (issue #184). The pixman renderer skips plane assignment entirely
+# (no GBM device, so weston never promotes views to planes), so the sprite is
+# composited into the scanout: a software cursor that always shows. A login
+# screen is transient, so software rendering there costs nothing worth
+# missing.
+weston_args=""
+for vendor in /sys/class/drm/card*/device/vendor; do
+  [ "$(cat "$vendor" 2>/dev/null)" = "0x10de" ] && weston_args="--renderer=pixman" && break
+done
 
 # weston reads no X11 keyboard config, so without this the greeter is on the
 # us map and an AZERTY password fails. The layout localectl recorded goes in
@@ -73,7 +84,7 @@ choose_primary() {
 }
 
 # exec plain weston (preferred mode); the login screen must always start.
-weston_plain() { exec weston --shell=kiosk "$@"; }
+weston_plain() { exec weston --shell=kiosk $weston_args "$@"; }
 
 command -v weston >/dev/null 2>&1 || { echo "ryoku-greeter: weston not found" >&2; exit 127; }
 command -v modetest >/dev/null 2>&1 || weston_plain "$@"
@@ -154,4 +165,4 @@ ini="$(mktemp --tmpdir ryoku-greeter.XXXXXX.ini 2>/dev/null)" || weston_plain "$
 gen_ini > "$ini"
 [ -s "$ini" ] || weston_plain "$@"
 
-exec weston --shell=kiosk --config="$ini" "$@"
+exec weston --shell=kiosk $weston_args --config="$ini" "$@"

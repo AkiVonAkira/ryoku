@@ -3,6 +3,17 @@
 ## Unreleased
 
 ### Changed
+- **The login pointer shows on NVIDIA machines.** The greeter client pushes a
+  themed cursor surface and weston's kiosk shell has no cursor of its own; on
+  NVIDIA the DRM backend hands that surface to the hardware cursor plane and
+  the driver accepts it without ever displaying it, so the login screen had a
+  working pointer with nothing drawn (`ryoku/lockscreen/sddm/ryoku-greeter`).
+  The greeter now detects an NVIDIA DRM card and runs weston on the pixman
+  renderer, which skips plane assignment entirely: the sprite is composited
+  into the scanout and always shows. A login screen is transient, so software
+  rendering there costs nothing worth missing; every other GPU keeps the GL
+  path. The plain-weston fallbacks (`sddm/setup`, the doctor reconciler) make
+  the same call for the boxes that have not landed the wrapper yet.
 - **`sddm/setup` ships unlock-on-login by default instead of stripping the
   keyring.** The old wiring unconditionally deleted `pam_gnome_keyring` from
   `/etc/pam.d/sddm`, citing a "passwordless Default_keyring" that nothing in the

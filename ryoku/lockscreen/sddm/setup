@@ -178,6 +178,12 @@ GREETER_BIN="/usr/share/ryoku/lockscreen/ryoku-greeter"
 # the package has not landed it yet.
 if [[ -x $GREETER_BIN ]]; then
   COMPOSITOR="$GREETER_BIN"
+elif grep -qs 0x10de /sys/class/drm/card*/device/vendor; then
+  # NVIDIA's KMS accepts the hardware cursor plane and never displays it under
+  # weston (#184): the login pointer only shows through weston's software
+  # cursor path (the pixman renderer). Mirrors the wrapper script for the
+  # window before the package lands it.
+  COMPOSITOR="weston --shell=kiosk --renderer=pixman"
 else
   COMPOSITOR="weston --shell=kiosk"
 fi
