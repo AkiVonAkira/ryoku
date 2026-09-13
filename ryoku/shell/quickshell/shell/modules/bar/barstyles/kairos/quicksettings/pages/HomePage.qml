@@ -73,6 +73,7 @@ Column {
     }
     readonly property bool wxHot: Weather.available && page.wxDay && page.wxTempC >= 30
     readonly property bool wxCold: Weather.available && page.wxDay && page.wxTempC <= 5
+    readonly property bool wxLocation: !(Config.kairos && Config.kairos.showLocation === false)
 
     function wxGlyph(code, day) {
         if (code < 0) return "wx-unknown";
@@ -169,6 +170,7 @@ Column {
 
                 Text {
                     width: parent.width
+                    visible: page.wxLocation
                     text: Weather.available ? (Weather.city || Weather.location) : I18n.tr("Weather")
                     color: page.dim(0.8)
                     font.family: Theme.fontPrimary

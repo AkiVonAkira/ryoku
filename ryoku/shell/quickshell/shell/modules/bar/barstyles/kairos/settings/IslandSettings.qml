@@ -31,6 +31,7 @@ Scope {
     readonly property bool dateWheel: s.bool("dateWheel", true)
     readonly property bool music: s.bool("music", true)
     readonly property real musicPeek: s.clamp(s.num("musicPeek", M.musicPeekHeight), 70, 140)
+    readonly property bool showLocation: s.bool("showLocation", true)
 
     readonly property real topGap: s.clamp(s.num("topGap", M.topGap), 0, 24)
     readonly property real restHeight: M.restHeight * s.scale
@@ -52,12 +53,18 @@ Scope {
             clockSeconds: false,
             dateWheel: true,
             music: true,
-            musicPeek: M.musicPeekHeight
+            musicPeek: M.musicPeekHeight,
+            showLocation: true
         };
     }
 
     function set(key, value) {
         s._queue("kairos." + key, value);
+    }
+    // A shell-wide key (not under "kairos"): the weather location lives in the
+    // shared shell store, so it is patched straight.
+    function setGlobal(path, value) {
+        s._queue(path, value);
     }
     function reset() {
         s._queue("kairos", s.defaults());

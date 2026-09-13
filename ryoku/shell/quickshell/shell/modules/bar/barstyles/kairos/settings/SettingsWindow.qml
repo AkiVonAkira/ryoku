@@ -292,8 +292,10 @@ PanelWindow {
     Component {
         id: pageWeather
         Column {
+            id: wxPage
             width: page.width
-            spacing: 10
+            spacing: 14
+            property bool searchMode: Config.weatherLocation.length > 0
 
             Text {
                 width: parent.width
@@ -324,6 +326,80 @@ PanelWindow {
                     active: Config.weatherUnit === "fahrenheit"
                     onClicked: Weather.setUnit("fahrenheit")
                 }
+            }
+
+            ToggleRow {
+                width: parent.width
+                title: I18n.tr("Show location")
+                subtitle: I18n.tr("Show the place above the temperature on the weather card.")
+                value: cfg.showLocation
+                onToggled: (v) => cfg.set("showLocation", v)
+            }
+
+            Text {
+                width: parent.width
+                text: I18n.tr("Location")
+                color: root.ink
+                font.family: Theme.fontPrimary
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+            Text {
+                width: parent.width
+                text: I18n.tr("Find the place by network address, or search for a city.")
+                color: root.dim(0.55)
+                font.family: Theme.fontPrimary
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                spacing: 8
+
+                K.QsChip {
+                    text: I18n.tr("Automatic")
+                    active: !wxPage.searchMode
+                    onClicked: {
+                        wxPage.searchMode = false;
+                        if (Config.weatherLocation.length > 0)
+                            cfg.setGlobal("weatherLocation", "");
+                    }
+                }
+                K.QsChip {
+                    text: I18n.tr("Search a place")
+                    active: wxPage.searchMode
+                    onClicked: {
+                        wxPage.searchMode = true;
+                        Qt.callLater(function () { placeField.forceActiveFocus(); });
+                    }
+                }
+            }
+            Rectangle {
+                visible: wxPage.searchMode
+                width: parent.width
+                height: 40
+                radius: 12
+                color: root.dim(0.12)
+
+                TextInput {
+                    id: placeField
+                    anchors {
+                        left: parent.left; right: parent.right
+                        leftMargin: 12; rightMargin: 12
+                        verticalCenter: parent.verticalCenter
+                    }
+                    text: Config.weatherLocation
+                    color: root.ink
+                    font.family: Theme.fontPrimary
+                    font.pixelSize: 13
+                    selectionColor: root.accent
+                    selectedTextColor: root.fill
+                    onAccepted: cfg.setGlobal("weatherLocation", text)
+                }
+            }
+            K.QsAction {
+                visible: wxPage.searchMode
+                text: I18n.tr("Apply")
+                onClicked: cfg.setGlobal("weatherLocation", placeField.text)
             }
         }
     }
