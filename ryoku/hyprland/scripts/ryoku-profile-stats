@@ -31,13 +31,23 @@ if [ -s "$cj" ] && command -v jq >/dev/null 2>&1; then
     palette=$(jq -r '[.color0,.color1,.color2,.color3,.color4,.color5,.color6,.color7,.color8,.color9,.color10,.color11,.color12,.color13,.color14,.color15]|join(",")' "$cj" 2>/dev/null)
 fi
 
+# compositor version and active-monitor count, both from neutral sources so the
+# dossier reads the same under any window manager. the seam reports the provider
+# version; the kernel's DRM state names every connector a compositor is actively
+# driving, which is set the same way no matter which one is running.
+wm_ver=$(ryoku wm status 2>/dev/null | sed -n 's/^Version: //p' | awk '{print $1; exit}')
+monitors=0
+for e in /sys/class/drm/card*-*/enabled; do
+    [ "$(cat "$e" 2>/dev/null)" = enabled ] && monitors=$((monitors + 1))
+done
+
 printf '%s\n' "$l1"
 printf '%s\n' "$temp"
 ps -e --no-headers 2>/dev/null | wc -l
 free --si | awk '/Swap:/{ if ($2 > 0) printf "%d%%\n", $3 / $2 * 100; else print "off" }'
 printf '%s\n' "$bat"
-hyprctl version 2>/dev/null | grep -oP 'Hyprland \K[0-9][0-9.]*' | head -1
-hyprctl monitors 2>/dev/null | grep -c '^Monitor'
+printf '%s\n' "$wm_ver"
+printf '%s\n' "$monitors"
 pacman -Qen 2>/dev/null | wc -l
 pacman -Qm 2>/dev/null | wc -l
 printf '%s\n' "${XCURSOR_THEME:--}${XCURSOR_SIZE:+ · $XCURSOR_SIZE}"
