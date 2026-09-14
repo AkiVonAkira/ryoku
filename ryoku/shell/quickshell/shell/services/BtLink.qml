@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
+import Ryoku.Ui
 import Ryoku.Ui.Singletons
 
 // Bluetooth link state the popout reads but that must outlive it: a popout is a
@@ -117,24 +118,13 @@ Singleton {
         return Math.round(b);
     }
 
-    // BlueZ has no name for a device it only just saw, and leaves the alias as
-    // the device's own address (dashed, e.g. "73-EC-EF-CD-48-8C"). That is an
-    // address, not a name, so label() must not print it as one: it reads the
-    // device-provided name instead and only falls back to the address last.
-    function looksLikeAddress(name) {
-        return /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(String(name || "").trim());
-    }
-
+    // The display name is the shared resolver (Ryoku.Ui's BtName), which knows a
+    // MAC-shaped BlueZ alias is not a name; this wrapper only adds the shell's
+    // untranslated-device fallback.
     function label(d) {
         if (!d)
             return I18n.tr("Unknown");
-        if (d.name && d.name.length && !looksLikeAddress(d.name))
-            return d.name;
-        if (d.deviceName && d.deviceName.length)
-            return d.deviceName;
-        if (d.name && d.name.length)
-            return d.name;
-        return d.address || I18n.tr("Unknown");
+        return BtName.label(d) || I18n.tr("Unknown");
     }
 
 

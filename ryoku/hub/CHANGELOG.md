@@ -43,6 +43,12 @@
   off (a reload only unloads what it loaded itself). See `docs/hyprland-plugins.md`.
 
 ### Fixed
+- **Connections lists Bluetooth devices by name, not MAC address.** The
+  Bluetooth tab read a device's name from its BlueZ alias, which BlueZ leaves
+  equal to the device's own address until it learns a name, so an unnamed
+  device showed a MAC even when the device-reported name was available. It now
+  resolves through the shared helper, which skips an address-shaped alias
+  (`quickshell/pages/ConnectionsPage.qml`).
 - **A rice carries its custom reload cover (#146).** The brand layer bundled
   the mark image but left `reloadCover.path` as the author's absolute path, so
   applying a rice on another box (or after the source asset moved) wrote a path

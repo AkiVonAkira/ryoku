@@ -59,6 +59,11 @@
   `shell/matugen/apps.toml`, `shell/ipc/matugen.go`, `../hub/backend/matugen.go`).
 
 ### Fixed
+- **One shared Bluetooth name resolver, used by every surface.** `Ryoku.Ui`
+  gains `BtName`, which turns a Quickshell Bluetooth device into the name to
+  show: it keeps a real user alias, otherwise takes the device-reported name,
+  and skips a BlueZ alias that is only the device's own address
+  (`ui/lib/bluetooth.js`).
 - **The gap stream clears when it stops instead of freezing a frame.** A silent
   bar with no drift left the last shader frame stuck in the gaps; it now hides,
   so the stream reads as off, then on when audio returns
