@@ -6,6 +6,9 @@
 - Settings rejects null desktop save and preview requests before they can
   replace saved preferences. Empty JSON stores containing `null` now recover
   as an editable empty store instead of crashing the next edit.
+- Saved window animation overrides using `snap` no longer report a missing
+  bezier after switching presets. The base loader supplies the Minimal curve;
+  active presets and custom curves can still override it.
 
 ### Added
 - **`CardColumns`: a page body of blocks, laid into balanced columns.** It takes
