@@ -38,7 +38,8 @@ deliberate in how it looks and moves.
 <p>
   <a href="https://youtu.be/kx7VW4Mg0m4">
     <img src="https://img.youtube.com/vi/kx7VW4Mg0m4/maxresdefault.jpg" alt="Ryoku showcase: watch on YouTube" width="640" />
-  </a> <br />
+  </a>
+  <br />
   <sub>&#9654; <a href="https://youtu.be/kx7VW4Mg0m4">Watch the Ryoku showcase on YouTube</a> &middot; <a href="https://ryoku.dev/showroom">Showroom</a></sub>
 </p>
 
@@ -91,21 +92,27 @@ keybinds that open almost everything, and a few choices you can make on the
 spot, the interface scale, the bar, and which desktop widgets to show.
 Everything else waits in Ryoku Settings (`Super + ,`).
 
-<table> <tr>
-    <td width="50%"> <img src="docs/media/desktop.webp" alt="The desktop"
-    width="100%" /><br />
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/media/desktop.webp" alt="The desktop" width="100%" /><br />
       <sub><b>The desktop.</b> The bar on one edge, the dock on the other, a clock on the wallpaper, and nothing else asking for attention.</sub>
-    </td> <td width="50%">
+    </td>
+    <td width="50%">
       <img src="docs/media/launcher.webp" alt="Launcher" width="100%" /><br />
       <sub><b>Launcher.</b> At rest it is a clock, the weather, and a plate of art. Type and apps, commands, files, packages, radio and the calculator come out of one search.</sub>
-    </td> </tr>
-  <tr> <td width="50%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
       <img src="docs/media/controls.webp" alt="Control sidebar" width="100%" /><br />
       <sub><b>Control sidebar.</b> Session, connect tiles, sound and brightness, media, calendar, and the power profile on one rail.</sub>
-    </td> <td width="50%">
+    </td>
+    <td width="50%">
       <img src="docs/media/batgirl.webp" alt="A full rice" width="100%" /><br />
       <sub><b>One wallpaper.</b> The bar, widgets, and frame all retint from it.</sub>
-    </td> </tr>
+    </td>
+  </tr>
 </table>
 
 ## What ships
