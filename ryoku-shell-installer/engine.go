@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"ryoku-i18n"
+	wm "ryoku-wm"
 )
 
 // line-anchored so a commented-out "#[ryoku]" stanza does not count.
@@ -98,6 +99,7 @@ type plan struct {
 	resume    bool // skip steps a previous interrupted run already finished
 	azertyFR  bool // force the French AZERTY layout (fr) on desktop, console, greeter
 	azertyBE  bool // force the Belgian AZERTY layout (be) on desktop, console, greeter
+	compositor string // window manager to install (selects ryoku-desktop-<name>)
 }
 
 func defaultPlan(f *facts) *plan {
@@ -118,9 +120,16 @@ func defaultPlan(f *facts) *plan {
 		// look; keep it unless they opt in.
 		greeter: !f.kdeSddmConf,
 		resume:  f.prevRun != nil,
+		compositor: compositors()[0],
 		// the AZERTY overrides are opt-in only; a salvaged layout already
 		// covers anyone who had one configured.
 	}
+}
+
+// compositors lists the window managers with a shipped variant package; niri is one
+// more line here once its provider ships. The choice auto-skips while there is one.
+func compositors() []string {
+	return []string{wm.ProviderHyprland}
 }
 
 // azertyExclusive keeps the two AZERTY toggles mutually exclusive: switching
@@ -811,6 +820,13 @@ func (e *engine) asusAura() bool {
 	return exec.Command(detector).Run() == nil
 }
 
+// providerAnswers probes the installed window-manager provider. caps, not state:
+// verification runs before the new session exists, and caps answers without a
+// live compositor.
+func (e *engine) providerAnswers() bool {
+	return exec.Command("ryoku-wm-"+e.p.compositor, "caps").Run() == nil
+}
+
 func stepPackages(e *engine) error {
 	d := e.d()
 	base, err := e.readBasePackages()
@@ -827,6 +843,9 @@ func stepPackages(e *engine) error {
 		pkgs = append(d.localAll(base), d.build...)
 	} else {
 		pkgs = append(append([]string{}, ryokuPkgs...), base...)
+		// name the chosen variant so pacman installs it directly instead of
+		// prompting when more than one provides ryoku-desktop-compositor.
+		pkgs = append(pkgs, "ryoku-desktop-"+e.p.compositor)
 		if e.asusAura() {
 			if d.installedPkg("tlp") {
 				e.say(i18n.T("ASUS Aura lighting skipped because TLP is installed"))
@@ -1339,10 +1358,14 @@ func stepVerify(e *engine) error {
 		check(err == nil && st.IsDir(), i18n.T("base config tree at /usr/share/ryoku/config"))
 	}
 	var err error
-	_, err = os.Stat(filepath.Join(e.f.homeDir, ".config/hypr/hyprland.lua"))
-	check(err == nil, i18n.T("hyprland.lua materialized in ~/.config/hypr"))
-	_, err = os.Stat("/usr/share/wayland-sessions/hyprland.desktop")
-	check(err == nil, i18n.T("Hyprland wayland session registered"))
+	cdir := wm.ConfigDir(e.p.compositor)
+	_, err = os.Stat(filepath.Join(e.f.homeDir, ".config", cdir))
+	check(err == nil, i18n.Tf("%s config materialized in ~/.config/%s", e.p.compositor, cdir))
+	_, err = os.Stat(filepath.Join("/usr/share/wayland-sessions", e.p.compositor+".desktop"))
+	check(err == nil, i18n.Tf("%s wayland session registered", e.p.compositor))
+	// caps, not state: this runs before the new session is up, and caps answers
+	// without a live compositor (state would falsely fail here).
+	check(e.providerAnswers(), i18n.T("window-manager provider responds"))
 	if e.p.switchDM {
 		check(unitEnabled("system", "sddm.service"), i18n.T("sddm.service enabled"))
 	}

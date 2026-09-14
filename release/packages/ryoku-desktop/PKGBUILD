@@ -1,16 +1,16 @@
 # Maintainer: Ryoku <releases@ryoku.dev>
 #
-# Ryoku desktop umbrella. pulls the Ryoku components + the user-facing runtime,
-# lays the base config under /usr/share/ryoku/config (mirrors the ~/.config tree
-# that `ryoku materialize` copies into a user's home), and drops the helper
-# scripts + the GPU udev rule.
+# Ryoku desktop base: the compositor-neutral components + user-facing runtime.
+# The compositor and its config ship from a sibling ryoku-desktop-<wm> variant
+# this base pulls via the ryoku-desktop-compositor virtual. Lays the base config
+# under /usr/share/ryoku/config, the helper scripts, and the GPU udev rule.
 #
 # built from in-repo sources, no tarball fetch. publish CI runs makepkg inside
 # this dir from a full checkout, so the repo root is three levels up.
 pkgname=ryoku-desktop
 pkgver=${RYOKU_PKGVER:-0.1.0}
-pkgrel=2
-pkgdesc="Ryoku desktop: Hyprland + Quickshell configuration, helpers, and runtime"
+pkgrel=3
+pkgdesc="Ryoku desktop: Quickshell configuration, helpers, and runtime (compositor-neutral base)"
 # package() compiles Go helpers (ryovm-fetch), so the payload is arch-specific.
 arch=('x86_64')
 url="https://ryoku.dev"
@@ -31,19 +31,9 @@ depends=(
   "ryoku-oh-my-zsh=$pkgver"
   # the RyokuArch package manager (GlazePKG)
   'gpk'
-  # compositor + Wayland session
-  'hyprland'
-  # Hyprland compositor plugins the Hub can toggle (Settings > Plugins). pinned
-  # to this build's version like the other monorepo packages, so a plugin .so
-  # never runs against a different release's headers. Off by default; the
-  # generated settings.lua only loads one once the user enables it. Each ships
-  # an .abi receipt beside its .so; when an Arch Hyprland bump outruns a [ryoku]
-  # release, the Hub's Plugins page rebuilds them here from upstream.
-  "hypr-dynamic-cursors=$pkgver"
-  "ryoku-hypr-plugins=$pkgver"
-  "hyprglass=$pkgver"
-  "imgborders=$pkgver"
-  "ryoku-keysounds=$pkgver"
+  # a compositor variant provides this virtual; an installed base pulls the sole
+  # provider (ryoku-desktop-hyprland) on the next -Syu with no user action.
+  'ryoku-desktop-compositor'
   'xorg-xwayland'
   # CachyOS's SDDM greeter is still Qt5; QPA plugins are ABI-specific, so the
   # Qt6 plugin cannot provide the native Wayland platform to that greeter.
@@ -64,12 +54,6 @@ depends=(
   # on the ISO and reaches existing boxes on `ryoku update` -- a Wayland greeter
   # config without weston cannot start.
   'weston'
-  'hyprpolkitagent'
-  'xdg-desktop-portal-hyprland'
-  # XDPH invokes /usr/bin/hyprland-preview-share-picker by name for the
-  # screen-share source chooser, so a hard depend (not an optdepend) guarantees
-  # the picker installs and updates atomically with the portal that names it.
-  'hyprland-preview-share-picker'
   'xdg-desktop-portal-gtk'
   # adw-gtk3 / adw-gtk3-dark, the GTK3 theme the Hyprland autostart selects
   # (gsettings gtk-theme). Unlike stock Adwaita it derives its 156 widget rules
@@ -114,7 +98,6 @@ depends=(
   'zsh-history-substring-search'
   'zsh-syntax-highlighting'
   # tools the shipped autostart, pill, ryoshot, and helper scripts call by name
-  'hypridle'
   'brightnessctl'
   'playerctl'
   # the launcher's "@" live radio: mpv plays the stream, mpv-mpris puts it on
@@ -124,7 +107,6 @@ depends=(
   'yt-dlp'
   'wl-clipboard'
   'cliphist'
-  'hyprpicker'
   'grim'
   'slurp'
   'cava'
@@ -280,21 +262,11 @@ EOF
   # --- base configs under /usr/share/ryoku/config, mirroring ~/.config -------
   # `ryoku materialize` copies this tree verbatim into the user's ~/.config.
 
-  # Hyprland: whole tree. includes scripts/ (shell calls
-  # ~/.config/hypr/scripts/* by absolute path) and the hardware-managed
-  # gpu/keyboard/monitors drop-ins.
-  install -d "$cfg/hypr"
-  cp -a "$_repo/ryoku/hyprland/." "$cfg/hypr/"
-
   # Quickshell desktop components, Hub's config nested under hub/.
   install -d "$cfg/quickshell"
   cp -a "$_repo/ryoku/shell/quickshell/." "$cfg/quickshell/"
   install -d "$cfg/quickshell/hub"
   cp -a "$_repo/ryoku/hub/quickshell/." "$cfg/quickshell/hub/"
-
-  # xdg-desktop-portal: route ScreenCast/Screenshot to hyprland (screen sharing).
-  install -Dm644 "$_repo/ryoku/shell/portals/hyprland-portals.conf" \
-    "$cfg/xdg-desktop-portal/hyprland-portals.conf"
 
   # First-party GUI apps: a Quickshell app (ryovm, ryostore) ships its
   # quickshell/ tree as qs -c <name>; a compiled app has a CMakeLists.txt and
@@ -457,10 +429,6 @@ EOF
   # not sit on Xwayland where it renders pages blank on NVIDIA).
   install -Dm644 "$_repo/ryoku/apps/chromium-flags.conf" "$cfg/chromium-flags.conf"
   install -Dm644 "$_repo/ryoku/apps/chromium-flags.conf" "$cfg/chrome-flags.conf"
-  # the screen-share source chooser xdph launches (hypr/xdph.conf names the
-  # binary); its stylesheet is the matugen template rendered on palette change.
-  install -Dm644 "$_repo/ryoku/apps/hyprland-preview-share-picker/config.yaml" \
-    "$cfg/hyprland-preview-share-picker/config.yaml"
 
   # the qylock lockscreen bundle + its installer, so doctor can install or
   # repair the in-session lock on a box the ISO step missed (or that predates
@@ -513,17 +481,8 @@ EOF
   chmod -R u=rwX,go=rX "$pkgdir/usr/share/ryoku"
 
   # --- helper scripts on PATH (/usr/bin) ------------------------------------
-  # the pill, Hub, and shell also call the hypr/scripts copies above by absolute
-  # path; these are for CLI use + the hardware helpers Hyprland autostart calls
-  # by bare name.
+  # the hardware + container helpers the shell and autostart call by bare name.
   local s
-  for s in "$_repo"/ryoku/hyprland/scripts/ryoku-cmd-*; do
-    install -Dm755 "$s" "$pkgdir/usr/bin/${s##*/}"
-  done
-  # the app-role resolver the keybinds launch by bare name (SUPER+B -> browser, ...)
-  install -Dm755 "$_repo/ryoku/hyprland/scripts/ryoku-app" "$pkgdir/usr/bin/ryoku-app"
-  # the single-instance window summoner the keybinds call by bare name (ryovm).
-  install -Dm755 "$_repo/ryoku/hyprland/scripts/ryoku-summon" "$pkgdir/usr/bin/ryoku-summon"
   for s in "$_repo"/system/hardware/*/ryoku-*; do
     [[ -f $s && -x $s ]] || continue
     install -Dm755 "$s" "$pkgdir/usr/bin/${s##*/}"

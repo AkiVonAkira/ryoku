@@ -87,13 +87,12 @@ rtkit
 mesa
 vulkan-icd-loader
 
-# Desktop: plain Hyprland, Xwayland, portals, polkit agent, Qt/GTK runtime.
+# Desktop runtime: Xwayland, the GTK portal, and the Qt/GTK stack. The
+# compositor, its portal backend, and its polkit agent are compositor-specific
+# and ship with the compositor meta-package.
 # SDDM may still be built with Qt5; the greeter's native Wayland QPA plugin is
 # version-specific, so qt6-wayland alone cannot start it.
-hyprland
 xorg-xwayland
-hyprpolkitagent
-xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 xdg-user-dirs
 qt6-wayland

@@ -74,7 +74,7 @@ ryoku_gpu_mode() {
 		vfio)    mapped=passthrough ;;
 		*) log 'GPU mode: ignoring unknown RYOKU_GPU_MODE='\''%s'\'' (want offload|sync|vfio)' "$RYOKU_GPU_MODE"; return 0 ;;
 	esac
-	local u=$RYOKU_USERNAME dest="/home/$RYOKU_USERNAME/.config/hypr/gpu.lua"
+	local u=$RYOKU_USERNAME dest="/home/$RYOKU_USERNAME/.config/$RYOKU_COMPOSITOR_CONFIG_DIR/gpu.lua"
 	if [[ -n ${RYOKU_DRYRUN:-} ]]; then
 		log "DRYRUN: arch-chroot /mnt runuser -u $u -- env HOME=/home/$u ryoku-gpu mode $mapped $dest"
 		return 0
