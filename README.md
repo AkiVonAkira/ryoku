@@ -6,17 +6,18 @@
 
 **力と美のために** &middot; *For the sake of power and beauty.*
 
-Ryoku is a hand-built Arch Linux distribution: one cohesive Hyprland desktop, a
-guided installer, and the system definition that reproduces them, all from a
-single repository. It is a whole operating system you install to disk from its
-own ISO -- the bootloader, drivers, packages, installer and desktop are all part
-of it -- not a shell or a set of dotfiles you layer onto an existing distro. The
-base is lean enough to live in from first boot and deliberate in how it looks and
-moves.
+Ryoku is a hand-built Arch Linux distribution: one cohesive desktop that runs on
+Hyprland or niri, a guided installer, and the system definition that reproduces
+them, all from a single repository. It is a whole operating system you install
+to disk from its own ISO -- the bootloader, drivers, packages, installer and
+desktop are all part of it -- not a shell or a set of dotfiles you layer onto an
+existing distro. The base is lean enough to live in from first boot and
+deliberate in how it looks and moves.
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-E2342A?style=for-the-badge)](LICENSE)
 [![Built on Arch](https://img.shields.io/badge/Arch_Linux-1793D1?style=for-the-badge&logo=archlinux&logoColor=white)](https://archlinux.org)
 [![Hyprland](https://img.shields.io/badge/Hyprland-58E1C2?style=for-the-badge&logoColor=white)](https://hypr.land)
+[![niri](https://img.shields.io/badge/niri-7E9CD8?style=for-the-badge&logoColor=white)](https://github.com/YaLTeR/niri)
 [![Release status](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fiso.ryoku.dev%2Fstable%2Flatest.json&query=%24.channel&label=status&color=E2342A&style=for-the-badge)](https://ryoku.dev)
 [![Build ISO](https://github.com/ryoku-dev/ryoku-arch/actions/workflows/build-iso.yml/badge.svg)](https://github.com/ryoku-dev/ryoku-arch/actions/workflows/build-iso.yml)
 [![Discord](https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/8KjBmUEyKA)
@@ -37,8 +38,7 @@ moves.
 <p>
   <a href="https://youtu.be/kx7VW4Mg0m4">
     <img src="https://img.youtube.com/vi/kx7VW4Mg0m4/maxresdefault.jpg" alt="Ryoku showcase: watch on YouTube" width="640" />
-  </a>
-  <br />
+  </a> <br />
   <sub>&#9654; <a href="https://youtu.be/kx7VW4Mg0m4">Watch the Ryoku showcase on YouTube</a> &middot; <a href="https://ryoku.dev/showroom">Showroom</a></sub>
 </p>
 
@@ -61,7 +61,7 @@ Underneath, Ryoku is a hand-built Arch distribution rather than a config dump.
 The desktop, the installer, and the system definition all live in this
 repository, and every machine is built from it; the repository is the single
 source of truth, and a live machine is only ever a deployment target. The
-desktop is a Hyprland Wayland session authored in Lua with the Quickshell-based
+desktop is a Wayland session, on Hyprland or niri, with the Quickshell-based
 Ryoku shell on top. Ryoku's alpha series was a fork of Omarchy. From the beta
 series on, the tree was pruned and rebuilt from an empty root, so the installer,
 shell, theming, tooling, and system definition are all Ryoku's own, and the
@@ -76,7 +76,8 @@ full-time engineering team behind it. Community ideas help shape what gets built
 within the time, knowledge, and maintenance capacity available. Ryoku favours a
 rich, deliberate desktop on capable hardware -- it is not designed as a
 lightweight distribution for older or low-resource machines. It builds on the
-work of Arch Linux, Hyprland, and Quickshell, and keeps the credits noted above.
+work of Arch Linux, Hyprland, niri, and Quickshell, and keeps the credits noted
+above.
 
 ## The desktop
 
@@ -90,34 +91,28 @@ keybinds that open almost everything, and a few choices you can make on the
 spot, the interface scale, the bar, and which desktop widgets to show.
 Everything else waits in Ryoku Settings (`Super + ,`).
 
-<table>
-  <tr>
-    <td width="50%">
-      <img src="docs/media/desktop.webp" alt="The desktop" width="100%" /><br />
+<table> <tr>
+    <td width="50%"> <img src="docs/media/desktop.webp" alt="The desktop"
+    width="100%" /><br />
       <sub><b>The desktop.</b> The bar on one edge, the dock on the other, a clock on the wallpaper, and nothing else asking for attention.</sub>
-    </td>
-    <td width="50%">
+    </td> <td width="50%">
       <img src="docs/media/launcher.webp" alt="Launcher" width="100%" /><br />
       <sub><b>Launcher.</b> At rest it is a clock, the weather, and a plate of art. Type and apps, commands, files, packages, radio and the calculator come out of one search.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
+    </td> </tr>
+  <tr> <td width="50%">
       <img src="docs/media/controls.webp" alt="Control sidebar" width="100%" /><br />
       <sub><b>Control sidebar.</b> Session, connect tiles, sound and brightness, media, calendar, and the power profile on one rail.</sub>
-    </td>
-    <td width="50%">
+    </td> <td width="50%">
       <img src="docs/media/batgirl.webp" alt="A full rice" width="100%" /><br />
       <sub><b>One wallpaper.</b> The bar, widgets, and frame all retint from it.</sub>
-    </td>
-  </tr>
+    </td> </tr>
 </table>
 
 ## What ships
 
-- **The desktop** under `ryoku/`: a Hyprland session authored in Lua (not a
-  hand-written `hyprland.conf`), the Quickshell-based Ryoku shell, the
-  lockscreen, app configs, and brand assets.
+- **The desktop** under `ryoku/`: a Wayland session on Hyprland or niri (its
+  config in the compositor's own language), the Quickshell-based Ryoku shell,
+  the lockscreen, app configs, and brand assets.
 - **The system definition** under `system/`: the boot chain, hardware policy,
   and package sets that make a machine a Ryoku machine.
 - **The installer** under `installation/`: a guided TUI, the backend installer,
@@ -127,10 +122,10 @@ Everything else waits in Ryoku Settings (`Super + ,`).
 
 ## Requirements
 
-Ryoku is `x86_64` only and boots in UEFI mode. The session is Wayland: Hyprland
-with the GPU-composited Ryoku shell on top. The installer refuses a machine with
-Secure Boot on (Limine ships unsigned) unless you have enrolled your own keys,
-and there is no 32-bit build and no legacy BIOS path.
+Ryoku is `x86_64` only and boots in UEFI mode. The session is Wayland on
+Hyprland or niri, with the GPU-composited Ryoku shell on top. The installer
+refuses a machine with Secure Boot on (Limine ships unsigned) unless you have
+enrolled your own keys, and there is no 32-bit build and no legacy BIOS path.
 
 |  | Minimum | Recommended |
 |---|---|---|
@@ -264,8 +259,9 @@ way the rest of the system is.
 
 Your settings survive every update. The base configs are Ryoku-owned and
 refreshed in place, while your own edits live in override files that are never
-shipped or touched (`hypr/user.lua`, `kitty/user.conf`, `fish/user.fish`); they
-load last, so your changes win. There is no ordered migration ledger: the config
+shipped or touched (your compositor's user override, `kitty/user.conf`,
+`fish/user.fish`); they load last, so your changes win. There is no ordered
+migration ledger: the config
 is reconciled to the shipped state on every update, and the rare stateful fix
 (disk layout and the like) is an idempotent `ryoku doctor` reconciler that runs
 inside `ryoku update`. If an update goes wrong, run `ryoku rollback` or pick the
@@ -289,9 +285,9 @@ and run the same recovery straight from the repo:
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku-arch/main/bin/ryoku-recovery | bash
 ```
 
-This is a true last resort. It discards local Ryoku config customizations
-(`hypr/user.lua` and friends) and resets you to the latest `main`. It refuses to
-run on a machine that is not Ryoku, and asks you to confirm before it changes
+This is a true last resort. It clears your user overrides and the Hub's stored
+settings, and resets you to the latest `main`. It refuses to run on a machine
+that is not Ryoku, and asks you to confirm before it changes
 anything. Pass `--yes` to skip the prompt and `--no-packages` to pull and
 redeploy the configs without the pacman step.
 
@@ -299,7 +295,7 @@ redeploy the configs without the pacman step.
 
 | Path | One job |
 |---|---|
-| `ryoku/` | The desktop: the Hyprland (Lua) config, the Quickshell shell, the lockscreen, app configs, brand assets. |
+| `ryoku/` | The desktop: the window-manager seam and per-compositor configs (Hyprland in Lua, niri in KDL), the Quickshell shell, the lockscreen, app configs, brand assets. |
 | `system/` | The machine definition: boot chain, hardware policy, package sets. |
 | `installation/` | How a machine is built: the TUI, the backend installer, the ISO profile. |
 | `release/` | Packaging: the desktop PKGBUILDs, the `[ryoku]` repo builder, the signing keyring. |
