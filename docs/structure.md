@@ -36,6 +36,15 @@ truth for the live desktop.
   its `hyprpm.toml` recipe and the sample generator; see
   `docs/hyprland-plugins.md`); it ships as a package, not with the config. The
   rest of the directory deploys to `~/.config/hypr/`.
+- `niri/` the niri config, authored in **KDL**. `config.kdl` is the entry point
+  and `include`s the rest, in override order: the `keyboard.kdl`, `gpu.kdl`,
+  `monitors.kdl` and `monitors_user.kdl` seeds, then the generated
+  `settings.kdl` and `rebinds.kdl`, then `user.kdl` as the last word. Every
+  seed ships because a missing include is a hard config error in niri, and each
+  is comments only: the generated files carry every real setting. There is no
+  `modules/` and no `scripts/`, since the neutral settings come from the store
+  and the keybind helpers are shell verbs. It deploys to `~/.config/niri/`.
+  See `docs/compositors.md`.
 - `lockscreen/` `qylock/` (the lock theme and its quickshell lockscreen),
   `install-qylock`, and `sddm/` (the greeter setup).
 - `shell/` the desktop shell subsystem: `quickshell/` (the QML UI. Every surface

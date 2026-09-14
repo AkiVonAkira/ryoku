@@ -23,7 +23,7 @@ ryoku_deploy() {
   ryoku_deploy_repo              # [ryoku] stanza + mirrorlist + keyring trust (local)
   ryoku_deploy_packages          # pacman -S the desktop set (needs net)
   ryoku_seed_initcpio_hook       # the HOOKS-named trim hook, if that set never came
-  ryoku_seed_hypr_keymap         # chosen kb_layout into the base config, pre-materialize
+  ryoku_seed_keymap              # chosen kb_layout into the neutral store
   ryoku_deploy_materialize "$u"  # `ryoku materialize` as the user
   ryoku_deploy_seed "$h"         # unpackaged: brand, wallpapers, ~/.npmrc
   ryoku_deploy_chown "$u"        # own root-seeded files before the user steps
@@ -262,25 +262,31 @@ ryoku_seed_initcpio_hook() {
   install -Dm644 "$src" "$dst"
 }
 
-# seed the desktop keyboard layout into the base config BEFORE materialize copies
-# it into ~/.config. keyboard.lua is user-owned (never re-materialized), so this
-# one edit sticks across updates; without it a non-us user gets a us Hyprland
-# session and a password typed there mismatches the install-time one.
-ryoku_seed_hypr_keymap() {
-  local kb=/mnt/usr/share/ryoku/config/$RYOKU_COMPOSITOR_CONFIG_DIR/keyboard.lua
+# seed the desktop keyboard layout into the neutral settings store, so the active
+# compositor's `apply` renders it into the generated config: one seed works on any
+# provider, present and future. desktop.json is user state no package ships, so
+# this writes it directly (the later chown owns it); without it a non-us user gets
+# a us session and a password typed there mismatches the install-time one.
+ryoku_seed_keymap() {
+  local store=/mnt/home/$RYOKU_USERNAME/.config/ryoku/desktop.json
   local xkbl=${RYOKU_XKB_LAYOUT:-} xkbv=${RYOKU_XKB_VARIANT:-}
   [[ -n $xkbl ]] || xkbl=$RYOKU_KEYMAP
-  [[ $xkbl == us && -z $xkbv ]] && return 0   # shipped default is already us
+  [[ $xkbl == us && -z $xkbv ]] && return 0   # the store default is already us
   if [[ -n ${RYOKU_DRYRUN:-} ]]; then
-    log "DRYRUN: seed $kb -> kb_layout=$xkbl kb_variant=$xkbv"
+    log "DRYRUN: seed $store -> desktop.input.kbLayout=$xkbl kbVariant=$xkbv"
     return 0
   fi
-  [[ -f $kb ]] || { log 'keyboard seed: skip (%s not present)' "$kb"; return 0; }
-  sed -i \
-    -e "s|kb_layout = \"[^\"]*\"|kb_layout = \"$xkbl\"|" \
-    -e "s|kb_variant = \"[^\"]*\"|kb_variant = \"$xkbv\"|" \
-    "$kb"
-  log 'seeded Hyprland keyboard layout: %s%s' "$xkbl" "${xkbv:+ ($xkbv)}"
+  command -v jq >/dev/null 2>&1 || { log 'keyboard seed: skip (jq unavailable)'; return 0; }
+  mkdir -p "$(dirname "$store")" || { log 'keyboard seed: skip (cannot create %s)' "$(dirname "$store")"; return 0; }
+  local next
+  if [[ -s $store ]]; then
+    next=$(jq --arg l "$xkbl" --arg v "$xkbv" '. * {desktop:{input:{kbLayout:$l,kbVariant:$v}}}' "$store") || { log 'keyboard seed: skip (%s is not valid JSON)' "$store"; return 0; }
+  else
+    next=$(jq -n --arg l "$xkbl" --arg v "$xkbv" '{desktop:{input:{kbLayout:$l,kbVariant:$v}}}') || { log 'keyboard seed: skip (jq failed)'; return 0; }
+  fi
+  [[ -n $next ]] || { log 'keyboard seed: skip (empty jq result)'; return 0; }
+  printf '%s\n' "$next" >"$store"
+  log 'seeded keyboard layout into the store: %s%s' "$xkbl" "${xkbv:+ ($xkbv)}"
 }
 
 # seed the user-data nothing else owns: brand assets + wallpapers (shell
