@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Changed
+- **The login pointer renders again, on every GPU.** weston's kiosk shell draws
+  a cursor-shape client's pointer from its own cursor theme, but the greeter
+  handed weston a config with only `[output]` blocks, so it had no theme to draw
+  from and the pointer stayed invisible even where the GPU was fine and the
+  pixman renderer was in use (`ryoku/lockscreen/sddm/ryoku-greeter`, issue #191).
+  Every config the greeter writes now carries a `[shell] cursor-theme` and size,
+  so weston has a real theme to render the login pointer from.
 - **The login pointer shows on NVIDIA machines.** The greeter client pushes a
   themed cursor surface and weston's kiosk shell has no cursor of its own; on
   NVIDIA the DRM backend hands that surface to the hardware cursor plane and

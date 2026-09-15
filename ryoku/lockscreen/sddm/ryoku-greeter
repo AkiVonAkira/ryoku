@@ -83,8 +83,20 @@ choose_primary() {
   printf '%s\n' "$names" | grep -m1 -E '^(eDP|LVDS|DSI)' || true
 }
 
-# exec plain weston (preferred mode); the login screen must always start.
-weston_plain() { exec weston --shell=kiosk $weston_args "$@"; }
+# The kiosk shell draws no pointer of its own for a cursor-shape client, and
+# weston only learns which theme to draw from a [shell] block, so every config we
+# hand it carries one; without it the login pointer never renders (issue #191).
+shell_ini() { printf '[shell]\ncursor-theme=%s\ncursor-size=%s\n\n' "${XCURSOR_THEME:-Bibata-Modern-Ice}" "${XCURSOR_SIZE:-24}"; }
+
+# exec plain weston (preferred mode); the login screen must always start. Hand it
+# a [core]+[shell] config too so the pointer has a theme even when no modes parse.
+weston_plain() {
+  local pini
+  pini="$(mktemp --tmpdir ryoku-greeter.XXXXXX.ini 2>/dev/null)" &&
+    { printf '[core]\nidle-time=0\n\n'; shell_ini; } >"$pini" &&
+    exec weston --shell=kiosk $weston_args --config="$pini" "$@"
+  exec weston --shell=kiosk $weston_args "$@"
+}
 
 command -v weston >/dev/null 2>&1 || { echo "ryoku-greeter: weston not found" >&2; exit 127; }
 command -v modetest >/dev/null 2>&1 || weston_plain "$@"
@@ -117,6 +129,7 @@ gen_ini() {
   # user. One [output] per connected panel at its top mode; the chosen primary
   # also carries app-ids so kiosk-shell drops the greeter window there.
   printf '[core]\nidle-time=0\n\n'
+  shell_ini
   while read -r name w h rr; do
     [ -n "$name" ] && [ "${w:-0}" -gt 0 ] && [ "${h:-0}" -gt 0 ] || continue
     printf '[output]\nname=%s\nmode=%sx%s@%s\n' "$name" "$w" "$h" "$rr"
