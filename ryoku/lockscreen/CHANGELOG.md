@@ -3,13 +3,15 @@
 ## Unreleased
 
 ### Changed
-- **The login pointer renders again, on every GPU.** weston's kiosk shell draws
-  a cursor-shape client's pointer from its own cursor theme, but the greeter
-  handed weston a config with only `[output]` blocks, so it had no theme to draw
-  from and the pointer stayed invisible even where the GPU was fine and the
-  pixman renderer was in use (`ryoku/lockscreen/sddm/ryoku-greeter`, issue #191).
-  Every config the greeter writes now carries a `[shell] cursor-theme` and size,
-  so weston has a real theme to render the login pointer from.
+- **The login pointer is visible again.** On a hybrid laptop whose panel is on
+  the iGPU, the greeter still forced weston's Pixman renderer -- a workaround
+  only NVIDIA-panel machines need -- and under Pixman weston draws no cursor at
+  all (weston #375), so the login pointer vanished (issue #191). The greeter now
+  uses Pixman only when NVIDIA actually drives the connected panel; everywhere
+  else it keeps the GL renderer whose hardware cursor works. And because the
+  login compositor cannot always be trusted to draw a pointer at all, the
+  clockwork login theme now paints its own cursor in the scene, following the
+  mouse, so a pointer is always shown no matter what the compositor supports.
 - **The login pointer shows on NVIDIA machines.** The greeter client pushes a
   themed cursor surface and weston's kiosk shell has no cursor of its own; on
   NVIDIA the DRM backend hands that surface to the hardware cursor plane and
