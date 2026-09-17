@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"ryoku-cli/internal/sys"
+	"ryoku-cli/internal/updater"
 
 	i18n "ryoku-i18n"
 	wm "ryoku-wm"
@@ -238,6 +239,20 @@ func cmdWmUse(args []string) {
 		fmt.Printf(i18n.T("Installed %s; %s is the compositor at the next login.\n"), pkg, name)
 	}
 
+	// The switch is not complete until the target's config is laid down. A package
+	// install writes nothing into ~/.config, so a switch that stopped at the
+	// package left the next login on a bare compositor (no keybinds, no shell, a
+	// grey desktop) until an update happened to materialize it. Runs after the
+	// install, so the base carries the target's tree, and before any removal, so a
+	// refusal there still leaves a working desktop. A checkout box deploys its own
+	// trees and has no packaged base to lay.
+	if sys.Exists(sys.BaseConfigDir()) {
+		if err := laySwitchConfig(); err != nil {
+			die(i18n.T("installed %s but could not lay its config down (%v); run `ryoku materialize` before logging out"), pkg, err)
+		}
+		fmt.Printf(i18n.T("Laid down the %s config; log out and pick %s at the greeter.\n"), name, name)
+	}
+
 	// Removing the outgoing compositor's packages is a second transaction on
 	// purpose: the switch is complete once the target is ready, so a refusal or
 	// failure here leaves a working desktop rather than a half-switched one. It
@@ -247,6 +262,10 @@ func cmdWmUse(args []string) {
 		removePreviousCompositor(active, name)
 	}
 }
+
+// laySwitchConfig lays the installed target desktop's config, so the switch ends
+// with a complete desktop rather than a bare compositor.
+func laySwitchConfig() error { return updater.Materialize() }
 
 // deployedProvider reports whether a provider is usable without its package:
 // its binary answers caps and its config tree exists, which is what a checkout
