@@ -140,6 +140,9 @@ done
 install -m755 "$here/scripts/ryoku-reload-cover" "$bindir/ryoku-reload-cover"
 install -m755 "$here/scripts/ryostage" "$bindir/ryostage"
 install -m755 "$here/scripts/ryoku-eq" "$bindir/ryoku-eq"
+# Keep-Awake's durable idle inhibitor: systemd-inhibit, not compositor config, so
+# it rides the shell and holds on a compositor whose package ships no scripts.
+install -m755 "$here/scripts/ryoku-cmd-caffeine" "$bindir/ryoku-cmd-caffeine"
 # The Stash sidebar's helpers. Shell scripts, not compositor config, so they ride
 # the shell to PATH and work with no compositor config tree.
 for s in "$here/scripts"/stash-*.sh; do
