@@ -180,13 +180,31 @@ Item {
 
     CatalogLabels { id: labels }
 
+    // A page shorter than its window spreads the slack into its rows rather
+    // than ending partway up; measured once the cards settle, never bound.
+    property int roomPad: 0
+    function tuneRoom() {
+        if (!flick || flick.height <= 0 || col.contentHeight <= 0)
+            return;
+        var n = page.sumiActive ? 6 : (page.activeStyle === "obi" ? page.obiWidgets.length : 1);
+        var slack = flick.height - col.contentHeight;
+        var want = slack > Tokens.s5 * n ? Math.round(slack / n * 0.5) : 0;
+        var next = Math.max(0, Math.min(Tokens.s6, want));
+        if (next !== page.roomPad)
+            page.roomPad = next;
+    }
+    Timer { id: roomTimer; interval: 600; running: true; repeat: false; onTriggered: page.tuneRoom() }
+    onHeightChanged: roomTimer.restart()
+    onActiveStyleChanged: roomTimer.restart()
+
     // ── head: the eyebrow band, the title, the blurb ─────────────────────────
     Column {
         id: head
         anchors.top: parent.top
-        // the head sits on the same centred measure as the column below
-        width: Math.min(parent.width, Tokens.contentMax)
-        x: Math.round((parent.width - width) / 2)
+        // the head sits on the body's grid: full body width from the left, so
+        // the title starts over the first card column instead of floating centred
+        x: 0
+        width: page.width - 14
         spacing: Tokens.s2
 
         Item {
@@ -246,7 +264,7 @@ Item {
         id: flick
         anchors { left: parent.left; right: parent.right; top: head.bottom; bottom: parent.bottom; topMargin: Tokens.s5 }
         contentWidth: width
-        contentHeight: col.height + Tokens.s5
+        contentHeight: Math.max(col.height, flick.height)
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollRail { policy: ScrollBar.AsNeeded }
@@ -257,6 +275,7 @@ Item {
             // a body of cards fills the measure and splits into balanced columns
             width: flick.width - 14
             spacing: Tokens.s5
+            fillTo: flick.height
 
             // ── BAR STYLE: which bar the desktop draws ───────────────────────
             SettingCard {
@@ -401,6 +420,7 @@ Item {
                 width: col.colWidth
                 visible: page.activeStyle === "obi"
                 title: I18n.tr("OBI WIDGETS")
+                onExpandedChanged: roomTimer.restart()
 
                 Repeater {
                     model: page.obiWidgets
@@ -411,6 +431,7 @@ Item {
                         anchors.right: parent.right
                         divider: index > 0
                         controlWidth: 54
+                        roomPad: page.roomPad
                         label: I18n.tr(modelData.label)
                         desc: I18n.tr(modelData.desc)
                         source: "shell.json"
@@ -449,16 +470,18 @@ Item {
                 id: frameSect
                 width: col.colWidth
                 title: I18n.tr("FRAME")
+                onExpandedChanged: roomTimer.restart()
                 visible: page.sumiActive
 
                 SettingRow {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     controlWidth: 54
+                    roomPad: page.roomPad
                     label: I18n.tr("Draw frame")
                     def: page.fwas("frameEnabled") === undefined ? "" : (page.fwas("frameEnabled") ? I18n.tr("ON") : I18n.tr("OFF"))
                     changed: page.fwas("frameEnabled") !== undefined && !!page.fval("frameEnabled", true) !== !!page.fwas("frameEnabled")
-                    desc: I18n.tr("Draw the bounded frame around the desktop at all.")
+                    desc: I18n.tr("The bounded band drawn around the desktop.")
                     source: "shell.json"
                     Sw {
                         objectName: "frame-enabled"
@@ -473,6 +496,7 @@ Item {
                     anchors.right: parent.right
                     divider: true
                     controlWidth: Math.min(240, Math.max(160, Math.round(frameSect.width * 0.34)))
+                    roomPad: page.roomPad
                     label: I18n.tr("Opacity")
                     unit: "%"
                     value: String(Math.round(page.fnum("frameOpacity", 1) * 100))
@@ -493,12 +517,13 @@ Item {
                     anchors.right: parent.right
                     divider: true
                     controlWidth: 58
-                    label: I18n.tr("Frame thickness")
+                    roomPad: page.roomPad
+                    label: I18n.tr("Thickness")
                     unit: "px"
                     value: String(page.fnum("frameThickness", 2))
                     def: page.fwas("frameThickness") === undefined ? "" : String(page.fwas("frameThickness"))
                     changed: page.fwas("frameThickness") !== undefined && page.fnum("frameThickness", 2) !== Number(page.fwas("frameThickness"))
-                    desc: I18n.tr("How thick the frame band around the desktop is drawn.")
+                    desc: I18n.tr("How far the band stands into the screen.")
                     source: "shell.json"
                     Step {
                         objectName: "frame-thickness"
@@ -514,6 +539,7 @@ Item {
                     anchors.right: parent.right
                     divider: true
                     controlWidth: 58
+                    roomPad: page.roomPad
                     label: I18n.tr("Corner radius")
                     unit: "px"
                     value: String(page.fnum("frameCorner", 8))
@@ -537,6 +563,7 @@ Item {
                 id: railSect
                 width: col.colWidth
                 title: I18n.tr("RAILS")
+                onExpandedChanged: roomTimer.restart()
                 visible: page.sumiActive
 
                 Item {
@@ -606,6 +633,7 @@ Item {
                     anchors.right: parent.right
                     divider: true
                     controlWidth: 54
+                    roomPad: page.roomPad
                     label: I18n.tr("Show this rail")
                     def: page.railWas ? (page.railWas.enabled ? I18n.tr("ON") : I18n.tr("OFF")) : ""
                     changed: !!page.railWas && page.rail.enabled !== page.railWas.enabled
@@ -624,6 +652,7 @@ Item {
                     anchors.right: parent.right
                     divider: true
                     controlWidth: Math.min(240, Math.max(160, Math.round(railSect.width * 0.34)))
+                    roomPad: page.roomPad
                     label: I18n.tr("Thickness")
                     unit: "px"
                     value: String(page.rail.size)
