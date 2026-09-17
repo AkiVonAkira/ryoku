@@ -187,6 +187,7 @@ func reconcilers() []reconciler {
 		{i18n.T("orphaned theme.lua"), reconcileThemeLua},
 		{i18n.T("follow-mouse default"), reconcileFollowMouseDefault},
 		{i18n.T("quickshell runtime"), reconcileQuickshell},
+		{i18n.T("compositor config tree"), reconcileConfigTree},
 		{i18n.T("desktop loads"), reconcileShellLoad},
 		{i18n.T("ryoku shell daemon"), reconcileShellDaemon},
 		{i18n.T("duplicate desktop instances"), reconcileShellInstances},
