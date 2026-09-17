@@ -219,6 +219,19 @@ func cmdWmUse(args []string) {
 		if !packageAvailable(pkg) {
 			die(i18n.T("cannot switch to %s yet: the %s package is not available on this channel"), name, pkg)
 		}
+		// The two variants conflict on the ryoku-desktop-compositor virtual they
+		// both provide, and pacman answers that conflict prompt with its default
+		// under --noconfirm, so the install can never complete while the outgoing
+		// variant is installed: "unresolvable package conflicts detected". Drop the
+		// outgoing variant package first (its own tree and provider, a few MiB).
+		// -dd is what lets the base keep its virtual unsatisfied for the moment
+		// between the two transactions; the install below restores it at once, and
+		// the base, the shell and every other package stay installed throughout.
+		if out := "ryoku-desktop-" + active; active != "" && active != name && packageInstalled(out) {
+			if err := sys.Sudo("pacman", "-Rdd", "--noconfirm", out); err != nil {
+				die(i18n.T("could not remove %s before installing %s: %v"), out, pkg, err)
+			}
+		}
 		if err := sys.Sudo("pacman", "-S", "--needed", "--noconfirm", pkg); err != nil {
 			die(i18n.T("could not install %s: %v"), pkg, err)
 		}
@@ -375,5 +388,12 @@ func rawLen(raw json.RawMessage) int {
 
 func packageAvailable(pkg string) bool {
 	_, err := sys.RunOut("pacman", "-Si", pkg)
+	return err == nil
+}
+
+// packageInstalled reports whether pkg is installed here, which decides whether
+// a switch has an outgoing variant package to drop.
+func packageInstalled(pkg string) bool {
+	_, err := sys.RunOut("pacman", "-Qq", pkg)
 	return err == nil
 }
