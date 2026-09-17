@@ -364,8 +364,6 @@ Scope {
                                 target: root
                                 function onSelChanged() { list.positionViewAtIndex(root.sel, ListView.Contain) }
                             }
-                            onHeightChanged: list.positionViewAtIndex(root.sel, ListView.Contain)
-
                             // the plate slides between rows rather than fading
                             highlight: Rectangle {
                                 y: root.sel * root.rowH

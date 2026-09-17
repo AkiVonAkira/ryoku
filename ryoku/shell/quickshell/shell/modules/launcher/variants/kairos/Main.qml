@@ -347,8 +347,6 @@ Scope {
                             target: root
                             function onSelChanged() { list.positionViewAtIndex(root.sel, ListView.Contain) }
                         }
-                        onHeightChanged: list.positionViewAtIndex(root.sel, ListView.Contain)
-
                         highlight: Rectangle {
                             y: root.sel * root.rowH
                             width: list.width
