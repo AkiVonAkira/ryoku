@@ -249,4 +249,43 @@ runuser -u "$TESTUSER" -- sh -c "echo later-boot >/var/lib/ryoku/boot/ok-$(id -u
 ryoku boot-guard | grep -q "disarmed" || die "a proven boot must disarm the guard"
 [[ ! -e /var/lib/ryoku/update-pending.json ]] || die "disarm left the marker behind"
 
+# 9. the other compositor variant. The testing channel ships one variant package
+#    per window manager and the base pulls whichever the virtual resolves to, so
+#    a hyprland-only install test says nothing about niri: a broken niri package
+#    would publish green. Installing it here exercises the switch the Hub offers
+#    (pacman satisfies the conflict by replacing the outgoing variant), and the
+#    provider's own output is validated with niri's parser -- the niri twin of
+#    the Hyprland assertions above.
+log "switching the compositor variant"
+# The two variants conflict on the ryoku-desktop-compositor virtual they both
+# provide, and pacman answers that conflict prompt with its default under
+# --noconfirm ("unresolvable package conflicts detected"), so installing the
+# target over the outgoing variant can never complete. This is the pair of
+# transactions the switch flow runs: drop the outgoing variant package (-dd only
+# while the virtual is briefly unsatisfied), then install the target, which
+# restores it. The base and the shell packages stay installed throughout.
+pacman -Rdd --noconfirm ryoku-desktop-hyprland || die "could not drop the outgoing hyprland variant"
+pacman -S --needed --noconfirm ryoku-desktop-niri || die "ryoku-desktop-niri did not install after the swap"
+pacman -Qq ryoku-desktop-niri >/dev/null 2>&1 || die "the niri variant is not installed"
+pacman -Qq ryoku-desktop-hyprland >/dev/null 2>&1 && die "the niri variant left ryoku-desktop-hyprland installed (compositor split not exclusive)"
+[[ -x /usr/bin/ryoku-wm-niri ]] || die "ryoku-desktop-niri did not ship the ryoku-wm-niri provider"
+[[ -f /usr/share/ryoku/config/niri/config.kdl ]] || die "ryoku-desktop-niri did not ship the niri config tree"
+[[ ! -d /usr/share/ryoku/config/hypr ]] || die "the niri variant still ships the Hyprland tree"
+[[ -f /usr/share/wayland-sessions/niri.desktop ]] || die "the niri session entry is not installed"
+
+# materialize for the test user, then let the packaged provider author the
+# generated includes (settings.kdl, rebinds.kdl) the way a login does, and let
+# niri parse the result: an update that ships a broken tree must fail here.
+log "materializing the niri config and validating it with niri"
+runuser -u "$TESTUSER" -- env "HOME=/home/$TESTUSER" "USER=$TESTUSER" "LOGNAME=$TESTUSER" \
+  ryoku materialize >/dev/null || die "ryoku materialize failed on the niri variant"
+[[ -f "$cfg/niri/config.kdl" ]] || die "materialize did not lay the niri config"
+mkdir -p "$cfg/ryoku"
+printf '{"desktop":{},"wm":{"niri":{}}}\n' >"$cfg/ryoku/desktop.json"
+runuser -u "$TESTUSER" -- env "HOME=/home/$TESTUSER" "XDG_CURRENT_DESKTOP=niri" \
+  /usr/bin/ryoku-wm-niri apply "$cfg/ryoku/desktop.json" >/dev/null \
+  || die "the niri provider did not apply the store"
+[[ -f "$cfg/niri/settings.kdl" && -f "$cfg/niri/rebinds.kdl" ]] || die "the niri provider did not write its generated includes"
+niri validate -c "$cfg/niri/config.kdl" || die "the niri config the packages ship does not parse"
+
 log "container-install: OK -- ryoku-desktop delivered the full config to $cfg"
