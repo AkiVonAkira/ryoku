@@ -116,6 +116,9 @@ pacman -Qq ryoku-desktop-hyprland >/dev/null 2>&1 \
   || die "ryoku-desktop did not pull ryoku-desktop-hyprland (compositor-split auto-pull broken)"
 [[ -x /usr/bin/ryoku-wm-hyprland ]] || die "ryoku-desktop-hyprland did not ship the ryoku-wm-hyprland provider"
 [[ -x /usr/bin/ryoku ]] || die "the ryoku CLI was not installed"
+# the config bootstrap: a package install lays nothing into ~/.config, so the
+# first login after one boots a bare compositor unless this unit runs first.
+[[ -f /usr/lib/systemd/user/ryoku-bootstrap.service ]] || die "ryoku-desktop did not ship the config bootstrap unit"
 
 # 4. materialize as a throwaway user, forcing HOME/USER like deploy.sh's
 #    ryoku_deploy_materialize (runuser keeps root's env otherwise).
@@ -272,6 +275,9 @@ pacman -Qq ryoku-desktop-hyprland >/dev/null 2>&1 && die "the niri variant left 
 [[ -f /usr/share/ryoku/config/niri/config.kdl ]] || die "ryoku-desktop-niri did not ship the niri config tree"
 [[ ! -d /usr/share/ryoku/config/hypr ]] || die "the niri variant still ships the Hyprland tree"
 [[ -f /usr/share/wayland-sessions/niri.desktop ]] || die "the niri session entry is not installed"
+# niri is a systemd user unit, so it can order the bootstrap ahead of itself: the
+# drop-in is what makes the *first* login after an install a Ryoku desktop.
+[[ -f /usr/lib/systemd/user/niri.service.d/ryoku-bootstrap.conf ]] || die "the niri variant did not ship the bootstrap ordering drop-in"
 
 # materialize for the test user, then let the packaged provider author the
 # generated includes (settings.kdl, rebinds.kdl) the way a login does, and let
