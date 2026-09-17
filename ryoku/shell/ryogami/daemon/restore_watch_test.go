@@ -53,6 +53,62 @@ func TestRestoreRetriesUntilFilePresent(t *testing.T) {
 	}
 }
 
+// A recorded wallpaper that never arrives -- a probe file, a deleted download,
+// a stage switched away -- used to leave the session grey: the retry window
+// closed and nothing was painted. Once it closes, the daemon must paint what an
+// empty choice would (the wallpaper directory's first image) and record it, so
+// the next login does not wait the window out against a dead path again.
+func TestRestoreFallbackPaintsTheDefault(t *testing.T) {
+	d, cache := restoreDaemon(t)
+	walls := t.TempDir()
+	d.cfg.Paths.Wallpaper = walls
+	def := filepath.Join(walls, "fallback.png")
+	writeE2EPNG(t, def)
+	dead := filepath.Join(t.TempDir(), "gone.png")
+	if err := os.WriteFile(filepath.Join(cache, "outputs.json"),
+		[]byte(`{"*":{"type":"static","path":"`+dead+`"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	d.restoreFallback()
+
+	if got := d.surface.snapshot().Default.Path; got != def {
+		t.Fatalf("fallback frame = %q, want the default %q", got, def)
+	}
+	state := map[string]map[string]interface{}{}
+	loadJSON(filepath.Join(cache, "outputs.json"), &state)
+	if got, _ := state["*"]["path"].(string); got != def {
+		t.Fatalf("recorded path = %q, want the fallback %q", got, def)
+	}
+}
+
+// A choice that is merely late is untouched: with the file present the fallback
+// paints the choice itself and leaves the recording alone, so the recovery path
+// never overrides a live wallpaper.
+func TestRestoreFallbackLeavesALiveChoice(t *testing.T) {
+	d, cache := restoreDaemon(t)
+	walls := t.TempDir()
+	d.cfg.Paths.Wallpaper = walls
+	writeE2EPNG(t, filepath.Join(walls, "fallback.png"))
+	pic := filepath.Join(t.TempDir(), "chosen.png")
+	writeE2EPNG(t, pic)
+	if err := os.WriteFile(filepath.Join(cache, "outputs.json"),
+		[]byte(`{"*":{"type":"static","path":"`+pic+`"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	d.restoreFallback()
+
+	if got := d.surface.snapshot().Default.Path; got != pic {
+		t.Fatalf("frame = %q, want the recorded choice %q", got, pic)
+	}
+	state := map[string]map[string]interface{}{}
+	loadJSON(filepath.Join(cache, "outputs.json"), &state)
+	if got, _ := state["*"]["path"].(string); got != pic {
+		t.Fatalf("recorded path was rewritten to %q, want it left at %q", got, pic)
+	}
+}
+
 // No stored choice is not a failure: want is zero, so the caller neither
 // retries nor treats the empty frame as a login race (first run, restore off).
 func TestRestoreNoChoiceIsNotPending(t *testing.T) {

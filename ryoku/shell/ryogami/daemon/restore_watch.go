@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -24,6 +26,39 @@ func (d *daemon) retryRestore() {
 		if want, applied := d.restoreOutputs(); want == 0 || applied > 0 {
 			return
 		}
+	}
+	// The window is sized for a late mount or a finishing download. A recorded
+	// wallpaper still missing after it is a dead path -- a probe file, a deleted
+	// download, a stage switched away -- and sitting on the grey frame for the
+	// rest of the session is worse than painting the default.
+	d.restoreFallback()
+}
+
+// restoreFallback repaints the stored outputs against the default wallpaper and
+// records it, so a dead choice heals at login instead of greying every time.
+// Called only once the retry window has closed: while it is open, a missing file
+// is a legitimate login race and nothing is published.
+func (d *daemon) restoreFallback() {
+	if want, applied := d.restoreOutputs(); want == 0 || applied > 0 {
+		return // it landed as the window closed, or nothing was ever recorded
+	}
+	src := d.defaultWallpaper()
+	if src == "" {
+		return // nothing installed to fall back to
+	}
+	path := filepath.Join(d.config().cacheDir(), "outputs.json")
+	state := map[string]map[string]interface{}{}
+	loadJSON(path, &state)
+	if len(state) == 0 {
+		return
+	}
+	for _, e := range state {
+		e["path"] = src
+	}
+	saveJSON(path, state)
+	if _, applied := d.restoreOutputs(); applied > 0 {
+		fmt.Fprintf(os.Stderr, "ryogami: recorded wallpaper never arrived; painted %s\n",
+			filepath.Base(src))
 	}
 }
 
