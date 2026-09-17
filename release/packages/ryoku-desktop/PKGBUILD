@@ -374,10 +374,8 @@ EOF
   install -Dm644 "$_repo/ryoku/shell/gtk-4.0/settings.ini" "$cfg/gtk-4.0/settings.ini"
   install -Dm644 "$_repo/ryoku/apps/btop/btop.conf"       "$cfg/btop/btop.conf"
   install -Dm644 "$_repo/ryoku/apps/starship/starship.toml" "$cfg/starship.toml"
-  # the session environment: toolkit/platform vars, the QML import path a
-  # keybind-spawned `qs -c …` needs, the polkit agent flag, PATH. Hyprland sets
-  # its own from env.lua, which reaches a Hyprland session only; the user manager
-  # reads this file at login, so niri and its spawns get them too.
+  # session environment: Hyprland sets its own from env.lua, which never reaches
+  # niri; the user manager reads this at login, so both compositors get it.
   install -Dm644 "$_repo/ryoku/shell/environment.d/ryoku-session.conf" \
     "$cfg/environment.d/ryoku-session.conf"
   install -Dm644 "$_repo/ryoku/apps/fastfetch/config.jsonc" "$cfg/fastfetch/config.jsonc"
@@ -479,9 +477,7 @@ EOF
   install -Dm644 "$_repo/ryoku/shell/systemd/user/ryoku-bootstrap.service" \
     "$pkgdir/usr/lib/systemd/user/ryoku-bootstrap.service"
 
-  # the session environment for every user of the box: the user manager reads
-  # /usr/lib/environment.d before any unit starts, so a session that never ran
-  # `ryoku materialize` (a fresh package install) still carries it.
+  # the same file for every user, so a session that never materialized still has it
   install -Dm644 "$_repo/ryoku/shell/environment.d/ryoku-session.conf" \
     "$pkgdir/usr/lib/environment.d/99-ryoku-session.conf"
 

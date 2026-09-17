@@ -4,9 +4,8 @@
 # Carries niri, the xwayland-satellite X11 bridge, the GNOME portal backend niri's
 # caps report, the niri config tree, and the ryoku-wm-niri provider binary
 # (ryoku/wm/niri). It provides the ryoku-desktop-compositor virtual, so an
-# installed ryoku-desktop is satisfied by it, and conflicts with the same virtual
-# so a box carries exactly one compositor variant. `ryoku wm use` swaps it with
-# ryoku-desktop-hyprland as a plain, reversible pacman transaction.
+# installed ryoku-desktop is satisfied by it, and may be installed beside
+# ryoku-desktop-hyprland: a switch is then a config change, not a package swap.
 #
 # There is no plugin subsystem here: niri has no plugins, and its caps say so.
 #
@@ -32,10 +31,8 @@ depends=(
   'xdg-desktop-portal-gnome'
 )
 provides=('ryoku-desktop-compositor')
-# one compositor variant at a time: this and ryoku-desktop-hyprland both provide
-# AND conflict with the virtual, so installing this one removes the other and
-# `ryoku rollback` can put it back.
-conflicts=('ryoku-desktop-compositor')
+# deliberately not exclusive: both variants may be installed, so a switch is a
+# config change with no download and a switch back is instant.
 source=()
 
 _repo="$startdir/../../.."

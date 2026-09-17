@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"ryoku-cli/internal/doctor"
 	"ryoku-cli/internal/sys"
 	"ryoku-cli/internal/updater"
 
@@ -220,21 +221,21 @@ func cmdWmUse(args []string) {
 		if !packageAvailable(pkg) {
 			die(i18n.T("cannot switch to %s yet: the %s package is not available on this channel"), name, pkg)
 		}
-		// The two variants conflict on the ryoku-desktop-compositor virtual they
-		// both provide, and pacman answers that conflict prompt with its default
-		// under --noconfirm, so the install can never complete while the outgoing
-		// variant is installed: "unresolvable package conflicts detected". Drop the
-		// outgoing variant package first (its own tree and provider, a few MiB).
-		// -dd is what lets the base keep its virtual unsatisfied for the moment
-		// between the two transactions; the install below restores it at once, and
-		// the base, the shell and every other package stay installed throughout.
-		if out := "ryoku-desktop-" + active; active != "" && active != name && packageInstalled(out) {
-			if err := sys.Sudo("pacman", "-Rdd", "--noconfirm", out); err != nil {
-				die(i18n.T("could not remove %s before installing %s: %v"), out, pkg, err)
-			}
-		}
+		// The variants are not exclusive, so the install leaves the outgoing
+		// compositor in place and "keep" means what it says. A box whose packages
+		// predate that still declares the shared virtual as a conflict and pacman
+		// refuses the install under --noconfirm; only then drop it first.
 		if err := sys.Sudo("pacman", "-S", "--needed", "--noconfirm", pkg); err != nil {
-			die(i18n.T("could not install %s: %v"), pkg, err)
+			out := "ryoku-desktop-" + active
+			if active == "" || active == name || !packageInstalled(out) {
+				die(i18n.T("could not install %s: %v"), pkg, err)
+			}
+			if err := sys.Sudo("pacman", "-Rdd", "--noconfirm", out); err != nil {
+				die(i18n.T("could not install %s, and could not remove %s first: %v"), pkg, out, err)
+			}
+			if err := sys.Sudo("pacman", "-S", "--needed", "--noconfirm", pkg); err != nil {
+				die(i18n.T("could not install %s after removing %s: %v"), pkg, out, err)
+			}
 		}
 		fmt.Printf(i18n.T("Installed %s; %s is the compositor at the next login.\n"), pkg, name)
 	}
@@ -263,9 +264,20 @@ func cmdWmUse(args []string) {
 	}
 }
 
-// laySwitchConfig lays the installed target desktop's config, so the switch ends
-// with a complete desktop rather than a bare compositor.
-func laySwitchConfig() error { return updater.Materialize() }
+// laySwitchConfig brings the target desktop up as a desktop: materialize lays
+// the shipped tree, the doctor reconciles the rest (session target, portal
+// routing, wallpaper). Running `ryoku doctor` by hand was the switch's own gap.
+func laySwitchConfig() error {
+	if err := updater.Materialize(); err != nil {
+		return err
+	}
+	if err := doctor.Run(nil); err != nil {
+		// The tree is down, so the desktop comes up; a reconciler that could not
+		// finish (a privileged fix with no terminal) is worth saying, not failing.
+		fmt.Printf(i18n.T("  Some post-switch checks did not finish (%v); run `ryoku doctor` after logging in.\n"), err)
+	}
+	return nil
+}
 
 // deployedProvider reports whether a provider is usable without its package:
 // its binary answers caps and its config tree exists, which is what a checkout

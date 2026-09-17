@@ -146,13 +146,8 @@ write_snippet() {
 emit_niri_snippet() {
   cat <<'EOF'
 // Managed by ryoku-gpu. niri picks its own render device, so nothing is pinned
-// here; the one thing a multi-GPU machine needs from this file is the cursor.
-
-// Reverse PRIME composites the cursor on the primary GPU but scans it out on the
-// GPU the monitor is wired to. niri commits the cursor plane with the rest of the
-// frame, and that cross-GPU buffer fails the atomic commit (EINVAL) on some
-// panels, so the pointer never scans out and is invisible. Compositing the cursor
-// in software dodges the bad commit -- the same route Hyprland takes here.
+// here; a multi-GPU machine needs the cursor composited in software, because the
+// cross-GPU cursor plane fails niri's atomic commit (EINVAL) on some panels.
 debug {
     disable-cursor-plane
 }
@@ -170,9 +165,8 @@ EOF
 }
 
 write_niri_snippet() {
-  # niri's config includes this file unconditionally (a missing include is a hard
-  # error), so it is always written -- as the hardware policy's view of the box:
-  # the software-cursor route on a multi-GPU machine, the plain template on one.
+  # Always written: niri includes this file unconditionally, and a missing
+  # include is a hard config error.
   local dest="${1:-$NIRI_CONF_DEFAULT}"
   analyze
   _niri_dir="$(dirname "$dest")"
@@ -187,10 +181,8 @@ write_niri_snippet() {
 niri_snippet() {
   _niri_dir="${_niri_dir:-$(dirname "$NIRI_CONF_DEFAULT")}"
   if (( _ngpu >= 2 )); then
-    # user.kdl is included after this file, and niri rejects a duplicate `debug`
-    # node outright, so a box that already carries the cursor route by hand --
-    # the patch this file now supersedes -- keeps its own block and gets the
-    # plain template here instead of a config niri refuses to load.
+    # niri rejects a duplicate `debug` node outright, so a box that already has
+    # the cursor route in user.kdl keeps its own and gets the template here.
     if [[ -r $_niri_dir/user.kdl ]] && grep -q 'disable-cursor-plane' "$_niri_dir/user.kdl"; then
       emit_niri_disabled
       return 0

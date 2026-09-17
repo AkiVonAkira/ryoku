@@ -53,11 +53,8 @@ func TestRestoreRetriesUntilFilePresent(t *testing.T) {
 	}
 }
 
-// A recorded wallpaper that never arrives -- a probe file, a deleted download,
-// a stage switched away -- used to leave the session grey: the retry window
-// closed and nothing was painted. Once it closes, the daemon must paint what an
-// empty choice would (the wallpaper directory's first image) and record it, so
-// the next login does not wait the window out against a dead path again.
+// A recorded wallpaper that never arrives used to leave the session grey once
+// the retry window closed: the daemon must then paint the default and record it.
 func TestRestoreFallbackPaintsTheDefault(t *testing.T) {
 	d, cache := restoreDaemon(t)
 	walls := t.TempDir()
@@ -82,9 +79,8 @@ func TestRestoreFallbackPaintsTheDefault(t *testing.T) {
 	}
 }
 
-// A choice that is merely late is untouched: with the file present the fallback
-// paints the choice itself and leaves the recording alone, so the recovery path
-// never overrides a live wallpaper.
+// A choice that is merely late is untouched: the fallback paints it and leaves
+// the recording alone.
 func TestRestoreFallbackLeavesALiveChoice(t *testing.T) {
 	d, cache := restoreDaemon(t)
 	walls := t.TempDir()

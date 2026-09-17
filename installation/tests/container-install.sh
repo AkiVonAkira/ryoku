@@ -255,25 +255,19 @@ ryoku boot-guard | grep -q "disarmed" || die "a proven boot must disarm the guar
 # 9. the other compositor variant. The testing channel ships one variant package
 #    per window manager and the base pulls whichever the virtual resolves to, so
 #    a hyprland-only install test says nothing about niri: a broken niri package
-#    would publish green. Installing it here exercises the switch the Hub offers
-#    (pacman satisfies the conflict by replacing the outgoing variant), and the
-#    provider's own output is validated with niri's parser -- the niri twin of
-#    the Hyprland assertions above.
-log "switching the compositor variant"
-# The two variants conflict on the ryoku-desktop-compositor virtual they both
-# provide, and pacman answers that conflict prompt with its default under
-# --noconfirm ("unresolvable package conflicts detected"), so installing the
-# target over the outgoing variant can never complete. This is the pair of
-# transactions the switch flow runs: drop the outgoing variant package (-dd only
-# while the virtual is briefly unsatisfied), then install the target, which
-# restores it. The base and the shell packages stay installed throughout.
-pacman -Rdd --noconfirm ryoku-desktop-hyprland || die "could not drop the outgoing hyprland variant"
-pacman -S --needed --noconfirm ryoku-desktop-niri || die "ryoku-desktop-niri did not install after the swap"
+#    would publish green. Installing it exercises the second half the switch
+#    offers, and the provider's own output is validated with niri's parser -- the
+#    niri twin of the Hyprland assertions above.
+log "installing the second compositor variant"
+# The variants coexist: installing the target leaves the outgoing desktop in
+# place, which is what makes a switch back instant and the keep-or-remove choice
+# honest. Only `ryoku wm use --remove-previous` takes one out.
+pacman -S --needed --noconfirm ryoku-desktop-niri || die "ryoku-desktop-niri did not install beside ryoku-desktop-hyprland"
 pacman -Qq ryoku-desktop-niri >/dev/null 2>&1 || die "the niri variant is not installed"
-pacman -Qq ryoku-desktop-hyprland >/dev/null 2>&1 && die "the niri variant left ryoku-desktop-hyprland installed (compositor split not exclusive)"
+pacman -Qq ryoku-desktop-hyprland >/dev/null 2>&1 || die "installing the niri variant removed the hyprland one (variants must coexist)"
 [[ -x /usr/bin/ryoku-wm-niri ]] || die "ryoku-desktop-niri did not ship the ryoku-wm-niri provider"
 [[ -f /usr/share/ryoku/config/niri/config.kdl ]] || die "ryoku-desktop-niri did not ship the niri config tree"
-[[ ! -d /usr/share/ryoku/config/hypr ]] || die "the niri variant still ships the Hyprland tree"
+pacman -Ql ryoku-desktop-niri | grep -q "config/hypr" && die "the niri variant ships the Hyprland tree"
 [[ -f /usr/share/wayland-sessions/niri.desktop ]] || die "the niri session entry is not installed"
 # niri is a systemd user unit, so it can order the bootstrap ahead of itself: the
 # drop-in is what makes the *first* login after an install a Ryoku desktop.
