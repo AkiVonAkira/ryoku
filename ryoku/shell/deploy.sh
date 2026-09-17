@@ -708,6 +708,10 @@ seed_once "$here/../apps/ghostty/config" "$cfg/ghostty/config"
 seed_once "$here/../apps/ghostty/ryoku-colors" "$cfg/ghostty/ryoku-colors"
 mkdir -p "$cfg/wireplumber"; cp -a "$here/../apps/wireplumber/." "$cfg/wireplumber/"
 mkdir -p "$cfg/systemd/user"; cp -a "$here/systemd/user/." "$cfg/systemd/user/"
+# the session environment: read by the user manager at the next login, so niri
+# (which has no env hook of its own) and everything it spawns carry the toolkit
+# paths, the QML import path and PATH, as they do in a Hyprland session.
+mkdir -p "$cfg/environment.d"; cp -a "$here/environment.d/." "$cfg/environment.d/"
 # dev deploy runs the daemon from ~/.local/bin; the package ships /usr/bin.
 sed -i -e "s|^ExecStart=.*|ExecStart=$bindir/ryoku-shell daemon|" \
   -e "s|^ExecStartPre=.*|ExecStartPre=-$bindir/ryoku-shell quit|" "$cfg/systemd/user/ryoku-shell.service"
