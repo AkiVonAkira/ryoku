@@ -53,7 +53,9 @@ ryoku_drivers() {
 # run `ryoku-gpu mode <mapped>` as the user against the provider's gpu.lua render
 # pin, via runuser like deploy.sh's materialize. only a compositor whose config
 # ships that Lua pin has a writer here: niri picks its own render device and ships
-# gpu.kdl, so the step is skipped for it. ryoku-gpu's analyze reads /sys/class/drm,
+# gpu.kdl, so the render pin is skipped for it (niri's gpu.kdl still gets the
+# cursor half of the policy from `ryoku-gpu persist`, which lands at login).
+# ryoku-gpu's analyze reads /sys/class/drm,
 # which arch-chroot bind-mounts, so detection sees the real target GPUs; the tool
 # self-gates (a single GPU no-ops, a missing iGPU refuses passthrough), so a
 # non-hybrid box is harmless. best-effort: a failure only skips the pin.
