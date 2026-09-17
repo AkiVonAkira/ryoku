@@ -635,6 +635,14 @@ if [[ -d $cfg/$wm_dir ]]; then
   bak="$cfg/$wm_dir.bak-$(date +%Y%m%d%H%M%S)"
   mv "$cfg/$wm_dir" "$bak"
   say "backed up existing $wm_dir -> $bak"
+  # Keep the newest only: a deploy per session otherwise fills ~/.config with
+  # trees, and an older backup recovers nothing the newest does not.
+  shopt -s nullglob
+  for old in "$cfg/$wm_dir".bak-*; do
+    [[ $old == "$bak" ]] && continue
+    rm -rf -- "$old"
+  done
+  shopt -u nullglob
 fi
 mv "$staging" "$cfg/$wm_dir"
 fi
