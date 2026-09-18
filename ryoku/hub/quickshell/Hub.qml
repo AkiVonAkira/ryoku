@@ -1124,6 +1124,7 @@ Rectangle {
             contentHeight: nav.height
             clip: true
             ScrollBar.vertical: ScrollRail { policy: ScrollBar.AsNeeded }
+            WheelScroll { }
 
             // keep the active section on screen: jumping there by search, IPC or
             // a config-restored section must never leave the selection clipped at
@@ -1596,6 +1597,7 @@ Rectangle {
             model: hub.searchResults
             spacing: 1
             ScrollBar.vertical: ScrollRail { policy: ScrollBar.AsNeeded }
+            WheelScroll { }
             delegate: Rectangle {
                 id: rr
                 required property var modelData
@@ -1681,6 +1683,7 @@ Rectangle {
                 contentHeight: dcol.height
                 clip: true
                 ScrollBar.vertical: ScrollRail { policy: ScrollBar.AsNeeded }
+                WheelScroll { }
                 Column {
                     id: dcol
                     width: dflick.width - 12
@@ -1756,6 +1759,7 @@ Rectangle {
                 contentHeight: fcol.height
                 clip: true
                 ScrollBar.vertical: ScrollRail { policy: ScrollBar.AsNeeded }
+                WheelScroll { }
                 Column {
                     id: fcol
                     width: parent.width - 12
