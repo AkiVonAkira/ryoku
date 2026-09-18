@@ -1392,16 +1392,18 @@ Rectangle {
     // Updates left the rail for a button in the top-right corner: an English
     // UPDATES chip that opens the Updates page and wears a red dot
     // (`Tokens.alert`, a fixed attention red) when the channel sits behind
-    // origin. It rides the empty top strip above every page's head, and is
-    // opaque, so it never collides with a page's running-head marginalia. The
-    // `Updates` singleton self-checks on load and on cadence, so the dot is live.
+    // origin. It rides the top strip beside every page's head: same right inset
+    // as the page's content (S6, so it lines up with the last card rather than
+    // floating inside it) and a box tall enough to read as a control next to the
+    // head instead of a scrap of chrome above it. The `Updates` singleton
+    // self-checks on load and on cadence, so the dot is live.
     Item {
         id: updatesBtn
         anchors { top: parent.top; right: parent.right }
-        anchors.topMargin: Tokens.s2; anchors.rightMargin: Tokens.s4
+        anchors.topMargin: Tokens.s4; anchors.rightMargin: Tokens.s6
         z: 60
-        width: ubLabel.implicitWidth + Tokens.s3 * 2
-        height: 24
+        width: ubLabel.implicitWidth + Tokens.s4 * 2
+        height: 30
         readonly property bool here: hub.section === "updates"
         Rectangle {
             anchors.fill: parent
@@ -1417,8 +1419,8 @@ Rectangle {
             id: ubLabel
             anchors.centerIn: parent
             text: I18n.tr("UPDATES")
-            color: updatesBtn.here ? Tokens.inkOnBone : Tokens.inkMuted
-            font.family: Tokens.ui; font.pixelSize: Tokens.fMicro
+            color: updatesBtn.here ? Tokens.inkOnBone : Tokens.inkDim
+            font.family: Tokens.ui; font.pixelSize: Tokens.fSmall
             font.weight: Font.Medium; font.letterSpacing: Tokens.trackLabel
             Behavior on color { ColorAnimation { duration: Tokens.snap } }
         }
@@ -1429,7 +1431,7 @@ Rectangle {
             color: Tokens.alert
             border.width: 1; border.color: Tokens.paper
             antialiasing: true
-            anchors { right: parent.right; top: parent.top; rightMargin: -3; topMargin: -3 }
+            anchors { right: parent.right; top: parent.top; rightMargin: -2; topMargin: -2 }
         }
         HoverHandler { id: ubh; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: hub.section = "updates" }
@@ -1441,11 +1443,11 @@ Rectangle {
     Item {
         id: filesBtn
         anchors { top: parent.top; right: updatesBtn.left }
-        anchors.topMargin: Tokens.s2; anchors.rightMargin: Tokens.s2
+        anchors.topMargin: Tokens.s4; anchors.rightMargin: Tokens.s3
         z: 60
         visible: hub.settingsFiles().length > 0
-        width: fbLabel.implicitWidth + Tokens.s3 * 2
-        height: 24
+        width: fbLabel.implicitWidth + Tokens.s4 * 2
+        height: 30
         Rectangle {
             anchors.fill: parent
             radius: Tokens.radius
@@ -1460,8 +1462,8 @@ Rectangle {
             id: fbLabel
             anchors.centerIn: parent
             text: I18n.tr("FILES")
-            color: filesPop.open ? Tokens.inkOnBone : Tokens.inkMuted
-            font.family: Tokens.ui; font.pixelSize: Tokens.fMicro
+            color: filesPop.open ? Tokens.inkOnBone : Tokens.inkDim
+            font.family: Tokens.ui; font.pixelSize: Tokens.fSmall
             font.weight: Font.Medium; font.letterSpacing: Tokens.trackLabel
             Behavior on color { ColorAnimation { duration: Tokens.snap } }
         }
