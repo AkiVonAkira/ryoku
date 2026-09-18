@@ -225,24 +225,53 @@ func Verify(args []string) error {
 		fmt.Println(string(b))
 		return nil
 	}
-	fmt.Printf(i18n.Tf("release: %s (%s @ %s)\n", r.Release, r.Version, shortCommit(r.Commit)))
-	line(i18n.T("not delivered"), r.Missing)
-	line(i18n.T("removed by you"), r.UserGone)
-	line(i18n.T("added by you"), r.Extra)
-	if r.NotSaved {
-		fmt.Println("  " + sys.Brand(i18n.T("this box has never reconciled against a manifest; run `ryoku update` once to record the baseline")))
+	rel := sys.ReadRelease()
+	head := r.Release
+	if rel.Name != "" {
+		head = rel.Name + " " + head
 	}
-	if len(r.Missing) == 0 && len(r.UserGone) == 0 && len(r.Extra) == 0 && !r.NotSaved {
+	fmt.Printf("  %s %s\n", sys.Bold(i18n.T("release")), sys.Dim(i18n.Tf("%s · %s · %s", head, shortCommit(r.Commit), r.Version)))
+	drift := false
+	if len(r.Missing) > 0 {
+		drift = true
+		fmt.Printf("  %s %s\n", sys.Amber("!"), i18n.Tf("not delivered (%d)", len(r.Missing)))
+		names(r.Missing)
+	}
+	if len(r.UserGone) > 0 {
+		fmt.Printf("  %s %s\n", sys.Dim("·"), i18n.Tf("kept removed (%d)", len(r.UserGone)))
+		names(r.UserGone)
+	}
+	if len(r.Extra) > 0 {
+		fmt.Printf("  %s %s\n", sys.Dim("·"), i18n.Tf("added by you (%d)", len(r.Extra)))
+		names(r.Extra)
+	}
+	switch {
+	case r.NotSaved:
+		fmt.Printf("  %s %s\n", sys.Amber("›"), i18n.T("never reconciled against a manifest"))
+		fmt.Println("      " + sys.Brand("↳ "+i18n.T("run `ryoku update` once to record the baseline")))
+	case !drift && len(r.UserGone) == 0 && len(r.Extra) == 0:
 		fmt.Println("  " + sys.Green("✓") + " " + i18n.T("this box is the machine the release describes"))
+	case !drift:
+		fmt.Println("  " + sys.Green("✓") + " " + i18n.T("nothing the release wants is missing"))
+	default:
+		fmt.Println("      " + sys.Brand("↳ "+i18n.T("run `ryoku update` to deliver what is missing")))
 	}
 	return nil
 }
 
-func line(label string, names []string) {
-	if len(names) == 0 {
-		return
+// names prints a package list as wrapped, dimmed continuation rows under its
+// section glyph, the way doctor prints a finding's detail. A long list is
+// capped so the report stays a summary; `--json` carries the whole set.
+func names(pkgs []string) {
+	shown := pkgs
+	if len(pkgs) > 12 {
+		shown = pkgs[:12]
 	}
-	fmt.Printf("  %s: %s\n", label, strings.Join(names, ", "))
+	line := strings.Join(shown, ", ")
+	if extra := len(pkgs) - len(shown); extra > 0 {
+		line += i18n.Tf(", and %d more", extra)
+	}
+	fmt.Println(sys.Dim(sys.Wrap(line, sys.TermWidth(), "      ")))
 }
 
 func shortCommit(sha string) string {
