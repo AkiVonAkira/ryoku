@@ -222,6 +222,19 @@ ver=$(runuser -u "$TESTUSER" -- env "HOME=/home/$TESTUSER" ryoku version)
 [[ $ver == "$expect_release"* ]] || die "ryoku version should print the release marker ($expect_release*), got: $ver"
 pretty=$(runuser -u "$TESTUSER" -- env "HOME=/home/$TESTUSER" ryoku version --pretty)
 [[ $pretty == "$name $expect_release"* ]] || die "ryoku version --pretty should lead with the name, got: $pretty"
+
+# the control manifest must be published beside release.json and be the real
+# thing: every lane present, the first-party set non-empty, and the release it
+# names the one the channel serves. A channel that serves no manifest makes
+# `ryoku update`'s convergence a no-op on every box, which is exactly the
+# "works here, inert for users" failure this gate exists to catch.
+mf="$OUT/manifest.json"
+[[ -s "$mf" ]] || die "the published repo carries no manifest.json"
+jq -e '.schema == 1 and (.base|length > 0) and (.firstParty|length > 0) and (.provisioned|length > 0)' "$mf" >/dev/null \
+  || die "manifest.json is malformed or missing lanes: $(jq -c '{schema,base:(.base|length),firstParty:(.firstParty|length),provisioned:(.provisioned|length)}' "$mf" 2>&1)"
+mf_release=$(jq -r '.release' "$mf")
+[[ $mf_release == "$expect_release"* ]] \
+  || die "manifest.json names release $mf_release, not the one release.json serves ($expect_release*)"
 if [[ $repo_name != ryoku ]]; then
   cat >>/etc/pacman.conf <<EOF
 

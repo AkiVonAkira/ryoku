@@ -212,6 +212,18 @@ plugin whose receipts no longer match the installed headers through the provider
 the next login, and names the toolchain to install when a box has none. Gated on
 `CapPlugins`, so a compositor with no plugin system (niri) is a no-op. See
 `docs/hyprland-plugins.md`.
+`reconcileManifest` converges the box's package set to the release's control
+manifest. It reads the channel's `manifest.json`, diffs it against the baseline
+the box last converged to (saved with the names installed at that moment), and
+installs what the release wants that this box never received, which is what
+makes a package added to a set reach every box on the next update without a hard
+depend, and heals a box that has been missing one all along. A name present at
+the baseline and gone now was deleted by the user and stays gone; a name the
+release retired is reported, never uninstalled. The deliver-once apps stay
+`reconcileShippedApps'` lane, so one update never runs two transactions over the
+same names. Best-effort: a box with no mirror or no network reports what did not
+land and the update moves on. `ryoku verify` answers the same diff read-only, so
+two machines can be compared line by line.
 
 ## Two compositors
 
@@ -273,7 +285,9 @@ increasing package version (`core.r<commit-count>.g<sha>`) that the Ryoku
 upgrade moves to, and the `ryoku-desktop` package writes `/etc/ryoku-release`
 (`RELEASE=`, `CHANNEL=`, `VERSION=`, `COMMIT=`) so a box can say which release
 it runs; `release.json` beside each channel's db says which one the channel
-serves.
+serves, and `manifest.json` beside it lists every package the release is made
+of, by lane (base, dev, hardware, AUR, first-party, compositor, provisioned),
+generated from the checkout by `build-repo.sh` and never hand-edited.
 
 A release is a tag: `main` advances only by fast-forward from `unstable-dev`,
 and publishing nothing on that push. The maintainer runs **Stable Release**
@@ -350,6 +364,17 @@ island (when the channel serves the next line) and the Hub's Updates page.
   in a package (then materialized) or seeded by the installer. A file only
   `deploy.sh` lays, or one no path lays, reaches no user. `ryoku-dev-verify-delivery`
   fails the commit on such an orphan.
+- **A package the release is made of must reach every box on update.** A name in
+  a `system/packages/*.packages` set, the AUR set, or `release/packages/` is
+  carried to a packaged box by the control manifest: `build-repo.sh` generates
+  `manifest.json` at publish time and the doctor's `reconcileManifest` converges
+  each box to it on `ryoku update`, so adding a package to a set needs no hard
+  depend and no per-box install step. A box's own removals are respected (a name
+  present when its baseline was saved and gone now stays gone), and `ryoku
+  verify` reports the box-vs-release diff so two machines can be proved the same
+  one. The container-install gate fails a publish whose channel serves no
+  manifest, because a reconciler with nothing to converge to is inert, not
+  delivered.
 - **A removed or renamed `shell.json` key, or a changed default that must reach
   existing users, needs a `doctor` reconciler** (materialize never edits a user's
   `shell.json`). An additive key needs nothing.
