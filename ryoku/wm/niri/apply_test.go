@@ -556,3 +556,19 @@ func TestOverviewBackdropAndSingleColumnCentring(t *testing.T) {
 	}
 	validateGen(t, on, "settings.kdl", "rebinds.kdl")
 }
+
+// "DYNAMIC" is a store role, not a theme on disk: the loaded store must carry
+// the concrete wallpaper-following theme into the KDL, or niri opens a theme
+// that does not exist and the pointer falls back to a bitmap.
+func TestLoadStoreResolvesDynamicCursor(t *testing.T) {
+	store := writeStore(t, `{"desktop":{"cursor":{"theme":"DYNAMIC","size":18}}}`)
+	s := loadStore(store)
+	if s.Cursor.Theme != wm.CursorThemeMaterial {
+		t.Fatalf("loaded theme = %q, want %q", s.Cursor.Theme, wm.CursorThemeMaterial)
+	}
+	var b strings.Builder
+	writeCursor(&b, s.Cursor)
+	if !strings.Contains(b.String(), `xcursor-theme "`+wm.CursorThemeMaterial+`"`) {
+		t.Fatalf("KDL does not carry the resolved theme:\n%s", b.String())
+	}
+}

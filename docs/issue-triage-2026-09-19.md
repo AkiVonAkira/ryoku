@@ -18,11 +18,11 @@ through `hexval`, and `--full` is six characters, so `int("--",16)` raises
 ValueError before the palette is even read - the documented escape hatch
 crashes too.
 
-- [ ] P1 fix: read `desktop.json` `.desktop.cursor.{theme,size}`; keep the
-      hypr.json fallback out (the reconciler owns that migration).
-- [ ] P2 fix: `accent()` skips `-`-prefixed tokens; a hex arg still overrides.
-- [ ] P3 prove: throwaway run with a temp HOME - gate passes on the theme,
-      size is honored, `--force --full` completes; unit-pure `hexval` cases.
+- [x] P1 fix: read `desktop.json` `.desktop.cursor.{theme,size}`; the
+      retired `material` key is dropped from stores by a doctor reconciler.
+- [x] P2 fix: `accent()` skips `-`-prefixed tokens; a hex arg still overrides.
+- [x] P3 prove: `tests/cursor-recolor.sh` (store shape, DYNAMIC role, flag
+      scan, fallback) + Go tests in the seam, both providers, and doctor.
 - [ ] P4 ship: commit, push, comment + close with the release note.
 
 ## 207 - Touchpad off-state not re-applied at boot - build
@@ -30,7 +30,6 @@ crashes too.
 Reporter confirmed the maintainer's check: after a fresh boot
 `ryoku-cmd-touchpad status` says "off" (the flag file) but the pad still
 moves - the intended state is never pushed to the device at login.
-
 - [ ] P1 fix: re-apply the flag at session start on both compositors'
       autostart (the script's own `restore`-style verb, mirroring
       nightlight's restore pattern), so the device matches the flag.
