@@ -103,8 +103,15 @@ compositors (`/tmp/ambxst backend/pkg/svc/compositor/toml.go:61-78`).
       validate with `niri check`.
 - [ ] P2 Hub: gate the Performance page rows by capability so niri users get
       the real subset instead of dead toggles.
-- [ ] P3 shell: a live "perf" flag (from the same store) unmounts shell-side
-      blur/particle/animation surfaces while gaming mode is on.
+- [x] P3 shell: already satisfied before this plan. `Perf.qml` folds
+      `Flags.gameMode` into blurDisabled/shadowsDisabled/reduceMotion and the
+      analyser + poll knobs, and 26 shell surfaces consume those derived
+      switches; the fold is compositor-agnostic, so it holds on niri unchanged.
+- [ ] P1 provider: the only real niri gap is the COMPOSITOR's own
+      animations/borders. niri has no live-config-eval (deliberate), so game
+      mode must re-render settings.kdl (animations off) and let niri's config
+      watcher pick it up; `ryoku-cmd-game-mode` currently no-ops the compositor
+      strip on niri (`hypr_fast` gates on liveConfigEval).
 - [ ] P4 prove: live niri - toggle gaming mode, diff `niri` config + observe
       animations off; shell blur surfaces gone.
 
