@@ -127,8 +127,11 @@ type daemon struct {
 	wmOutputs    []wm.Output
 	wmWorkspaces []wm.Workspace
 	wmWindows    []wm.Window
-	wmOverview   bool // the compositor's native overview is open (niri)
+	wmKbdLayout  string   // active xkb layout, kept warm by watchWindowManager
+	wmKbdList    []string // configured layouts, in switch order
+	wmOverview   bool     // the compositor's native overview is open (niri)
 	wmReady      bool
+	wmVersions   map[string]int // frame kind -> publishes since daemon start
 	wmTopic      *stateTopic
 	gateMu       sync.Mutex               // guards gateWant / gateWake
 	gateWant     map[string]bool          // component -> may run now (absent = yes)

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"os/exec"
 	"testing"
+	"time"
 
 	wm "ryoku-wm"
 )
@@ -62,6 +64,41 @@ func TestOverviewFrameUpdatesCache(t *testing.T) {
 	d.wmMu.Unlock()
 	if got {
 		t.Fatal("a closed overview frame must clear the cached state")
+	}
+}
+
+// The bar's layout indicator reads Wm.keyboardLayout off the wm topic, so a
+// keyboard frame must reach the published snapshot (it was silently dropped
+// once) and every section must carry a version so a QML consumer rebinds only
+// what moved. This asserts the wire, not just the cache.
+func TestPublishCarriesKeyboardAndVersions(t *testing.T) {
+	d := &daemon{wmc: wm.OpenNamed("does-not-exist")}
+	d.wmTopic = newStateTopic()
+	sub := d.wmTopic.subscribe()
+	defer d.wmTopic.unsubscribe(sub)
+
+	d.onWMFrame(wm.Frame{Kind: wm.FrameKeyboard, KeyboardLayout: "English (US)", KeyboardLayouts: []string{"us", "dvorak"}})
+
+	select {
+	case frame := <-sub.frames:
+		var out wmTopicFrame
+		if err := json.Unmarshal(frame, &out); err != nil {
+			t.Fatal(err)
+		}
+		if out.KeyboardLayout != "English (US)" {
+			t.Errorf("keyboardLayout = %q, want the folded layout", out.KeyboardLayout)
+		}
+		if len(out.KeyboardLayouts) != 2 {
+			t.Errorf("keyboardLayouts = %v, want two", out.KeyboardLayouts)
+		}
+		if out.Versions["keyboard"] != 1 {
+			t.Errorf("versions[keyboard] = %d, want 1", out.Versions["keyboard"])
+		}
+		if out.Versions["windows"] != 0 {
+			t.Errorf("versions[windows] = %d, want 0 (untouched by a keyboard frame)", out.Versions["windows"])
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no frame published")
 	}
 }
 

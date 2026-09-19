@@ -16,29 +16,44 @@ Singleton {
 
     readonly property string sockPath: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/ryoku-shell.sock"
 
-    // Last frame the daemon `wm` topic pushed.
-    property var _frame: ({})
-    readonly property bool ready: root._frame.ready === true
+    // The daemon publishes a full snapshot on every provider frame, tagged with
+    // a per-section version. Each section is copied into a backing property only
+    // when its own version moves, so a window drag rebinds the window-derived
+    // lists and leaves the workspace join, the keyboard feed, and the outputs
+    // list untouched. Derived read-only properties below depend on the backing
+    // property, which is exactly what makes Qt skip their re-evaluation.
+    property var _v: null
+
+    property bool _ready: false
+    property var _caps: ({})
+    property string _workspaceModel: "fixed"
+    property var _configFiles: []
+    property string _focusedOutput: ""
+    property var _outputs: []
+    property bool _overviewOpen: false
+    property string _keyboardLayout: ""
+    property var _keyboardLayouts: []
+    property var _winResidue: []
+    property var _wsResidue: []
+
+    readonly property bool ready: root._ready
 
     // Every capability key is always present as a boolean, so read Wm.caps.<name>
     // directly with no undefined guard.
-    readonly property var caps: root._frame.caps || ({})
-    readonly property string workspaceModel: root._frame.workspaceModel || "fixed"
+    readonly property var caps: root._caps
+    readonly property string workspaceModel: root._workspaceModel
 
-    readonly property string focusedOutput: root._frame.focusedOutput || ""
-    readonly property var outputs: root._frame.outputs || []
-    readonly property var configFiles: root._frame.configFiles || []
+    readonly property string focusedOutput: root._focusedOutput
+    readonly property var outputs: root._outputs
+    readonly property var configFiles: root._configFiles
 
     // The compositor's native overview is open (niri). False on a compositor
     // with no overview event, so a blur gated on it simply stays off there.
-    readonly property bool overviewOpen: root._frame.overviewOpen === true
+    readonly property bool overviewOpen: root._overviewOpen
 
     // Active xkb layout name (human string) and the configured layout list.
-    readonly property string keyboardLayout: root._frame.keyboardLayout || ""
-    readonly property var keyboardLayouts: root._frame.keyboardLayouts || []
-
-    readonly property var _winResidue: root._frame.windows || []
-    readonly property var _wsResidue: root._frame.workspaces || []
+    readonly property string keyboardLayout: root._keyboardLayout
+    readonly property var keyboardLayouts: root._keyboardLayouts
 
     // Bound at declaration so the Wayland registry binds early; the lists fill in
     // asynchronously after connect.
@@ -225,11 +240,49 @@ Singleton {
     function setWorkspaceLayout(ws, layout) { root._act("workspace.layout", "tiledLayout", [String(ws), String(layout)]); }
 
     // ---- transport ----
+    // Copy a section into its backing property only when its version moved, so
+    // the derived lists that depend on it rebind only when that section really
+    // changed. The first frame ever (and any frame from a pre-version daemon,
+    // which sends no versions map) copies everything, so caps and the model are
+    // live before the ready frame lands, exactly as the whole-frame swap did.
     function _apply(line) {
         try {
             const frame = JSON.parse(line);
-            if (frame && typeof frame === "object" && !Array.isArray(frame))
-                root._frame = frame;
+            if (!frame || typeof frame !== "object" || Array.isArray(frame))
+                return;
+            const v = frame.versions;
+            if (!v || root._v === null) {
+                root._v = {};
+                root._ready = frame.ready === true;
+                root._caps = frame.caps || ({});
+                root._workspaceModel = frame.workspaceModel || "fixed";
+                root._configFiles = frame.configFiles || [];
+                root._focusedOutput = frame.focusedOutput || "";
+                root._outputs = frame.outputs || [];
+                root._overviewOpen = frame.overviewOpen === true;
+                root._keyboardLayout = frame.keyboardLayout || "";
+                root._keyboardLayouts = frame.keyboardLayouts || [];
+                root._winResidue = frame.windows || [];
+                root._wsResidue = frame.workspaces || [];
+                return;
+            }
+            const old = root._v;
+            if (v.ready !== old.ready) {
+                root._ready = frame.ready === true;
+                root._caps = frame.caps || ({});
+                root._workspaceModel = frame.workspaceModel || "fixed";
+                root._configFiles = frame.configFiles || [];
+            }
+            if (v.windows !== old.windows) root._winResidue = frame.windows || [];
+            if (v.workspaces !== old.workspaces) root._wsResidue = frame.workspaces || [];
+            if (v.focus !== old.focus) root._focusedOutput = frame.focusedOutput || "";
+            if (v.outputs !== old.outputs) root._outputs = frame.outputs || [];
+            if (v.keyboard !== old.keyboard) {
+                root._keyboardLayout = frame.keyboardLayout || "";
+                root._keyboardLayouts = frame.keyboardLayouts || [];
+            }
+            if (v.overview !== old.overview) root._overviewOpen = frame.overviewOpen === true;
+            root._v = v;
         } catch (e) {
         }
     }

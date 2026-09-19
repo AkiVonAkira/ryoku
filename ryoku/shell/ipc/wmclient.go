@@ -38,7 +38,10 @@ func (d *daemon) activeMonitor() string {
 }
 
 // onWMFrame folds one watch frame into the cache and republishes the wm topic.
-// A FrameFocus with an empty output clears the cached focus.
+// A FrameFocus with an empty output clears the cached focus. Each kind carries
+// a version so a QML consumer can rebind only what moved: one niri window
+// event emits several frames, and without the version every derived list would
+// re-evaluate on every one of them.
 func (d *daemon) onWMFrame(f wm.Frame) {
 	d.wmMu.Lock()
 	switch f.Kind {
@@ -50,11 +53,21 @@ func (d *daemon) onWMFrame(f wm.Frame) {
 		d.wmWorkspaces = f.Workspaces
 	case wm.FrameWindows:
 		d.wmWindows = f.Windows
+	case wm.FrameKeyboard:
+		d.wmKbdLayout = f.KeyboardLayout
+		d.wmKbdList = f.KeyboardLayouts
 	case wm.FrameOverview:
 		d.wmOverview = f.OverviewOpen
 	case wm.FrameReady:
 		d.wmReady = true
+	default:
+		d.wmMu.Unlock()
+		return
 	}
+	if d.wmVersions == nil {
+		d.wmVersions = map[string]int{}
+	}
+	d.wmVersions[string(f.Kind)]++
 	d.wmMu.Unlock()
 
 	switch f.Kind {
@@ -70,18 +83,26 @@ func (d *daemon) onWMFrame(f wm.Frame) {
 // wmTopicFrame carries caps and state in one coalesced frame so a QML consumer
 // needs a single subscription. Every capability is present with an explicit
 // boolean and the lists are never null, so a consumer never tells absent from
-// false.
+// false. Versions tags each section with the count of frames that changed it
+// since the daemon started. The frame is always a full snapshot, so a consumer
+// rebinds only the sections whose version moved and catches up on any it missed
+// while the coalescing topic dropped intermediate frames. The provider-static
+// fields (caps, model, config) ride the "ready" version, which moves when the
+// provider stream (re)connects, so a compositor switch refreshes them.
 type wmTopicFrame struct {
-	Provider       string                 `json:"provider"`
-	WorkspaceModel string                 `json:"workspaceModel"`
-	Ready          bool                   `json:"ready"`
-	Caps           map[wm.Capability]bool `json:"caps"`
-	FocusedOutput  string                 `json:"focusedOutput"`
-	Outputs        []wm.Output            `json:"outputs"`
-	Workspaces     []wm.Workspace         `json:"workspaces"`
-	Windows        []wm.Window            `json:"windows"`
-	ConfigFiles    []string               `json:"configFiles"`
-	OverviewOpen   bool                   `json:"overviewOpen"`
+	Provider        string                 `json:"provider"`
+	WorkspaceModel  string                 `json:"workspaceModel"`
+	Ready           bool                   `json:"ready"`
+	Caps            map[wm.Capability]bool `json:"caps"`
+	FocusedOutput   string                 `json:"focusedOutput"`
+	Outputs         []wm.Output            `json:"outputs"`
+	Workspaces      []wm.Workspace         `json:"workspaces"`
+	Windows         []wm.Window            `json:"windows"`
+	ConfigFiles     []string               `json:"configFiles"`
+	OverviewOpen    bool                   `json:"overviewOpen"`
+	KeyboardLayout  string                 `json:"keyboardLayout"`
+	KeyboardLayouts []string               `json:"keyboardLayouts"`
+	Versions        map[string]int         `json:"versions"`
 }
 
 func (d *daemon) publishWM() {
@@ -91,13 +112,14 @@ func (d *daemon) publishWM() {
 	caps, _ := d.wmc.Caps()
 	all := wm.All()
 	frame := wmTopicFrame{
-		Provider:       caps.Name,
-		WorkspaceModel: string(caps.WorkspaceModel),
-		Caps:           make(map[wm.Capability]bool, len(all)),
-		Outputs:        []wm.Output{},
-		Workspaces:     []wm.Workspace{},
-		Windows:        []wm.Window{},
-		ConfigFiles:    []string{},
+		Provider:        caps.Name,
+		WorkspaceModel:  string(caps.WorkspaceModel),
+		Caps:            make(map[wm.Capability]bool, len(all)),
+		Outputs:         []wm.Output{},
+		Workspaces:      []wm.Workspace{},
+		Windows:         []wm.Window{},
+		ConfigFiles:     []string{},
+		KeyboardLayouts: []string{},
 	}
 	for _, c := range all {
 		frame.Caps[c] = caps.Has(c)
@@ -109,6 +131,10 @@ func (d *daemon) publishWM() {
 	frame.Ready = d.wmReady
 	frame.FocusedOutput = d.activeMon
 	frame.OverviewOpen = d.wmOverview
+	frame.KeyboardLayout = d.wmKbdLayout
+	if d.wmKbdList != nil {
+		frame.KeyboardLayouts = d.wmKbdList
+	}
 	if d.wmOutputs != nil {
 		frame.Outputs = d.wmOutputs
 	}
@@ -117,6 +143,10 @@ func (d *daemon) publishWM() {
 	}
 	if d.wmWindows != nil {
 		frame.Windows = d.wmWindows
+	}
+	frame.Versions = make(map[string]int, len(d.wmVersions)+1)
+	for k, v := range d.wmVersions {
+		frame.Versions[k] = v
 	}
 	d.wmMu.Unlock()
 	if b, err := json.Marshal(frame); err == nil {
