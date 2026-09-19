@@ -188,6 +188,7 @@ ShellRoot {
             OverviewBackdrop {
                 screen: perScreen.modelData
                 available: Wm.caps.overviewBackdrop === true
+                overviewOpen: Wm.overviewOpen
                 wallpaperUrl: wallpaper.wallpaperUrl
             }
 

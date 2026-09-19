@@ -50,6 +50,8 @@ func (d *daemon) onWMFrame(f wm.Frame) {
 		d.wmWorkspaces = f.Workspaces
 	case wm.FrameWindows:
 		d.wmWindows = f.Windows
+	case wm.FrameOverview:
+		d.wmOverview = f.OverviewOpen
 	case wm.FrameReady:
 		d.wmReady = true
 	}
@@ -79,6 +81,7 @@ type wmTopicFrame struct {
 	Workspaces     []wm.Workspace         `json:"workspaces"`
 	Windows        []wm.Window            `json:"windows"`
 	ConfigFiles    []string               `json:"configFiles"`
+	OverviewOpen   bool                   `json:"overviewOpen"`
 }
 
 func (d *daemon) publishWM() {
@@ -105,6 +108,7 @@ func (d *daemon) publishWM() {
 	d.wmMu.Lock()
 	frame.Ready = d.wmReady
 	frame.FocusedOutput = d.activeMon
+	frame.OverviewOpen = d.wmOverview
 	if d.wmOutputs != nil {
 		frame.Outputs = d.wmOutputs
 	}

@@ -45,6 +45,26 @@ func TestMonitorConcurrent(t *testing.T) {
 	<-done
 }
 
+// An overview frame warms the cached overview state the wm topic publishes, so
+// the backdrop's blur gate reads the compositor's live overview, not a stale one.
+func TestOverviewFrameUpdatesCache(t *testing.T) {
+	d := &daemon{}
+	d.onWMFrame(wm.Frame{Kind: wm.FrameOverview, OverviewOpen: true})
+	d.wmMu.Lock()
+	got := d.wmOverview
+	d.wmMu.Unlock()
+	if !got {
+		t.Fatal("overview frame did not set the cached state")
+	}
+	d.onWMFrame(wm.Frame{Kind: wm.FrameOverview})
+	d.wmMu.Lock()
+	got = d.wmOverview
+	d.wmMu.Unlock()
+	if got {
+		t.Fatal("a closed overview frame must clear the cached state")
+	}
+}
+
 func BenchmarkActiveMonitorCached(b *testing.B) {
 	d := &daemon{}
 	d.onWMFrame(wm.Frame{Kind: wm.FrameFocus, FocusedOutput: "DP-1"})

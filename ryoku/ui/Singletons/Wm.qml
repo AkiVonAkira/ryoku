@@ -29,6 +29,10 @@ Singleton {
     readonly property var outputs: root._frame.outputs || []
     readonly property var configFiles: root._frame.configFiles || []
 
+    // The compositor's native overview is open (niri). False on a compositor
+    // with no overview event, so a blur gated on it simply stays off there.
+    readonly property bool overviewOpen: root._frame.overviewOpen === true
+
     // Active xkb layout name (human string) and the configured layout list.
     readonly property string keyboardLayout: root._frame.keyboardLayout || ""
     readonly property var keyboardLayouts: root._frame.keyboardLayouts || []

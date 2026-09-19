@@ -100,6 +100,9 @@ type session struct {
 	// outputs is kept only so the maximise correction can size a window against
 	// its own output; a plain watch never reads it.
 	outputs []wm.Output
+	// overview is the compositor's native overview state, replayed on connect
+	// and folded from every OverviewOpenedOrClosed event.
+	overview bool
 	// ready gates the correction: everything replayed before it is a window that
 	// was already up, never an open this watch owns.
 	ready bool
@@ -315,6 +318,18 @@ func (s *session) apply(name string, body json.RawMessage, emit func(wm.Frame), 
 		}
 		s.keyboard.CurrentIdx = e.Idx
 		s.emitKeyboard(emit, wants)
+
+	case "OverviewOpenedOrClosed":
+		var e struct {
+			IsOpen bool `json:"is_open"`
+		}
+		if json.Unmarshal(body, &e) != nil {
+			return
+		}
+		s.overview = e.IsOpen
+		if wants(wm.FrameOverview) {
+			emit(wm.Frame{Kind: wm.FrameOverview, OverviewOpen: e.IsOpen})
+		}
 	}
 }
 
