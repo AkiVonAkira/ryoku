@@ -30,12 +30,11 @@ crashes too.
 Reporter confirmed the maintainer's check: after a fresh boot
 `ryoku-cmd-touchpad status` says "off" (the flag file) but the pad still
 moves - the intended state is never pushed to the device at login.
-- [ ] P1 fix: re-apply the flag at session start on both compositors'
-      autostart (the script's own `restore`-style verb, mirroring
-      nightlight's restore pattern), so the device matches the flag.
-- [ ] P2 prove: nested-session or scripted check that the flip command runs
-      with the flag set; status and device state agree after "boot".
-- [ ] P3 ship: commit, push, comment + close.
+- [x] P1 fix: a `restore` verb re-asserts the stored off, and a config module
+      calls it on `hyprland.start` and `config.reloaded`.
+- [x] P2 prove: `tests/touchpad-restore.sh` (silent no-op with no state, flips
+      only the touchpad, honest no-op without the live-toggle capability).
+- [x] P3 ship: committed, pushed, issue closed.
 
 ## 218 - Lockscreen dies on uinput hotplug; daemon did not restart the shell - investigate
 
@@ -43,17 +42,32 @@ On stable 0.63.1 the shell aborted (SIGSEGV/SI_TKILL inside a QML
 Repeater/Loader regeneration, five seconds after RustDesk created uinput
 devices) and never came back, leaving the session un-unlockable. Two halves:
 
-- [ ] P1 audit: does the current daemon supervisor (`ryoku/shell/ipc`
-      ensure()/sup map, added after 0.63.1) actually respawn a crashed
-      `qs -c shell`, and does the lock re-arm after the respawn? Test by
-      killing the child on a nested session.
-- [ ] P2 hunt: which surface rebuilds a Repeater on input-device change
-      (the crash frame is a Loader->Repeater regenerate from a property
-      binding); if it is ours, make the rebuild crash-safe (settled
-      snapshots, the Audio.qml precedent).
-- [ ] P3 decide: if the abort is a quickshell/Qt defect, harden our side
-      (supervision + re-lock) and report upstream with the coredump trace.
-- [ ] P4 ship/respond with findings either way.
+Audit on the current build (unstable-dev), this box:
+- [x] P1 respawn: the daemon DOES respawn a crashed `qs -c shell`. Sent
+      SIGSEGV to the live shell (pid 3248518); the supervisor brought back a
+      new one (pid 3904070) in 4s. stable 0.63.1's supervise loop is
+      byte-identical, and the synchronous keypress.configure on the respawn
+      path only cancels a context + a local publish (cannot block), so the
+      "daemon never restarted the shell" half does not reproduce on this code
+      and its cause is unproven (the daemon itself being wedged is the only
+      candidate left). The lock CLIENT is the process that genuinely had no
+      supervisor: see P2.
+- [x] P2 re-lock: the real remaining defect. `lockSession` spawned qylock and
+      discarded its exit (fire-and-reap), so a locker that dies by signal
+      leaves Hyprland failed-closed at "lockscreen app died :(" with nothing
+      to authenticate against - the brick. The reaper is now a supervisor: a
+      clean exit 0 (an unlock) stays down, a signal death re-locks, bounded to
+      `lockRetries` inside `lockRetryWindow` so a crash loop gives up rather
+      than spins. Tests: TestSuperviseLockerRelocksOnCrash / StaysDownOnUnlock.
+- [x] P3 abort root cause: the crash frame is `QQuickLoader.setActive ->
+      QQuickRepeater.regenerate -> abort` from a QML signal handler, five
+      seconds after RustDesk created uinput devices. No shell surface binds a
+      Repeater to a live input-device list (the Audio.qml settled-snapshot
+      rule holds everywhere); the abort is quickshell/Qt treating a QML create
+      error as fatal. That is an upstream defect we cannot fix in QML and
+      cannot reproduce without bricking the session. Our side is hardened: the
+      crash now self-heals (respawn) and the lock comes back (P2).
+- [ ] P4 respond with findings; leave open for the upstream report.
 
 ## 215 - Hidden Wi-Fi network support - build (feature)
 
