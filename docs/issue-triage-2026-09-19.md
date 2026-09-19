@@ -89,16 +89,19 @@ hidden yes`). The daemon already owns NM (`ryoku/shell/ipc/network.go`).
 
 ## 214 - CachyOS prebuilt NVIDIA modules ignored by the driver setup - build
 
-The reporter diagnosed the strict `uname -r == linux*` style check: on
-`linux-cachyos` kernels the flow falls to `nvidia-open-dkms` instead of
-`linux-cachyos-nvidia-open`. In `system/hardware/gpu/ryoku-gpu` (and the
-installer's nvidia.sh path).
+Confirmed in `system/hardware/drivers/nvidia.sh`: only the exact pkgbase
+`linux` got the prebuilt `nvidia-open`; every other kernel (including
+`linux-cachyos`, whose repo ships `linux-cachyos-nvidia-open`) fell to
+`nvidia-open-dkms` and a per-kernel compile.
 
-- [ ] P1 fix: map known distro kernels to their repo's prebuilt module
-      packages (cachyos first: `linux-cachyos` -> `linux-cachyos-nvidia-open`
-      / `linux-cachyos-nvidia` for Kepler-and-older), DKMS only as fallback.
-- [ ] P2 prove: the resolver's kernel->package table unit-tested; dry-run on
-      a cachyos-like uname string.
+- [x] P1 fix: `prebuilt_for <pkgbase>` maps stock `linux` to `nvidia-open`
+      and any other kernel to `<pkgbase>-nvidia-open`, but only when a
+      synced repo actually carries that package (the query rides the same
+      pacman config the install uses); DKMS stays the fallback for a kernel
+      nothing publishes for.
+- [x] P2 prove: `tests/nvidia-driver-selection.sh` gained an RTX 2070 SUPER
+      CachyOS case (selects `linux-cachyos-nvidia-open`) and a custom-kernel
+      case (still falls to `nvidia-open-dkms`); shellcheck clean.
 - [ ] P3 ship.
 
 ## 212 - Power profile stuck on performance - respond
