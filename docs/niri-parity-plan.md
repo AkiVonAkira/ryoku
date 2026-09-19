@@ -78,12 +78,17 @@ state machine. We already have both halves: `keypress.go:352-359` emits
 standalone-modifier taps, and `ActionOverviewToggle` exists
 (`ryoku/wm/niri/act.go:173`). axctl wrote `pkg/keymon` for exactly this.
 
-- [ ] P1 wire: tap("Super") in the shell's `Keypresses` feed triggers
-      `Wm.act(overviewToggle)` (capability-gated; Hyprland keeps its own).
-- [ ] P2 UX: debounce so a Super+letter chord never fires the tap (verify the
-      existing `used` flag covers chords); ignore repeat.
-- [ ] P3 prove: live niri - tap Super, overview opens; hold Super and press a
-      bind, overview does NOT open.
+- [x] P1 wire: `shell.qml` binds a standalone Super tap from the `Keypresses`
+      feed to `toggleSurface("overview")`; the daemon keeps the reader alive
+      for taps even with the visualiser off (`keypress.taps` claim, tap-only
+      frames), and the claim is gated on `Wm.caps.nativeOverview` so Hyprland
+      keeps its own binding and no reader runs there for taps.
+- [x] P2 UX: the composer's existing `used` flag already suppresses a tap once
+      any chord key is pressed (verified live: Super+R opened nothing); the
+      shell consumer also drops `repeat` and non-tap states.
+- [x] P3 prove: live niri - tapped Super, the overview opened (watch stream
+      `overviewOpen:true` + screenshot); tapped again it closed; Super+R left
+      it closed.
 
 ## B2 - Gaming mode reaches niri
 
