@@ -25,6 +25,50 @@ type osdState struct {
 	seq   int
 }
 
+// backlightLevelPath is where the last user-set panel level lives across
+// reboots. The kernel drives every backlight to its hardware default at boot
+// and nothing else persists the level, so a plain reboot erased it (#199).
+// The watcher below is the one place every writer (media keys, the slider,
+// the brightness verb) converges, so it owns both halves: save on change,
+// restore before the session's first read.
+func backlightLevelPath() string {
+	return filepath.Join(stateDir(), "ryoku", "backlight")
+}
+
+// saveBacklight records the raw sysfs level. Best-effort: a read-only state
+// dir costs persistence, not the session.
+func saveBacklight(level int) {
+	dir := filepath.Join(stateDir(), "ryoku")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return
+	}
+	_ = os.WriteFile(backlightLevelPath(), []byte(strconv.Itoa(level)), 0o644)
+}
+
+// restoreBacklight pushes the saved level onto the device before the watcher
+// opens it, so the first published value is the restored one and the OSD and
+// sliders agree with the screen. A level outside [1,max] (the panel changed
+// shape, the file is stale) is dropped rather than trusted; a device that
+// rejects the write (no seat ACL on an unusual box) is left at the kernel's
+// value instead of fought.
+func restoreBacklight(dev string, max int) {
+	if max <= 0 {
+		return
+	}
+	b, err := os.ReadFile(backlightLevelPath())
+	if err != nil {
+		return
+	}
+	want, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	if err != nil || want < 1 || want > max {
+		return
+	}
+	if cur, ok := readSysInt(filepath.Join(dev, "brightness")); ok && cur == want {
+		return
+	}
+	_ = os.WriteFile(filepath.Join(dev, "brightness"), []byte(strconv.Itoa(want)), 0o644)
+}
+
 // backlightDevice picks the primary backlight: the first entry under
 // /sys/class/backlight. Absent (a desktop with no panel) means no watcher, so
 // the brightness OSD simply never fires, matching the reference where a missing
@@ -81,6 +125,7 @@ func (o *osdState) watchBacklight(dev string) {
 	if !ok || maxb <= 0 {
 		return
 	}
+	restoreBacklight(dev, maxb)
 	fd, err := unix.Open(filepath.Join(dev, "actual_brightness"), unix.O_RDONLY, 0)
 	if err != nil {
 		return
@@ -109,6 +154,12 @@ func (o *osdState) watchBacklight(dev string) {
 		}
 		o.seq++
 		o.publish(float64(cur) / float64(maxb))
+		// Persist the writable `brightness` attribute, not the polled one:
+		// amdgpu reports actual_brightness on its own hardware scale, so a
+		// saved raw value would restore to the wrong level.
+		if raw, ok := readSysInt(filepath.Join(dev, "brightness")); ok {
+			saveBacklight(raw)
+		}
 	}
 }
 
