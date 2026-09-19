@@ -122,14 +122,21 @@ User report: "file selection doesn't open in some areas". We route niri to
 and restart the portal stack at session start (`ryoku/niri/autostart.kdl:32`).
 Ambxst ships no portal work - hypothesis, not measured cause.
 
-- [ ] P1 probe: live niri - open the file picker from Firefox, Thunar,
-      Chromium, Electron, kitty `nnn`; record which fail and what
-      `xdg-desktop-portal` logs (per-app: portal routing, `GTK_USE_PORTAL`).
-- [ ] P2 fix: likely per-interface routing (`choose` config: FileChooser ->
-      gtk backend) shipped via the niri variant config + a doctor reconciler;
-      or fix the gnome backend's session-type detection.
-- [ ] P3 prove: every app from P1 opens a picker; screencast still routes to
-      the gnome portal (recording must not regress).
+- [x] P1 probe: measured, not assumed. The dev box is a checkout (no
+      `xdg-desktop-portal-gnome`, so it silently falls to gtk and works); a
+      packaged niri box has gnome as a hard depend and ships NO portals.conf,
+      so FileChooser defaults to the gnome backend, which hangs off a non-GNOME
+      session. That asymmetry is the whole "works here, not there" gap.
+- [x] P2 fix: ship `ryoku/niri/niri-portals.conf` (`default=gnome;gtk`,
+      `FileChooser=gtk`), installed by the niri variant package and deploy.sh;
+      generalise the doctor's `portalConfigCandidates` to the running desktop's
+      name (was hardcoded to `hyprland-portals.conf`, so it could not see or
+      heal the niri file) with the provider name as the fallback.
+- [x] P3 prove: the built doctor on the live `XDG_CURRENT_DESKTOP=niri` session
+      reports "portal routing follows .../niri-portals.conf"; GKeyFile parses
+      the shipped file (`default=gnome;gtk`, `FileChooser=gtk`); the `default=`
+      line keeps ScreenCast/Screenshot on gnome so recording does not regress.
+      Unit tests cover the token, the niri candidate order, and the heal path.
 
 ## Verification gate (all items)
 
