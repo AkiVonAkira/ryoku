@@ -90,30 +90,37 @@ standalone-modifier taps, and `ActionOverviewToggle` exists
       `overviewOpen:true` + screenshot); tapped again it closed; Super+R left
       it closed.
 
-## B2 - Gaming mode reaches niri
+## B2 - Gaming mode on niri: hide the dead control (decision)
 
-The Hub performance/gaming page is Hyprland-parsed
-(`ryoku/hub/quickshell/pages/PerformancePage.qml:33`); under niri it is dead
-config (known decision memory). Ambxst normalizes every rendered compositor
-config through a game-mode flag that strips animations/blur/borders on both
-compositors (`/tmp/ambxst backend/pkg/svc/compositor/toml.go:61-78`).
+Measured: the shell execs `ryoku-cmd-game-mode` on every compositor
+(`shell.qml:477`), but the served packages ship that script only in
+`ryoku-desktop-hyprland`; a fresh niri box has neither it nor a hard depend that
+pulls it, so the Gaming deck tile and the launcher's "Game Mode" action do
+nothing there. The script's own compositor strip is already capability-gated on
+`liveConfigEval` (`hypr_fast`), which niri lacks.
 
-- [ ] P1 provider: niri settings schema gains the perf knobs (animations
-      enabled, blur disabled, borders) written through the existing KDL apply;
-      validate with `niri check`.
-- [ ] P2 Hub: gate the Performance page rows by capability so niri users get
-      the real subset instead of dead toggles.
+Decision (matches the recorded "gaming mode is Hyprland-specific" memory):
+**hide the dead control on niri rather than ship the tuning script to every
+box.** The one capability that separates the two is `liveConfigEval`, so the UI
+gates on exactly what the script gates on, and the gate is behaviour-named, not
+a compositor name (the wm-isolation rule).
+
+- [x] P1 deck: the Gaming `QsTile` is `visible: Wm.caps.liveConfigEval === true`,
+      so it is gone (not greyed) on niri and the Grid reflows with no gap.
+- [x] P2 launcher: a `caps` field on the catalog entry, dropped in
+      `Actions.qml`'s query filter when the compositor lacks the capability.
 - [x] P3 shell: already satisfied before this plan. `Perf.qml` folds
       `Flags.gameMode` into blurDisabled/shadowsDisabled/reduceMotion and the
       analyser + poll knobs, and 26 shell surfaces consume those derived
       switches; the fold is compositor-agnostic, so it holds on niri unchanged.
-- [ ] P1 provider: the only real niri gap is the COMPOSITOR's own
-      animations/borders. niri has no live-config-eval (deliberate), so game
-      mode must re-render settings.kdl (animations off) and let niri's config
-      watcher pick it up; `ryoku-cmd-game-mode` currently no-ops the compositor
-      strip on niri (`hypr_fast` gates on liveConfigEval).
-- [ ] P4 prove: live niri - toggle gaming mode, diff `niri` config + observe
-      animations off; shell blur surfaces gone.
+- [x] P4 scope: the Hub Performance and Animation pages are NOT hidden. Their
+      rows still drive live shell surfaces on niri (via `Perf.qml`), and the
+      Animation page's window-curve editor already self-gates on
+      `Settings.supports("animations")` + `hasWindowAnims`; hiding working
+      controls would itself be a bug.
+- [x] P5 prove: live niri (`liveConfigEval:false`) - the control deck shows six
+      tiles with Gaming absent and no gap; Hyprland keeps it. Catalog node test
+      and `ryoku-dev-lint-qml` green.
 
 ## B3 - File chooser under niri (probe first)
 
