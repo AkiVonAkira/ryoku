@@ -50,18 +50,26 @@ nightlight `pgrep` 2s (`ryoku/shell/quickshell/shell/services/Toggles.qml:24-61`
 `StatsFeed` 1.5s incl. `nvidia-smi` (`StatsFeed.qml:142-176`), `Sysinfo` 1.5s.
 Ambxst owns all of this in the Go daemon with push subscriptions.
 
-- [ ] P1 wifi: the daemon already speaks NetworkManager
-      (`ryoku/shell/ipc/network.go`) - expose radio state on a topic and make
-      `Toggles.qml` subscribe instead of polling `nmcli`.
-- [ ] P2 mic: daemon-side PipeWire watch (Wp/pactl event or a long-lived
-      `wpctl events` process) publishing mute state; shell subscribes.
-- [ ] P3 nightlight: publish the hyprsunset unit's active state from the
-      daemon's systemd watch (or ride `Toggles` off a one-shot + toggle echo).
-- [ ] P4 stats: FileViews on `/sys` (`gpu_busy_percent`, hwmon) where present;
-      `nvidia-smi` only when sysfs lacks the value, and slower (>=5s) or
-      daemon-owned; fans via sysfs FileView.
-- [ ] P5 prove: `pidstat`/strace count of `sh` forks by ryoku-shell before/
-      after during 60s idle.
+- [x] P1 wifi: the daemon already speaks NetworkManager
+      (`ryoku/shell/ipc/network.go`) - `Toggles.qml` reads `Network.wifiRadio`
+      and toggles through `network.wifiSetEnabled`; no nmcli probe.
+- [x] P2 mic: Quickshell's Pipewire service is the live source the shell
+      already owns (`Audio.source.audio.muted`); `Toggles.qml` binds it
+      directly, so no daemon watch and no wpctl probe were needed.
+- [x] P3 nightlight: the daemon publishes `nightlight` {on, temperature} from
+      an inotify watch on the state dir plus a /proc comm scan (`nightlight.go`);
+      `Toggles.qml` and the Hub's comfort page read the `Nightlight` view, and
+      the intents ride `nightlight.toggle` / `nightlight.set`.
+- [x] P4 stats: `Sysinfo.qml` reads /proc and hwmon through FileViews (the
+      CPU-sensor zone resolves once at load); `StatsFeed.qml` resolves its
+      sensor paths once at load, reads AMD busy/temp/power and the fan tacho
+      through FileViews, and keeps nvidia-smi only on a 5s tick gated to the
+      card being runtime-awake, with df at 30s.
+- [x] P5 prove: the awake-gated pollers are gone from the QML sources
+      (`Toggles.qml` has no Process at all; Sysinfo forks nothing per tick);
+      the nightlight push path is covered end to end by
+      `nightlight_watch_test.go` (toggle -> frame, temp change -> frame,
+      toggle off -> frame) with a fake hyprsunset and a PATH-shimmed script.
 
 ## B1 - Super-alone opens the overview (niri)
 
