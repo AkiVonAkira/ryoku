@@ -1964,13 +1964,28 @@ func reconcileSessionComponents(_ bool) recResult {
 
 // ---- reconciler: desktop portal routing ----------------------------------------
 
+// portalDesktopToken is the name xdg-desktop-portal prefixes its desktop
+// config with: the first XDG_CURRENT_DESKTOP entry, lowercased (portals.conf(5)
+// reads <desktop>-portals.conf). Outside a session that variable is empty, so
+// fall back to the detected provider name, which matches what the next login
+// will carry. An empty token means no desktop-specific file to look for.
+func portalDesktopToken(desktopEnv, provider string) string {
+	if v := strings.TrimSpace(desktopEnv); v != "" {
+		if i := strings.IndexByte(v, ':'); i >= 0 {
+			v = v[:i]
+		}
+		return strings.ToLower(strings.TrimSpace(v))
+	}
+	return strings.ToLower(strings.TrimSpace(provider))
+}
+
 // portalConfigCandidates lists every file xdg-desktop-portal consults on a
-// Hyprland session, highest precedence first (portals.conf(5)): user config,
+// <desktop> session, highest precedence first (portals.conf(5)): user config,
 // XDG_CONFIG_DIRS, /etc, user data, XDG_DATA_DIRS. in each location the
 // desktop-specific name is read before the generic one, and the first file
 // that exists wins outright, nothing merges. that order is the trap: a
-// user-level generic portals.conf beats the packaged hyprland-portals.conf.
-func portalConfigCandidates(home string) []string {
+// user-level generic portals.conf beats the packaged <desktop>-portals.conf.
+func portalConfigCandidates(home, desktop string) []string {
 	var dirs []string
 	if v := os.Getenv("XDG_CONFIG_HOME"); v != "" {
 		dirs = append(dirs, v)
@@ -2001,9 +2016,10 @@ func portalConfigCandidates(home string) []string {
 			continue
 		}
 		seen[d] = true
-		out = append(out,
-			filepath.Join(d, "xdg-desktop-portal", "hyprland-portals.conf"),
-			filepath.Join(d, "xdg-desktop-portal", "portals.conf"))
+		if desktop != "" {
+			out = append(out, filepath.Join(d, "xdg-desktop-portal", desktop+"-portals.conf"))
+		}
+		out = append(out, filepath.Join(d, "xdg-desktop-portal", "portals.conf"))
 	}
 	return out
 }
@@ -2048,11 +2064,15 @@ func reconcilePortalRouting(checkOnly bool) recResult {
 		// no provider, or a compositor that declares no preferred portal backend.
 		return okRes(i18n.T("no preferred portal backend to enforce"))
 	}
-	// the first existing candidate is the one the portal loads, so every
-	// misrouted file ahead of a healthy one has to move aside.
+	// the portal reads <desktop>-portals.conf for the running desktop, so that
+	// is the file to look for; the provider name is the fallback when the
+	// session has not exported XDG_CURRENT_DESKTOP yet. the first existing
+	// candidate is the one the portal loads, so every misrouted file ahead of a
+	// healthy one has to move aside.
+	desktop := portalDesktopToken(os.Getenv("XDG_CURRENT_DESKTOP"), caps.Name)
 	var offenders []string
 	healthy := ""
-	for _, p := range portalConfigCandidates(sys.Home()) {
+	for _, p := range portalConfigCandidates(sys.Home(), desktop) {
 		b, err := os.ReadFile(p)
 		if err != nil {
 			continue

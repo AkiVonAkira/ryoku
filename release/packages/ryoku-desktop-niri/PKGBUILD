@@ -44,11 +44,18 @@ package() {
   # includes by name (keyboard, gpu, monitors, monitors_user, user). A missing
   # include is a hard niri config error, so the whole tree ships as one unit. The
   # generated settings.kdl/rebinds.kdl are written by `ryoku-wm-niri apply`, not
-  # packaged (see caps.GeneratedFiles). No scripts/, portals.conf or share picker:
-  # niri's leaf keybinds are compositor actions or `spawn ryoku-shell`, the portal
-  # backend is data on caps, and doctor writes the routing.
+  # packaged (see caps.GeneratedFiles). No scripts/ or share picker: niri's leaf
+  # keybinds are compositor actions or `spawn ryoku-shell`, and the share picker
+  # is a hyprland-only portal helper.
   install -d "$cfg/niri"
   cp -a "$_repo/ryoku/niri/." "$cfg/niri/"
+
+  # xdg-desktop-portal: niri has no backend of its own, so screen sharing rides
+  # the GNOME backend (caps.PortalBackend) but the GNOME FileChooser hangs off a
+  # GNOME session. This routing pins FileChooser to gtk so file pickers open;
+  # doctor's portal reconciler reads it by the running desktop's name.
+  install -Dm644 "$_repo/ryoku/niri/niri-portals.conf" \
+    "$cfg/xdg-desktop-portal/niri-portals.conf"
 
   # cp -a kept source modes; the tree is all data, so world-readable is right.
   chmod -R u=rwX,go=rX "$pkgdir/usr/share/ryoku"
