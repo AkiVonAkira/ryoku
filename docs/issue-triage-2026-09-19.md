@@ -75,12 +75,16 @@ The deck's Wi-Fi page lists APs; a hidden SSID never appears. NetworkManager
 supports it (`wifi.hidden` in the profile; `nmcli device wifi connect …
 hidden yes`). The daemon already owns NM (`ryoku/shell/ipc/network.go`).
 
-- [ ] P1 daemon: extend `network.wifiConnect` with a `hidden` flag (profile
-      setting on create/update).
-- [ ] P2 QML: a "Connect to hidden network" row on the Wi-Fi page opening
-      SSID + security + password fields, calling the same intent.
-- [ ] P3 prove: connect to a hidden AP on a test rig or unit-test the
-      settings dict shape (`wifi.hidden=true`); live check if hardware allows.
+- [x] P1 daemon: `network.wifiConnect` takes `hidden`; a fresh profile carries
+      `802-11-wireless.hidden=true` (no AP resolves, so no band pin).
+- [x] P2 QML: a "Connect to a hidden network" form on all four live Wi-Fi
+      surfaces (qsbar NetworkPanel = the shipped default, the framebar
+      MenuNetwork, the popout NetworkPopout, kairos WifiPage), each opening
+      SSID + optional password fields and joining through the intent.
+- [x] P3 prove: `TestWifiConnectSettings` pins the `hidden` shape (open and
+      WPA2 hidden); all four surfaces pass qmllint with no syntax/property
+      errors; the daemon's full `go test` suite is green. A live join needs a
+      hidden AP, which this box cannot offer.
 - [ ] P4 ship.
 
 ## 214 - CachyOS prebuilt NVIDIA modules ignored by the driver setup - build
