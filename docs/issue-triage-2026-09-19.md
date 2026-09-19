@@ -85,7 +85,7 @@ hidden yes`). The daemon already owns NM (`ryoku/shell/ipc/network.go`).
       WPA2 hidden); all four surfaces pass qmllint with no syntax/property
       errors; the daemon's full `go test` suite is green. A live join needs a
       hidden AP, which this box cannot offer.
-- [ ] P4 ship.
+- [x] P4 ship: `cab7f6ca2`, pushed, issue closed.
 
 ## 214 - CachyOS prebuilt NVIDIA modules ignored by the driver setup - build
 
@@ -102,7 +102,7 @@ Confirmed in `system/hardware/drivers/nvidia.sh`: only the exact pkgbase
 - [x] P2 prove: `tests/nvidia-driver-selection.sh` gained an RTX 2070 SUPER
       CachyOS case (selects `linux-cachyos-nvidia-open`) and a custom-kernel
       case (still falls to `nvidia-open-dkms`); shellcheck clean.
-- [ ] P3 ship.
+- [x] P3 ship: `108919071`, pushed, issue closed.
 
 ## 212 - Power profile stuck on performance - respond
 
@@ -126,10 +126,17 @@ persisted user level should be re-applied at session start (we own
 storage should already do this; a headset resetting to 90 on reconnect is
 usually the device's own USB HID volume, which pw cannot override.
 
-- [ ] P1 check: does anything persist + restore the backlight level across
-      reboot on unstable-dev today? If not, add the restore to the boot path.
-- [ ] P2 respond on the volume half (device-side volume, not ours) unless the
-      brightness fix covers the report.
+- [x] P1 fix: the brightness OSD watcher (the one place every writer
+      converges, both compositors) now saves the panel's writable
+      `brightness` attribute on every change and re-applies it before its
+      first read at session start; range-guarded, write-refusal-safe.
+      `TestBacklight*` pins the round trip; live proof on this box: set 40%
+      -> reset device to max with the daemon down -> restart -> panel back
+      at 40%.
+- [x] P2 respond: brightness half fixed and shipped; volume half is the
+      USB headset's own hardware volume (WirePlumber restore-stream already
+      persists per-device volumes; snd-usb-audio resets the device's on
+      reconnect, which the desktop cannot override). Commented, closed.
 
 ## 201 - Wallpaper transition tears a patch of the previous image (Iris / Inkwell Drop) - investigate
 
