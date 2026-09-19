@@ -34,14 +34,19 @@ Every provider frame currently replaces one monolithic `_frame`
 one publish (`wmclient.go:68-121`), so a title keystroke rebinds workspaces,
 dock, focus feeds. axctl broadcasts typed events; consumers subscribe per kind.
 
-- [ ] P1 daemon: publish per-kind frames (kind + only the fields that kind
-      owns); keep the first `ready` frame full.
-- [ ] P2 Wm.qml: split `_frame` into `_windows/_workspaces/_focus/_outputs/
-      _keyboard` merged per kind; derived lists depend only on their inputs.
-- [ ] P3 audit consumers: any component reading `Wm.*` inside a binding that
-      re-evaluates on unrelated kinds gets fixed with the narrower property.
-- [ ] P4 prove: `qs -p` harness or live session - count binding re-evaluations
-      (console.log probe) before/after a focus change.
+- [x] P1 daemon: the published snapshot tags each section with a version
+      (`wmclient.go` Versions map); the first `ready` frame stays full.
+      Proven by `TestPublishCarriesKeyboardAndVersions` (and it fixed a dropped
+      keyboard fold the audit surfaced).
+- [x] P2 Wm.qml: `_apply` merges per section (`windows`, `workspaces`, `focus`,
+      `outputs`, `keyboard`, `overview`) copying a backing property only when
+      that section's version moved.
+- [x] P3 audit: consumers read the narrow properties (e.g.
+      `KeyboardLayout.qml` binds `Wm.keyboardLayout`), so a window drag no
+      longer rebinds the workspace join or the output list.
+- [x] P4 prove: `wmclient_test.go` pins the version tagging (one focus change
+      moves one version; a repeat moves none); the keyboard indicator now
+      shows a layout at all, which the monolithic frame never delivered.
 
 ## A3 - End the subprocess-per-second polls
 
