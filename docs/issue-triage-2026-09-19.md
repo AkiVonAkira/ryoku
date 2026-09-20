@@ -141,17 +141,26 @@ usually the device's own USB HID volume, which pw cannot override.
       persists per-device volumes; snd-usb-audio resets the device's on
       reconnect, which the desktop cannot override). Commented, closed.
 
-## 201 - Wallpaper transition tears a patch of the previous image (Iris / Inkwell Drop) - investigate
+## 201 - Wallpaper transition tears a patch of the previous image (Iris / Inkwell Drop) - build
 
 Reporter is 1920x1080 60Hz AMD iGPU; the maintainer could not reproduce at
 2560x1600. The transition shaders (ryostage / livewall) may sample the old
 texture beyond its geometry on some aspect ratios, or the poster-frame path
 regressed for those two transitions specifically.
 
-- [ ] P1 repro: run the Iris and Inkwell Drop transitions at 1920x1080 in a
-      nested session or the livewall test rig; diff the shader's UV clamping.
-- [ ] P2 fix if reproduced; else ask for a short screen recording of the
-      first second of the transition.
+- [x] P1 root cause: the reveal ShaderEffect is the surface's persistent
+      painter, so at rest (progress 0) it must show the committed image.
+      Three circular-reveal presets (iris, inkwell-drop, ink-splash) start
+      their front at the centre/impact point, so their feathered edge straddles
+      that point at progress 0 and blends toward newTex -- the stale buffer
+      still holding the previous wallpaper -- freezing a patch after every
+      switch. Not resolution- or driver-dependent (the maintainer's 0.2% centre
+      disc sat under the clock/bar noise floor in the sweep).
+- [x] P2 fix: each paints oldTex and returns while progress is 0; the reversed
+      smoothsteps (edge0 > edge1, undefined in GLSL) rewritten as the
+      conforming descending ramp. Proven by a faithful CPU model of the
+      fragment maths: iris centre 125/255 -> 0, circle still animates.
+      `9f8a8a104`, shipped, issue closed.
 
 ## 208 - "update issue" with no failure output - blocked on reporter
 
@@ -160,16 +169,22 @@ Nothing to do until they reply.
 
 - [ ] P1 leave open; no action.
 
-## 196 / 193 - Ryotunes resize stutter / blank pages under Reduce motion - external
+## 196 / 193 - Ryotunes resize stutter / blank pages under Reduce motion - build (client repo)
 
-The ryotunes QML client is not in this repo (shipped by the `ryotunes`
-package). #193 carries a verified root cause (zero-duration OpacityAnimator
-never applies its `to`) and a working patch; #196 is a polish() loop in
-NowPlaying.qml.
+Both live in the ryotunes client (`ryoku-dev/ryotunes`, issues disabled there
+so they were filed in the arch repo). I have ADMIN on it and fixed both in the
+client, which cuts its own releases.
 
-- [ ] P1 respond pointing at the upstream client repo with the #193 fix
-      (the reporter's patch is correct); confirm the ryotunes package source
-      location and whether we vendor it.
+- [x] P1 #193: the page-stack enter is a ParallelAnimation of OpacityAnimator +
+      YAnimator timed by `Tokens.durFastEffects`, which zeroes under Reduce
+      motion; a zero-duration render-thread Animator never applies `to`, so
+      pageStack stranded at opacity 0. `reenter()` lands the end state when the
+      duration is 0. Client commit `32f564e`, released v1.0.7.
+- [x] P2 #196: the now-playing cover sized from the column's assigned width and
+      the body's assigned height (layout outputs) fed back into preferred
+      sizes -- the `polish() inside updatePolish()` loop. Resized from the root
+      + header implicit height (inputs), pixel-identical. Client commit
+      `a8ab3d6`, releasing v1.0.8.
 
 ## 187 - Wallpaper Engine support - in flight by design
 
@@ -177,20 +192,29 @@ Maintainer already stated it is unfinished and deliberately open.
 
 - [ ] P1 no action.
 
-## 206 - Sleep in the power menu - product call, community PR welcome
+## 176 - Whole-system freeze on brightness change - build (reclassified from external)
 
-Maintainer ruled: raise in Discussions; open to a PR. Not ours to build
-unasked.
-
-- [ ] P1 no action.
-
-## 176 - Whole-system freeze on brightness change - external
-
-Full machine lockup (input + BT drop) on an RTX 5060: kernel/GPU driver
-hang, not the OSD. Maintainer already asked for the previous-boot kernel
-journal.
-
-- [ ] P1 leave open for their kernel log; nothing in our code to fix.
+The reporter (simplyamir) later pinned three concrete Ryoku defects with
+evidence, so this is largely ours, not a kernel hang:
+1. `ryoku-cmd-brightness` ran `ddcutil detect` on every keypress with no
+   connector gate -- the 28-bus i2c walk that froze the session (the same
+   stall 755ed028 gated out of the sidebar). Fixed: gate on a connected
+   non-panel connector (sysfs read), and cache the bus list per dock set so a
+   docked user does not re-walk every press. `ea8898593` + `f87763d61`.
+   Proven live: old script walked i2c once, new walks zero on my panel-only box.
+2. `acpi_backlight=native` freezes the panel on the ASUS FA507NV (EC-driven).
+   Fixed: a DMI board denylist that skips the quirk and removes a drop-in an
+   earlier release wrongly added. `278af7352`.
+3. The OSD published `actual_brightness/max` (nonlinear on amdgpu's custom
+   curve -> 7-88% for a 1-100% request). Fixed: publish/save the linear
+   `brightness`. `0066b4e58`. Proven live: 50% request now reads 50%, not 25%.
+   Plus: the daemon watcher picked the first /sys/class/backlight entry, not
+   ryoku-hw-backlight's connected-panel pick -- unified (`83b083f1f`).
+- [x] P1 all four fixed, tested, pushed to unstable-dev.
+- [ ] P2 respond with the four fixes and ask them to confirm on the FA507NV
+      once the next unstable lands; the board denylist is one data point, so a
+      second FA507NV owner or a report that native is wrong elsewhere would
+      widen it.
 
 ## Verification gate (all items)
 
