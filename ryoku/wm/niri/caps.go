@@ -46,6 +46,18 @@ var capsManifest = []wm.Capability{
 	wm.CapWindowFloat,
 	wm.CapSessionExit,
 	wm.CapNightLight,
+	wm.CapTouchpadToggle,
+}
+
+// windowRuleActions are the neutral window-rule action ids niri's config writer
+// honours, in the order the Hub offers them. niri models a different set from
+// Hyprland (no pin, its own tabbed/scroll mechanics instead), so the window-rules
+// editor lists only what this compositor can actually apply.
+var windowRuleActions = []string{
+	"float", "tile", "fullscreen", "maximize", "norounding", "opacity",
+	"workspace", "noborder", "noshadow", "blur", "noblur", "xray",
+	"columnwidth", "minsize", "maxsize", "scrollfactor", "tiledstate",
+	"babaisfloat", "blockout",
 }
 
 // The packages ryoku-desktop-niri is made of: the variant package itself, niri,
@@ -85,7 +97,8 @@ func runCaps() error {
 		GeneratedFiles: wm.GeneratedConfig(wm.ProviderNiri),
 		PortalBackend:  "gnome",
 		NightLightProcess: "gammastep",
-		Packages:       compositorPackages,
+		Packages:          compositorPackages,
+		WindowRuleActions: windowRuleActions,
 	}
 	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", "  ")

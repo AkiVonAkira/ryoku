@@ -41,6 +41,18 @@ var capsManifest = []wm.Capability{
 	wm.CapTiledLayout,
 	wm.CapSessionExit,
 	wm.CapNightLight,
+	wm.CapTouchpadToggle,
+}
+
+// windowRuleActions are the neutral window-rule action ids genWindowRule and
+// genLayerRule accept, in the order the Hub offers them. It is the source the
+// window-rules editor reads, so a control is never shown for a property this
+// provider's config writer would drop.
+var windowRuleActions = []string{
+	"float", "tile", "pin", "fullscreen", "maximize", "center", "immediate",
+	"pseudo", "norounding", "noborder", "opacity", "size", "move", "workspace",
+	"idleinhibit", "suppressevent", "blur", "noanim", "blurpopups", "xray",
+	"abovelock", "noshadow", "ignorealpha", "dimaround",
 }
 
 // The packages ryoku-desktop-hyprland is made of: the variant package itself,
@@ -84,7 +96,8 @@ func runCaps() error {
 		GeneratedFiles: wm.GeneratedConfig(wm.ProviderHyprland),
 		PortalBackend:  "hyprland",
 		NightLightProcess: "hyprsunset",
-		Packages:       compositorPackages,
+		Packages:          compositorPackages,
+		WindowRuleActions: windowRuleActions,
 	}
 	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", "  ")
