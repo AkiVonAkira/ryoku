@@ -45,6 +45,7 @@ var capsManifest = []wm.Capability{
 	wm.CapMonitorConfig,
 	wm.CapWindowFloat,
 	wm.CapSessionExit,
+	wm.CapNightLight,
 }
 
 // The packages ryoku-desktop-niri is made of: the variant package itself, niri,
@@ -60,6 +61,10 @@ var compositorPackages = []string{
 	"niri",
 	"xwayland-satellite",
 	"xdg-desktop-portal-gnome",
+	// gammastep holds the warm gamma while the night light is on, over
+	// wlr-gamma-control. niri's night-light backend, so its variant ships and
+	// reclaims it.
+	"gammastep",
 }
 
 // The manifest is fixed, not probed: niri does not gain features while running,
@@ -79,6 +84,7 @@ func runCaps() error {
 		ConfigFiles:    wm.ConfigFiles(wm.ProviderNiri),
 		GeneratedFiles: wm.GeneratedConfig(wm.ProviderNiri),
 		PortalBackend:  "gnome",
+		NightLightProcess: "gammastep",
 		Packages:       compositorPackages,
 	}
 	enc := json.NewEncoder(stdout)

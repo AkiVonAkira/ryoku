@@ -40,6 +40,7 @@ var capsManifest = []wm.Capability{
 	wm.CapWindowFloat,
 	wm.CapTiledLayout,
 	wm.CapSessionExit,
+	wm.CapNightLight,
 }
 
 // The packages ryoku-desktop-hyprland is made of: the variant package itself,
@@ -62,6 +63,9 @@ var compositorPackages = []string{
 	"hyprland-preview-share-picker",
 	"hypridle",
 	"hyprpicker",
+	// hyprsunset holds the warm gamma while the night light is on. A Hyprland-only
+	// CTM client, so it is the Hyprland variant's to ship and reclaim.
+	"hyprsunset",
 }
 
 // The manifest is fixed, not probed: Hyprland does not gain features while
@@ -79,6 +83,7 @@ func runCaps() error {
 		ConfigFiles:    wm.ConfigFiles(wm.ProviderHyprland),
 		GeneratedFiles: wm.GeneratedConfig(wm.ProviderHyprland),
 		PortalBackend:  "hyprland",
+		NightLightProcess: "hyprsunset",
 		Packages:       compositorPackages,
 	}
 	enc := json.NewEncoder(stdout)

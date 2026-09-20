@@ -38,6 +38,9 @@ depends=(
   'hyprland-preview-share-picker'
   'hypridle'
   'hyprpicker'
+  # night-light backend: warms the screen over Hyprland's CTM, so it is the
+  # Hyprland variant's to ship and reclaim (ryoku-cmd-nightlight, pill Super+U).
+  'hyprsunset'
 )
 provides=('ryoku-desktop-compositor')
 # deliberately not exclusive: both variants may be installed, so a switch is a

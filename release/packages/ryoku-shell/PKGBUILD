@@ -48,6 +48,11 @@ package() {
   # scripts at all, and Keep-Awake must still hold the screen awake there.
   install -Dm755 "$_repo/ryoku/shell/scripts/ryoku-cmd-caffeine" \
     "$pkgdir/usr/bin/ryoku-cmd-caffeine"
+  # Night light is a shell-owned toggle now: it drives the wm seam (ryoku wm act
+  # nightlight.*), not a compositor script, so it ships with the shell and works
+  # whichever compositor is live, even one whose package ships no scripts.
+  install -Dm755 "$_repo/ryoku/shell/scripts/ryoku-cmd-nightlight" \
+    "$pkgdir/usr/bin/ryoku-cmd-nightlight"
   # the Stash sidebar's helpers: shell scripts, so they ship with the shell and
   # resolve on PATH with no compositor config tree.
   local s
