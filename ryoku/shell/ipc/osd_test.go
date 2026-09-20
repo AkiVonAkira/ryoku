@@ -28,6 +28,24 @@ func fakeBacklight(t *testing.T, max, live int) string {
 	return dev
 }
 
+// The OSD must show the requested (linear) brightness, not the driver's
+// actual_brightness: amdgpu's custom curve made 100% read as 88% (#176).
+func TestReadBrightnessFractionIsLinear(t *testing.T) {
+	dev := fakeBacklight(t, 65535, 65535)
+	// A driver reporting a non-linear actual_brightness must not move the
+	// published fraction: the writable attribute is the contract.
+	if err := os.WriteFile(filepath.Join(dev, "actual_brightness"), []byte("41936\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	frac, raw, ok := readBrightnessFraction(dev, 65535)
+	if !ok || raw != 65535 || frac != 1.0 {
+		t.Fatalf("readBrightnessFraction = (%v,%d,%v), want (1,65535,true)", frac, raw, ok)
+	}
+	if _, _, ok := readBrightnessFraction(dev, 0); ok {
+		t.Fatal("a zero max must not report a fraction")
+	}
+}
+
 func TestBacklightLevelRoundTrip(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 

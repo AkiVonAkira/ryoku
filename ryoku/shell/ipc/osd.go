@@ -133,8 +133,18 @@ func (o *osdState) watchBacklight(dev string) {
 	defer unix.Close(fd)
 
 	buf := make([]byte, 32)
-	if cur, ok := readActual(fd, buf); ok {
-		o.publish(float64(cur) / float64(maxb))
+	// Polling wakes on actual_brightness, but the value published (and saved)
+	// is the linear `brightness` attribute: on a driver with a custom
+	// brightness curve (amdgpu) actual_brightness is nonlinear, so publishing
+	// it made the OSD read 7-88% for a 1-100% request (#176).
+	publish := func() {
+		if frac, raw, ok := readBrightnessFraction(dev, maxb); ok {
+			o.publish(frac)
+			saveBacklight(raw)
+		}
+	}
+	if _, ok := readActual(fd, buf); ok {
+		publish()
 	}
 	for {
 		fds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLPRI | unix.POLLERR}}
@@ -148,19 +158,28 @@ func (o *osdState) watchBacklight(dev string) {
 		if n == 0 {
 			continue
 		}
-		cur, ok := readActual(fd, buf)
-		if !ok {
+		// Reading actual_brightness re-arms the POLLPRI notify.
+		if _, ok := readActual(fd, buf); !ok {
 			continue
 		}
 		o.seq++
-		o.publish(float64(cur) / float64(maxb))
-		// Persist the writable `brightness` attribute, not the polled one:
-		// amdgpu reports actual_brightness on its own hardware scale, so a
-		// saved raw value would restore to the wrong level.
-		if raw, ok := readSysInt(filepath.Join(dev, "brightness")); ok {
-			saveBacklight(raw)
-		}
+		publish()
 	}
+}
+
+// readBrightnessFraction returns the panel's linear level as a 0..1 fraction
+// plus its raw attribute value. It reads `brightness`, not `actual_brightness`:
+// on a driver with a custom brightness curve the two differ, and only the
+// requested value is a linear percentage the OSD and restore path can use.
+func readBrightnessFraction(dev string, maxb int) (float64, int, bool) {
+	if maxb <= 0 {
+		return 0, 0, false
+	}
+	raw, ok := readSysInt(filepath.Join(dev, "brightness"))
+	if !ok {
+		return 0, 0, false
+	}
+	return float64(raw) / float64(maxb), raw, true
 }
 
 // readActual reads the backlight level via pread at offset 0, which both fetches
