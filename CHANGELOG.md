@@ -6,6 +6,8 @@ for finer detail.
 ## Unreleased
 
 ### Fixed
+- Project documentation now uses the Ryoku name and the canonical
+  `ryoku-dev/ryoku` repository URL.
 - The Now playing widget now respects Power Saver, reduced motion, and the shared
   audio-animation policy instead of keeping its private waveform and decorative
   animations running. Song information and playback controls remain available.

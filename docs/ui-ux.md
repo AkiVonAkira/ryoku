@@ -393,7 +393,7 @@ not look broken; it looks fine and then eats the edit on the way out.
 
 `Hub.qml` owns the frame, so a page only writes its content:
 
-- **The rail.** A masthead (力 seal, `RYOKU ARCH`, `SETTINGS`),
+- **The rail.** A masthead (力 seal, `RYOKU`, `SETTINGS`),
   a search field, then eight groups. A group header is its zero-padded index and
   name in tracked mono (`01 OVERVIEW`, `02 DEVICES`, `03 LOOK`, `04 COMPOSITOR`,
   `05 DESKTOP`, `06 KEYS & APPS`, `07 SYSTEM`, `08 EXTEND`, and a nameless ninth

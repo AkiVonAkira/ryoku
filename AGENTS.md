@@ -1,9 +1,9 @@
-# Ryoku Arch
+# Ryoku
 
-A hand-built Arch Linux distribution: a Hyprland or niri desktop (the Ryoku shell), a
-guided installer, and the system definition that produces both. This repository
-is the single source of truth. It deploys one way, into a live system; live
-machines are never the source.
+A hand-built Linux distribution built on Arch Linux: a Hyprland or niri desktop
+(the Ryoku shell), a guided installer, and the system definition that produces
+both. This repository is the single source of truth. It deploys one way, into a
+live system; live machines are never the source.
 
 New here? Read these in order, then keep them open while you work:
 

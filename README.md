@@ -2,24 +2,24 @@
 
 <img src="ryoku/assets/brand/logo-mark-v2.png" alt="Ryoku" width="160" />
 
-# Ryoku Arch
+# Ryoku
 
 **力と美のために** &middot; *For the sake of power and beauty.*
 
-Ryoku is a hand-built Arch Linux distribution: one cohesive desktop that runs on
-Hyprland or niri, a guided installer, and the system definition that reproduces
-them, all from a single repository. It is a whole operating system you install
-to disk from its own ISO -- the bootloader, drivers, packages, installer and
-desktop are all part of it -- not a shell or a set of dotfiles you layer onto an
-existing distro. The base is lean enough to live in from first boot and
-deliberate in how it looks and moves.
+Ryoku is a hand-built Linux distribution built on Arch Linux: one cohesive
+desktop that runs on Hyprland or niri, a guided installer, and the system
+definition that reproduces them, all from a single repository. It is a whole
+operating system you install to disk from its own ISO -- the bootloader,
+drivers, packages, installer and desktop are all part of it -- not a shell or a
+set of dotfiles you layer onto an existing distro. The base is lean enough to
+live in from first boot and deliberate in how it looks and moves.
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-E2342A?style=for-the-badge)](LICENSE)
 [![Built on Arch](https://img.shields.io/badge/Arch_Linux-1793D1?style=for-the-badge&logo=archlinux&logoColor=white)](https://archlinux.org)
 [![Hyprland](https://img.shields.io/badge/Hyprland-58E1C2?style=for-the-badge&logoColor=white)](https://hypr.land)
 [![niri](https://img.shields.io/badge/niri-7E9CD8?style=for-the-badge&logoColor=white)](https://github.com/YaLTeR/niri)
 [![Release status](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fiso.ryoku.dev%2Fstable%2Flatest.json&query=%24.channel&label=status&color=E2342A&style=for-the-badge)](https://ryoku.dev)
-[![Build ISO](https://github.com/ryoku-dev/ryoku-arch/actions/workflows/build-iso.yml/badge.svg)](https://github.com/ryoku-dev/ryoku-arch/actions/workflows/build-iso.yml)
+[![Build ISO](https://github.com/ryoku-dev/ryoku/actions/workflows/build-iso.yml/badge.svg)](https://github.com/ryoku-dev/ryoku/actions/workflows/build-iso.yml)
 [![Discord](https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/8KjBmUEyKA)
 [![Reddit](https://img.shields.io/badge/Reddit-r%2FRyokuArch-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/RyokuArch/)
 
@@ -58,7 +58,7 @@ controls move as a single thing: paper and ink, warm bone type on pure black,
 with the frame retinting live from your wallpaper. 力と美のために: for the sake
 of power and beauty.
 
-Underneath, Ryoku is a hand-built Arch distribution rather than a config dump.
+Underneath, Ryoku is a hand-built Linux distribution rather than a config dump.
 The desktop, the installer, and the system definition all live in this
 repository, and every machine is built from it; the repository is the single
 source of truth, and a live machine is only ever a deployment target. The
@@ -215,7 +215,7 @@ you off conflicting shells and daemons, and wires up the full desktop. It never
 partitions a disk.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku-arch/main/ryoku-shell-installer/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
 ```
 
 Preview everything it would do without changing anything by appending
@@ -289,7 +289,7 @@ If the `ryoku` command itself is gone, drop to a TTY (`Ctrl+Alt+F2`, then log in
 and run the same recovery straight from the repo:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku-arch/main/bin/ryoku-recovery | bash
+curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/bin/ryoku-recovery | bash
 ```
 
 This is a true last resort. It clears your user overrides and the Hub's stored
