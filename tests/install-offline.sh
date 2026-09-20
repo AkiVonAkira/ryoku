@@ -174,6 +174,8 @@ while IFS=: read -r file lineno _; do
 done < <(grep -rnE '^[^#]*run arch-chroot /mnt ryoku-[a-z-]+' "$root/installation/backend/lib/" || true)
 
 # ---- 7. CachyOS update repositories match the CPU ISA ------------------------
+# the sourced cachyos.sh calls these stubs; shellcheck can't see across source
+# shellcheck disable=SC2329
 (
   run() { "$@"; }
   append_file() { cat >>"$1"; }
