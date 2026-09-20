@@ -26,6 +26,12 @@ here="$(cd "$(dirname "$0")" && pwd)"
 root="$here/.."
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
+# The installer refuses to run without a compositor choice and the config dir
+# the TUI derives for it; the offline path is compositor-agnostic, so Hyprland
+# stands in.
+export RYOKU_COMPOSITOR="${RYOKU_COMPOSITOR:-hyprland}"
+export RYOKU_COMPOSITOR_CONFIG_DIR="${RYOKU_COMPOSITOR_CONFIG_DIR:-hypr}"
+
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
