@@ -553,6 +553,9 @@ func updateStage2(pre string, withSystem bool) error {
 		progress.fail(err)
 		return err
 	}
+	if err := regenerateConfig(); err != nil {
+		progress.logf(i18n.Tf("could not re-author the compositor settings: %v", err))
+	}
 
 	progress.at("reload")
 	progress.logf(i18n.T("Reloading the desktop"))
@@ -1377,6 +1380,21 @@ func reloadConfig() {
 	if c.Detection().Live {
 		_ = c.Act(wm.ActionConfigReload)
 	}
+}
+
+// regenerateConfig re-authors the live provider's generated config from the
+// store. Those files are a pure function of the store and the provider that
+// wrote them, so a provider update that emits a block differently (niri's
+// border only draws with an explicit on flag) has to rewrite them, or the old
+// output stays in force until a Hub edit happens to apply again. A box with
+// no store yet is left to the first Hub save.
+func regenerateConfig() error {
+	store := filepath.Join(sys.ConfigHome(), "ryoku", "desktop.json")
+	if !sys.Exists(store) {
+		return nil
+	}
+	_, err := wm.Open().Apply(store)
+	return err
 }
 
 // pkgBin resolves a Ryoku binary an update drives. The packaged /usr/bin copy
