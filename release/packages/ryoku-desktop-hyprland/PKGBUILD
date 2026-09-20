@@ -36,8 +36,6 @@ depends=(
   # XDPH names /usr/bin/hyprland-preview-share-picker for the screen-share source
   # chooser, so a hard depend keeps the picker atomic with the portal.
   'hyprland-preview-share-picker'
-  'hypridle'
-  'hyprpicker'
   # night-light backend: warms the screen over Hyprland's CTM, so it is the
   # Hyprland variant's to ship and reclaim (ryoku-cmd-nightlight, pill Super+U).
   'hyprsunset'
@@ -52,8 +50,9 @@ _repo="$startdir/../../.."
 package() {
   local cfg="$pkgdir/usr/share/ryoku/config"
 
-  # Hyprland config tree: includes scripts/ (shell calls ~/.config/hypr/scripts/*
-  # by absolute path) and the hardware-managed gpu/keyboard/monitors drop-ins.
+  # Hyprland config tree: includes scripts/ (Hyprland's own leaf scripts, also on
+  # /usr/bin via the glob below) and the hardware-managed gpu/keyboard/monitors
+  # drop-ins.
   install -d "$cfg/hypr"
   cp -a "$_repo/ryoku/hyprland/." "$cfg/hypr/"
 
@@ -69,8 +68,8 @@ package() {
   # cp -a kept source modes; keep hypr/scripts executable, the rest world-readable.
   chmod -R u=rwX,go=rX "$pkgdir/usr/share/ryoku"
 
-  # the Hyprland leaf scripts the keybinds, autostart and the shell call by bare
-  # name. Same ryoku-* glob the dev deploy uses, so a new script lands in both.
+  # the Hyprland leaf scripts the keybinds and autostart call by bare name. Same
+  # ryoku-* glob the dev deploy uses, so a new script lands in both.
   local s
   for s in "$_repo"/ryoku/hyprland/scripts/ryoku-*; do
     [[ -f $s ]] || continue

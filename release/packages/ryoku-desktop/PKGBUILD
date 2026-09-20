@@ -190,6 +190,12 @@ depends=(
   # was base.packages-only, so it never reached update/shell boxes (the pill
   # faders were silently dead there); a hard depend fixes every path.
   'ddcutil'
+  # Two clients the Hyprland variant used to own that are protocol-neutral, not
+  # Hyprland-specific: niri serves ext-idle-notify-v1 and wlr-screencopy/layer-
+  # shell just the same. Shipping only with the Hyprland variant left a niri box
+  # with no idle management and a dead color picker everywhere; base reaches both.
+  'hypridle'             # idle daemon ryoku-idle renders a config for (ext-idle-notify-v1)
+  'hyprpicker'           # screen color picker (ryoku-cmd-color-picker, Super+Shift+C)
   # Game controllers: xpadneo-dkms (Xbox One/Series Bluetooth pads, from the AUR
   # step) is a DKMS module, so it needs the kernel headers and the DKMS build
   # system to compile its module; without them the build silently fails and the
@@ -663,9 +669,10 @@ EOF
     "$pkgdir/usr/share/polkit-1/rules.d/46-ryoku-docker.rules"
 
   # Laptop clamshell: logind suspends on lid close in every case; the
-  # ryoku-clamshell daemon (installed to /usr/bin by the hardware glob above) is
-  # the only thing that keeps a closed lid awake, and only on AC power with an
-  # external display. The .install reloads logind so it applies without a reboot.
+  # ryoku-clamshell daemon (system/hardware/power, installed to /usr/bin by the
+  # hardware glob above) is the only thing that keeps a closed lid awake, and
+  # only on AC power with an external display. The .install reloads logind so it
+  # applies without a reboot.
   install -Dm644 "$_repo/system/hardware/power/logind-ryoku-lid.conf" \
     "$pkgdir/etc/systemd/logind.conf.d/10-ryoku-lid.conf"
 

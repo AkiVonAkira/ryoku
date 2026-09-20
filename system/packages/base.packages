@@ -158,7 +158,7 @@ wl-clipboard
 chromium
 # firefox: the second browser, shipped so a Gecko engine is always on hand for a
 # site Chromium renders badly. It does not become the default: the `browser` role
-# in ryoku/hyprland/scripts/ryoku-app stays chromium, and Ryoku Settings ->
+# in ryoku/shell/scripts/ryoku-app stays chromium, and Ryoku Settings ->
 # App Overrides is where a user repoints the launcher key.
 firefox
 kitty
