@@ -115,8 +115,11 @@ holds. Needs the reporter's kernel version and whether a plain
 to unstick it; if it recurs on current kernels, it is an intel_pstate bug to
 point them at.
 
-- [ ] P1 respond with the diagnosis + the two questions; leave open for their
-      reply.
+- [x] P1 responded with the pinned mechanism (intel_pstate locks EPP while a
+      policy sits on the `performance` governor; ppd re-forces powersave only
+      at probe, hence the restart cure) + four separating questions (live
+      governor readback, whether the Hub CPU page's governor knob was ever
+      set, battery-only Dell quirk, current unstable). Left open for reply.
 
 ## 199 - Brightness/volume not restored after reboot - investigate
 
