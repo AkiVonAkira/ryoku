@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -69,12 +70,20 @@ func restoreBacklight(dev string, max int) {
 	_ = os.WriteFile(filepath.Join(dev, "brightness"), []byte(strconv.Itoa(want)), 0o644)
 }
 
-// backlightDevice picks the primary backlight: the first entry under
-// /sys/class/backlight. Absent (a desktop with no panel) means no watcher, so
-// the brightness OSD simply never fires, matching the reference where a missing
-// brightness device produces no update. Mirrors brightness_service().primary.
+// backlightDevice picks the primary backlight through ryoku-hw-backlight, the
+// one selector that names the device driving the connected panel: a first-entry
+// pick can land on a phantom nvidia_0 beside the real EC or amdgpu device, and
+// then the OSD watches a device the key handler never writes (#176). Falls
+// back to the first entry when the helper is missing or names nothing.
 func backlightDevice() string {
 	const base = "/sys/class/backlight"
+	if out, err := exec.Command("ryoku-hw-backlight").Output(); err == nil {
+		if name := strings.TrimSpace(string(out)); name != "" {
+			if _, err := os.Stat(filepath.Join(base, name)); err == nil {
+				return filepath.Join(base, name)
+			}
+		}
+	}
 	ents, err := os.ReadDir(base)
 	if err != nil || len(ents) == 0 {
 		return ""
