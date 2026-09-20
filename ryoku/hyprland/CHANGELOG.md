@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Changed
+- **`scripts/` keeps only Hyprland's own helpers.** The compositor-neutral leaf
+  scripts (`ryoku-app`, the `ryoku-cmd-*` tools, the recorder helpers, folder
+  tinting, sysinfo, clamshell) moved to the shell payload and the base hardware
+  helpers so every box ships them; `ryoku-monitor`, `ryoku-workspace` and the
+  new `ryoku-cursor-track` stay here because they speak Hyprland's IPC. The
+  touchpad lock and the game-mode decoration strip are provider actions now
+  (`modules/binds.lua`, `modules/touchpad.lua`).
+- **`hypridle.conf` is generated, not shipped.** `ryoku-idle` renders the idle
+  daemon's config from the Hub's idle policy into `~/.config/ryoku`, with screen
+  power routed through the window-manager seam, so the tree no longer carries
+  one.
+
 ### Fixed
 - **Maximize keybinds work again.**
   Ryoku no longer resets every Hyprland mode-1 fullscreen state to normal.

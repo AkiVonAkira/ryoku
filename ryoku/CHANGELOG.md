@@ -2,7 +2,35 @@
 
 ## Unreleased
 
+### Added
+- **The niri provider models what niri 26.04 can do.** Blur (global passes and
+  noise, per-window and per-app background effects), a border or focus ring
+  choice with gradients, the workspace background, tabbed columns, preset
+  window heights, the overview backdrop colour and workspace shadow, nine
+  per-animation springs and curves, layer rules, the `columnwidth`, `minsize`,
+  `maxsize`, `scrollfactor`, `tiledstate`, `babaisfloat`, `noshadow`, `blur`,
+  `xray` and `blockout` window-rule actions, and the warp-to-focus, scroll
+  cap, auto back-and-forth, mod key, power key and drag-edge input knobs, each
+  a store key with a Hub row. The emitter is one concern per file and the
+  unhonored reasons name what niri really lacks (`wm/niri/config_*.go`,
+  `wm/niri/schema_*.json`, `wm/niri/apply.go`).
+- **Seam actions for what used to be Hyprland-only scripts.** `nightlight.on`
+  and `nightlight.off` with a `nightLight` capability, `input.touchpad` with
+  `touchpadToggle`, `output.cycle` and `output.enable`, `window.summon` and
+  `decoration.gameMode`; providers also publish the window-rule actions they
+  honour (`wm/caps.go`, `wm/action.go`, `wm/hyprland/act.go`, `wm/niri/act.go`).
+
 ### Fixed
+- **niri draws the window border the user sized.** niri 26.04 keeps its border
+  off unless the block carries an explicit `on`, so the sized border never drew
+  and the thickness slider did nothing; per-app overrides resolve the same way
+  (`wm/niri/config_layout.go`).
+- **A packaged niri box gets every helper the shell calls.** The neutral leaf
+  scripts ship with the shell, hypridle and hyprpicker are base dependencies,
+  idle management renders its own config from the Hub policy, and the dev
+  deploy lays only the live provider's scripts so a checkout no longer masks
+  what a package is missing (`release/packages/*/PKGBUILD`, `shell/deploy.sh`,
+  `system/hardware/power/ryoku-idle`).
 - Settings rejects null desktop save and preview requests before they can
   replace saved preferences. Empty JSON stores containing `null` now recover
   as an editable empty store instead of crashing the next edit.

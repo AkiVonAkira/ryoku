@@ -6,6 +6,13 @@ for finer detail.
 ## Unreleased
 
 ### Fixed
+- The desktop behaves the same on niri as on Hyprland: the night light, window
+  borders, the app and brightness keybinds, the colour picker, the recorder and
+  the launcher tools, idle management, the lid policy and Super+P all work on a
+  packaged niri box, and Ryoku Hub offers niri's own customization (blur,
+  frames, animations, layer rules, input tuning) with no Hyprland-only controls
+  or wording. The dev deploy now lays only the live compositor's scripts, so a
+  checkout no longer hides what a package is missing.
 - Project documentation now uses the Ryoku name and the canonical
   `ryoku-dev/ryoku` repository URL.
 - The Now playing widget now respects Power Saver, reduced motion, and the shared

@@ -177,6 +177,18 @@ cross-GPU cursor plane fails niri's atomic commit there.
 niri, because `config.kdl` has to be able to include them, and both are yours to
 fill in by hand if you ever need to.
 
+What a variant package ships is the same rule seen from the packaging side: a
+compositor's payload dir holds only what speaks that compositor's own IPC
+(`ryoku-monitor`, `ryoku-workspace`, `ryoku-cursor-track` under
+`ryoku/hyprland/scripts/`). Anything the shell, the Hub, the launcher or a
+keybind calls by bare name on every compositor lives in `ryoku/shell/scripts/`
+or `system/hardware/` and ships with the shell or the base package, and it
+reaches the compositor only through `ryoku wm act`. A variant-only script called
+from neutral code is exactly the bug that made a packaged niri box miss its
+app keys while a dev checkout, which used to lay every provider's scripts, never
+noticed; `deploy.sh` now lays only the live provider's own leaf scripts so the
+checkout tells the truth.
+
 ## Switching
 
     ryoku wm use <name> [--keep-previous|--remove-previous]

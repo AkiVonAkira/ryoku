@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+- **`ryoku wm caps` prints the active provider's capabilities as JSON**, the
+  same payload the daemon and the Hub gate on, so a script can read the night
+  light backend or a capability without spelling a compositor. `ryoku wm act`
+  now forwards the provider's stdout, which is how `input.touchpad status`
+  answers (`wm.go`).
+
 ### Changed
 - **`ryoku doctor` keeps your login shell honest.** Changing your shell in the
   Hub writes it in two places: your account shell, and a session override the

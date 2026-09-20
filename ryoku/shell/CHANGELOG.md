@@ -4,6 +4,28 @@
 
 ### Added
 
+- **Night light on every compositor, from the Hub.** The warm screen was a
+  Hyprland leaf: the script shipped only with that variant and drove a CTM
+  client niri cannot serve. The backend is the window-manager provider's now
+  (`nightlight.on` / `nightlight.off` actions, a `nightLight` capability, the
+  backend's process name in caps): hyprsunset on Hyprland, gammastep over gamma
+  control on niri. The script rides the shell to every box, the daemon tracks
+  whichever backend the provider names, and the quick tile and launcher action
+  hide where there is none (`scripts/ryoku-cmd-nightlight`, `ipc/nightlight.go`).
+- **The leaf scripts ship with the shell.** `ryoku-app`, the `ryoku-cmd-*`
+  tools, the recorder helpers, folder tinting and the sysinfo readouts are
+  called by bare name on every compositor but shipped only inside the Hyprland
+  variant, so a packaged niri box had none of them while a dev checkout laid
+  every provider's scripts. They live in `scripts/` now and ship from
+  `ryoku-shell` by one glob; `deploy.sh` lays only the live provider's own
+  leaf scripts, so a checkout finally looks like a package.
+- **Summon, game mode, studio recording and the touchpad keys go through the
+  seam.** `window.summon`, `decoration.gameMode`, `input.touchpad`,
+  `output.cycle` and `output.enable` are provider actions; the cursor tracker
+  studio recording uses stays Hyprland payload, reached by capability
+  (`scripts/ryoku-summon`, `scripts/ryoku-cmd-game-mode`,
+  `scripts/ryoku-cmd-studiorecord`).
+
 - **Upscaling runs in its own worker process and reports its progress.** The
   waifu2x/ffmpeg enhance ran inside the daemon: a panicking job took the whole
   daemon (and the picker with it) down, a crash mid-run wedged the job lock so
@@ -174,6 +196,14 @@
   config migrates (`ryogami/wall-ui/qml/Config.qml`).
 
 ### Fixed
+- **Closing the launcher no longer risks crashing the shell on niri.** Where the
+  compositor has no focus-grab protocol the launcher tore its screen capture
+  down on every close and unmapped its dismiss scrim from inside the press that
+  closed it, the lifecycle quickshell segfaults on under niri. The capture
+  object now lives as long as the surface and the scrim unmaps one turn later;
+  the daemon logs the exit status and stderr tail when the shell dies
+  (`modules/launcher/variants/hero/LauncherSurface.qml`, `LocalFrost.qml`,
+  `ipc/daemon.go`).
 - **Bluetooth devices no longer show as MAC addresses when BlueZ has no name
   for them.** BlueZ leaves a device's alias equal to its own address (dashed,
   such as `73-EC-EF-CD-48-8C`) until it learns a name, and Quickshell exposes
