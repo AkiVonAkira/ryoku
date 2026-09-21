@@ -25,6 +25,45 @@ func TestGenKeybindReleaseFlag(t *testing.T) {
 	}
 }
 
+// A custom bind on a number-pad digit binds both keypad faces: the digit for
+// NumLock on and its NumLock-off twin, so it fires whichever way NumLock sits,
+// the same coverage the shipped families get. A non-numpad chord stays one bind.
+func TestGenKeybindNumpadTwin(t *testing.T) {
+	got := genKeybind(Keybind{Keys: "SUPER + KP_5", Action: "exec", Value: "kitty"})
+	want := "hl.bind(\"SUPER + KP_5\", hl.dsp.exec_cmd(\"kitty\"))\n" +
+		"hl.bind(\"SUPER + KP_Begin\", hl.dsp.exec_cmd(\"kitty\"))\n"
+	if got != want {
+		t.Fatalf("numpad custom bind:\n got %q\nwant %q", got, want)
+	}
+	if plain := genKeybind(Keybind{Keys: "SUPER + M", Action: "close"}); strings.Count(plain, "hl.bind(") != 1 {
+		t.Errorf("non-numpad bind emitted %d lines, want 1: %q", strings.Count(plain, "hl.bind("), plain)
+	}
+}
+
+// Hyprland's rebind path is a single K() lookup, so a bind rebound onto the
+// number pad registers one keysym and fires in one NumLock state only. The legend
+// row names that limit rather than leaving the user a chord that half works.
+func TestRebindNumpadHint(t *testing.T) {
+	o := defaultOverrides()
+	o.KeybindRebinds = map[string]string{"SUPER + Q": "SUPER + KP_1"}
+	var row wm.BindRow
+	for _, r := range buildBindRows(repoModules(), o) {
+		if r.ID == "window.close" {
+			row = r
+			break
+		}
+	}
+	if row.ID == "" {
+		t.Fatal("window.close row missing")
+	}
+	if row.Chord != "SUPER + KP_1" {
+		t.Errorf("chord = %q, want SUPER + KP_1", row.Chord)
+	}
+	if !strings.Contains(row.Hint, "Works with NumLock on") {
+		t.Errorf("hint = %q, want it to name the NumLock-on limit", row.Hint)
+	}
+}
+
 // The shipped input.lua detaches keyboard focus from the pointer, and the
 // diff-based config must not re-emit that default, or settings.lua would override
 // the shipped module with the same value for no reason.

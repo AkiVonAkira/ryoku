@@ -3,6 +3,19 @@
 ## Unreleased
 
 ### Added
+- **One keybind catalogue for both compositors.** `wm/binds.go` names every
+  shipped shortcut once (id, label, hint, category, default chord), and each
+  provider's `binds` verb reports the full effective legend: what it bound,
+  what the user rebound, and what it cannot do with a reason. New shortcuts on
+  both desktops: Page Up/Down and Shift for workspace navigation and sending
+  windows, Super+Alt+arrows to focus a screen and Shift/Ctrl variants to send a
+  window or a whole workspace there, Alt+Tab for the last window, Super+T for
+  a tabbed column or group, Super+D to maximise, Super+C to centre, Super+[ ]
+  to merge a window into its neighbour, and the number pad for workspaces 1 to
+  10 with NumLock on or off. niri also gains reorder-workspace (Super+Ctrl+Page
+  Up/Down), first and last column, preset window heights and a shortcut
+  inhibit toggle; Hyprland reports those as not available instead of hiding
+  them (`wm/niri/config_binds.go`, `wm/hyprland/legend.go`).
 - **The niri border follows the wallpaper palette, like Hyprland's.** The
   provider recolours the border from the live palette on every wallpaper or
   scheme change through a shared `paletteBorder` capability, and a new

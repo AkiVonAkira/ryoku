@@ -2,6 +2,19 @@
 
 
 ### Added
+- **Keybinds, rebuilt around use.** A search field that fuzzy-matches labels,
+  hints, categories and key tokens ("clw" finds Close window, "num 3" the
+  number-pad workspaces), a category rail with counts, and one calm column of
+  36px rows: a short label, the key caps, a hint only for the row under the
+  pointer. A shortcut the running compositor cannot do stays listed, greyed,
+  with the reason a hover away. Rebinding clicks the caps and captures the
+  chord through a shortcut inhibitor, so the compositor hands the keys to the
+  Hub instead of running them, on niri as on Hyprland; the number pad records
+  as `Num 1` whatever NumLock says (`pages/KeybindsPage.qml`, `Combos.js`).
+- **The legend comes from the provider.** `ryoku-hub keybinds` asks the running
+  window-manager provider for the full effective bind list from the neutral
+  catalogue, so the page and the cheatsheet show what is actually bound rather
+  than a parse of one compositor's config (`backend/keybinds.go`).
 - **Night light, on the Displays page.** A switch and a colour temperature that
   read and drive the daemon's `nightlight` topic, shown only where the running
   compositor's provider offers a night light (`pages/DisplaysPage.qml`).

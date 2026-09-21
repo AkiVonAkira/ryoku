@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Changed
+- **`binds.lua` carries the shared catalogue's new shortcuts.** Page Up/Down
+  workspace navigation and sending, screen focus and send with Super+Alt and
+  its Shift/Ctrl variants, Alt+Tab for the last window, Super+T group toggle,
+  Super+D maximise, Super+C centre, Super+[ ] move-window-or-group, and the
+  number pad for workspaces with both NumLock keysyms. Every one goes through
+  `K()` so it stays rebindable. The provider's `binds` verb now parses this
+  file itself and reports the legend to the Hub (`modules/binds.lua`).
 - **`scripts/` keeps only Hyprland's own helpers.** The compositor-neutral leaf
   scripts (`ryoku-app`, the `ryoku-cmd-*` tools, the recorder helpers, folder
   tinting, sysinfo, clamshell) moved to the shell payload and the base hardware

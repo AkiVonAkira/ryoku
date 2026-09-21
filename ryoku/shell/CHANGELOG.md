@@ -4,6 +4,11 @@
 
 ### Added
 
+- **The Super+K cheatsheet reads the shared legend.** Short labels with the
+  hint on hover or while searching, a "not here" tag on a shortcut the running
+  compositor cannot do (the reason on hover), caps wide enough for "Num 1" and
+  "Page Up", and rail counts that only count usable shortcuts
+  (`quickshell/keys/BindRow.qml`, `Cheatsheet.qml`, `KeyCap.qml`).
 - **Night light on every compositor, from the Hub.** The warm screen was a
   Hyprland leaf: the script shipped only with that variant and drove a CTM
   client niri cannot serve. The backend is the window-manager provider's now
