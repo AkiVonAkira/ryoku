@@ -195,6 +195,12 @@
   `transition.shader` and the built-in engine. Nothing wrote the keys, so no
   config migrates (`ryogami/wall-ui/qml/Config.qml`).
 
+- **A Super tap no longer opens the niri overview.** Tapping Super by itself
+  used to toggle niri's overview through the keypress daemon; Super+Tab already
+  does that, so the tap binding, the daemon claim behind it and the reader it
+  kept alive with the visualiser off are gone (`shell.qml`,
+  `services/Keypresses.qml`, `ipc/keypress.go`).
+
 ### Fixed
 - **Closing the launcher no longer risks crashing the shell on niri.** Where the
   compositor has no focus-grab protocol the launcher tore its screen capture
