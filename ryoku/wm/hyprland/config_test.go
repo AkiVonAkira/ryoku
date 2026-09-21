@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -85,4 +86,64 @@ func TestLoadStoreResolvesDynamicCursor(t *testing.T) {
 	if cfg := genLua(o, false); !strings.Contains(cfg, `hl.env("XCURSOR_THEME", "`+wm.CursorThemeMaterial+`")`) {
 		t.Fatalf("settings.lua does not export the resolved theme:\n%s", cfg)
 	}
+}
+
+// The border follows the wallpaper unless the user pins a fixed colour. Following
+// omits col.active_border from settings.lua so decoration.lua's palette border
+// wins, and the live act pushes the palette colours on a wallpaper change. Fixed
+// pins the colour in settings.lua and the act is a no-op, so a wallpaper change
+// never overrides the chosen colour.
+func TestBorderFollowsPaletteGatesConfigAndAct(t *testing.T) {
+	writeStore := func(t *testing.T, followBorder bool) {
+		home := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", home)
+		ryoku := filepath.Join(home, "ryoku")
+		if err := os.MkdirAll(ryoku, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		store := fmt.Sprintf(`{"desktop":{"appearance":{"borderFollowsPalette":%t}}}`, followBorder)
+		if err := os.WriteFile(filepath.Join(ryoku, "desktop.json"), []byte(store), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("following omits the pin and the act applies", func(t *testing.T) {
+		writeStore(t, true)
+		o := loadStore(desktopStorePath())
+		if !borderFollowsPalette(o) {
+			t.Fatal("a following border under a wallpaper-driven theme must follow the palette")
+		}
+		if cfg := genConfig(o, borderFollowsPalette(o)); strings.Contains(cfg, "col.active_border") {
+			t.Fatalf("a following border must omit col.active_border\n%s", cfg)
+		}
+		var got []string
+		restore := stubCtl(t, func(args ...string) ([]byte, error) { got = args; return nil, nil })
+		defer restore()
+		if err := runAct([]string{"decoration.borderColors", "#112233", "#445566"}); err != nil {
+			t.Fatal(err)
+		}
+		if len(got) == 0 || got[0] != "eval" {
+			t.Fatalf("a following border must push the palette colours live, got %q", got)
+		}
+	})
+
+	t.Run("fixed keeps the pin and the act is a no-op", func(t *testing.T) {
+		writeStore(t, false)
+		o := loadStore(desktopStorePath())
+		if borderFollowsPalette(o) {
+			t.Fatal("a pinned border must not follow the palette")
+		}
+		if cfg := genConfig(o, borderFollowsPalette(o)); !strings.Contains(cfg, "col.active_border") {
+			t.Fatalf("a fixed border must pin col.active_border\n%s", cfg)
+		}
+		called := false
+		restore := stubCtl(t, func(...string) ([]byte, error) { called = true; return nil, nil })
+		defer restore()
+		if err := runAct([]string{"decoration.borderColors", "#112233", "#445566"}); err != nil {
+			t.Fatal(err)
+		}
+		if called {
+			t.Fatal("a fixed border must not push colours live")
+		}
+	})
 }

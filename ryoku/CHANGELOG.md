@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Added
+- **The niri border follows the wallpaper palette, like Hyprland's.** The
+  provider recolours the border from the live palette on every wallpaper or
+  scheme change through a shared `paletteBorder` capability, and a new
+  `Follow the wallpaper` switch on the Hub's Borders tab pins the fixed colours
+  instead on either compositor (`wm/niri/act.go`, `wm/hyprland/act.go`,
+  `shell/ipc/matugen.go`, `hub/quickshell/schema/WindowSettings.js`).
 - **The niri provider models what niri 26.04 can do.** Blur (global passes and
   noise, per-window and per-app background effects), a border or focus ring
   choice with gradients, the workspace background, tabbed columns, preset
