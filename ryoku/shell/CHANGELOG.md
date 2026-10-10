@@ -215,6 +215,10 @@
   value. The wallpaper picker's error states take the scheme's `error` role
   (`desktop/`, `overview/`, `launcher/shared/Singletons/Theme.qml`,
   `plugins/kit/Singletons/Theme.qml`, `ryogami/wall-ui/qml/Colors.qml`).
+- **bash and zsh syntax colours follow the scheme.** A new `shells` matugen
+  template renders the scheme's primary and tertiary to
+  `~/.config/ryoku-terminal/colors.sh` for ryoku.bash and ryoku.zsh
+  (`matugen/templates/shell-colors.sh`, `matugen/apps.toml`).
 - **Closing the launcher no longer risks crashing the shell on niri.** Where the
   compositor has no focus-grab protocol the launcher tore its screen capture
   down on every close and unmapped its dismiss scrim from inside the press that

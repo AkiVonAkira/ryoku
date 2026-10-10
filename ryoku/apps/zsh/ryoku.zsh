@@ -49,18 +49,26 @@ fi
 [[ -r /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] &&
   source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
+# command and keyword styles follow the active colour scheme (rendered by the
+# theme daemon); vermillion is only the default palette's value.
+_ryoku_colors=${XDG_CONFIG_HOME:-$HOME/.config}/ryoku-terminal/colors.sh
+[[ -r $_ryoku_colors ]] && source "$_ryoku_colors"
+_ryoku_cmd=${RYOKU_SYNTAX_COMMAND:-#e2342a}
+_ryoku_kw=${RYOKU_SYNTAX_KEYWORD:-#e83b30}
+unset _ryoku_colors RYOKU_SYNTAX_COMMAND RYOKU_SYNTAX_KEYWORD
+
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#949699'
 ZSH_HIGHLIGHT_STYLES[default]='fg=#F1F3E4'
-ZSH_HIGHLIGHT_STYLES[command]='fg=#e2342a'
-ZSH_HIGHLIGHT_STYLES[hashed-command]='fg=#e2342a'
-ZSH_HIGHLIGHT_STYLES[builtin]='fg=#e2342a'
-ZSH_HIGHLIGHT_STYLES[function]='fg=#e2342a'
-ZSH_HIGHLIGHT_STYLES[alias]='fg=#e2342a'
-ZSH_HIGHLIGHT_STYLES[suffix-alias]='fg=#e2342a'
-ZSH_HIGHLIGHT_STYLES[global-alias]='fg=#e2342a'
-ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=#e83b30'
-ZSH_HIGHLIGHT_STYLES[precommand]='fg=#e83b30'
-ZSH_HIGHLIGHT_STYLES[commandseparator]='fg=#e83b30'
+ZSH_HIGHLIGHT_STYLES[command]="fg=$_ryoku_cmd"
+ZSH_HIGHLIGHT_STYLES[hashed-command]="fg=$_ryoku_cmd"
+ZSH_HIGHLIGHT_STYLES[builtin]="fg=$_ryoku_cmd"
+ZSH_HIGHLIGHT_STYLES[function]="fg=$_ryoku_cmd"
+ZSH_HIGHLIGHT_STYLES[alias]="fg=$_ryoku_cmd"
+ZSH_HIGHLIGHT_STYLES[suffix-alias]="fg=$_ryoku_cmd"
+ZSH_HIGHLIGHT_STYLES[global-alias]="fg=$_ryoku_cmd"
+ZSH_HIGHLIGHT_STYLES[reserved-word]="fg=$_ryoku_kw"
+ZSH_HIGHLIGHT_STYLES[precommand]="fg=$_ryoku_kw"
+ZSH_HIGHLIGHT_STYLES[commandseparator]="fg=$_ryoku_kw"
 ZSH_HIGHLIGHT_STYLES[single-hyphen-option]='fg=#CCD0CF'
 ZSH_HIGHLIGHT_STYLES[double-hyphen-option]='fg=#CCD0CF'
 ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=#A3C293'
@@ -73,6 +81,7 @@ ZSH_HIGHLIGHT_STYLES[globbing]='fg=#93D4E0'
 ZSH_HIGHLIGHT_STYLES[history-expansion]='fg=#93D4E0'
 ZSH_HIGHLIGHT_STYLES[comment]='fg=#949699'
 ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#FF6B6B'
+unset _ryoku_cmd _ryoku_kw
 
 if (( $+functions[history-substring-search-up] )); then
   bindkey '^[[A' history-substring-search-up

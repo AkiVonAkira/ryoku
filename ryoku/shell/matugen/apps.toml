@@ -66,6 +66,12 @@ post_hook = "which papirus-folders >/dev/null 2>&1 && papirus-folders -c $(cat ~
 input_path = "~/.config/matugen/templates/colors.fish"
 output_path = "~/.config/fish/conf.d/ryoku-colors.fish"
 
+# bash and zsh have no conf.d, so the palette lands beside the shared terminal
+# env and ryoku.bash / ryoku.zsh source it before setting their syntax colours.
+[templates.shells]
+input_path = "~/.config/matugen/templates/shell-colors.sh"
+output_path = "~/.config/ryoku-terminal/colors.sh"
+
 [templates.yazi]
 input_path = "~/.config/matugen/templates/yazi.toml"
 output_path = "~/.config/yazi/theme.toml"

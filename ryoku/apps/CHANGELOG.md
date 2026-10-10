@@ -34,6 +34,12 @@
   v0.56.0-beta.19") via `ryoku version --pretty` (`config.jsonc`).
 
 ### Fixed
+- `fish/`, `bash/`, `zsh/`: **the command colour follows the colour scheme.**
+  config.fish pinned a vermillion command colour after conf.d had applied the
+  scheme's palette, so the shell stayed red on every scheme; it now stands aside
+  when `conf.d/ryoku-colors.fish` exists. ryoku.bash and ryoku.zsh read the
+  rendered `ryoku-terminal/colors.sh` for their command and keyword colours.
+  Vermillion remains the fallback before any palette is rendered.
 - `fastfetch/`: **the greeting reports the real shell again.** The wrapper
   bounded fastfetch with `timeout 8`, but fastfetch's shell module walks the
   parent chain and skips known wrappers (`time`, `sudo`, ...) without knowing

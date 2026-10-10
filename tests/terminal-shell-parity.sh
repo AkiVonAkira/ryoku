@@ -22,10 +22,13 @@ fzf_line=$(grep -n 'fzf --bash' "$bash_cfg" | sed -n '1s/:.*//p')
 ble_line=$(grep -n '/usr/share/blesh/ble.sh' "$bash_cfg" | sed -n '1s/:.*//p')
 (( fzf_line < ble_line )) || fail "Bash must initialize fzf before ble.sh"
 starship_line=$(grep -n 'starship init bash' "$bash_cfg" | sed -n '1s/:.*//p')
+# shellcheck disable=SC2016  # matching the literal $var text in the shell config
 for rule in \
-  'command_alias fg=#e2342a' \
-  'command_function fg=#e2342a' \
-  'command_file fg=#e2342a' \
+  '_ryoku_cmd=${RYOKU_SYNTAX_COMMAND:-#e2342a}' \
+  '_ryoku_kw=${RYOKU_SYNTAX_KEYWORD:-#e83b30}' \
+  'command_alias fg="$_ryoku_cmd"' \
+  'command_function fg="$_ryoku_cmd"' \
+  'command_file fg="$_ryoku_cmd"' \
   'syntax_varname fg=#93D4E0' \
   'syntax_quoted fg=#A3C293' \
   'syntax_error fg=#FF6B6B' \
@@ -34,13 +37,15 @@ for rule in \
 done
 
 zsh_cfg=$repo/ryoku/apps/zsh/ryoku.zsh
+# shellcheck disable=SC2016  # matching the literal $var text in the shell config
 for rule in \
-  "ZSH_HIGHLIGHT_STYLES[alias]='fg=#e2342a'" \
-  "ZSH_HIGHLIGHT_STYLES[builtin]='fg=#e2342a'" \
-  "ZSH_HIGHLIGHT_STYLES[function]='fg=#e2342a'" \
+  '_ryoku_cmd=${RYOKU_SYNTAX_COMMAND:-#e2342a}' \
+  'ZSH_HIGHLIGHT_STYLES[alias]="fg=$_ryoku_cmd"' \
+  'ZSH_HIGHLIGHT_STYLES[builtin]="fg=$_ryoku_cmd"' \
+  'ZSH_HIGHLIGHT_STYLES[function]="fg=$_ryoku_cmd"' \
   "ZSH_HIGHLIGHT_STYLES[single-hyphen-option]='fg=#CCD0CF'" \
   "ZSH_HIGHLIGHT_STYLES[redirection]='fg=#8AA9CC'" \
-  "ZSH_HIGHLIGHT_STYLES[commandseparator]='fg=#e83b30'" \
+  'ZSH_HIGHLIGHT_STYLES[commandseparator]="fg=$_ryoku_kw"' \
   "ZSH_HIGHLIGHT_STYLES[globbing]='fg=#93D4E0'"; do
   grep -Fq "$rule" "$zsh_cfg" || fail "Zsh palette missing $rule"
 done
@@ -132,8 +137,26 @@ OMZ
   fi
 }
 
+# the command colour follows the rendered scheme palette, and falls back to the
+# default vermillion only while no palette has been rendered.
+run_zsh_scheme() {
+  local home="$tmp/zsh-scheme" out="$tmp/zsh-scheme.out" want
+  mkdir -p "$home/.config/zsh" "$home/.config/ryoku-terminal" "$home/.local/bin"
+  for want in '#e2342a' '#5aa8b4'; do
+    if [[ $want == '#5aa8b4' ]]; then
+      printf "RYOKU_SYNTAX_COMMAND='#5aa8b4'\nRYOKU_SYNTAX_KEYWORD='#c4a489'\n" \
+        >"$home/.config/ryoku-terminal/colors.sh"
+    fi
+    env HOME="$home" PATH="$stub:/usr/bin" RYOKU_SHELL_LOG=/dev/null ZDOTDIR="$home/.config/zsh" zsh -dfi -c \
+      "source '$repo/ryoku/apps/zsh/ryoku.zsh'; print CMD=\$ZSH_HIGHLIGHT_STYLES[command]" >"$out" 2>&1 ||
+      { cat "$out" >&2; fail "zsh scheme startup failed"; }
+    grep -Fq "CMD=fg=$want" "$out" || { cat "$out" >&2; fail "zsh command colour is not $want"; }
+  done
+}
+
 run_shell fish
 run_shell bash
 run_shell zsh
 run_zsh_omz
+run_zsh_scheme
 printf 'terminal shell parity: fish bash zsh passed\n'
