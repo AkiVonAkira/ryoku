@@ -40,6 +40,9 @@
   honour (`wm/caps.go`, `wm/action.go`, `wm/hyprland/act.go`, `wm/niri/act.go`).
 
 ### Fixed
+- `ui/`: **`Tokens.alert` follows the scheme's `error` role.** Badges and
+  alert dots were a fixed vermillion on every scheme; vermillion is now only the
+  default palette's value (`ui/Singletons/Tokens.qml`).
 - **niri draws the window border the user sized.** niri 26.04 keeps its border
   off unless the block carries an explicit `on`, so the sized border never drew
   and the thickness slider did nothing; per-app overrides resolve the same way

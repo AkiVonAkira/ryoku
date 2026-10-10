@@ -95,11 +95,12 @@ Singleton {
     readonly property color tint10: Qt.rgba(t.ink.r, t.ink.g, t.ink.b, 0.10)  // control hover
     readonly property color tint16: Qt.rgba(t.ink.r, t.ink.g, t.ink.b, 0.16)  // pressed
 
-    // ── colour: sun is the live accent (the palette primary); alert stays a
-    // fixed attention red so a badge always reads as an alert ─────────────────
+    // ── colour: sun is the live accent (the palette primary) and alert the
+    // palette's error role, so a scheme that is not red never paints a red
+    // badge. Vermillion is only the default palette's value for both ─────────
     readonly property color sun: role("primary", "#e2342a")
     readonly property color sunDeep: Qt.darker(sun, 1.3)
-    readonly property color alert: "#e2342a"
+    readonly property color alert: role("error", "#e2342a")
 
     // ── type ─────────────────────────────────────────────────────────────
     readonly property string display: "Fraunces"

@@ -6,8 +6,8 @@ import Quickshell
 // through the Scheme singleton so a plugin's card, ink and accent follow the active theme (a
 // fixed named scheme or the live wallpaper) instead of a hardcoded tint; the
 // RASHIN flame and the rest-card sky stay fixed identity, deliberately
-// independent of the accent. brand/verm are the live accent (the palette
-// primary); sun/gold are the fixed brand marks.
+// independent of the accent. brand/verm/sun are the live accent (the palette
+// primary); gold is the fixed kintsugi mark.
 Singleton {
     // accent family: the live system accent (palette primary), with lit/deep
     // variants tinted off it. brand + verm are the accent under their historical
@@ -17,8 +17,9 @@ Singleton {
     readonly property color verm:     brand
     readonly property color vermLit:  Qt.lighter(Scheme.accent, 1.22)
     readonly property color vermDeep: Qt.darker(Scheme.accent, 1.3)
-    // fixed brand marks, never themed (the deliberate identity accents).
-    readonly property color sun:      "#e2342a"
+    // sun is the 力 seal's colour: the scheme's primary, vermillion only on the
+    // default palette. gold stays a fixed mark.
+    readonly property color sun:      Scheme.accent
     readonly property color gold:     "#d9a441"
     // text ramp, resolved from the palette so a plugin's copy reads on the themed
     // card in light and dark alike.

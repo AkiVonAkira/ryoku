@@ -6,15 +6,16 @@ import Ryoku.Ui.Singletons as Ui
 // Shared widget tokens: the design-language geometry, motion and type, with
 // every colour resolved from the daemon palette through Scheme so the clock,
 // its card and the right-click menu follow the active theme (a fixed named
-// scheme or the live wallpaper) instead of a hardcoded tint. `brand` stays the
-// fixed vermillion identity (the 力 seal and the clock's deliberate "brand"
-// accent option); `accent` is the live system accent the interactive chrome
-// paints with. motion = the shell's morph curve (OutExpo).
+// scheme or the live wallpaper) instead of a hardcoded tint. `brand` is the 力
+// seal's colour and the clock's "brand" accent option; `accent` is the live
+// system accent the interactive chrome paints with. motion = the shell's morph
+// curve (OutExpo).
 Singleton {
-    // brand: fixed vermillion identity. Never themes -- that is the point. Used
-    // by the 力 seal and the clock's deliberate "brand" accent option.
-    readonly property color brand: "#e2342a"
-    readonly property color sun:   "#e2342a"
+    // brand: the active scheme's primary, so the seal follows the theme like
+    // the rest of the frame. Vermillion is the default palette's value
+    // (Scheme's fallback), not a fixed override.
+    readonly property color brand: Scheme.accent
+    readonly property color sun:   Scheme.accent
     readonly property color gold:  "#d9a441"
 
     // accent: the live system accent (the palette's primary role). Ryoku keeps

@@ -6,11 +6,12 @@ import "../lib/contrast.js" as Contrast
 
 Singleton {
     // Accent follows the wallpaper when matchWallpaper is on (a core feature);
-    // the fixed fallback is the Ryoku brand vermillion (website tokens.css).
-    readonly property color brand:    Config.matchWallpaper ? Scheme.accent : "#e2342a"
+    // otherwise the active named scheme's primary through Tokens, which lands on
+    // the brand vermillion only when no scheme supplies one.
+    readonly property color brand:    Config.matchWallpaper ? Scheme.accent : Ui.Tokens.sun
     readonly property color verm:     brand
-    readonly property color vermLit:  Config.matchWallpaper ? Qt.lighter(Scheme.accent, 1.22) : "#e83b30"
-    readonly property color vermDeep: Config.matchWallpaper ? Qt.darker(Scheme.accent, 1.3) : "#b81f19"
+    readonly property color vermLit:  Qt.lighter(brand, 1.22)
+    readonly property color vermDeep: Qt.darker(brand, 1.3)
     readonly property color gold:     "#d9a441"
     // warm-white text ramp (website --ink).
     readonly property color cream:    Ui.Tokens.ink
@@ -30,7 +31,7 @@ Singleton {
     readonly property color vermDimDeep: "#65342b"
     readonly property color vermBurn: "#8f321d"
     readonly property color tickRest: "#8f8770"
-    readonly property color threadBg: Qt.rgba(226/255, 52/255, 42/255, 0.13)
+    readonly property color threadBg: Qt.rgba(brand.r, brand.g, brand.b, 0.13)
     readonly property color flameCore: "#ffd2bf"
     readonly property color flameGlow: "#ff9e64"
 

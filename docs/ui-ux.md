@@ -44,13 +44,14 @@ its place; if it does not, remove it.
 - **The accent lives on the frame, not the content.** The shell frame carries the
   accent, and `Scheme.primary` is where it comes from. The content never competes
   with it.
-- **Colour is data, and the red sun is brand.** The only colour inside a surface
-  is data doing its job: a palette swatch being its own colour, a signal bar, or
-  art manufacturing its own sun. Two tokens stay fixed on any wallpaper:
-  `Theme.brand` (`#e2342a`, the vermillion the 力 seal is drawn in, which never
-  themes, and that is the point) and `Tokens.alert` (the same red, so a badge
-  always reads as an alert). Everything else is derived. Use the seal as a mark
-  (the masthead, an eyebrow lead), not as decoration.
+- **Colour is data, and the sun is the scheme's.** The only colour inside a
+  surface is data doing its job: a palette swatch being its own colour, a signal
+  bar, or art manufacturing its own sun. The brand tokens follow the active
+  scheme like everything else: `Theme.brand`, the colour the 力 seal is drawn
+  in, is the scheme's `primary`, and `Tokens.alert`, the badge colour, is its
+  `error`. Vermillion (`#e2342a`) is the default palette's value for both, used
+  only when no scheme or role supplies one. Use the seal as a mark (the
+  masthead, an eyebrow lead), not as decoration.
 - **Depth is a hairline, not a shadow.** Surfaces are flat with a `1px` bone
   hairline; a shadow appears only where something genuinely floats over
   something else (a popout, a drawer, a dock island). The Hub and apps are print
@@ -105,7 +106,7 @@ removed `themePalette` key only reads as absent from raw text.
 |`bone`|`inverseSurface`|`#cdc4ba`|the inverted plate|
 |`inkOnBone`|`inverseOnSurface`|`#000000`|ink on that plate|
 |`sun`|`primary`|`#e2342a`|the accent|
-|`alert`|fixed|`#e2342a`|never derived: an alert is an alert|
+|`alert`|`error`|`#e2342a`|badges and alert dots, in the scheme's own error colour|
 
 Hairlines and tints are ink-derived, so they follow whatever the ink resolved to:
 `line` (26% ink), `lineSoft` (13%), `lineStrong` (42%), and the interaction tints
@@ -189,8 +190,10 @@ doing that arithmetic itself.
   is held between 30 and 88, because outside that every hue reads as black or
   white and a mid-tone wallpaper would otherwise turn the spectrum into bars of
   soot.
-- **The 力 seal is never derived.** `Theme.brand` is a fixed vermillion, and
-  `Tokens.alert` is the same red. A sun is a sun on any wallpaper.
+- **The 力 seal follows the scheme too.** `Theme.brand` is the active scheme's
+  `primary` and `Tokens.alert` its `error`, so a teal scheme gets a teal seal and
+  its own alert colour. Vermillion is the default palette's value for both, the
+  fallback when no scheme or role supplies one, not an override.
 - **App content carries no accent at all.** The Hub, ryowalls, ryovm and ryostore
   are paper and ink. Emphasis is inversion: a surface flips to bone and its ink
   flips to dark. The frame carries the accent; the content does not compete with

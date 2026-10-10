@@ -65,9 +65,10 @@ QtObject {
             colors.tertiaryContainer = lift
             colors.tertiaryContainerText = ink
 
-            colors.error = "#e2342a"
-            colors.errorText = "#ffffff"
-            colors.errorContainer = _tint("#e2342a", 0.22)
+            var alert = d.error ?? "#e2342a"
+            colors.error = alert
+            colors.errorText = d.onError ?? "#ffffff"
+            colors.errorContainer = _tint(alert, 0.22)
             colors.errorContainerText = "#ffdad6"
 
             colors.outline = _tint(ink, 0.26)

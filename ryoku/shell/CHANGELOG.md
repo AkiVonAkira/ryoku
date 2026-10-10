@@ -207,6 +207,14 @@
   `services/Keypresses.qml`, `ipc/keypress.go`).
 
 ### Fixed
+- **The 力 seal and the brand accent follow the colour scheme.** The desktop,
+  plugin kit, launcher and overview painted a fixed vermillion for the seal and
+  brand accent, and the launcher and overview fell back to it whenever Match
+  wallpaper was off, so a named scheme like a teal one still showed red. They
+  now read the scheme's `primary`; vermillion is only the default palette's
+  value. The wallpaper picker's error states take the scheme's `error` role
+  (`desktop/`, `overview/`, `launcher/shared/Singletons/Theme.qml`,
+  `plugins/kit/Singletons/Theme.qml`, `ryogami/wall-ui/qml/Colors.qml`).
 - **Closing the launcher no longer risks crashing the shell on niri.** Where the
   compositor has no focus-grab protocol the launcher tore its screen capture
   down on every close and unmapped its dismiss scrim from inside the press that
