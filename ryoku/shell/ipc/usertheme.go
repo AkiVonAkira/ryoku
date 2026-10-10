@@ -27,9 +27,9 @@ func userThemeDir() string {
 	return filepath.Join(matugenDataHome(), "ryoku", "themes")
 }
 
-// noctaliaColors is the reduced Material set each Noctalia block carries. The
-// block's terminal sub-object is ignored: the catalog derives ANSI colours from
-// the roles, exactly as it does for every built-in theme.
+// noctaliaColors is the reduced Material set each Noctalia block carries, plus
+// the block's optional terminal sub-object. Without one the ANSI colours derive
+// from the roles, exactly as they do for every built-in theme.
 type noctaliaColors struct {
 	Primary          string `json:"mPrimary"`
 	OnPrimary        string `json:"mOnPrimary"`
@@ -45,6 +45,58 @@ type noctaliaColors struct {
 	OnSurfaceVariant string `json:"mOnSurfaceVariant"`
 	Outline          string `json:"mOutline"`
 	Shadow           string `json:"mShadow"`
+
+	Terminal *noctaliaTerminal `json:"terminal"`
+}
+
+// noctaliaTerminal is a scheme's own terminal palette: the colours its author
+// picked for each ANSI slot, which the role derivation cannot reproduce (a red
+// that is not the error role, a green the palette has no role for).
+type noctaliaTerminal struct {
+	Foreground string       `json:"foreground"`
+	Cursor     string       `json:"cursor"`
+	Normal     noctaliaANSI `json:"normal"`
+	Bright     noctaliaANSI `json:"bright"`
+}
+
+// noctaliaANSI is one row of eight ANSI colours, in slot order.
+type noctaliaANSI struct {
+	Black   string `json:"black"`
+	Red     string `json:"red"`
+	Green   string `json:"green"`
+	Yellow  string `json:"yellow"`
+	Blue    string `json:"blue"`
+	Magenta string `json:"magenta"`
+	Cyan    string `json:"cyan"`
+	White   string `json:"white"`
+}
+
+// noctaliaTerminalSlots maps a terminal block onto the base16 carrier keys the
+// terminal templates read (color0..color15, foreground, cursor). Only valid hex
+// values are kept, so a partial block overrides what it names and the role
+// derivation fills the rest. background is left to the surface role: the GUI
+// templates read the same carrier key, and a terminal tint must not repaint them.
+func noctaliaTerminalSlots(t *noctaliaTerminal) map[string]string {
+	if t == nil {
+		return nil
+	}
+	out := map[string]string{}
+	put := func(k, v string) {
+		if _, _, _, ok := parseHexRGB(v); ok && strings.HasPrefix(v, "#") {
+			out[k] = v
+		}
+	}
+	put("foreground", t.Foreground)
+	put("cursor", t.Cursor)
+	for i, row := range []noctaliaANSI{t.Normal, t.Bright} {
+		for j, v := range []string{row.Black, row.Red, row.Green, row.Yellow, row.Blue, row.Magenta, row.Cyan, row.White} {
+			put(fmt.Sprintf("color%d", i*8+j), v)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // noctaliaScheme is the on-disk scheme.json: a dark and/or light block.
@@ -68,6 +120,7 @@ type userTheme struct {
 	Label    string
 	Provider string
 	Palette  map[string]string // the 34 catalog roles
+	Terminal map[string]string // the scheme's own ANSI slots, nil when it ships none
 }
 
 // userThemes loads and converts every installed scheme, id-sorted for a stable
@@ -115,7 +168,7 @@ func userThemes() []userTheme {
 		if label == "" {
 			label = id
 		}
-		out = append(out, userTheme{ID: id, Label: label, Provider: meta.Provider, Palette: pal})
+		out = append(out, userTheme{ID: id, Label: label, Provider: meta.Provider, Palette: pal, Terminal: noctaliaTerminalSlots(block.Terminal)})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
@@ -190,6 +243,20 @@ func lookupThemePalette(name string) (map[string]string, bool) {
 		}
 	}
 	return nil, false
+}
+
+// lookupThemeTerminal is the installed scheme's own terminal palette, or nil
+// for a built-in theme or a scheme that ships no terminal block.
+func lookupThemeTerminal(name string) map[string]string {
+	if _, baked := themePalettes[name]; baked {
+		return nil
+	}
+	for _, t := range userThemes() {
+		if t.ID == name {
+			return t.Terminal
+		}
+	}
+	return nil
 }
 
 // userThemeIDs lists the installed scheme ids, for theme.theme validation.

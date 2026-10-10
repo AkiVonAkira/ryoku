@@ -662,7 +662,7 @@ func (d *daemon) matugenApplyStatic(name string) error {
 		return fmt.Errorf("matugen colors.json (static): %w", err)
 	}
 	k := readMatugenKnobs()
-	matugenRenderTemplates(matugenShellPalette(shell), k)
+	matugenRenderTemplates(overlayTerminal(matugenShellPalette(shell), lookupThemeTerminal(name)), k)
 	matugenReload(staticPaletteMode(shell))
 	// A catalog theme has no ramps, so the last wallpaper's are now wrong. The
 	// file's absence is the gate: Ink re-lights the theme's own roles instead.
@@ -936,6 +936,17 @@ func matugenShellPalette(pal map[string]string) map[string]string {
 		}
 	}
 	return m
+}
+
+// overlayTerminal lays a scheme's own terminal slots over the role-derived
+// base16 keys of a carrier palette, so the terminal templates (kitty, ghostty,
+// alacritty) paint the ANSI colours the scheme's author chose. A nil overlay
+// leaves the carrier as derived.
+func overlayTerminal(carrier, term map[string]string) map[string]string {
+	for k, v := range term {
+		carrier[k] = v
+	}
+	return carrier
 }
 
 // matugenRoleKeys maps matugen's snake_case Material 3 roles to the camelCase

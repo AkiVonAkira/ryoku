@@ -215,6 +215,11 @@
   value. The wallpaper picker's error states take the scheme's `error` role
   (`desktop/`, `overview/`, `launcher/shared/Singletons/Theme.qml`,
   `plugins/kit/Singletons/Theme.qml`, `ryogami/wall-ui/qml/Colors.qml`).
+- **A downloaded scheme's own terminal colours reach the terminal.** A RyoStore
+  scheme that ships a `terminal` block now paints its ANSI slots, foreground
+  and cursor into kitty, ghostty and alacritty instead of colours derived from
+  its roles; a scheme without one derives as before (`ipc/usertheme.go`,
+  `ipc/matugen.go`).
 - **bash and zsh syntax colours follow the scheme.** A new `shells` matugen
   template renders the scheme's primary and tertiary to
   `~/.config/ryoku-terminal/colors.sh` for ryoku.bash and ryoku.zsh

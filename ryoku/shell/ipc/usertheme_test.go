@@ -243,3 +243,52 @@ func TestDispatchThemeRemove(t *testing.T) {
 		t.Fatalf("applied scheme = %q after removing the active one, want Default", got)
 	}
 }
+
+// TestUserThemeTerminalBlock proves a scheme's own terminal block, in the shape
+// the store ships it, reaches the template carrier: its ANSI slots replace the
+// role-derived ones, a partial block keeps the derived rest, the surface-backed
+// background is never repainted, and a scheme without the block derives as before.
+func TestUserThemeTerminalBlock(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	dir := filepath.Join(userThemeDir(), "with-term")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	scheme := `{"dark": {"mPrimary": "#5aa8b4", "mError": "#f44747", "mSurface": "#1d2021", "mOnSurface": "#ebdbb2",
+		"terminal": {"background": "#000001", "foreground": "#ebdbb2", "cursor": "#5aa8b4",
+			"normal": {"black": "#1d2021", "red": "#f44747", "green": "#8ec07c", "yellow": "#d9c679",
+				"blue": "#6796e6", "magenta": "#ae81ff", "cyan": "#5aa8b4", "white": "#ebdbb2"},
+			"bright": {"red": "#fb4934", "green": "not-a-colour"}}}}`
+	if err := os.WriteFile(filepath.Join(dir, "scheme.json"), []byte(scheme), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	blk := sampleBlock
+	installFixtureTheme(t, "no-term", "No Term", "x", noctaliaScheme{Dark: &blk})
+
+	term := lookupThemeTerminal("with-term")
+	want := map[string]string{"color1": "#f44747", "color2": "#8ec07c", "color6": "#5aa8b4", "color9": "#fb4934", "cursor": "#5aa8b4"}
+	for k, v := range want {
+		if term[k] != v {
+			t.Errorf("terminal %s = %q, want %q", k, term[k], v)
+		}
+	}
+	if _, ok := term["color10"]; ok {
+		t.Error("an invalid hex slot must be dropped, not carried")
+	}
+	if _, ok := term["background"]; ok {
+		t.Error("the terminal background must not reach the carrier")
+	}
+
+	pal, _ := lookupThemePalette("with-term")
+	carrier := overlayTerminal(matugenShellPalette(staticThemePalette(pal)), term)
+	if carrier["color2"] != "#8ec07c" || carrier["background"] != "#1d2021" {
+		t.Fatalf("carrier color2/background = %q/%q", carrier["color2"], carrier["background"])
+	}
+	if carrier["color10"] != "#5aa8b4" {
+		t.Fatalf("an unnamed slot should keep its derived value, got color10 = %q", carrier["color10"])
+	}
+
+	if lookupThemeTerminal("no-term") != nil || lookupThemeTerminal("Dracula") != nil {
+		t.Fatal("a scheme without a terminal block, or a built-in, must derive from roles")
+	}
+}
