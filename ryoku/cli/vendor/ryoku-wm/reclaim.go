@@ -23,11 +23,11 @@ import (
 //   - a package the incoming compositor also declares is shared, so it stays;
 //   - a package another installed package still needs is kept.
 //
-// On pacman hosts, the set is pacman's own answer to `pacman -Rs` for the
-// outgoing-only installed packages: the compositor package, its satellites,
-// and the private dependencies that orphan with them. On DNF hosts, dependency
-// cleanup is disabled and catalogue targets expand to native RPM names; a target
-// with an installed dependent outside that set is kept.
+// On pacman and XBPS hosts, the set is the native package manager's dry-run
+// answer for the outgoing-only installed packages: the compositor package, its
+// satellites, and private dependencies that orphan with them. On DNF hosts,
+// dependency cleanup is disabled and catalogue targets expand to native RPM
+// names; a target with an installed dependent outside that set is kept.
 
 // ReclaimSet is what leaving Outgoing for Incoming would remove. Targets are the
 // declared compositor packages the removal names; Packages is the full
@@ -216,31 +216,40 @@ func hostPackageManager() string {
 }
 
 func removalPlannerName() string {
-	if hostPackageManager() == "dnf" {
-		return "dnf"
+	if manager := hostPackageManager(); manager != "" {
+		return manager
 	}
-	return "pacman"
+	return "package manager"
 }
 
 func hostPackageInstalled(name string) bool {
-	if hostPackageManager() == "dnf" {
-		return exec.Command("ryoku-host", "pkg", "installed", name).Run() == nil
-	}
-	return pacmanInstalled(name)
+	return exec.Command("ryoku-host", "pkg", "installed", name).Run() == nil
 }
 
 func hostRemovalOnce(targets []string) (set, blocked []string, err error) {
-	if hostPackageManager() == "dnf" {
+	switch manager := hostPackageManager(); manager {
+	case "dnf":
 		return dnfRemovalOnce(targets)
+	case "xbps":
+		return xbpsRemovalOnce(targets)
+	case "pacman":
+		return pacmanRemovalOnce(targets)
+	default:
+		return nil, nil, fmt.Errorf("unsupported package manager %q", manager)
 	}
-	return pacmanRemovalOnce(targets)
 }
 
 func hostInstalledSizes(names []string) (int64, error) {
-	if hostPackageManager() == "dnf" {
+	switch manager := hostPackageManager(); manager {
+	case "dnf":
 		return dnfInstalledSizes(names)
+	case "xbps":
+		return xbpsInstalledSizes(names)
+	case "pacman":
+		return pacmanInstalledSizes(names)
+	default:
+		return 0, fmt.Errorf("unsupported package manager %q", manager)
 	}
-	return pacmanInstalledSizes(names)
 }
 
 // dnfRemovalOnce expands catalogue targets to native installed RPM names, then
@@ -386,9 +395,100 @@ func dnfInstalledSizes(names []string) (int64, error) {
 	return total, sc.Err()
 }
 
-// pacmanInstalled reports whether a package is installed.
-func pacmanInstalled(name string) bool {
-	return exec.Command("pacman", "-Q", name).Run() == nil
+func xbpsRemovalOnce(targets []string) (set, blocked []string, err error) {
+	if len(targets) == 0 {
+		return nil, nil, nil
+	}
+	native := make([]string, 0, len(targets))
+	nativeByTarget := make(map[string][]string, len(targets))
+	seen := make(map[string]bool)
+	for _, target := range targets {
+		out, err := exec.Command("ryoku-host", "pkg", "local", target).CombinedOutput()
+		if err != nil {
+			return nil, nil, fmt.Errorf("ryoku-host pkg local %s: %w: %s", target, err, strings.TrimSpace(string(out)))
+		}
+		for _, name := range strings.Fields(string(out)) {
+			if exec.Command("xbps-query", name).Run() != nil {
+				continue
+			}
+			nativeByTarget[target] = append(nativeByTarget[target], name)
+			if !seen[name] {
+				seen[name] = true
+				native = append(native, name)
+			}
+		}
+	}
+	if len(native) == 0 {
+		return nil, nil, nil
+	}
+	args := append([]string{"-n", "-R"}, native...)
+	out, runErr := exec.Command("xbps-remove", args...).CombinedOutput()
+	if runErr != nil {
+		for _, target := range targets {
+			names := nativeByTarget[target]
+			if len(names) == 0 {
+				continue
+			}
+			check := append([]string{"-n", "-R"}, names...)
+			if exec.Command("xbps-remove", check...).Run() != nil {
+				blocked = append(blocked, target)
+			}
+		}
+		if len(blocked) > 0 {
+			return nil, blocked, nil
+		}
+		return nil, nil, fmt.Errorf("xbps-remove -n -R: %w: %s", runErr, strings.TrimSpace(string(out)))
+	}
+	set, err = parseXBPSRemovalPlan(out, xbpsPackageName)
+	return set, nil, err
+}
+
+func parseXBPSRemovalPlan(out []byte, packageName func(string) (string, error)) ([]string, error) {
+	var set []string
+	seen := make(map[string]bool)
+	sc := bufio.NewScanner(bytes.NewReader(out))
+	for sc.Scan() {
+		fields := strings.Fields(sc.Text())
+		if len(fields) < 2 || fields[1] != "remove" {
+			continue
+		}
+		name, err := packageName(fields[0])
+		if err != nil {
+			return nil, err
+		}
+		if name != "" && !seen[name] {
+			seen[name] = true
+			set = append(set, name)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+	return set, nil
+}
+
+func xbpsPackageName(pkgver string) (string, error) {
+	out, err := exec.Command("xbps-uhelper", "getpkgname", pkgver).CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("xbps-uhelper getpkgname %s: %w: %s", pkgver, err, strings.TrimSpace(string(out)))
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func xbpsInstalledSizes(names []string) (int64, error) {
+	var total int64
+	for _, name := range names {
+		out, err := exec.Command("xbps-query", "-p", "installed_size", name).CombinedOutput()
+		if err != nil {
+			return 0, fmt.Errorf("xbps-query installed_size %s: %w: %s", name, err, strings.TrimSpace(string(out)))
+		}
+		size, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("xbps installed size %q: %w", strings.TrimSpace(string(out)), err)
+		}
+		total += size
+	}
+	return total, nil
 }
 
 // compositorVirtual is the package every compositor variant provides and the

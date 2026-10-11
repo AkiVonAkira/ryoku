@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+func TestParseXBPSRemovalPlan(t *testing.T) {
+	out := []byte("out-core-1.2_1 remove x86_64 https://repo 1200 0\n" +
+		"out-lib-2.0_3 remove x86_64 https://repo 400 0\n" +
+		"unrelated-1.0_1 update x86_64 https://repo 50 10\n")
+	names := map[string]string{
+		"out-core-1.2_1": "out-core",
+		"out-lib-2.0_3":  "out-lib",
+	}
+	got, err := parseXBPSRemovalPlan(out, func(pkgver string) (string, error) {
+		return names[pkgver], nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"out-core", "out-lib"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("plan = %v, want %v", got, want)
+	}
+}
+
 // The removal set is the one computation a switch can break a machine with, so
 // it is pinned across the four cases that matter: a satellite the incoming
 // compositor also uses stays, a package a surviving package needs stays, a
