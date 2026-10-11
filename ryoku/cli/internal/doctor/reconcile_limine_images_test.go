@@ -576,9 +576,7 @@ func TestInstalledKernelVersionsInaccessibleMetadata(t *testing.T) {
 // TestInstalledKernelVersionsUnavailableModulesDir verifies that a missing or unreadable
 // /usr/lib/modules directory returns an error and does not falsely report okRes.
 func TestInstalledKernelVersionsUnavailableModulesDir(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root bypasses the permission-denied fixture")
-	}
+	stubLimineBootGates(t)
 	dir := t.TempDir()
 
 	origDir, origESP, origPkg := limineModulesDir, limineESPConf, liminePkgInstalled
@@ -603,7 +601,7 @@ func TestInstalledKernelVersionsUnavailableModulesDir(t *testing.T) {
 	// 2. reconcileLimineKernelImages warns and does not report false success
 	res := reconcileLimineKernelImages(true)
 	if res.status != recWarn {
-		t.Fatalf("got status %d, want recWarn (%d)", res.status, recWarn)
+		t.Fatalf("got status %d, want recWarn (%d): %s", res.status, recWarn, res.detail)
 	}
 	if !strings.Contains(res.detail, "cannot inspect installed kernel metadata") {
 		t.Errorf("unexpected detail: %s", res.detail)
@@ -678,9 +676,6 @@ func TestReconcileLimineKernelImagesIncompleteDiscoveryPreventsPruneAndRebuild(t
 // TestIncompleteKernelMetadataBlocksDestructivePruning tests missing pkgbase,
 // missing vmlinuz, and empty pkgbase, asserting no mutations occur under uncertainty.
 func TestIncompleteKernelMetadataBlocksDestructivePruning(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root bypasses the permission-denied fixture")
-	}
 	stubLimineBootGates(t)
 	for _, tc := range []struct {
 		name       string
@@ -706,6 +701,7 @@ func TestIncompleteKernelMetadataBlocksDestructivePruning(t *testing.T) {
 			t.Cleanup(func() {
 				limineESPConf, liminePkgInstalled, limineInstalledKernels, limineKernelImageStat, limineRebuildInitramfs, liminePruneStrayImages = origESP, origPkg, origKernels, origStat, origRebuild, origPrune
 			})
+			liminePkgInstalled = func(string) bool { return true }
 			goodImg := filepath.Join(dir, "ryoku_linux.efi")
 			if err := os.WriteFile(goodImg, []byte("img"), 0o644); err != nil {
 				t.Fatal(err)
@@ -750,7 +746,7 @@ func TestIncompleteKernelMetadataBlocksDestructivePruning(t *testing.T) {
 			// Check mode: must be recWarn, never recWouldFix or recOK
 			resCheck := reconcileLimineKernelImages(true)
 			if resCheck.status != recWarn {
-				t.Fatalf("check mode: got status %d, want recWarn (%d)", resCheck.status, recWarn)
+				t.Fatalf("check mode: got status %d, want recWarn (%d): %s", resCheck.status, recWarn, resCheck.detail)
 			}
 			if !strings.Contains(resCheck.detail, "cannot verify installed kernel metadata") || !strings.Contains(resCheck.detail, "incomplete module tree") {
 				t.Errorf("check mode: expected incomplete module tree warning, got: %s", resCheck.detail)
