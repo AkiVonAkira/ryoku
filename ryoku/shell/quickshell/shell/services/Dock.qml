@@ -64,8 +64,8 @@ Singleton {
         return String(value ?? "").trim().replace(/\.desktop$/i, "");
     }
     function entryFor(value) {
-        void root.iconRev;
-        return InirServices.AppSearch.lookupDesktopEntry(root.plainId(value));
+        void root.iconRev
+        return InirServices.AppSearch.lookupDesktopEntry(root.plainId(value), true)
     }
     function canonicalId(value) {
         const id = root.plainId(value);

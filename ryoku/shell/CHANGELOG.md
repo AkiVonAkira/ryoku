@@ -587,10 +587,10 @@
   universal top-level store; legacy nested pins remain readable until doctor
   migrates them.
 - **Running apps with reverse-DNS desktop IDs show their real dock icon.**
-  Window app IDs such as `xwaylandvideobridge` now resolve
-  `org.kde.xwaylandvideobridge.desktop` through the shell's shared desktop-entry
-  matcher. Apps with no matching entry draw Ryoku's app-grid glyph instead of
-  Qt's missing-image checkerboard.
+  Window app IDs such as `xwaylandvideobridge` now resolve hidden
+  `NoDisplay` entries such as `org.kde.xwaylandvideobridge.desktop` through
+  the shell's shared desktop-entry matcher. Apps with no matching entry draw
+  Ryoku's app-grid glyph instead of Qt's missing-image checkerboard.
 - **Power profiles work with either system provider.** Nomarchy, game mode and
   `ryoku-power` now read and switch profiles through ryoku-shell's PowerProfiles
   D-Bus client instead of requiring a provider-specific command.

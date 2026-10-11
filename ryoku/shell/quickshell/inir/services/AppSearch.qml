@@ -4,6 +4,7 @@ import QtQuick
 import inir.modules.common
 import inir.modules.common.functions
 import Quickshell
+import Quickshell.Io
 
 /**
  * - Eases fuzzy searching for applications by name
@@ -174,11 +175,21 @@ Singleton {
     property var _cachedList: []
     property var _cachedPreppedNames: []
     property var _cachedPreppedIcons: []
-    // Reverse-lookup maps for matching running windows to desktop entries
-    // Key: lowercased startupClass/exec-basename/desktop-id-stem → DesktopEntry
+    // Reverse-lookup maps for matching running windows to desktop entries.
     property var _startupClassMap: ({})
     property var _execBasenameMap: ({})
-    property var _desktopIdStemMap: ({})
+    property var _desktopExactIdMap: ({})
+    property var _desktopFoldedIdMap: ({})
+    property var _desktopSuffixIdMap: ({})
+    property var _noDisplayExactIdMap: ({})
+    property var _noDisplayFoldedIdMap: ({})
+    property var _noDisplaySuffixIdMap: ({})
+    property var _noDisplayStartupClassMap: ({})
+
+    readonly property string _shellDir: Quickshell.env("RYOKU_SHELL_DIR")
+    readonly property string _shellBin: (root._shellDir && root._shellDir.length > 0)
+        ? root._shellDir + "/ipc/ryoku-shell"
+        : "ryoku-shell"
 
     readonly property var list: _cachedList
     readonly property var preppedNames: _cachedPreppedNames
@@ -197,7 +208,36 @@ Singleton {
         function onValuesChanged() { internal.rebuildTimer.restart() }
     }
 
-    Component.onCompleted: _rebuildCache()
+    Timer {
+        id: noDisplayDebounce
+        interval: 2000
+        onTriggered: root._reloadNoDisplayEntries()
+    }
+
+    Connections {
+        target: DesktopEntries
+        function onApplicationsChanged() { noDisplayDebounce.restart() }
+    }
+
+    Process {
+        id: noDisplayLoader
+        command: [root._shellBin, "no-display-entries"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const value = JSON.parse(this.text)
+                    root._rebuildNoDisplayCache(value?.entries ?? [])
+                } catch (e) {
+                    // Keep the last complete cache if discovery fails.
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        _rebuildCache()
+        _reloadNoDisplayEntries()
+    }
 
     function _rebuildCache(): void {
         const entries = Array.from(DesktopEntries.applications.values)
@@ -211,7 +251,9 @@ Singleton {
         // window appId doesn't match their desktop entry id.
         const scMap = {};
         const ebMap = {};
-        const idMap = {};
+        const exactIdMap = {};
+        const foldedIdMap = {};
+        const suffixIdMap = {};
         for (const entry of entries) {
             // Map by StartupWMClass (case-insensitive)
             const sc = (entry.startupClass ?? "").trim();
@@ -234,25 +276,55 @@ Singleton {
                 }
             }
 
-            // Map by desktop entry id stem (without .desktop suffix, and last segment of reverse-domain)
             const id = (entry.id ?? "").trim();
             if (id.length > 0) {
-                const stem = id.replace(/\.desktop$/, "").toLowerCase();
-                idMap[stem] = entry;
-                // Also index the last segment of reverse-domain IDs
-                // e.g., "it.mijorus.gearlever" → "gearlever"
-                const parts = stem.split(".");
-                if (parts.length > 1) {
-                    const lastPart = parts[parts.length - 1];
-                    if (lastPart.length > 2 && !idMap[lastPart]) {
-                        idMap[lastPart] = entry;
-                    }
-                }
+                const stem = id.replace(/\.desktop$/, "");
+                const folded = stem.toLowerCase();
+                exactIdMap[stem] = entry;
+                foldedIdMap[folded] = entry;
+                const lastPart = folded.split(".").pop();
+                if (lastPart.length > 2 && suffixIdMap[lastPart] === undefined)
+                    suffixIdMap[lastPart] = entry;
             }
         }
         _startupClassMap = scMap;
         _execBasenameMap = ebMap;
-        _desktopIdStemMap = idMap;
+        _desktopExactIdMap = exactIdMap;
+        _desktopFoldedIdMap = foldedIdMap;
+        _desktopSuffixIdMap = suffixIdMap;
+    }
+
+    function _reloadNoDisplayEntries(): void {
+        if (!noDisplayLoader.running)
+            noDisplayLoader.running = true
+    }
+
+    function _rebuildNoDisplayCache(entries): void {
+        const exactIdMap = {}
+        const foldedIdMap = {}
+        const suffixIdMap = {}
+        const startupClassMap = {}
+        for (const entry of entries) {
+            const id = String(entry?.id ?? "")
+            if (id.length === 0)
+                continue
+            const stem = id.replace(/\.desktop$/, "")
+            const folded = stem.toLowerCase()
+            if (exactIdMap[stem] === undefined)
+                exactIdMap[stem] = entry
+            if (foldedIdMap[folded] === undefined)
+                foldedIdMap[folded] = entry
+            const lastPart = folded.split(".").pop()
+            if (lastPart.length > 2 && suffixIdMap[lastPart] === undefined)
+                suffixIdMap[lastPart] = entry
+            const startupClass = String(entry.startupClass ?? "").trim().toLowerCase()
+            if (startupClass.length > 0 && startupClassMap[startupClass] === undefined)
+                startupClassMap[startupClass] = entry
+        }
+        _noDisplayExactIdMap = exactIdMap
+        _noDisplayFoldedIdMap = foldedIdMap
+        _noDisplaySuffixIdMap = suffixIdMap
+        _noDisplayStartupClassMap = startupClassMap
     }
 
     function fuzzyQuery(search: string): var {
@@ -425,31 +497,48 @@ Singleton {
         return str.toLowerCase().replace(/_/g, "-");
     }
 
-    // Enhanced desktop entry lookup: tries heuristicLookup first, then aggressive
-    // normalization for Electron/AppImage apps whose window appId doesn't match
-    // their .desktop file (e.g., "@trezor/suite-desktop" → "trezor-suite.desktop").
-    function lookupDesktopEntry(appId) {
+    function _normalizedIdEntry(value, includeNoDisplay) {
+        return _desktopFoldedIdMap[value]
+            ?? _desktopSuffixIdMap[value]
+            ?? (includeNoDisplay ? _noDisplayFoldedIdMap[value] : null)
+            ?? (includeNoDisplay ? _noDisplaySuffixIdMap[value] : null)
+    }
+
+    // Match a running window against visible entries by default. NoDisplay
+    // entries are opt-in so launcher callers never surface background helpers.
+    function lookupDesktopEntry(appId, includeNoDisplay) {
         if (!appId || appId.length === 0) return null;
 
-        // 1. Quickshell's built-in heuristic (handles simple cases)
-        const entry = DesktopEntries.heuristicLookup(appId);
-        if (entry) {
-            return entry;
-        }
-
-        // 2. Direct map lookups (case-insensitive, kebab-normalized)
-        const lowered = appId.toLowerCase();
+        const plain = String(appId).trim().replace(/\.desktop$/i, "");
+        const lowered = plain.toLowerCase();
         const kebab = lowered.replace(/\s+/g, "-");
-        const direct = _startupClassMap[lowered]
-            ?? _execBasenameMap[lowered]
-            ?? _desktopIdStemMap[lowered]
-            ?? _execBasenameMap[kebab]
-            ?? _desktopIdStemMap[kebab];
-        if (direct) {
-            return direct;
-        }
+        const exact = _desktopExactIdMap[plain]
+            ?? (includeNoDisplay ? _noDisplayExactIdMap[plain] : null);
+        if (exact) return exact;
 
-        // 3. Aggressive normalization for scoped/prefixed appIds
+        const folded = _desktopFoldedIdMap[lowered]
+            ?? (includeNoDisplay ? _noDisplayFoldedIdMap[lowered] : null);
+        if (folded) return folded;
+
+        const suffix = _desktopSuffixIdMap[lowered]
+            ?? (includeNoDisplay ? _noDisplaySuffixIdMap[lowered] : null);
+        if (suffix) return suffix;
+
+        const startupClass = _startupClassMap[lowered]
+            ?? (includeNoDisplay ? _noDisplayStartupClassMap[lowered] : null);
+        if (startupClass) return startupClass;
+
+        const entry = DesktopEntries.heuristicLookup(appId);
+        if (entry) return entry;
+
+        const direct = _execBasenameMap[lowered]
+            ?? _execBasenameMap[kebab]
+            ?? _desktopFoldedIdMap[kebab]
+            ?? _desktopSuffixIdMap[kebab]
+            ?? (includeNoDisplay ? _noDisplayFoldedIdMap[kebab] : null)
+            ?? (includeNoDisplay ? _noDisplaySuffixIdMap[kebab] : null);
+        if (direct) return direct;
+        // Aggressive normalization for scoped and prefixed app IDs.
         //    "@trezor/suite-desktop" → strip @ → split on / → join with - → strip -desktop suffix
         //    "com.example.app-desktop" → reverse-domain last segment → "app-desktop" → "app"
         const stripped = lowered.replace(/^@/, "");
@@ -467,7 +556,7 @@ Singleton {
                 candidates.push(reversed, reversedNoSuffix);
             }
             for (const c of candidates) {
-                const found = _execBasenameMap[c] ?? _desktopIdStemMap[c] ?? _startupClassMap[c];
+                const found = _execBasenameMap[c] ?? _normalizedIdEntry(c, includeNoDisplay) ?? _startupClassMap[c];
                 if (found) {
                     return found;
                 }
@@ -475,8 +564,8 @@ Singleton {
             // Try each segment individually
             for (const seg of segments) {
                 const segClean = seg.replace(/-(desktop|app|electron|bin)$/, "");
-                const found = _execBasenameMap[seg] ?? _desktopIdStemMap[seg]
-                    ?? _execBasenameMap[segClean] ?? _desktopIdStemMap[segClean]
+                const found = _execBasenameMap[seg] ?? _normalizedIdEntry(seg, includeNoDisplay)
+                    ?? _execBasenameMap[segClean] ?? _normalizedIdEntry(segClean, includeNoDisplay)
                     ?? _startupClassMap[seg] ?? _startupClassMap[segClean];
                 if (found) {
                     return found;
@@ -487,7 +576,7 @@ Singleton {
         // 4. Strip common suffixes on the full appId and retry
         const noSuffix = kebab.replace(/-(desktop|app|electron|bin)$/, "");
         if (noSuffix !== kebab) {
-            const found = _execBasenameMap[noSuffix] ?? _desktopIdStemMap[noSuffix] ?? _startupClassMap[noSuffix];
+            const found = _execBasenameMap[noSuffix] ?? _normalizedIdEntry(noSuffix, includeNoDisplay) ?? _startupClassMap[noSuffix];
             if (found) {
                 return found;
             }
@@ -499,7 +588,7 @@ Singleton {
         if (tokens.length > 0) {
             let bestEntry = null;
             let bestScore = 0;
-            for (const [key, mapEntry] of Object.entries(_desktopIdStemMap)) {
+            for (const [key, mapEntry] of Object.entries(_desktopFoldedIdMap)) {
                 const keyTokens = key.replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/);
                 let overlap = 0;
                 for (const t of tokens) {
