@@ -115,7 +115,7 @@ Singleton {
         const cmd = (Config.options?.apps?.update ?? "").trim()
         const oldStageDefault = "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'"
         if (cmd === oldStageDefault) {
-            ShellExec.execCmd("if [ \"$(ryoku-host pkgmgr 2>/dev/null)\" = dnf ]; then " +
+            ShellExec.execCmd("if [ \"$(ryoku-host pkgmgr 2>/dev/null)\" != pacman ]; then " +
                 "kitty -1 --hold=yes fish -i -c 'ryoku update --system'; else exec " + cmd + "; fi")
             return
         }

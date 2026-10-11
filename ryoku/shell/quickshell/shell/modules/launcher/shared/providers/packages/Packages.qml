@@ -217,7 +217,7 @@ Provider {
         property string out: ""
         command: ["/usr/bin/bash", "-c",
             "manager=$(ryoku-host pkgmgr 2>/dev/null); " +
-            "if [ \"$manager\" = dnf ]; then manager=dnf; else manager=pacman,aur; fi; " +
+            "case \"$manager\" in dnf|xbps) ;; pacman) manager=pacman,aur ;; *) exit 0 ;; esac; " +
             "exec gpk search \"$1\" --json --limit 30 --manager \"$manager\"",
             "gpk-fast-search", term]
         stdout: SplitParser {

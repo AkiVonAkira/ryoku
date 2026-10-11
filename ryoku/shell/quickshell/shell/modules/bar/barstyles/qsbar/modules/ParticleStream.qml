@@ -1043,8 +1043,9 @@ Item {
         id: pacTail
         running: root.active && root.reactorMode7 && root.ownsGlobalHelpers7
         command: ["bash", "-c",
-            "if [ \"$(ryoku-host pkgmgr 2>/dev/null)\" = dnf ]; then " +
-            "echo 'ParticleStream: DNF has no streamable transaction log; package-change animation disabled' >&2; exec sleep infinity; fi; " +
+            "manager=$(ryoku-host pkgmgr 2>/dev/null); " +
+            "if [ \"$manager\" != pacman ]; then " +
+            "echo 'ParticleStream: native package log has no supported event stream; package-change animation disabled' >&2; exec sleep infinity; fi; " +
             "exec tail -n 0 -F /var/log/pacman.log 2>/dev/null"]
         property int pkgN: 0
         onRunningChanged: if (!running) pkgN = 0
