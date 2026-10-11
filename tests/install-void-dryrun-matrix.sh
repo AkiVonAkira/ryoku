@@ -168,8 +168,14 @@ run_case() {
     grep -q 'rd.luks.uuid=' "$out"
   fi
   if [[ $firmware == bios ]]; then
+    grep -q 'mkpart BIOSBOOT .*MiB .*MiB' "$out"
     grep -q 'bios_grub on' "$out"
+    grep -q 'mkfs.vfat -F32 -n BOOT /dev/vda1' "$out"
+    grep -q 'mount /dev/vda1 /mnt/boot' "$out"
+    grep -q '/etc/kernel.d/post-install/50-ryoku-limine' "$out"
+    grep -q 'limine-bios.sys /mnt/boot/limine/limine-bios.sys' "$out"
     grep -q 'limine bios-install /dev/vda 2' "$out"
+    ! grep -q 'efibootmgr --create' "$out"
   else
     grep -q 'EFI/BOOT/BOOTX64.EFI' "$out"
   fi
@@ -182,6 +188,26 @@ run_case whole-online whole vm no uefi shared 1
 run_case whole-no-snapshots whole vm no uefi shared 0 0
 run_case alongside-shared alongside vm no uefi shared
 run_case alongside-dedicated alongside amd-nvidia yes uefi dedicated
+
+bios_alongside_out=$tmp/alongside-bios-refused.out
+if env \
+  RYOKU_DRYRUN=1 \
+  RYOKU_DISK=/dev/vda \
+  RYOKU_PASSWORD_HASH=x \
+  RYOKU_DISK_STRATEGY=alongside \
+  RYOKU_PROFILE=vm \
+  RYOKU_REPO="$repo" \
+  RYOKU_COMPOSITOR=niri \
+  RYOKU_COMPOSITOR_CONFIG_DIR=niri \
+  RYOKU_FIRMWARE_MODE=bios \
+  RYOKU_ESP_MODE=shared \
+  "$backend" >"$bios_alongside_out" 2>&1; then
+  fail 'legacy BIOS accepted an alongside install'
+fi
+grep -q 'legacy BIOS supports whole-disk installation only' "$bios_alongside_out" \
+  || fail 'legacy BIOS alongside refusal did not explain the whole-disk requirement'
+! grep -q '^@@RYOKU_STEP ' "$bios_alongside_out" \
+  || fail 'legacy BIOS alongside refusal reached an install stage'
 
 mkdir -p "$tmp/bin"
 cat >"$tmp/bin/xbps-query" <<'EOF'

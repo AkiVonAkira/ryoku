@@ -3,6 +3,15 @@
 ## Unreleased
 
 ### Fixed
+- **The Void installer now accepts legacy BIOS whole-disk installs.** Its
+  hardware card explains the destructive whole-disk requirement, the strategy
+  picker leaves alongside visible but disabled because it needs UEFI and GPT,
+  and Review names the detected firmware mode. Arch and CachyOS remain
+  UEFI-only.
+- **The Void welcome notice matches the packages that ship.** It no longer
+  reports gpk or the Ryoku Oh My Zsh theme as unavailable, identifies the
+  remaining repository gaps, and marks the edition as experimental. Wayfire is
+  also marked experimental in the window-manager picker.
 - **Void installs now include the snapshot safety net.** The snapshot layout is
   offered and enabled by default, and the completion card points to Limine
   rollback just like Arch.

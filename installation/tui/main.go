@@ -571,13 +571,13 @@ func stepsForVariant(variant string) []step {
 		all = append([]step{{
 			key: "void-notice", title: i18n.T("Ryoku on Void"), kind: kNotice,
 			desc: []string{
+				i18n.T("This Void edition is experimental."),
 				i18n.T("This edition runs niri only."),
 				i18n.T("Hyprland needs GCC 15; Void ships GCC 14."),
-				i18n.T("Update the base system with ryoku update --system so it is snapshotted; XBPS has no update hooks."),
+				i18n.T("Use ryoku update --system for base-system updates."),
+				i18n.T("XBPS has no update hooks; this keeps updates snapshotted."),
 				i18n.T("Zen Browser, LocalSend and Voxtype are AUR-only."),
-				i18n.T("Also unavailable: asusctl, adw-gtk-theme and gpk."),
-				i18n.T("The oh-my-zsh theme is unavailable too."),
-				i18n.T("Everything else works the same."),
+				i18n.T("asusctl and adw-gtk-theme are unavailable."),
 			},
 		}}, all...)
 	}
@@ -661,6 +661,28 @@ func diskStrategiesFor(dl diskLayout) []item {
 	return []item{along, whole}
 }
 
+// diskStrategyChoices keeps the unsupported alongside path visible on a Void
+// BIOS boot, but leaves whole-disk as the only selectable strategy.
+func (m model) diskStrategyChoices(dl diskLayout) ([]item, map[string]bool) {
+	if m.hwBIOS && isVoidVariant(m.variant) {
+		whole := item{"whole", i18n.T("Use the whole disk"), i18n.T("blank disk · auto-layout")}
+		if len(dl.parts) > 0 {
+			whole = item{"whole", i18n.T("Erase whole disk"), i18n.T("wipe & auto-layout")}
+		}
+		alongside := item{
+			"alongside",
+			i18n.T("Install alongside (keep existing OS)"),
+			i18n.T("unavailable: needs UEFI and GPT"),
+		}
+		return []item{whole, alongside}, map[string]bool{"alongside": true}
+	}
+	items := diskStrategiesFor(dl)
+	if alongsideBlockReason(dl) != "" {
+		return items, map[string]bool{"alongside": true}
+	}
+	return items, nil
+}
+
 // alongsideBlockReason is why alongside cannot run on dl at all, or "" when it
 // can. It mirrors the layout step's hard blocks (a GPT disk with a usable EFI
 // system partition) so the strategy list can dim the option with its cause
@@ -714,7 +736,7 @@ func compositors() []item {
 	return []item{
 		{wm.ProviderHyprland, "Hyprland", i18n.T("dynamic tiling, the Ryoku default")},
 		{wm.ProviderNiri, "niri", i18n.T("scrollable tiling")},
-		{wm.ProviderWayfire, "Wayfire", i18n.T("floating windows, the depth deck")},
+		{wm.ProviderWayfire, "Wayfire", i18n.T("experimental floating windows and depth deck")},
 	}
 }
 
@@ -836,7 +858,7 @@ type model struct {
 
 	hwOK         bool   // hardware detected & classified
 	hwHybrid     bool   // hybrid iGPU+dGPU present → ask GPU mode
-	hwBIOS       bool   // legacy BIOS boot → hard-block past the hardware step (backend is UEFI-only)
+	hwBIOS       bool   // legacy BIOS boot; Void supports whole-disk BIOS installs
 	hwSecureBoot bool   // Secure Boot on → block Review (Limine is unsigned)
 	diskHint     string // set when no installable disk was found (VMD / generic message)
 	doneSel      int    // reboot / poweroff / shell
@@ -998,14 +1020,11 @@ func (m *model) loadStep() {
 		items := s.items
 		var disabled map[string]bool
 		if s.key == "disk" {
-			// strategies depend on what is actually on the picked disk; the static
-			// step list was built before any disk was chosen. A hard-blocked
-			// alongside is offered dimmed and non-committable, with its cause inline.
+			// Strategies depend on what is actually on the picked disk; the static
+			// step list was built before any disk was chosen. Hard-blocked choices
+			// remain visible and name their reason inline.
 			dl := sysDiskLayout(m.diskDev)
-			items = diskStrategiesFor(dl)
-			if alongsideBlockReason(dl) != "" {
-				disabled = map[string]bool{"alongside": true}
-			}
+			items, disabled = m.diskStrategyChoices(dl)
 		}
 		if s.key == "compositor" && isVoidVariant(m.variant) {
 			disabled = map[string]bool{wm.ProviderHyprland: true}
@@ -1544,7 +1563,7 @@ func (m model) onKey(k string) (tea.Model, tea.Cmd) {
 	case kPartition:
 		m.partKey(k)
 	case kInfo:
-		if k == "enter" && !m.hwBIOS { // BIOS is a hard block: no UEFI, no install
+		if k == "enter" && !m.biosBlocked() {
 			m.advance()
 		}
 	}
@@ -2009,6 +2028,9 @@ func (m model) partBlockReason() string {
 	case "whole":
 		return ""
 	case "alongside":
+		if m.hwBIOS && isVoidVariant(m.variant) {
+			return i18n.T("Legacy BIOS supports whole-disk installation only; press esc and choose 'Erase whole disk'.")
+		}
 		if !m.gpt {
 			// The backend's alongside path is GPT-only (it appends a partition and
 			// reads GPT partlabels); an MBR disk with free space would pass the TUI
@@ -3201,6 +3223,8 @@ func (m model) infoBody(inner int) string {
 	if g := m.hwGateLines(); len(g) > 0 {
 		lines = append(lines, "")
 		lines = append(lines, g...)
+	}
+	if m.biosBlocked() || m.hwSecureBoot {
 		lines = append(lines, "", fg(cDim, i18n.T("resolve the above in firmware, then reboot · esc to go back")))
 	} else {
 		lines = append(lines, "", fg(cDim, i18n.T("enter to continue, esc to go back")))
@@ -3208,26 +3232,40 @@ func (m model) infoBody(inner int) string {
 	return strings.Join(lines, "\n")
 }
 
-// fwCell colors the firmware summary red when the machine booted in BIOS mode (a
-// hard block), green for UEFI.
+// fwCell marks a supported Void BIOS path as a caution and an unsupported BIOS
+// path as a hard stop. UEFI remains the normal path.
 func (m model) fwCell() string {
 	if m.hwBIOS {
+		if isVoidVariant(m.variant) {
+			return fg(cYell, m.hwFW)
+		}
 		return fg(cRed, m.hwFW)
 	}
 	return fg(cGreen, m.hwFW)
 }
 
-// hwGateLines are the hard-stop firmware warnings shown on the hardware card and
-// enforced elsewhere: BIOS boot (backend is UEFI-only, blocks the hardware step)
-// and Secure Boot (Limine is unsigned, blocks Review). Empty when firmware is OK.
+func (m model) biosBlocked() bool {
+	return m.hwBIOS && !isVoidVariant(m.variant)
+}
+
+// hwGateLines explains firmware constraints. Arch and CachyOS still reject
+// legacy BIOS. Void accepts it only when the installer owns the whole disk.
 func (m model) hwGateLines() []string {
 	var out []string
 	if m.hwBIOS {
-		out = append(out,
-			bold(cRed, i18n.T("⚠ Booted in BIOS / legacy mode -- Ryoku installs UEFI-only.")),
-			fg(cText, i18n.T("  Reboot, enter firmware setup, disable CSM / Legacy boot and")),
-			fg(cText, i18n.T("  enable UEFI boot mode, then start the installer again.")),
-		)
+		if isVoidVariant(m.variant) {
+			out = append(out,
+				bold(cYell, i18n.T("⚠ Legacy BIOS mode detected.")),
+				fg(cText, i18n.T("  Void BIOS installs use the whole disk.")),
+				fg(cText, i18n.T("  Alongside installs need UEFI and GPT.")),
+			)
+		} else {
+			out = append(out,
+				bold(cRed, i18n.T("⚠ Booted in BIOS / legacy mode -- Ryoku installs UEFI-only.")),
+				fg(cText, i18n.T("  Reboot, enter firmware setup, disable CSM / Legacy boot and")),
+				fg(cText, i18n.T("  enable UEFI boot mode, then start the installer again.")),
+			)
+		}
 	}
 	if m.hwSecureBoot {
 		out = append(out,
@@ -3393,11 +3431,16 @@ func (m model) reviewBody(w int) string {
 	default:
 		stratCell = bold(cRed, i18n.T("unset (refused)"))
 	}
+	firmware := "UEFI"
+	if m.hwBIOS {
+		firmware = i18n.T("Legacy BIOS")
+	}
 	lines := []string{
 		bold(cBrand, i18n.T("Review, then confirm to install")), "",
 		fg(cRed, i18n.Tf("⚠ this writes the layout below to %s", m.diskDev)), "",
 		row(i18n.T("keyboard"), m.picks["keyboard"]), row(i18n.T("locale"), m.picks["locale"]),
 		row(i18n.T("time zone"), m.picks["timezone"]), row(i18n.T("profile"), m.picks["profile"]),
+		row(i18n.T("firmware"), firmware),
 		row(i18n.T("wm"), compositorLabel(m.picks["compositor"])), row(i18n.T("browser"), browserLabel(m.picks["browser"])),
 		row(i18n.T("shell"), loginShellLabel(m.picks["login-shell"])), row(i18n.T("apps"), m.appsReviewCell()),
 		row(i18n.T("disk"), m.diskDev),
@@ -3651,7 +3694,7 @@ func (m model) footer() string {
 	case s.kind == kApps:
 		parts = []string{keyHint("↑↓", i18n.T("move")), keyHint("space", i18n.T("keep/remove")), keyHint("a", i18n.T("reset")), keyHint("tab", i18n.T("done")), keyHint("esc", i18n.T("back")), keyHint("q", i18n.T("quit"))}
 	case s.kind == kInfo:
-		if m.hwBIOS { // BIOS is a hard block; there is no "continue" to offer
+		if m.biosBlocked() {
 			parts = []string{keyHint("esc", i18n.T("back")), keyHint("q", i18n.T("quit"))}
 		} else {
 			parts = []string{keyHint("enter", i18n.T("continue")), keyHint("esc", i18n.T("back")), keyHint("?", i18n.T("help")), keyHint("q", i18n.T("quit"))}

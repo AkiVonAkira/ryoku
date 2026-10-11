@@ -35,16 +35,21 @@ LIVE_PROMPT_RE = rf"(?m)^{LIVE_CSI_PREFIX}RYOKU_LIVE# $"
 LIVE_SYNC_RE = rf"(?m)^{LIVE_CSI_PREFIX}RYOKU_SYNC_42\r*$"
 
 
-def qemu_command(work, iso=None):
-    vars_copy = os.path.join(work, "OVMF_VARS.fd")
-    if not os.path.exists(vars_copy):
-        shutil.copy2(OVMF_VARS, vars_copy)
-    accel = ["-enable-kvm", "-cpu", "host"] if os.path.exists("/dev/kvm") else ["-cpu", "max"]
-    command = [
-        "qemu-system-x86_64", "-machine", "q35", *accel,
+def qemu_command(work, iso=None, bios=False):
+    accel = (["-enable-kvm", "-cpu", "host"]
+             if os.path.exists("/dev/kvm") else ["-cpu", "max"])
+    command = ["qemu-system-x86_64", "-machine", "q35"]
+    if not bios:
+        vars_copy = os.path.join(work, "OVMF_VARS.fd")
+        if not os.path.exists(vars_copy):
+            shutil.copy2(OVMF_VARS, vars_copy)
+        command += [
+            "-drive", f"if=pflash,format=raw,readonly=on,file={OVMF_CODE}",
+            "-drive", f"if=pflash,format=raw,file={vars_copy}",
+        ]
+    command += [
+        *accel,
         "-m", "4096", "-smp", "4",
-        "-drive", f"if=pflash,format=raw,readonly=on,file={OVMF_CODE}",
-        "-drive", f"if=pflash,format=raw,file={vars_copy}",
         "-drive", f"file={os.path.join(work, 'target.qcow2')},if=virtio,format=qcow2",
         "-netdev", "user,id=n0", "-device", "virtio-net-pci,netdev=n0",
         "-nographic",
@@ -128,9 +133,11 @@ def main():
                         help="backend timeout in seconds (default: 3600)")
     parser.add_argument("--boot-timeout", type=int, default=600,
                         help="installed boot timeout in seconds (default: 600)")
+    parser.add_argument("--bios", action="store_true",
+                        help="boot the live and installed systems with SeaBIOS")
     args = parser.parse_args()
 
-    if not OVMF_CODE or not OVMF_VARS:
+    if not args.bios and (not OVMF_CODE or not OVMF_VARS):
         parser.error("OVMF firmware was not found")
     for command in ("qemu-system-x86_64", "qemu-img", "openssl"):
         if not shutil.which(command):
@@ -149,7 +156,7 @@ def main():
         ["openssl", "passwd", "-6", "test"], text=True).strip()
     log_path = os.path.join(work, "serial.log")
 
-    child = spawn(qemu_command(work, args.iso), args.timeout, log_path, "w")
+    child = spawn(qemu_command(work, args.iso, args.bios), args.timeout, log_path, "w")
     try:
         reach_live_root(child)
         child.sendline(
@@ -194,7 +201,7 @@ def main():
         return 1
 
     boot_log = os.path.join(work, "installed-serial.log")
-    installed = spawn(qemu_command(work), args.boot_timeout, boot_log, "w")
+    installed = spawn(qemu_command(work, bios=args.bios), args.boot_timeout, boot_log, "w")
     try:
         installed.expect(r"(?m)^ryoku-test login: ?$", timeout=args.boot_timeout)
         print("install-vm-void: installed Void system reached the serial login prompt")

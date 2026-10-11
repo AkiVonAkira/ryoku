@@ -76,19 +76,29 @@ func TestVoidNoticeFollowsWelcome(t *testing.T) {
 	}
 
 	notice := stepByKey(t, voidFlow, "void-notice")
-	const updateNotice = "Update the base system with ryoku update --system so it is snapshotted; XBPS has no update hooks."
-	if !strings.Contains(strings.Join(notice.desc, "\n"), updateNotice) {
-		t.Fatalf("Void notice text does not contain %q: %v", updateNotice, notice.desc)
+	text := strings.Join(notice.desc, "\n")
+	for _, want := range []string{
+		"This Void edition is experimental.",
+		"Use ryoku update --system for base-system updates.",
+		"XBPS has no update hooks; this keeps updates snapshotted.",
+		"Zen Browser, LocalSend and Voxtype are AUR-only.",
+		"asusctl and adw-gtk-theme are unavailable.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("Void notice text does not contain %q: %v", want, notice.desc)
+		}
+	}
+	for _, shipped := range []string{"gpk", "oh-my-zsh", "dualsensectl", "ryotunes"} {
+		if strings.Contains(strings.ToLower(text), shipped) {
+			t.Fatalf("Void notice still lists shipped package %q as unavailable: %v", shipped, notice.desc)
+		}
 	}
 	m := model{variant: variantVoid, flow: voidFlow, w: 112, h: 42, state: "wizard", enterPos: 1}
 	rendered := strings.ToLower(stripSGR(m.viewWizard()))
-	for _, want := range []string{"niri", "ryoku update --system", "snapshotted", "xbps has no update hooks", "aur-only"} {
+	for _, want := range []string{"experimental", "niri", "ryoku update --system", "snapshotted", "xbps has no update hooks", "aur-only"} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("Void notice is missing %q:\n%s", want, rendered)
 		}
-	}
-	if strings.Contains(rendered, "no snapshots") {
-		t.Fatalf("Void notice still says snapshots are unavailable:\n%s", rendered)
 	}
 	m.back()
 	if m.state != "welcome" {
@@ -98,6 +108,68 @@ func TestVoidNoticeFollowsWelcome(t *testing.T) {
 	m.advance()
 	if got := m.cur().key; got != defaultKeys[0] {
 		t.Fatalf("continue from Void notice entered %q, want %q", got, defaultKeys[0])
+	}
+}
+
+func TestFirmwareGateKeepsArchBlockedAndAllowsVoidWholeDisk(t *testing.T) {
+	hardwareStep := func(variant string) model {
+		flow := stepsForVariant(variant)
+		return model{
+			variant: variant,
+			flow:    flow,
+			idx:     flowIndex(flow, "hardware"),
+			state:   "wizard",
+			hwBIOS:  true,
+			picks:   map[string]string{},
+		}
+	}
+
+	arch := hardwareStep("plain")
+	next, _ := arch.onKey("enter")
+	if got := next.(model); got.idx != arch.idx {
+		t.Fatalf("Arch BIOS advanced from hardware step %d to %d", arch.idx, got.idx)
+	}
+
+	void := hardwareStep(variantVoid)
+	next, _ = void.onKey("enter")
+	if got := next.(model); got.idx <= void.idx {
+		t.Fatalf("Void BIOS did not advance from hardware step %d", void.idx)
+	}
+	body := stripSGR(void.infoBody(100))
+	for _, want := range []string{"Legacy BIOS mode detected", "whole disk", "Alongside installs need UEFI and GPT"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("Void BIOS hardware note is missing %q:\n%s", want, body)
+		}
+	}
+
+	choices, disabled := void.diskStrategyChoices(diskLayout{
+		parts: []part{{dev: "/dev/vda1", size: 20}},
+		gpt:   true,
+	})
+	if len(choices) != 2 || choices[0].key != "whole" || choices[1].key != "alongside" {
+		t.Fatalf("Void BIOS strategy choices = %+v, want whole then visible alongside", choices)
+	}
+	if disabled["whole"] || !disabled["alongside"] {
+		t.Fatalf("Void BIOS disabled strategies = %v, want only alongside disabled", disabled)
+	}
+	if !strings.Contains(choices[1].hint, "needs UEFI and GPT") {
+		t.Fatalf("Void BIOS alongside reason = %q", choices[1].hint)
+	}
+	if env := void.installEnv(); !envHas(env, "RYOKU_FIRMWARE_MODE=bios") {
+		t.Fatalf("Void BIOS firmware mode did not reach backend env: %v", env)
+	}
+	for _, value := range arch.installEnv() {
+		if strings.HasPrefix(value, "RYOKU_FIRMWARE_MODE=") {
+			t.Fatalf("Arch firmware handoff changed: %q", value)
+		}
+	}
+}
+
+func TestReviewShowsFirmwareMode(t *testing.T) {
+	m := reviewModel()
+	m.variant, m.hwBIOS = variantVoid, true
+	if body := stripSGR(m.reviewBody(100)); !strings.Contains(body, "firmware") || !strings.Contains(body, "Legacy BIOS") {
+		t.Fatalf("Review does not show legacy BIOS mode:\n%s", body)
 	}
 }
 

@@ -812,7 +812,7 @@ func detectHardware() hwInfo {
 	if _, err := os.Stat("/sys/firmware/efi"); err == nil {
 		h.fw = "UEFI"
 	} else {
-		h.fw, h.bios = "BIOS", true // backend is UEFI-only; the TUI hard-blocks BIOS boot
+		h.fw, h.bios = "BIOS", true // Void accepts whole-disk BIOS installs; other variants block in the TUI
 	}
 	if isVM {
 		h.fw += i18n.T(" · virtual machine")
@@ -1158,6 +1158,16 @@ func (m model) installEnv() []string {
 		"RYOKU_SUBVOL_BACKUPS=" + b(m.backups),
 		// package source (RYOKU_ONLINE / RYOKU_OFFLINE_REPO) is appended after the
 		// literal, since it depends on whether this ISO baked an offline repo.
+	}
+	if isVoidVariant(m.variant) {
+		firmware := "uefi"
+		if m.hwBIOS {
+			firmware = "bios"
+		}
+		// The Void backend normally derives this from the same sysfs path. Send
+		// the detected value so an inherited override cannot disagree with the
+		// hardware card and select the wrong bootloader path.
+		env = append(env, "RYOKU_FIRMWARE_MODE="+firmware)
 	}
 	if path, ok := offlineRepo(m.variant); ok {
 		// An offline ISO carries the complete package closure. The marker differs
