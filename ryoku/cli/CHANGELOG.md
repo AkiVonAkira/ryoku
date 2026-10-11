@@ -144,6 +144,9 @@
   `internal/sys/release.go`, `internal/updater/release.go`).
 
 ### Fixed
+- **Public source, recovery, issue, and plugin links use the canonical
+  `ryoku-dev/ryoku` repository.** Existing source checkouts whose origin still
+  uses the retired `ryoku-arch` name remain valid.
 - **Doctor now converges `shell.json` frame bars in one pass.** The reconciler
   accepts the live versioned frame-bar schema, preserves every effective rail
   and menu value, and no longer creates the retired nested dock store that the
