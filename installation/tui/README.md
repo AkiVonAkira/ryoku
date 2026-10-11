@@ -61,9 +61,12 @@ streamed output drives the install screen and its staged rows.
 The TUI refuses to hand a layout to the backend that the backend would reject or
 that would destroy data unintentionally:
 
-- **BIOS is a hard block.** `detectHardware` sets `hwBIOS` when `/sys/firmware/efi`
-  is absent; the hardware step then will not advance (the backend is UEFI-only).
-  The card shows the "disable CSM / enable UEFI" guidance.
+- **Legacy BIOS depends on the edition.** `detectHardware` sets `hwBIOS` when
+  `/sys/firmware/efi` is absent. On Arch and CachyOS the hardware step will not
+  advance (their backend is UEFI-only) and the card shows the "disable CSM /
+  enable UEFI" guidance. The Void backend installs Limine for BIOS on a whole
+  disk, so on Void the card shows a caution, the disk step offers only the
+  whole-disk strategy, and `installEnv` passes `RYOKU_FIRMWARE_MODE=bios`.
 - **Secure Boot blocks Review.** `secureBootEnabled` reads the last byte of the
   `SecureBoot` efivar; when it is on, `reviewBlockReason` blocks the install
   (Limine is unsigned). Mirrors the backend's preflight gate.
