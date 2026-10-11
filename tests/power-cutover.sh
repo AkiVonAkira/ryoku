@@ -25,6 +25,10 @@ if [[ ${1:-} == init ]]; then
   printf '%s\n' "${RYOKU_TEST_INIT:-systemd}"
   exit 0
 fi
+if [[ ${1:-} == pkgmgr ]]; then
+  printf '%s\n' "${RYOKU_TEST_PKGMGR:-pacman}"
+  exit 0
+fi
 [[ ${RYOKU_TEST_INIT:-systemd} == runit ]]
 printf 'ryoku-host %s\n' "$*" >>"$RUNIT_LOG"
 state=${RUNIT_STATE:?}
@@ -100,6 +104,63 @@ esac
 EOF
 chmod +x "$tmp/ryoku-host"
 export RYOKU_HOST_BIN="$tmp/ryoku-host"
+
+test_deferred_transaction_wait() {
+  local manager=$1
+  local busy=$tmp/transaction-$manager
+  rm -rf "$busy" "$tmp/deferred-$manager" "$tmp/deferred-marker"
+  case "$manager" in
+    pacman|xbps) : >"$busy" ;;
+    dnf)
+      mkdir -p "$busy"
+      printf 'dnf5\n' >"$busy/comm"
+      ;;
+  esac
+  RYOKU_TEST_PKGMGR="$manager" \
+    RYOKU_PACMAN_DB_LOCK="$busy" RYOKU_XBPS_DB_LOCK="$busy" \
+    RYOKU_PROC_ROOT="$tmp/transaction-proc-$manager" \
+    RYOKU_CUTOVER_MARKER="$tmp/deferred-marker" \
+    RYOKU_PACKAGE_WAIT_ATTEMPTS=100 RYOKU_PACKAGE_WAIT_DELAY=0.01 \
+    RYOKU_DEFERRED_PROOF="$tmp/deferred-$manager" \
+    RYOKU_DEFERRED_BUSY="$busy" \
+    bash -c '
+      set -euo pipefail
+      source "$1"
+      manager=$2
+      case "$manager" in
+        dnf)
+          mkdir -p "$RYOKU_PROC_ROOT/42"
+          cp "$RYOKU_DEFERRED_BUSY/comm" "$RYOKU_PROC_ROOT/42/comm"
+          released="$RYOKU_PROC_ROOT/42"
+          ;;
+        xbps)
+          exec 9<>"$RYOKU_DEFERRED_BUSY"
+          flock 9
+          ;;
+        *) released="$RYOKU_DEFERRED_BUSY" ;;
+      esac
+      root_cutover() {
+        if package_transaction_busy "$manager"; then
+          echo "cutover ran while $manager was busy" >&2
+          return 91
+        fi
+        : >"$RYOKU_DEFERRED_PROOF"
+      }
+      if [[ $manager == xbps ]]; then
+        (sleep 0.08; flock -u 9) &
+      else
+        (sleep 0.08; rm -rf "$released") &
+      fi
+      finish_deferred_cutover "$manager"
+      wait
+    ' _ "$helper" "$manager"
+  [[ -e $tmp/deferred-$manager ]] \
+    || fail "$manager deferred cutover did not run after its transaction released"
+}
+
+for manager in pacman dnf xbps; do
+  test_deferred_transaction_wait "$manager"
+done
 
 mkdir -p "$tmp/session-bin" "$tmp/provider-bin" "$tmp/runtime"/{1001,1002,1003,1004,1005,1006}
 python3 - \

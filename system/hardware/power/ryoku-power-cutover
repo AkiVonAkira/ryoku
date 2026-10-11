@@ -6,7 +6,7 @@
 set -euo pipefail
 
 guard_unit=ryoku-power-cutover-guard.service
-cutover_marker=/var/lib/ryoku/power-cutover-hook-active
+cutover_marker=${RYOKU_CUTOVER_MARKER:-/var/lib/ryoku/power-cutover-hook-active}
 runtime_root=${RYOKU_CUTOVER_RUNTIME_ROOT:-/run/user}
 qylock_installer="${RYOKU_QYLOCK_INSTALLER:-}"
 cgroup_root=${RYOKU_CGROUP_ROOT:-/sys/fs/cgroup}
@@ -1496,19 +1496,62 @@ root_cutover() {
   fi
 }
 
+package_transaction_busy() {
+  local manager=$1 proc comm lock
+  case "$manager" in
+    pacman)
+      [[ -e ${RYOKU_PACMAN_DB_LOCK:-/var/lib/pacman/db.lck} ]]
+      ;;
+    xbps)
+      lock=${RYOKU_XBPS_DB_LOCK:-/var/db/xbps/lock}
+      [[ -e $lock ]] || return 1
+      # XBPS keeps this inode after a transaction and protects it with flock,
+      # so existence alone would make every deferred cutover wait forever.
+      ! flock -n "$lock" true
+      ;;
+    dnf)
+      for proc in "${RYOKU_PROC_ROOT:-/proc}"/[0-9]*; do
+        [[ -r $proc/comm ]] || continue
+        read -r comm <"$proc/comm" || continue
+        case "$comm" in dnf|dnf5|rpm) return 0 ;; esac
+      done
+      return 1
+      ;;
+  esac
+}
+
+wait_for_package_transaction() {
+  local manager=$1
+  local attempts=${RYOKU_PACKAGE_WAIT_ATTEMPTS:-1200}
+  local delay=${RYOKU_PACKAGE_WAIT_DELAY:-0.5}
+  for (( i=0; i<attempts; i++ )); do
+    package_transaction_busy "$manager" || return 0
+    sleep "$delay"
+  done
+  log "$manager transaction did not release its package database" >&2
+  return 1
+}
+
+finish_deferred_cutover() {
+  local manager=$1
+  wait_for_package_transaction "$manager"
+  if [[ ! -e $cutover_marker ]]; then
+    root_cutover
+  fi
+}
+
 deferred_cutover() {
   (( EUID == 0 )) || { log "deferred cutover must run as root" >&2; return 1; }
-  for _ in {1..1200}; do
-    if [[ ! -e /var/lib/pacman/db.lck ]]; then
-      if [[ ! -e $cutover_marker ]]; then
-        root_cutover
-      fi
-      return
-    fi
-    sleep 0.5
-  done
-  log "pacman transaction did not release its database lock" >&2
-  return 1
+  local manager
+  manager="$("$host_bin" pkgmgr)" || {
+    log "cannot identify the package manager for deferred cutover" >&2
+    return 1
+  }
+  case "$manager" in pacman|dnf|xbps) ;; *)
+    log "unsupported package manager for deferred cutover: $manager" >&2
+    return 1
+  esac
+  finish_deferred_cutover "$manager"
 }
 
 process_alive() {
