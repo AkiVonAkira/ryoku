@@ -21,10 +21,10 @@ Item {
     signal editConsole(string id)
 
     readonly property var kinds: [
-        { key: "serial", name: I18n.tr("Serial"), jp: "直列", hint: I18n.tr("console cable over /dev/ttyUSB*"), tool: "picocom", pkg: "pacman -S picocom" },
-        { key: "telnet", name: I18n.tr("Telnet"), jp: "端末", hint: I18n.tr("legacy network consoles (plaintext)"), tool: "telnet", pkg: "pacman -S inetutils" },
-        { key: "rdp", name: I18n.tr("RDP"), jp: "遠隔", hint: I18n.tr("Windows remote desktop"), tool: "xfreerdp", pkg: "pacman -S freerdp" },
-        { key: "vnc", name: I18n.tr("VNC"), jp: "画面", hint: I18n.tr("VNC screens on any port"), tool: "vncviewer", pkg: "pacman -S tigervnc" }
+        { key: "serial", name: I18n.tr("Serial"), jp: "直列", hint: I18n.tr("console cable over /dev/ttyUSB*"), tool: "picocom" },
+        { key: "telnet", name: I18n.tr("Telnet"), jp: "端末", hint: I18n.tr("legacy network consoles (plaintext)"), tool: "telnet" },
+        { key: "rdp", name: I18n.tr("RDP"), jp: "遠隔", hint: I18n.tr("Windows remote desktop"), tool: "xfreerdp" },
+        { key: "vnc", name: I18n.tr("VNC"), jp: "画面", hint: I18n.tr("VNC screens on any port"), tool: "vncviewer" }
     ]
     readonly property var selected: {
         void Remotes.consolesRev;
@@ -384,7 +384,7 @@ Item {
                                 Text {
                                     text: Remotes.consoleCaps[proto.modelData.key]
                                         ? proto.modelData.tool
-                                        : proto.modelData.pkg
+                                        : (Remotes.consoleAdvice[proto.modelData.key] || I18n.tr("Install the client package"))
                                     color: Tokens.inkFaint
                                     font.family: Tokens.mono; font.pixelSize: 9
                                 }

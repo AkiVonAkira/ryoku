@@ -13,9 +13,16 @@ set -euo pipefail
 }
 
 # Pacman keeps its full-sync transaction so installing against stale databases
-# cannot create a partial upgrade. Fedora installs the newest available RPMs;
-# unlike `dnf upgrade`, this also installs bundle packages that are not present.
-if [[ $(ryoku-host pkgmgr 2>/dev/null) == dnf ]]; then
-  exec sudo ryoku-host pkg install "$@"
+# cannot create a partial upgrade. Other managers install translated catalogue
+# packages through the host seam. `--needed` is pacman spelling; the native
+# host implementations already skip packages that are present.
+manager=$(ryoku-host pkgmgr 2>/dev/null || true)
+if [[ -n $manager && $manager != pacman ]]; then
+  packages=()
+  for arg in "$@"; do
+    [[ $arg == --needed ]] || packages+=("$arg")
+  done
+  ((${#packages[@]})) || exit 0
+  exec sudo ryoku-host pkg install "${packages[@]}"
 fi
 exec sudo pacman -Syu --needed --noconfirm "$@"

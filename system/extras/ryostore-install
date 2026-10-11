@@ -74,19 +74,20 @@ report_dir() {
 # --- detection (one implementation, used by status and the install path) ------
 
 PKGMGR=$(ryoku-host pkgmgr 2>/dev/null || true)
+[[ -n $PKGMGR ]] || PKGMGR=pacman
 
-# Pacman can snapshot its full installed set cheaply. Fedora stays on the live
-# host seam so catalogue names are translated before probing.
+# Pacman can snapshot its full installed set cheaply. Other managers stay on
+# the live host seam so catalogue names are translated before probing.
 declare -A PKGSET
 PKGSET_LOADED=0
 load_pkgset() {
   local n
-  [[ $PKGMGR == dnf ]] && return 0
+  [[ $PKGMGR != pacman ]] && return 0
   while IFS= read -r n; do [[ -n $n ]] && PKGSET[$n]=1; done < <(pacman -Qq 2>/dev/null)
   PKGSET_LOADED=1
 }
 pkg_installed() {
-  if [[ $PKGMGR == dnf ]]; then
+  if [[ $PKGMGR != pacman ]]; then
     ryoku-host pkg installed "$1" >/dev/null 2>&1
   elif (( PKGSET_LOADED )); then
     [[ -n ${PKGSET[$1]:-} ]]
@@ -95,7 +96,7 @@ pkg_installed() {
   fi
 }
 pkg_official() {
-  if [[ $PKGMGR == dnf ]]; then
+  if [[ $PKGMGR != pacman ]]; then
     ryoku-host pkg available "$1" >/dev/null 2>&1
   else
     pacman -Si "$1" >/dev/null 2>&1
@@ -106,10 +107,10 @@ pkg_why() {
 }
 cmd_present() { command -v "$1" >/dev/null 2>&1; }
 
-# Pacman resolves virtual providers to their concrete installed owners. Fedora
-# removes the catalogue name through its package translation table.
+# Pacman resolves virtual providers to their concrete installed owners. Other
+# managers remove the catalogue name through the package translation table.
 pkg_owners() {
-  if [[ $PKGMGR == dnf ]]; then
+  if [[ $PKGMGR != pacman ]]; then
     pkg_installed "$1" && printf '%s\n' "$1"
   else
     pacman -Qq "$1" 2>/dev/null
@@ -310,7 +311,7 @@ install_set() {
           set_state "$name" present
         elif pkg_official "$name"; then
           repo+=("$name")
-        elif [[ $PKGMGR == dnf ]]; then
+        elif [[ $PKGMGR != pacman ]]; then
           reason=$(pkg_why "$name")
           set_state "$name" failed "${reason:-not available on this host}"
         else

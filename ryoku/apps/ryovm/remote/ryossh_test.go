@@ -12,6 +12,18 @@ import (
 	"time"
 )
 
+func TestInstallAdviceUsesHostSeam(t *testing.T) {
+	bin := t.TempDir()
+	host := filepath.Join(bin, "ryoku-host")
+	if err := os.WriteFile(host, []byte("#!/bin/sh\n[ \"$1 $2 $3\" = 'pkg advice freerdp' ] || exit 2\nprintf 'sudo dnf5 install freerdp\\n'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	if got := installAdvice("freerdp"); got != "sudo dnf5 install freerdp" {
+		t.Fatalf("installAdvice = %q", got)
+	}
+}
+
 // checkApp maps an HTTP answer to the tri-state the dashboard draws: a 2xx is up,
 // a 4xx/5xx is warn (the service answered but is unhealthy), and no answer at all
 // is down.

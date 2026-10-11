@@ -59,6 +59,7 @@ Singleton {
     property var consoleReach: ({})
     property int consolesRev: 0
     property var consoleCaps: ({ serial: false, telnet: false, rdp: false, vnc: false })
+    property var consoleAdvice: ({ serial: "", telnet: "", rdp: "", vnc: "" })
     function consoleReachOf(id) { void consolesRev; return consoleReach[id] || null; }
     function consoleById(id) {
         for (var i = 0; i < consoles.length; i++)
@@ -635,7 +636,11 @@ Singleton {
         command: ["ryossh", "console", "caps"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { root.consoleCaps = JSON.parse(this.text); } catch (e) {}
+                try {
+                    const caps = JSON.parse(this.text)
+                    root.consoleCaps = caps
+                    root.consoleAdvice = caps.advice || ({ serial: "", telnet: "", rdp: "", vnc: "" })
+                } catch (e) {}
             }
         }
     }

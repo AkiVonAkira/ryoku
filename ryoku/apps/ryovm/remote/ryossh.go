@@ -1991,28 +1991,38 @@ func findBin(names ...string) string {
 	return ""
 }
 
+func installAdvice(pkg string) string {
+	out, err := exec.Command("ryoku-host", "pkg", "advice", pkg).Output()
+	if err == nil {
+		if advice := strings.TrimSpace(string(out)); advice != "" {
+			return advice
+		}
+	}
+	return "install " + pkg
+}
+
 func consoleBin(kind string) (string, error) {
 	switch kind {
 	case "serial":
 		if b := findBin("picocom"); b != "" {
 			return b, nil
 		}
-		return "", fmt.Errorf("no serial client found: install picocom (pacman -S picocom)")
+		return "", fmt.Errorf("no serial client found: %s", installAdvice("picocom"))
 	case "telnet":
 		if b := findBin("telnet"); b != "" {
 			return b, nil
 		}
-		return "", fmt.Errorf("no telnet client found: install inetutils (pacman -S inetutils)")
+		return "", fmt.Errorf("no telnet client found: %s", installAdvice("inetutils"))
 	case "rdp":
 		if b := findBin("xfreerdp3", "xfreerdp"); b != "" {
 			return b, nil
 		}
-		return "", fmt.Errorf("no RDP client found: install freerdp (pacman -S freerdp)")
+		return "", fmt.Errorf("no RDP client found: %s", installAdvice("freerdp"))
 	case "vnc":
 		if b := findBin("vncviewer"); b != "" {
 			return b, nil
 		}
-		return "", fmt.Errorf("no VNC client found: install tigervnc (pacman -S tigervnc)")
+		return "", fmt.Errorf("no VNC client found: %s", installAdvice("tigervnc"))
 	}
 	return "", fmt.Errorf("unknown console kind %q", kind)
 }
@@ -2023,6 +2033,12 @@ func cmdConsoleCaps() {
 		"telnet": findBin("telnet") != "",
 		"rdp":    findBin("xfreerdp3", "xfreerdp") != "",
 		"vnc":    findBin("vncviewer") != "",
+		"advice": map[string]string{
+			"serial": installAdvice("picocom"),
+			"telnet": installAdvice("inetutils"),
+			"rdp":    installAdvice("freerdp"),
+			"vnc":    installAdvice("tigervnc"),
+		},
 	})
 }
 
