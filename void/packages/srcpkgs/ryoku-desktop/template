@@ -24,6 +24,7 @@ depends="
  weston
  xdg-desktop-portal-gtk
  gnome-themes-extra
+ gpk
  papirus-icon-theme
  ryoku-cursors
  ryoku-cursor-material

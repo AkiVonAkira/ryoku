@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT=${RYOKU_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 PACKAGES="$ROOT/void/packages"
 TABLE="$PACKAGES/translations.tsv"
-RESOLVE="$PACKAGES/resolve"
+RESOLVE="$ROOT/system/packages/resolve"
 SRCPKGS="$PACKAGES/srcpkgs"
 MODE=${1:-}
 
@@ -93,7 +93,7 @@ walk_closure ryoku-desktop-niri niri_hard niri_opt niri_seen
 walk_closure ryoku-desktop-hyprland hypr_hard hypr_opt hypr_seen
 
 declare -A closure=() expected_lanes=()
-lane_order=(desktop dev system extra optional hyprland hardware:amd hardware:intel hardware:nvidia hardware:vm)
+lane_order=(desktop dev system extra optional hyprland wayfire hardware:amd hardware:intel hardware:nvidia hardware:vm)
 
 add_lane() {
 	local pkg=$1 lane=$2 current=${expected_lanes[$1]:-}
@@ -134,6 +134,9 @@ add_lane bash desktop
 add_lane ryoku-keyring desktop
 add_lane ryoku-palette-bridge desktop
 add_lane udev desktop
+for pkg in dualsensectl dbus hidapi libusb; do add_lane "$pkg" optional; done
+add_lane ryoku-desktop-wayfire wayfire
+add_lane wayfire wayfire
 
 canonical_lanes() {
 	local encoded=$1 lane out=
@@ -164,7 +167,7 @@ NR == 1 {
 	count = split($3, lanes, ",")
 	delete row_lane
 	for (i = 1; i <= count; i++) {
-		if (lanes[i] !~ /^(desktop|dev|system|extra|optional|hyprland|hardware:(amd|intel|nvidia|vm))$/)
+		if (lanes[i] !~ /^(desktop|dev|system|extra|optional|hyprland|wayfire|hardware:(amd|intel|nvidia|vm))$/)
 			bad("invalid lane " lanes[i])
 		if (row_lane[lanes[i]]++) bad("duplicate lane " lanes[i])
 	}
@@ -277,7 +280,7 @@ done
 
 check_resolve_output() {
 	local out line sorted
-	out=$($RESOLVE "$@") || fail "resolve failed for: $*"
+	out=$($RESOLVE --table "$TABLE" "$@") || fail "resolve failed for: $*"
 	while IFS= read -r line; do
 		[[ -z $line || $line =~ ^[A-Za-z0-9][A-Za-z0-9+_.-]*$ ]] \
 			|| fail "resolve printed a non-package value: $line"
@@ -301,7 +304,7 @@ grep -qxF fish-shell <<< "$desktop" || fail "desktop lane did not translate fish
 ! grep -q '^void-repo-' <<< "$desktop" || fail "desktop lane enabled an unnecessary Void repository"
 grep -qxF ryoku <<< "$desktop" || fail "desktop lane omitted an @repo package"
 grep -qxF prowl <<< "$desktop" || fail "desktop lane omitted a repo=ryoku package"
-! grep -qxF gpk <<< "$desktop" || fail "desktop lane included the pacman-only gpk frontend"
+grep -qxF gpk <<< "$desktop" || fail "desktop lane omitted the packaged gpk frontend"
 grep -qxF snapper <<< "$desktop" || fail "desktop lane omitted snapper"
 system=$(check_resolve_output --lane system)
 grep -qxF snapper <<< "$system" || fail "system lane omitted snapper"

@@ -25,10 +25,12 @@ cliphist	cliphist	desktop
 cryptsetup	cryptsetup	system	
 curl	curl	desktop	
 dav1d	libdav1d	desktop	
+dbus	dbus	optional	
 ddcutil	ddcutil	desktop	
 desktop-file-utils	desktop-file-utils	desktop	
 dkms	dkms	desktop	
 docker	docker	desktop	
+dualsensectl	dualsensectl	optional	repo=ryoku
 dosfstools	dosfstools	system	
 edk2-ovmf	edk2-ovmf	desktop	
 efibootmgr	efibootmgr	system	
@@ -53,7 +55,7 @@ glibc	glibc	desktop
 gnome-keyring	gnome-keyring	desktop	
 gnome-themes-extra	gnome-themes-extra	desktop	
 go	go	dev	
-gpk	-	desktop	GlazePKG is a pacman frontend and does not apply to XBPS.
+gpk	gpk	desktop	repo=ryoku
 gpu-screen-recorder	gpu-screen-recorder	desktop	repo=ryoku
 grim	grim	desktop	
 gst-libav	gst-libav	desktop	
@@ -65,6 +67,7 @@ gtk3	gtk+3	desktop
 gtk4	-	hyprland	Hyprland is not packaged on Void.
 gtk4-layer-shell	-	hyprland	Hyprland is not packaged on Void.
 gum	gum	desktop	
+hidapi	hidapi	optional	
 hypr-dynamic-cursors	-	hyprland	Hyprland is not packaged on Void.
 hyprglass	-	hyprland	Hyprland is not packaged on Void.
 hyprgrass	-	hyprland	Hyprland is not packaged on Void.
@@ -99,6 +102,7 @@ libnotify	libnotify	desktop
 libpulse	libpulseaudio	desktop	
 libqalculate	libqalculate	desktop	
 librsvg	librsvg	desktop	
+libusb	libusb	optional	
 libva	libva	desktop	
 libvirt	libvirt	optional	
 libxcb	libxcb	desktop	
@@ -184,15 +188,16 @@ ryoku-desktop	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-desktop-compositor	-	desktop	Virtual dependency provided by a compositor meta-package.
 ryoku-desktop-hyprland	-	hyprland	Ryoku's Hyprland needs GCC 15 and Void still ships GCC 14.
 ryoku-desktop-niri	@repo	desktop	Ryoku-owned package built from the checkout.
+ryoku-desktop-wayfire	-	wayfire	Void ships Wayfire 0.10; Ryoku requires 0.11.
 ryoku-hub	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-hypr-plugins	-	hyprland	Hyprland is not packaged on Void.
 ryoku-keyring	ryoku-keyring	desktop	repo=ryoku
 ryoku-keysounds	-	hyprland	Hyprland is not packaged on Void.
-ryoku-oh-my-zsh	-	desktop	Void uses its packaged Zsh configuration instead.
+ryoku-oh-my-zsh	ryoku-oh-my-zsh	desktop	repo=ryoku
 ryoku-palette-bridge	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-rashin	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-shell	@repo	desktop	Ryoku-owned package built from the checkout.
-ryotunes	-	optional	Ryotunes is not yet packaged for Void.
+ryotunes	ryotunes	optional	repo=ryoku
 sddm	sddm	desktop	
 shaderc	shaderc	desktop	
 skwd-paper-bin	skwd-paper-bin	desktop	repo=ryoku
@@ -230,6 +235,7 @@ vulkan-intel	mesa-vulkan-intel	hardware:intel
 vulkan-radeon	mesa-vulkan-radeon	hardware:amd	
 vulkan-swrast	mesa-vulkan-lavapipe	hardware:vm	
 waifu2x-ncnn-vulkan	waifu2x-ncnn-vulkan	desktop	repo=ryoku
+wayfire	-	wayfire	Void ships Wayfire 0.10; Ryoku requires 0.11.
 wayland	wayland	desktop	
 webkit2gtk-4.1	libwebkit2gtk41	desktop	
 weston	weston	desktop	
