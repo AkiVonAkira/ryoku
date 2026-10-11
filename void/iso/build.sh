@@ -10,6 +10,7 @@ SHARED_BACKEND=$REPO_ROOT/installation/backend/lib
 OUT_DIR=${RYOKU_VOID_ISO_OUT:-$PROFILE_DIR/out}
 WORK_DIR=${RYOKU_VOID_ISO_WORK:-$PROFILE_DIR/work}
 STAGE_DIR=${RYOKU_VOID_ISO_STAGE:-$WORK_DIR/staging}
+SPOOL_DIR=${RYOKU_VOID_ISO_SPOOL:-$WORK_DIR/spool}
 ROOTFS=$STAGE_DIR/rootfs
 CONTAINER_ENGINE=${RYOKU_CONTAINER_ENGINE:-docker}
 CONTAINER_IMAGE=${RYOKU_VOID_ISO_IMAGE:-ghcr.io/void-linux/void-glibc-full:latest}
@@ -142,9 +143,10 @@ RYOKU_REPO=${RYOKU_VOID_ISO_RYOKU_REPO:-}
 [[ ${RYOKU_VOID_ISO_OFFLINE_SKIP:-0} != 1 ]] \
 	|| die "RYOKU_VOID_ISO_OFFLINE_SKIP is only valid with --stage-only"
 
-mkdir -p "$OUT_DIR" "$WORK_DIR"
+mkdir -p "$OUT_DIR" "$WORK_DIR" "$SPOOL_DIR"
 OUT_DIR=$(cd "$OUT_DIR" && pwd -P)
 WORK_DIR=$(cd "$WORK_DIR" && pwd -P)
+SPOOL_DIR=$(cd "$SPOOL_DIR" && pwd -P)
 STAGE_DIR=$(cd "$STAGE_DIR" && pwd -P)
 rm -f "$OUT_DIR/$ISO_NAME" "$OUT_DIR/SHA256SUMS"
 
@@ -173,14 +175,15 @@ run=("$CONTAINER_ENGINE" run --rm --platform linux/amd64 --privileged
 	-v /dev:/dev
 	-v "$REPO_ROOT:/repo:ro"
 	-v "$WORK_DIR:/work"
+	-v "$SPOOL_DIR:/spool"
 	-v "$OUT_DIR:/out"
 	-v "$STAGE_DIR:/stage"
 	-w /work
 	-e "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH"
 	-e "RYOKU_VOID_MKLIVE_REF=$MKLIVE_REF"
-	-e RYOKU_VOID_ISO_KEYS_OUT=/work/keys
-	-e RYOKU_VOID_ISO_OFFLINE_WORK=/work/offline-work
-	-e RYOKU_ISO_ROOT_REPO=/work/offline-repo
+	-e RYOKU_VOID_ISO_KEYS_OUT=/spool/keys
+	-e RYOKU_VOID_ISO_OFFLINE_WORK=/spool/offline-work
+	-e RYOKU_ISO_ROOT_REPO=/spool/offline-repo
 	-e "RYOKU_ISO_NAME=$ISO_NAME"
 	-e "RYOKU_ISO_TITLE=Ryoku Void $PAYLOAD_VERSION"
 	-e "HOST_UID=$(id -u)"
@@ -207,12 +210,13 @@ run+=( -e "RYOKU_LIVE_PACKAGES=${LIVE_PACKAGES% }" "$CONTAINER_IMAGE" )
 
 inner=$(cat <<'INNER'
 set -euo pipefail
-RAW_ISO=/work/$RYOKU_ISO_NAME.raw
+RAW_ISO=/spool/$RYOKU_ISO_NAME.raw
+FINAL_ISO=/work/$RYOKU_ISO_NAME.final
 restore_owner() {
-	chown -R "$HOST_UID:$HOST_GID" /out /work /stage 2>/dev/null || true
+	chown -R "$HOST_UID:$HOST_GID" /out /work /spool /stage 2>/dev/null || true
 }
 cleanup() {
-	rm -f "$RAW_ISO"
+	rm -f "$RAW_ISO" "$FINAL_ISO"
 	restore_owner
 }
 trap cleanup EXIT
@@ -224,12 +228,24 @@ mount -t tmpfs -o size=64g,mode=0755 ryoku-verify /verify
 export RYOKU_VOID_ISO_VERIFY_ROOT=/verify
 
 
-rm -rf /work/offline-repo /work/offline-work /work/keys
-mkdir -p /work/offline-repo /work/keys
-/repo/void/iso/offline-repo.sh /repo /work/offline-repo
+rm -rf /spool/offline-repo /spool/offline-work /spool/keys
+mkdir -p /spool/offline-repo /spool/keys
+/repo/void/iso/offline-repo.sh /repo /spool/offline-repo
 umount /verify
 rmdir /verify
 unset RYOKU_VOID_ISO_VERIFY_ROOT
+
+rm -rf /work/limine-root
+mkdir -p /work/limine-root/var/db/xbps/keys
+if compgen -G '/var/db/xbps/keys/*.plist' >/dev/null; then
+	cp -a /var/db/xbps/keys/*.plist /work/limine-root/var/db/xbps/keys/
+fi
+if compgen -G '/spool/keys/*.plist' >/dev/null; then
+	cp -a /spool/keys/*.plist /work/limine-root/var/db/xbps/keys/
+fi
+XBPS_ARCH=x86_64 xbps-install \
+	-r /work/limine-root -i -R /spool/offline-repo -Sy limine >/dev/null
+rm -rf /spool/offline-work
 
 rm -rf /work/void-mklive /work/mklive-source
 mkdir -p /work/mklive-source /work/mklive-root
@@ -239,10 +255,10 @@ curl -fsSL --retry 3 \
 cp -a /work/mklive-source/. /work/void-mklive
 patch -d /work/void-mklive -p1 < /repo/void/iso/mklive-root-repo.patch
 
-if compgen -G '/work/keys/*.plist' >/dev/null; then
+if compgen -G '/spool/keys/*.plist' >/dev/null; then
 	mkdir -p /stage/rootfs/var/db/xbps/keys /work/void-mklive/keys
-	cp -a /work/keys/*.plist /stage/rootfs/var/db/xbps/keys/
-	cp -a /work/keys/*.plist /work/void-mklive/keys/
+	cp -a /spool/keys/*.plist /stage/rootfs/var/db/xbps/keys/
+	cp -a /spool/keys/*.plist /work/void-mklive/keys/
 fi
 
 rm -f "$RAW_ISO"
@@ -250,13 +266,14 @@ rm -rf /work/mklive-root
 mkdir -p /work/mklive-root
 cd /work/void-mklive
 	# Ryoku's live TUI font must resolve from the package closure.
+RYOKU_MKLIVE_DROP_PATHS='/spool/xbps-cache-target /spool/xbps-cache-host' \
 ROOTDIR=/work/mklive-root \
 	./mklive.sh \
 	-a x86_64 \
 	-b base-system \
-	-c /work/xbps-cache-target \
-	-H /work/xbps-cache-host \
-	-r /work/offline-repo \
+	-c /spool/xbps-cache-target \
+	-H /spool/xbps-cache-host \
+	-r /spool/offline-repo \
 	-p "$RYOKU_LIVE_PACKAGES" \
 	-S 'dbus NetworkManager seatd' \
 	-I /stage/rootfs \
@@ -266,30 +283,21 @@ ROOTDIR=/work/mklive-root \
 	-C 'console=tty1 console=ttyS0,115200n8' \
 	-o "$RAW_ISO"
 
-rm -rf /work/limine-root
-mkdir -p /work/limine-root/var/db/xbps/keys
-if compgen -G '/var/db/xbps/keys/*.plist' >/dev/null; then
-	cp -a /var/db/xbps/keys/*.plist /work/limine-root/var/db/xbps/keys/
-fi
-if compgen -G '/work/keys/*.plist' >/dev/null; then
-	cp -a /work/keys/*.plist /work/limine-root/var/db/xbps/keys/
-fi
-XBPS_ARCH=x86_64 xbps-install \
-	-r /work/limine-root -i -R /work/offline-repo -Sy limine >/dev/null
 cd /
 rm -rf \
 	/work/mklive-root \
-	/work/xbps-cache-target \
-	/work/xbps-cache-host \
-	/work/offline-repo \
-	/work/offline-work \
-	/work/keys \
 	/work/void-mklive \
-	/work/mklive-source
+	/work/mklive-source \
+	/spool/xbps-cache-target \
+	/spool/xbps-cache-host \
+	/spool/offline-repo \
+	/spool/offline-work \
+	/spool/keys
 /repo/void/iso/install-limine.sh \
-	"$RAW_ISO" "/out/$RYOKU_ISO_NAME" "$RYOKU_ISO_TITLE" \
+	"$RAW_ISO" "$FINAL_ISO" "$RYOKU_ISO_TITLE" \
 	/work/limine-root /stage/efi-actions
 rm -f "$RAW_ISO"
+mv "$FINAL_ISO" "/out/$RYOKU_ISO_NAME"
 rm -rf /work/limine-root
 
 cleanup
