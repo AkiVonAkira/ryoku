@@ -21,6 +21,16 @@ and C++26, while Void currently ships GCC 14.
 The Arch and CachyOS definitions remain the shared source. Void files translate
 host package, init, and installer behavior rather than duplicating the desktop.
 
+## Live ISO
+
+The live medium uses Limine for both BIOS and UEFI boot. The image is hybrid:
+the same file boots when attached as an optical disc or written byte-for-byte
+to a USB drive. Use `dd` or Rufus in DD mode; Ventoy's normal and grub2 modes
+are also supported.
+
+Secure Boot must be disabled. The live Limine EFI executable and kernel are
+unsigned, as they are on the Arch live image.
+
 ## Update and rollback
 
 The ISO installer creates the `@snapshots` subvolume at `/.snapshots` when the

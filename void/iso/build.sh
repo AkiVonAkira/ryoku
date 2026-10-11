@@ -133,6 +133,9 @@ fi
 
 command -v "$CONTAINER_ENGINE" >/dev/null 2>&1 \
 	|| die "$CONTAINER_ENGINE is required for the privileged void-mklive build"
+for command in clang lld-link; do
+	command -v "$command" >/dev/null 2>&1 || die "required command not found: $command"
+done
 RYOKU_REPO=${RYOKU_VOID_ISO_RYOKU_REPO:-}
 [[ -n $RYOKU_REPO ]] \
 	|| die "set RYOKU_VOID_ISO_RYOKU_REPO to a built Ryoku XBPS repository path or URL"
@@ -144,6 +147,26 @@ OUT_DIR=$(cd "$OUT_DIR" && pwd -P)
 WORK_DIR=$(cd "$WORK_DIR" && pwd -P)
 STAGE_DIR=$(cd "$STAGE_DIR" && pwd -P)
 rm -f "$OUT_DIR/$ISO_NAME" "$OUT_DIR/SHA256SUMS"
+
+log "Building UEFI live-menu actions"
+EFI_ACTION_DIR=$STAGE_DIR/efi-actions
+EFI_ACTION_OBJECT=$EFI_ACTION_DIR/action.obj
+mkdir -p "$EFI_ACTION_DIR"
+for action in restart shutdown; do
+	case $action in
+		restart) reset_type=0 ;;
+		shutdown) reset_type=2 ;;
+	esac
+	clang --target=x86_64-pc-windows-msvc \
+		-ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector \
+		-DRYOKU_RESET_TYPE="$reset_type" \
+		-c "$PROFILE_DIR/efi-action.c" -o "$EFI_ACTION_OBJECT"
+	lld-link /subsystem:efi_application /entry:efi_main /nodefaultlib \
+		/machine:x64 /dynamicbase /fixed:no \
+		"/out:$EFI_ACTION_DIR/$action.efi" "$EFI_ACTION_OBJECT"
+done
+rm -f "$EFI_ACTION_OBJECT"
+
 
 
 run=("$CONTAINER_ENGINE" run --rm --platform linux/amd64 --privileged
@@ -184,13 +207,18 @@ run+=( -e "RYOKU_LIVE_PACKAGES=${LIVE_PACKAGES% }" "$CONTAINER_IMAGE" )
 
 inner=$(cat <<'INNER'
 set -euo pipefail
+RAW_ISO=/work/$RYOKU_ISO_NAME.raw
 restore_owner() {
 	chown -R "$HOST_UID:$HOST_GID" /out /work /stage 2>/dev/null || true
 }
-trap restore_owner EXIT
+cleanup() {
+	rm -f "$RAW_ISO"
+	restore_owner
+}
+trap cleanup EXIT
 
 xbps-install -Suy xbps >/dev/null
-xbps-install -y bash curl ca-certificates patch tar xz lzo kmod outils dosfstools e2fsprogs >/dev/null
+xbps-install -y bash curl ca-certificates patch tar xz lzo kmod outils dosfstools e2fsprogs xorriso >/dev/null
 mkdir -p /verify
 mount -t tmpfs -o size=64g,mode=0755 ryoku-verify /verify
 export RYOKU_VOID_ISO_VERIFY_ROOT=/verify
@@ -199,6 +227,9 @@ export RYOKU_VOID_ISO_VERIFY_ROOT=/verify
 rm -rf /work/offline-repo /work/offline-work /work/keys
 mkdir -p /work/offline-repo /work/keys
 /repo/void/iso/offline-repo.sh /repo /work/offline-repo
+umount /verify
+rmdir /verify
+unset RYOKU_VOID_ISO_VERIFY_ROOT
 
 rm -rf /work/void-mklive /work/mklive-source
 mkdir -p /work/mklive-source /work/mklive-root
@@ -214,6 +245,7 @@ if compgen -G '/work/keys/*.plist' >/dev/null; then
 	cp -a /work/keys/*.plist /work/void-mklive/keys/
 fi
 
+rm -f "$RAW_ISO"
 rm -rf /work/mklive-root
 mkdir -p /work/mklive-root
 cd /work/void-mklive
@@ -232,9 +264,35 @@ ROOTDIR=/work/mklive-root \
 	-e /bin/bash \
 	-T "$RYOKU_ISO_TITLE" \
 	-C 'console=tty1 console=ttyS0,115200n8' \
-	-o "/out/$RYOKU_ISO_NAME"
+	-o "$RAW_ISO"
 
-restore_owner
+rm -rf /work/limine-root
+mkdir -p /work/limine-root/var/db/xbps/keys
+if compgen -G '/var/db/xbps/keys/*.plist' >/dev/null; then
+	cp -a /var/db/xbps/keys/*.plist /work/limine-root/var/db/xbps/keys/
+fi
+if compgen -G '/work/keys/*.plist' >/dev/null; then
+	cp -a /work/keys/*.plist /work/limine-root/var/db/xbps/keys/
+fi
+XBPS_ARCH=x86_64 xbps-install \
+	-r /work/limine-root -i -R /work/offline-repo -Sy limine >/dev/null
+cd /
+rm -rf \
+	/work/mklive-root \
+	/work/xbps-cache-target \
+	/work/xbps-cache-host \
+	/work/offline-repo \
+	/work/offline-work \
+	/work/keys \
+	/work/void-mklive \
+	/work/mklive-source
+/repo/void/iso/install-limine.sh \
+	"$RAW_ISO" "/out/$RYOKU_ISO_NAME" "$RYOKU_ISO_TITLE" \
+	/work/limine-root /stage/efi-actions
+rm -f "$RAW_ISO"
+rm -rf /work/limine-root
+
+cleanup
 trap - EXIT
 INNER
 )
@@ -244,7 +302,7 @@ log "Building offline closure and ISO in $CONTAINER_IMAGE"
 	'set -e; xbps-install -Syu xbps >/dev/null || xbps-install -yu xbps >/dev/null; xbps-install -y bash >/dev/null; exec bash -euo pipefail -c "$1"' \
 	ryoku-void-iso "$inner"
 
-[[ -s $OUT_DIR/$ISO_NAME ]] || die "void-mklive did not produce $OUT_DIR/$ISO_NAME"
+[[ -s $OUT_DIR/$ISO_NAME ]] || die "ISO build did not produce $OUT_DIR/$ISO_NAME"
 (
 	cd "$OUT_DIR"
 	sha256sum -- "$ISO_NAME" > SHA256SUMS
