@@ -31,8 +31,10 @@ settings topic, so it runs on every compositor Ryoku supports.
 Store-installed styles land under the same folder contract.
 
 **QS Bar wears colour on purpose, and it is the one place the desktop does.** It
-is a Quickshell "Rise" bar ported onto Ryoku's data plane, and it keeps that
-project's full-colour skin: its `Theme.qml` reads the live wallpaper palette from
+is a port of HANCORE-linux's MIT-licensed
+[Quickshell Rise](https://github.com/HANCORE-linux/quickshell-dots) bar onto
+Ryoku's data plane, and it keeps that project's full-colour skin: its `Theme.qml`
+reads the live wallpaper palette from
 `~/.cache/ryoku/colors.json` into a seven-slot set (`color01..07`) over a warm,
 near-black `paper`, so the bar retints with the wallpaper like a terminal theme
 rather than clamping to bone-on-black. Sumi is the paper-and-ink bar for anyone

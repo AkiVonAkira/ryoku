@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **Credits now name QS Bar's source.** Quickshell Rise by HANCORE-linux joins
+  the Hub credits and root provenance notice
+  (`quickshell/pages/CreditsPage.qml`, `../../NOTICE`).
 - Global > Language & Region offers a 24-hour time switch for all Ryoku clocks; off selects 12-hour time with AM/PM.
 - Battery settings include low-battery alerts, independent warning and critical
   switches and percentages, and a test notification. Either reminder can run

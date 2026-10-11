@@ -68,3 +68,17 @@ version: Ryoku runs it over its own desktop, widgets, wallpaper, visualizer and
 depth services, gives it the Ryoku look, and leaves out its lock screen, bar and
 dock editing. ii-p3drovfx is released under the GNU General Public License
 version 3; the ported portions keep that license, compatible with Ryoku's GPL-3.
+
+The QS Bar style at
+ryoku/shell/quickshell/shell/modules/bar/barstyles/qsbar/ is a port of
+Quickshell Rise by HANCORE-linux
+(https://github.com/HANCORE-linux/quickshell-dots). It is a modified version:
+Ryoku keeps Rise's island, full, fit, dock and notch forms, widgets, pop-up
+panels, settings panel and draggable editing, while replacing its Omarchy data
+and command integrations with Ryoku's wallpaper palette, neutral
+window-manager and host-service seams, package updates, wallpaper, media,
+audio, power and capture paths. Ryoku also rebrands the shell, merges its two
+runtime variants into one bar, and adds Ryoku settings and per-display
+controls. Quickshell Rise is released under the MIT License; that license is
+compatible with Ryoku's GPL-3 distribution, and the upstream license ships
+unchanged beside the port.
