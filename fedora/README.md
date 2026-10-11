@@ -1,9 +1,9 @@
-# Fedora edition
+# Fedora edition (experimental)
 
-The Fedora edition installs Ryoku on mutable Fedora 44 or 45 Workstation, KDE
-Plasma, Server, and spin systems, `x86_64`, with systemd and either Hyprland or
-niri. Atomic and other rpm-ostree systems are refused. Use the same public
-installer as the other existing-system editions:
+The experimental Fedora edition installs Ryoku on mutable Fedora 44 or 45
+Workstation, KDE Plasma, Server, and spin systems, `x86_64`, with systemd and
+either Hyprland or niri. Atomic and other rpm-ostree systems are refused. Use
+the same public installer as the other existing-system editions:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
@@ -26,10 +26,12 @@ translation maps the desktop's power-profile dependency to `ppd-service`, so
 Fedora's tuned-ppd and power-profiles-daemon providers both work and the
 installer does not replace one with the other.
 
-Release jobs prepare SRPMs from the shared tree, rebuild and sign the binary
-RPMs and `repomd.xml`, install-test both desktops on Fedora 44 and 45, then
-publish the tested repositories. They also publish the supported release list
-at `stable/fedora/releases`. For Fedora release `<N>`, the public layout below
+Stable Release dispatches the Fedora publisher on each `v*` tag. Release jobs
+prepare SRPMs from the shared tree, rebuild and sign the binary RPMs and
+`repomd.xml`, install-test both desktops on Fedora 44 and 45, then publish the
+tested stable heads and frozen repositories. They also publish the supported
+release list at `stable/fedora/releases`. For Fedora release `<N>`, the public
+layout below
 `https://repo.ryoku.dev/` is:
 
 ```text

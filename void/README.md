@@ -1,8 +1,8 @@
 # Void Linux
 
-This directory contains the x86_64 glibc Void edition. It uses runit,
-Turnstile, elogind, SDDM, and niri. XBPS and runit integration stays here;
-runtime code reaches it through `ryoku-host`.
+This directory contains the experimental x86_64 glibc Void edition. It uses
+runit, Turnstile, elogind, SDDM, and niri. XBPS and runit integration stays
+here; runtime code reaches it through `ryoku-host`.
 
 Hyprland is not shipped. Ryoku requires Hyprland 0.55+, which requires GCC 15
 and C++26, while Void currently ships GCC 14.
@@ -31,6 +31,11 @@ are also supported.
 Secure Boot must be disabled. The live Limine EFI executable and kernel are
 unsigned, as they are on the Arch live image.
 
+On a machine booted in legacy BIOS mode the installer uses the whole disk: it
+creates a GPT BIOS boot partition for Limine's disk stage and a FAT `/boot`.
+Installing alongside another system needs UEFI. Each kernel install refreshes
+the Limine loader, and on a BIOS install the disk stage with it.
+
 ## Update and rollback
 
 The ISO installer creates the `@snapshots` subvolume at `/.snapshots` when the
@@ -52,8 +57,8 @@ inside the safety net.
 `https://repo.ryoku.dev/stable/void/releases/index.json`.
 `ryoku rollback --to <tag>` and `ryoku track <tag>` move the Ryoku package set
 to that frozen signed release in one forced XBPS transaction. They do not move
-the Void base or kernel. Testing builds from `unstable-dev` are not frozen and
-have no release target to roll back to.
+the Void base or kernel. The latest ten testing builds from `unstable-dev` are
+also frozen and listed in the testing ledger for pinning and rollback.
 
 The `ryoku-boot-guard` runit service watches a tagged release update. After two
 boots where the desktop never came up, it returns the Ryoku set to the previous
@@ -74,9 +79,9 @@ btrfs root and snapper; `ryoku doctor` converges the root snapper config.
 ## Remaining limits
 
 - niri only, because Ryoku's Hyprland needs GCC 15 and Void ships GCC 14
+- no Wayfire, because Void ships 0.10 and Ryoku requires 0.11
 - Zen Browser, LocalSend, and Voxtype are AUR-only
-- no asusctl
-- Ryotunes and a few small extras are not packaged yet
+- no asusctl or adw-gtk-theme package
 - GPU passthrough needs Looking Glass and kvmfr from the AUR
 
 ## Init contract
@@ -104,17 +109,20 @@ Build the XBPS repository with `packages/repo/container-runner.sh`; see
 [`packages/README.md`](packages/README.md). Build the ISO with `iso/build.sh`;
 see [`iso/README.md`](iso/README.md).
 
-`.github/workflows/publish-repo-void.yml` publishes testing from
-`unstable-dev` and frozen repositories from `v*` tags. It rebuilds
-`void/releases/index.json` after a tagged publish.
-`.github/workflows/build-iso-void.yml` builds images from `void-v*` tags or a
-manual dispatch and refreshes the ledger after a tagged ISO upload.
-`.github/workflows/release-ledger.yml` can rebuild both the Arch and Void
-ledgers. The shared command is:
+`stable-release.yml` dispatches `.github/workflows/publish-repo-void.yml` on
+each `v*` release tag. The publish workflow writes the frozen repository and
+stable pointer, rebuilds `void/releases/index.json`, and then dispatches
+`.github/workflows/build-iso-void.yml` from that exact frozen repository. The
+ISO workflow signs and uploads the image plus `latest-void.json` and
+`latest-void.js`, then refreshes the Void ledger so its `images.void` entry
+names the image. An `unstable-dev` push publishes and freezes testing instead.
+`.github/workflows/release-ledger.yml` can rebuild the Arch, Void, and Fedora
+stable and testing ledgers. The shared command is:
 
 ```sh
 bin/ryoku-release-ledger <rclone-remote> arch
 bin/ryoku-release-ledger <rclone-remote> void
+bin/ryoku-release-ledger <rclone-remote> fedora/44
 ```
 
 The Arch ledger is `releases/index.json` and records plain and CachyOS images.

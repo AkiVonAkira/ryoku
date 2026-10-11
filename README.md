@@ -8,10 +8,12 @@
 
 Ryoku is a hand-built Linux distribution with Arch, CachyOS, Void Linux, and
 Fedora editions: one cohesive desktop, a guided installer, and the system
-definition that reproduces them, all from a single repository. Arch, CachyOS,
-and Void can be installed from Ryoku's own images; Fedora installs the same
-desktop onto an existing mutable Fedora system. The result includes the
-drivers, packages, installer, and desktop, not just a set of dotfiles.
+definition that reproduces them, all from a single repository. Arch and
+CachyOS are the stable editions for 1.0; Void and Fedora are experimental.
+Arch, CachyOS, and Void can be installed from Ryoku's own images; Fedora
+installs the same desktop onto an existing mutable Fedora system. The result
+includes the drivers, packages, installer, and desktop, not just a set of
+dotfiles.
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-E2342A?style=for-the-badge)](LICENSE)
 [![Built on Arch](https://img.shields.io/badge/Arch_Linux-1793D1?style=for-the-badge&logo=archlinux&logoColor=white)](https://archlinux.org)
@@ -61,9 +63,10 @@ Underneath, Ryoku is a hand-built Linux distribution rather than a config dump.
 The desktop, the installer, and the system definition all live in this
 repository, and every machine is built from it; the repository is the single
 source of truth, and a live machine is only ever a deployment target. The
-desktop is a Wayland session, on Hyprland or niri, with the Quickshell-based
-Ryoku shell on top. Ryoku's alpha series was a fork of Omarchy. From the beta
-series on, the tree was pruned and rebuilt from an empty root, so the installer,
+desktop is a Wayland session on Hyprland or niri, with an experimental Wayfire
+option on Arch and CachyOS, and the Quickshell-based Ryoku shell on top. Ryoku's
+alpha series was a fork of Omarchy. From the beta series on, the tree was
+pruned and rebuilt from an empty root, so the installer,
 shell, theming, tooling, and system definition are all Ryoku's own, and the
 current codebase shares no code with Omarchy. The shell is custom: its frame-blob
 rendering and some animation curves are adapted from Caelestia.
@@ -116,9 +119,10 @@ Everything else waits in Ryoku Settings (`Super + ,`).
 
 ## What ships
 
-- **The desktop** under `ryoku/`: a Wayland session on Hyprland or niri (its
-  config in the compositor's own language), the Quickshell-based Ryoku shell,
-  the lockscreen, app configs, and brand assets.
+- **The desktop** under `ryoku/`: a Wayland session on Hyprland or niri, plus
+  experimental Wayfire on Arch and CachyOS (its config in the compositor's own
+  language), the Quickshell-based Ryoku shell, the lockscreen, app configs, and
+  brand assets.
 - **The system definition** under `system/`: the boot chain, hardware policy,
   and package sets that make a machine a Ryoku machine.
 - **The installer** under `installation/`, `void/iso/`, and
@@ -130,12 +134,16 @@ Everything else waits in Ryoku Settings (`Super + ,`).
 
 ## Requirements
 
-Ryoku is `x86_64` only. Arch and CachyOS sessions can run Hyprland or niri; the
-Void edition runs niri; Fedora 44 and 45 support either compositor on mutable
-Workstation, KDE Plasma, Server, and spin installs. The ISO editions boot in
-UEFI mode and refuse Secure Boot unless you have enrolled your own keys because
-Limine ships unsigned. Fedora keeps GRUB and refuses Atomic and other
-rpm-ostree systems. There is no 32-bit or legacy BIOS build.
+Ryoku is `x86_64` only. Arch and CachyOS sessions support Hyprland and niri;
+Wayfire 0.11 is available there as an experimental compositor. The experimental
+Void edition requires x86_64 glibc Void with runit and runs niri only. The
+experimental Fedora edition requires mutable Fedora 44 or 45 with systemd and
+supports Hyprland or niri on Workstation, KDE Plasma, Server, and spin installs.
+The Arch and CachyOS ISOs require UEFI; the Void ISO boots on legacy BIOS or
+UEFI, and a legacy BIOS install uses the whole disk (installing alongside
+another system needs UEFI). Every ISO refuses Secure Boot unless you have
+enrolled your own keys because Limine ships unsigned. Fedora keeps GRUB and
+refuses Atomic and other rpm-ostree systems. There is no 32-bit build.
 
 |  | Minimum | Recommended |
 |---|---|---|
@@ -143,7 +151,7 @@ rpm-ostree systems. There is no 32-bit or legacy BIOS build.
 | RAM | 4 GB | 8 GB, 16 GB with the dev toolchains |
 | GPU | any card with working KMS and OpenGL/Vulkan | recent integrated or discrete |
 | Storage | 32 GB (installer floor) | 64 GB+ SSD |
-| Firmware | ISO editions: UEFI, Secure Boot off | ISO editions: UEFI, Secure Boot off |
+| Firmware | Arch/CachyOS ISO: UEFI; Void ISO: BIOS or UEFI; Secure Boot off | UEFI with Secure Boot off |
 
 The desktop is light on its own: a resting session (the compositor, the shell,
 and its daemons) uses under 1 GB of RAM. What you run on top, the browser,
@@ -185,9 +193,9 @@ Broadcom Wi-Fi, read-only NVRAM, slow USB media) is in
 
 ## Install
 
-Two ways in. A fresh Arch, CachyOS, or Void machine boots the signed **ISO**; an
-existing Arch, CachyOS, Void glibc, or Fedora box converts in place with the
-**shell installer**.
+Two ways in. A fresh Arch or CachyOS machine boots the stable signed **ISO**;
+the experimental Void edition has its own signed ISO. An existing Arch,
+CachyOS, Void glibc, or Fedora box converts in place with the **shell installer**.
 
 ### Fresh install (the ISO)
 
@@ -229,11 +237,11 @@ Preview everything it would do without changing anything by appending
 `-s -- --dry-run` after `bash`. Details in
 [`ryoku-shell-installer/`](ryoku-shell-installer/README.md).
 
-### Fedora Linux
+### Fedora Linux (experimental)
 
-The Fedora edition installs on mutable Fedora 44 or 45 Workstation, KDE Plasma,
-Server, and other spins, `x86_64`, with systemd. Run the same shell installer
-used above:
+The experimental Fedora edition installs on mutable Fedora 44 or 45
+Workstation, KDE Plasma, Server, and other spins, `x86_64`, with systemd. Run
+the same shell installer used above:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
@@ -274,14 +282,15 @@ with stable and testing ledgers for the ten retained rollback targets.
 repositories. Rollback and the boot guard can downgrade the Ryoku package set,
 but Fedora has no whole-system snapshot restore path.
 
-### Void Linux
+### Void Linux (experimental)
 
-The Void edition is x86_64 glibc Void with runit, Turnstile, elogind, the SDDM
-greeter, and the niri desktop. Install it from the Void ISO, which boots into
-the same graphical installer and carries a complete offline package repository,
-or run the shell installer above on an existing Void glibc system (a minimal
-Void install needs `sudo xbps-install -S curl` first). The ISO installs Void
-and Ryoku with Limine and dracut. Both installers show the following limits
+The experimental Void edition is x86_64 glibc Void with runit, Turnstile,
+elogind, the SDDM greeter, and the niri desktop. Install it from the Void ISO,
+which boots into the same graphical installer and carries a complete offline
+package repository, or run the shell installer above on an existing Void glibc
+system. A minimal Void install needs `sudo xbps-install -S curl` first. The ISO
+installs Void and Ryoku with Limine and dracut. Both installers show the
+following limits
 before changing the machine:
 
 | Limit | Why |
