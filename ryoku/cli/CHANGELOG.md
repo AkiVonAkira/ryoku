@@ -144,6 +144,9 @@
   `internal/sys/release.go`, `internal/updater/release.go`).
 
 ### Fixed
+- **Doctor skips the AMD action audit under tuned-ppd.** It reads
+  power-profiles-daemon's optional action metadata over D-Bus and reports the
+  row as not applicable when the active provider does not expose those actions.
 - **Boot fallback and channel overrides now survive the last mile.** The guard
   writes complete nested Limine paths and clears remembered EFI entries,
   including when it returns to the restored system after

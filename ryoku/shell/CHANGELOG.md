@@ -582,6 +582,10 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **Power profiles work with either system provider.** Nomarchy, game mode and
+  `ryoku-power` now read and switch profiles through ryoku-shell's PowerProfiles
+  D-Bus client instead of requiring a provider-specific command.
+  The same controls work with tuned-ppd and power-profiles-daemon.
 - **The AI usage pill sees OpenCode 2.x sessions.** The collector only knew
   the pre-2.x message store, so every 2.x install read as stale with zero
   tokens and the OpenCode card stayed empty (#365). It now reads the
