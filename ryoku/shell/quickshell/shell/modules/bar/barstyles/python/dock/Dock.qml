@@ -113,12 +113,12 @@ Variants {
                 property var rawDockSettings: {
                     const design = Ryoku.Dock.cfg("python", {})
                     const apps = Ryoku.Dock.resolve(Ryoku.Dock.pinnedOrStarter()).map(className => {
-                        const entry = DesktopEntries.heuristicLookup(className)
+                        const entry = Ryoku.Dock.entryFor(className)
                         return {
                             name: entry?.name ?? className,
                             comment: entry?.comment ?? "",
                             desktop_id: className,
-                            icon: entry?.icon ?? className
+                            icon: entry?.icon ?? ""
                         }
                     })
                     return Object.assign({}, defaultDockSettings, design, {
