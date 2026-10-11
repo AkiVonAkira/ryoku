@@ -590,7 +590,7 @@ start_guard() {
 }
 
 start_user_guard() {
-  local json uid inhibitors
+  local json uid inhibitors who inhibitor_uid what rest
   if [[ $init_system == systemd ]]; then
     for command in systemd-inhibit jq systemctl systemd-run; do
       command -v "$command" >/dev/null 2>&1 || {
@@ -613,9 +613,16 @@ start_user_guard() {
       if jq -e --argjson uid "$uid" \
         'any(.[]; .uid == $uid and .who == "ryoku-session-cutover"
           and .mode == "block" and ((.what | split(":")) | index("sleep")))' \
-        >/dev/null <<<"$json"; then
+        >/dev/null 2>&1 <<<"$json"; then
         return 0
       fi
+      inhibitors="$(systemd-inhibit --list --no-legend --no-pager 2>/dev/null || true)"
+      while read -r who inhibitor_uid _ _ _ what rest; do
+        if [[ $who == ryoku-session-cutover && $inhibitor_uid == "$uid" &&
+              :$what: == *:sleep:* && $rest =~ (^|[[:space:]])block$ ]]; then
+          return 0
+        fi
+      done <<<"$inhibitors"
       sleep 0.05
     done
     systemctl --user stop "$guard_unit" >/dev/null 2>&1 || true
@@ -1406,10 +1413,27 @@ prepare_package() {
 }
 
 run_user_cutover() {
-  local user=$1 uid=$2 sid=$3 unit home
+  local user=$1 uid=$2 sid=$3 unit home passwd gid manager
   unit="ryoku-power-cutover-$uid"
   if [[ $init_system == systemd ]]; then
-    systemd-run --quiet --wait --collect --user --machine="$user@" \
+    manager="$("$host_bin" pkgmgr)" || return 1
+    if [[ $manager != dnf ]]; then
+      systemd-run --quiet --wait --collect --user --machine="$user@" \
+        --setenv="XDG_SESSION_ID=$sid" \
+        --property=Type=oneshot --property=TimeoutStartSec=90s \
+        --property=RuntimeMaxSec=90s --unit="$unit" "$self_path" user
+      return
+    fi
+    passwd="$(getent passwd "$uid")" || return 1
+    gid="$(cut -d: -f4 <<<"$passwd")"
+    home="$(cut -d: -f6 <<<"$passwd")"
+    [[ -n $gid && -n $home ]] || return 1
+    # Fedora RPM scriptlets have no session environment and their machined
+    # user@ transport can reset. Launch with explicit credentials and runtime.
+    systemd-run --quiet --wait --collect --uid="$uid" --gid="$gid" \
+      --setenv="HOME=$home" --setenv="USER=$user" --setenv="LOGNAME=$user" \
+      --setenv="XDG_RUNTIME_DIR=$runtime_root/$uid" \
+      --setenv="DBUS_SESSION_BUS_ADDRESS=unix:path=$runtime_root/$uid/bus" \
       --setenv="XDG_SESSION_ID=$sid" \
       --property=Type=oneshot --property=TimeoutStartSec=90s \
       --property=RuntimeMaxSec=90s --unit="$unit" "$self_path" user
@@ -1459,7 +1483,7 @@ root_cutover() {
     return 1
   fi
 
-  local sessions user uid sid failed=0
+  local sessions user uid sid message failed=0
   if ! target_policy_present && [[ -r $runtime_sessions ]]; then
     sessions="$(<"$runtime_sessions")"
   elif ! sessions="$(package_session_users)"; then
@@ -1472,7 +1496,9 @@ root_cutover() {
       continue
     fi
     if ! run_user_cutover "$user" "$uid" "$sid"; then
-      log "session cutover failed for $user" >&2
+      message="session cutover failed for $user (uid $uid, session $sid)"
+      log "$message" >&2
+      logger -t ryoku-power-cutover "$message" >/dev/null 2>&1 || true
       failed=1
     fi
   done <<<"$sessions"

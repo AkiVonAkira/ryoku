@@ -207,7 +207,12 @@ fi
 [ -d /run/systemd/system ] || exit 0
 systemd-detect-virt --quiet --chroot && exit 0
 [ -x /usr/bin/ryoku-power-cutover ] || exit 0
-/usr/bin/ryoku-power-cutover package
+if ! /usr/bin/ryoku-power-cutover package; then
+  logger -t ryoku-power-cutover \
+    "ryoku-desktop post-transaction cutover failed; package transaction continues" \
+    >/dev/null 2>&1 || :
+fi
+exit 0
 
 %preun
 [ "$1" -eq 0 ] || exit 0
