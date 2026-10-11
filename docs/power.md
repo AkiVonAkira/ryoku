@@ -291,7 +291,7 @@ for at least two minutes, and read package power, not just clock speed.
 ryoku doctor --check                  # read-only; reports a dGPU pinned awake
 ryoku-gpu-mux status                  # is the dGPU pinned awake by the MUX
 ryoku-power status                    # charge ceiling and ASPM
-powerprofilesctl get                  # active profile
+ryoku-shell powerprofiles state | jq -r '.active_profile'  # tuned-ppd or power-profiles-daemon
 cat /proc/driver/nvidia/gpus/*/power  # the driver's own runtime D3 verdict
 cat /sys/bus/pci/devices/*/power/runtime_status   # did the dGPU actually sleep
 cat /sys/class/hwmon/hwmon*/temp1_input   # package temperature, millidegrees

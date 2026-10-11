@@ -3403,10 +3403,9 @@ Item {
     // ── Power Profile state ──
     property bool powerProfileVisible: false
     onPowerProfileVisibleChanged: popupOpened("powerProfileVisible")
-    // The shell daemon owns power-profiles-daemon (ryoku-shell powerprofiles.go)
-    // and streams the live pick on the powerprofiles topic; these read that
-    // stream. A second poller of powerprofilesctl here would drift from the
-    // daemon's banked profile and make a switch look like it did nothing.
+    // The shell daemon owns the power-profile provider and streams the live pick
+    // on the powerprofiles topic. A second provider poller here would drift from
+    // the daemon's banked profile and make a switch look like it did nothing.
     readonly property string powerProfileCurrent: PowerProfiles.profile
     readonly property var powerProfileAvailable: PowerProfiles.available
         ? PowerProfiles.profiles

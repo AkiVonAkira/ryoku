@@ -85,7 +85,7 @@ pretending the action worked.
 | `omarchy-audio-source-switch` | Nomarchy media IPC |
 | `omarchy-bluetooth-power`, `omarchy-bluetooth-device` | `rfkill` and `bluetoothctl` |
 | `omarchy-network-status` | NetworkManager active connection state |
-| `omarchy-powerprofiles-list`, `omarchy-powerprofiles-set` | `powerprofilesctl` |
+| `omarchy-powerprofiles-list`, `omarchy-powerprofiles-set` | `ryoku-shell` PowerProfiles IPC, with tuned-ppd or power-profiles-daemon |
 | `omarchy-file-select` | Ryoku's shipped Zenity file chooser |
 | `omarchy-glyph` | Pass-through glyph output |
 | `omarchy-default-browser`, `omarchy-default-terminal`, `omarchy-default-editor` | XDG or Ryoku default application state |
