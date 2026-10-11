@@ -277,4 +277,131 @@ RYOKU_LIMINE_CMDLINE='root=UUID=fresh rootflags=subvol=@ rw' \
   "$hook"
 cmp "$fresh/BOOTX64.EFI" "$fresh_boot/EFI/BOOT/BOOTX64.EFI"
 
+bios=$tmp/bios
+bios_boot=$bios/boot
+bios_modules=$bios/modules
+bios_installed=$bios_boot/limine/limine-bios.sys
+bios_source=$bios/limine-bios.sys
+bios_events=$bios/events.log
+bios_journal=$bios/journal.log
+bios_flock=$bios/flock.log
+mkdir -p "$bios_boot/limine" "$bios_modules/6.12.30_1"
+: >"$bios_boot/vmlinuz-6.12.30_1"
+: >"$bios_boot/initramfs-6.12.30_1.img"
+: >"$bios_events"
+: >"$bios_journal"
+: >"$bios_flock"
+printf 'current-bios\n' >"$bios_source"
+
+cat >"$fake_bin/findmnt" <<'EOF'
+#!/usr/bin/env bash
+printf 'findmnt %s\n' "$*" >>"$RYOKU_TEST_BIOS_EVENTS"
+printf '/dev/vda1\n'
+EOF
+cat >"$fake_bin/lsblk" <<'EOF'
+#!/usr/bin/env bash
+printf 'lsblk %s\n' "$*" >>"$RYOKU_TEST_BIOS_EVENTS"
+if [[ " $* " == *" PKNAME "* ]]; then
+  printf 'vda\n'
+else
+  printf '/dev/vda2 21686148-6449-6e6f-744e-656564454649 2\n'
+  if [[ ${RYOKU_TEST_BIOS_AMBIGUOUS:-0} == 1 ]]; then
+    printf '/dev/vda3 21686148-6449-6e6f-744e-656564454649 3\n'
+  fi
+fi
+EOF
+cat >"$fake_bin/limine" <<'EOF'
+#!/usr/bin/env bash
+printf 'limine %s\n' "$*" >>"$RYOKU_TEST_BIOS_EVENTS"
+printf 'installed-before=%s\n' "$(<"$RYOKU_TEST_BIOS_INSTALLED")" >>"$RYOKU_TEST_BIOS_EVENTS"
+[[ ${RYOKU_TEST_BIOS_FAIL:-0} != 1 ]]
+EOF
+cat >"$fake_bin/mv" <<'EOF'
+#!/usr/bin/env bash
+if [[ ${*: -1} == "$RYOKU_TEST_BIOS_INSTALLED" ]]; then
+  printf 'mv-bios\n' >>"$RYOKU_TEST_BIOS_EVENTS"
+fi
+exec /usr/bin/mv "$@"
+EOF
+cat >"$fake_bin/sync" <<'EOF'
+#!/usr/bin/env bash
+printf 'sync\n' >>"$RYOKU_TEST_BIOS_EVENTS"
+EOF
+cat >"$fake_bin/logger" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$RYOKU_TEST_BIOS_JOURNAL"
+EOF
+chmod +x "$fake_bin/findmnt" "$fake_bin/lsblk" "$fake_bin/limine" \
+  "$fake_bin/mv" "$fake_bin/sync" "$fake_bin/logger"
+
+bios_env=(
+  PATH="$fake_bin:$base_path"
+  RYOKU_LIMINE_BOOT_DIR="$bios_boot"
+  RYOKU_LIMINE_CONF="$bios_boot/limine.conf"
+  RYOKU_LIMINE_BRANDING_FILE="$tmp/branding.conf"
+  RYOKU_LIMINE_EXTRA_FILE=/nonexistent
+  RYOKU_WINDOWS_HELPER=/nonexistent
+  RYOKU_LIMINE_LOADER=/nonexistent
+  RYOKU_LIMINE_BIOS_SYS="$bios_source"
+  RYOKU_MODULES_DIR="$bios_modules"
+  RYOKU_SNAPPER_ROOT_CONFIG=/nonexistent
+  RYOKU_LIMINE_LOCK_FILE="$bios/boot-partition.lock"
+  RYOKU_LIMINE_CMDLINE='root=UUID=bios rootflags=subvol=@ rw'
+  RYOKU_TEST_FLOCK_LOG="$bios_flock"
+  RYOKU_TEST_BIOS_EVENTS="$bios_events"
+  RYOKU_TEST_BIOS_INSTALLED="$bios_installed"
+  RYOKU_TEST_BIOS_JOURNAL="$bios_journal"
+)
+
+# No installed BIOS image means this is not a BIOS install.
+rm -f "$bios_installed"
+env "${bios_env[@]}" "$hook"
+[[ ! -s $bios_events ]]
+
+# Matching stage-two images need no disk discovery or reinstall.
+cp "$bios_source" "$bios_installed"
+: >"$bios_events"
+env "${bios_env[@]}" "$hook"
+[[ ! -s $bios_events ]]
+
+# Ambiguous disk metadata leaves the installed image untouched and logs once.
+printf 'old-ambiguous\n' >"$bios_installed"
+printf 'new-ambiguous\n' >"$bios_source"
+: >"$bios_events"
+: >"$bios_journal"
+env "${bios_env[@]}" RYOKU_TEST_BIOS_AMBIGUOUS=1 "$hook" 2>"$bios/stderr-ambiguous.log"
+[[ $(<"$bios_installed") == old-ambiguous ]]
+assert_not_contains 'limine bios-install' "$bios_events"
+assert_contains 'expected one GPT BIOS boot partition on /dev/vda' "$bios/stderr-ambiguous.log"
+[[ $(grep -c 'expected one GPT BIOS boot partition on /dev/vda' "$bios_journal") -eq 1 ]]
+
+# Publish the new image only after its matching disk stage installs.
+printf 'old-bios\n' >"$bios_installed"
+printf 'new-bios\n' >"$bios_source"
+: >"$bios_events"
+env "${bios_env[@]}" "$hook"
+cmp "$bios_source" "$bios_installed"
+assert_contains 'limine bios-install /dev/vda 2' "$bios_events"
+assert_contains 'installed-before=old-bios' "$bios_events"
+stage_line=$(grep -n '^limine bios-install /dev/vda 2$' "$bios_events")
+rename_line=$(grep -n '^mv-bios$' "$bios_events")
+[[ ${stage_line%%:*} -lt ${rename_line%%:*} ]]
+assert_contains 'sync' "$bios_events"
+
+# A failed disk-stage install keeps the old image and reports one journal event.
+printf 'old-again\n' >"$bios_installed"
+printf 'new-again\n' >"$bios_source"
+: >"$bios_events"
+: >"$bios_journal"
+bios_stderr=$bios/stderr.log
+env "${bios_env[@]}" RYOKU_TEST_BIOS_FAIL=1 "$hook" 2>"$bios_stderr"
+[[ $(<"$bios_installed") == old-again ]]
+assert_not_contains 'mv-bios' "$bios_events"
+assert_contains 'BIOS refresh failed: limine bios-install /dev/vda 2' "$bios_stderr"
+assert_contains '-t 50-ryoku-limine -- BIOS refresh failed: limine bios-install /dev/vda 2' "$bios_journal"
+[[ $(grep -c 'BIOS refresh failed: limine bios-install /dev/vda 2' "$bios_journal") -eq 1 ]]
+shopt -s nullglob
+bios_temps=("$bios_boot"/limine/.limine-bios.sys.*)
+shopt -u nullglob
+((${#bios_temps[@]} == 0))
 printf 'void limine hook: ok\n'

@@ -31,6 +31,11 @@
   `udev` in `mkinitcpio/ryoku.conf`.
 
 ### Fixed
+- `limine/50-ryoku-limine` now refreshes legacy BIOS installs when Void
+  updates Limine. It discovers the boot disk and its GPT BIOS partition from
+  the mounted `/boot`, installs the matching disk stage, then atomically
+  replaces `limine-bios.sys`; failed or ambiguous discovery leaves the existing
+  boot path untouched and records the reason in stderr and the journal.
 - `limine/90-ryoku-restore-default` resets Limine to the restored system's
   first kernel and clears its remembered snapshot entry; Void's boot guard now
   logs through vlogger.
