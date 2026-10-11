@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 import hashlib
 import importlib.machinery
+import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 
 helper = Path(__file__).resolve().parents[2] / 'fedora/system/extras/ryoku-install-extra'
-extra = importlib.machinery.SourceFileLoader('extra', str(helper)).load_module()
+loader = importlib.machinery.SourceFileLoader('extra', str(helper))
+spec = importlib.util.spec_from_loader('extra', loader)
+extra = importlib.util.module_from_spec(spec)
+loader.exec_module(extra)
 
 
 class Extras(unittest.TestCase):

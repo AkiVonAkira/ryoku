@@ -18,8 +18,12 @@ Pinned and checksum-verified desktop extras, included in the source payload.
 export RYOKU_EXTRA_CACHE="$PWD/.rpm-extras"
 python3 - <<'PY'
 import importlib.machinery
+import importlib.util
 from pathlib import Path
-extra = importlib.machinery.SourceFileLoader('extra', 'fedora/system/extras/ryoku-install-extra').load_module()
+loader = importlib.machinery.SourceFileLoader('extra', 'fedora/system/extras/ryoku-install-extra')
+spec = importlib.util.spec_from_file_location('extra', loader.path, loader=loader)
+extra = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(extra)
 # The buildroot has no font cache consumers; RPM's font trigger updates it.
 extra.shutil.which = lambda name: None
 for name in extra.RELEASES:

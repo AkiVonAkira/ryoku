@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 root=$(cd "$(dirname "$0")/../../.." && pwd)
 out=$(realpath -m "${RYOKU_SRPM_OUT:-$root/fedora/packages/rpm/srpms}")
 local_build=${RYOKU_RPM_LOCAL:-0}
 rpm_revision=${RYOKU_RPM_REVISION:-1}
 die() { printf 'prepare-srpms: %s\n' "$*" >&2; exit 1; }
+current_package=setup
+on_error() {
+  local status=$?
+  trap - ERR
+  printf 'prepare-srpms: command failed while preparing %s at line %s: %s\n' \
+    "$current_package" "${BASH_LINENO[0]:-unknown}" "$BASH_COMMAND" >&2
+  exit "$status"
+}
+trap on_error ERR
 for tool in rpmbuild rpmspec python3 tar gzip go git curl sha256sum find; do
   command -v "$tool" >/dev/null || die "missing $tool"
 done
@@ -78,22 +87,28 @@ PY
 
 tree_go_vendored=0
 vendor_ryoku_go_modules() {
-  ((tree_go_vendored == 0)) || return
+  ((tree_go_vendored == 0)) || return 0
   while IFS= read -r -d '' gomod; do
     (cd "${gomod%/go.mod}" && GOTOOLCHAIN=local go mod vendor)
   done < <(find "$tree/ryoku" -name vendor -prune -o -name go.mod -print0)
   tree_go_vendored=1
+  return 0
 }
 
 python3 - "$tree" <<'PYEXTRAS'
 import importlib.machinery
+import importlib.util
 import pathlib
 import sys
 
 root = pathlib.Path(sys.argv[1])
-extra = importlib.machinery.SourceFileLoader(
-    "extra", str(root / "fedora/system/extras/ryoku-install-extra")
-).load_module()
+helper = root / "fedora/system/extras/ryoku-install-extra"
+loader = importlib.machinery.SourceFileLoader("extra", str(helper))
+spec = importlib.util.spec_from_file_location("extra", helper, loader=loader)
+if spec is None or spec.loader is None:
+    raise ImportError(f"could not load {helper}")
+extra = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(extra)
 cache = root / ".rpm-extras"
 cache.mkdir()
 for version, url, digest, relative in extra.RELEASES.values():
@@ -188,6 +203,7 @@ validate_expanded_spec() {
       die "$package: expanded dependency is invalid: $line"
     fi
   done <<< "$expanded"
+  return 0
 }
 
 record_upstream_rpms() {
@@ -365,9 +381,11 @@ prepare_spec_sources() {
       | gzip -n > "$source_dir/$expected_vendor"
     rm -rf "$vendor_work"
   fi
+  return 0
 }
 
 for package in "${packages[@]}"; do
+  current_package=$package
   source_spec="$root/fedora/packages/rpm/$package.spec"
   target_spec="$work/SPECS/$package.spec"
   source_dir="$work/SOURCES/$package"
@@ -376,7 +394,8 @@ for package in "${packages[@]}"; do
 
   if [[ -e $hook ]]; then
     [[ -x $hook ]] || die "$hook is not executable"
-    RYOKU_FETCH_TREE="$tree" RYOKU_FETCH_SOURCES="$source_dir" "$hook"
+    RYOKU_FETCH_TREE="$tree" RYOKU_FETCH_SOURCES="$source_dir" "$hook" \
+      || die "$package: fetch hook failed: $hook"
   fi
 
   if grep -Eq '^Source0:[[:space:]]+ryoku-%\{version\}\.tar\.gz[[:space:]]*$' "$source_spec"; then
@@ -410,7 +429,8 @@ for package in "${packages[@]}"; do
 
   rpmbuild --define "_topdir $work" \
     --define "_sourcedir $source_dir" \
-    --define "_srcrpmdir $out" -bs "$target_spec"
+    --define "_srcrpmdir $out" -bs "$target_spec" \
+    || die "$package: failed to write source RPM"
 done
 
 python3 - "$out/release.json" "$release" "$name" "$channel" "$pkgver" \
