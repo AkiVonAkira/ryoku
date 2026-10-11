@@ -156,6 +156,7 @@ jobs:
             published="fedora/${{ matrix.fedora }}/channels/testing/x86_64"
           fi
           rclone copy "Ryoku:$R2_BUCKET/$published/" "$mirror/" \
+            --exclude '*-debuginfo-*.rpm' --exclude '*-debugsource-*.rpm' \
             --include '*.rpm' --include 'upstream-inputs.tsv' --exclude '*' || true
           echo "RYOKU_RPM_MIRROR=$mirror" >> "$GITHUB_ENV"
 
@@ -415,6 +416,11 @@ jobs:
           shopt -s nullglob
           rpms=("$src"/*.rpm)
           ((${#rpms[@]})) || { echo '::error::Tested repository has no RPMs'; exit 1; }
+          debug_rpms=("$src"/*-debuginfo-*.rpm "$src"/*-debugsource-*.rpm)
+          ((${#debug_rpms[@]} == 0)) || {
+            printf '::error::Tested repository contains debug RPM: %s\n' "${debug_rpms[@]##*/}"
+            exit 1
+          }
           [[ -s $src/repodata/repomd.xml ]] || { echo '::error::Tested repository has no repomd.xml'; exit 1; }
           [[ -s $src/repodata/repomd.xml.asc ]] || { echo '::error::Tested repository has no repomd.xml signature'; exit 1; }
 

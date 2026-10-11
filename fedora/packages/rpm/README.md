@@ -108,4 +108,5 @@ RYOKU_RPM_SIGNING_KEY=EB6D3C0F55A7B3CABA6B2838847B274F025DD6E3 \
 
 The output contains binary RPMs, repository metadata, its armored signature,
 `upstream-inputs.tsv`, and `release.json`. SRPMs remain build artifacts and are
-not published.
+not published. Generated `-debuginfo` and `-debugsource` RPMs are not mirrored,
+signed, or published. Assembly fails if a shipped RPM requires one of them.

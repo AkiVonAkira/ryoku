@@ -53,12 +53,31 @@ if [[ -n $signing_key ]]; then
   rpm --dbpath "$keydb" --import "$work/key.asc"
 fi
 
+is_debug_package() {
+  [[ $1 == *-debuginfo || $1 == *-debugsource ]]
+}
+
+verify_no_debug_requirements() {
+  local rpm_file=$1 requirement requirements
+  requirements=$(rpm -qp --requires "$rpm_file") \
+    || die "could not read requirements from $rpm_file"
+  while read -r requirement _; do
+    case $requirement in
+      *-debuginfo|*-debuginfo\(*|*-debugsource|*-debugsource\(*)
+        die "${rpm_file##*/} requires debug package $requirement"
+        ;;
+    esac
+  done <<< "$requirements"
+  return 0
+}
+
 declare -A upstream_sources=() expected_rpms=() mirror_rpms=() mirror_digests=()
 while IFS=$'\t' read -r source name epoch version rpm_release arch input_digest extra \
   || [[ -n $source ]]; do
   [[ -n $source && -n $name && -n $epoch && -n $version && -n $rpm_release && -n $arch \
     && $input_digest =~ ^[0-9a-f]{64}$ && -z ${extra:-} ]] \
     || die "invalid upstream RPM identity in $upstream_manifest"
+  is_debug_package "$name" && continue
   identity="$name"$'\t'"$epoch"$'\t'"$version"$'\t'"$rpm_release"$'\t'"$arch"
   [[ -z ${expected_rpms["$source|$identity"]+x} ]] \
     || die "duplicate expected upstream RPM identity for $source: $identity"
@@ -69,13 +88,18 @@ done < "$upstream_manifest"
 if [[ -n $mirror_input ]]; then
   shopt -s nullglob
   mirror_files=("$mirror"/*.rpm)
+  reusable_mirror_files=()
   for rpm_file in "${mirror_files[@]}"; do
     identity=$(rpm -qp --qf '%{NAME}\t%{EPOCHNUM}\t%{VERSION}\t%{RELEASE}\t%{ARCH}' "$rpm_file") \
       || die "could not read mirrored RPM: $rpm_file"
+    name=${identity%%$'\t'*}
+    is_debug_package "$name" && continue
     [[ -z ${mirror_rpms[$identity]+x} ]] \
       || die "mirror has duplicate RPM identity: $identity"
     mirror_rpms[$identity]=$rpm_file
+    reusable_mirror_files+=("$rpm_file")
   done
+  mirror_files=("${reusable_mirror_files[@]}")
   mirror_manifest="$mirror/upstream-inputs.tsv"
   if [[ -f $mirror_manifest ]]; then
     while IFS=$'\t' read -r source name epoch version rpm_release arch input_digest extra \
@@ -83,6 +107,7 @@ if [[ -n $mirror_input ]]; then
       [[ -n $source && -n $name && -n $epoch && -n $version && -n $rpm_release && -n $arch \
         && $input_digest =~ ^[0-9a-f]{64}$ && -z ${extra:-} ]] \
         || die "invalid published upstream input identity in $mirror_manifest"
+      is_debug_package "$name" && continue
       identity="$name"$'\t'"$epoch"$'\t'"$version"$'\t'"$rpm_release"$'\t'"$arch"
       [[ -z ${mirror_digests[$identity]+x} ]] \
         || die "published input manifest has duplicate RPM identity: $identity"
@@ -185,6 +210,12 @@ done
 mapfile -d '' built_rpms < <(find "$work/RPMS" -type f -name '*.rpm' -print0)
 built_targets=()
 for rpm_file in "${built_rpms[@]}"; do
+  name=$(rpm -qp --qf '%{NAME}' "$rpm_file") \
+    || die "could not read built RPM: $rpm_file"
+  if is_debug_package "$name"; then
+    printf 'build-rpm-repo: Excluded %s\n' "${rpm_file##*/}"
+    continue
+  fi
   target="$out/${rpm_file##*/}"
   [[ ! -e $target ]] || die "duplicate RPM filename: ${target##*/}"
   cp "$rpm_file" "$target"
@@ -193,6 +224,9 @@ done
 
 repo_rpms=("$out"/*.rpm)
 ((${#repo_rpms[@]})) || die 'no binary RPMs built or reused'
+for rpm_file in "${repo_rpms[@]}"; do
+  verify_no_debug_requirements "$rpm_file"
+done
 if [[ -n $signing_key ]]; then
   for rpm_file in "${built_targets[@]}"; do
     rpmsign --define "_gpg_name $signing_key" --addsign "$rpm_file"
