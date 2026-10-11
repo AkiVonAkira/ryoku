@@ -2423,18 +2423,20 @@ if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
     prepare-package) prepare_package ;;
     package)
       # The staged copy in /run is the pre-upgrade code the transaction started
-      # under, so a live session is cut over by the logic it began with. On the
-      # transaction that FIRST installs this hook pair the staging
-      # PreTransaction hook is not on disk yet, /run/ryoku-power-cutover never
-      # appears, and execv-ing it fails the hook (#272): fall back to the
-      # just-installed binary, which is the same code staging would copy.
-      # RYOKU_CUTOVER_STAGED stops a staged copy of THIS code from exec-ing
-      # itself; an older staged copy ignores the variable and runs its own
-      # root_cutover, so every old/new combination terminates.
-      if [[ -z ${RYOKU_CUTOVER_STAGED:-} && -x /run/ryoku-power-cutover ]]; then
-        RYOKU_CUTOVER_STAGED=1 exec /run/ryoku-power-cutover package
+      # under. Run it as a child so the installed wrapper can remove even an old
+      # staged helper after success or failure. A staged helper also owns an EXIT
+      # cleanup for removal transactions that no longer have an installed copy.
+      # RYOKU_CUTOVER_STAGED explicitly selects installed recovery logic instead;
+      # its EXIT cleanup retires leftovers from builds that leaked the stage.
+      if [[ -n ${RYOKU_CUTOVER_STAGED:-} ]]; then
+        trap 'rm -f -- "$runtime_helper"' EXIT
+        root_cutover
+      elif [[ -x $runtime_helper ]]; then
+        trap 'rm -f -- "$runtime_helper"' EXIT
+        RYOKU_CUTOVER_STAGED=1 "$runtime_helper" package
+      else
+        root_cutover
       fi
-      root_cutover
       ;;
     package-deferred) deferred_cutover ;;
     user) user_cutover ;;

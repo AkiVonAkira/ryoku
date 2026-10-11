@@ -407,6 +407,37 @@ EOF
   RYOKU_TEST_INIT=runit RUNIT_LOG="$tmp/runit-package.log" \
     RUNIT_STATE="$tmp/runit-package-state" \
     CUTOVER_STATE="$tmp/runit-package-state" \
+    RYOKU_CUTOVER_RUNTIME_HELPER="$tmp/runit-package-helper" \
+    RYOKU_CUTOVER_RUNTIME_SESSIONS="$tmp/runit-package-sessions" \
+    RYOKU_CUTOVER_MARKER="$tmp/runit-package-marker" \
+    RYOKU_CUTOVER_TARGET_ROOT="$tmp/runit-package-target" \
+    RYOKU_CUTOVER_PROVIDER_ROOT="$tmp/provider-bin" \
+    PATH="$tmp/runit-package-bin:$PATH" "$helper" package
+  [[ ! -e $tmp/runit-package-helper ]] ||
+    fail "transaction cutover left its staged helper behind"
+  cat >"$tmp/failing-package-helper" <<'EOF'
+#!/usr/bin/env bash
+: >"$STALE_HELPER_RAN"
+exit 97
+EOF
+  chmod +x "$tmp/failing-package-helper"
+  cp "$tmp/failing-package-helper" "$tmp/runit-package-helper"
+  if RYOKU_TEST_INIT=runit \
+      STALE_HELPER_RAN="$tmp/stale-helper-ran" \
+      RYOKU_CUTOVER_RUNTIME_HELPER="$tmp/runit-package-helper" \
+      "$helper" package; then
+    fail "transaction accepted a failed staged helper"
+  fi
+  [[ -e $tmp/stale-helper-ran ]] ||
+    fail "transaction did not run its staged helper"
+  [[ ! -e $tmp/runit-package-helper ]] ||
+    fail "failed transaction cutover left its staged helper behind"
+  rm -f "$tmp/stale-helper-ran"
+  cp "$tmp/failing-package-helper" "$tmp/runit-package-helper"
+  RYOKU_TEST_INIT=runit RUNIT_LOG="$tmp/runit-package.log" \
+    RUNIT_STATE="$tmp/runit-package-state" \
+    CUTOVER_STATE="$tmp/runit-package-state" \
+    STALE_HELPER_RAN="$tmp/stale-helper-ran" \
     RYOKU_CUTOVER_STAGED=1 \
     RYOKU_CUTOVER_RUNTIME_HELPER="$tmp/runit-package-helper" \
     RYOKU_CUTOVER_RUNTIME_SESSIONS="$tmp/runit-package-sessions" \
@@ -414,6 +445,10 @@ EOF
     RYOKU_CUTOVER_TARGET_ROOT="$tmp/runit-package-target" \
     RYOKU_CUTOVER_PROVIDER_ROOT="$tmp/provider-bin" \
     PATH="$tmp/runit-package-bin:$PATH" "$helper" package
+  [[ ! -e $tmp/stale-helper-ran ]] ||
+    fail "installed recovery executed a stale staged helper"
+  [[ ! -e $tmp/runit-package-helper ]] ||
+    fail "installed recovery did not remove the stale staged helper"
   [[ ! -e $tmp/runit-package-state/runit-inhibitor ]] ||
     fail "runit package cutover did not release its sleep guard"
   if grep -q '^forbidden ' "$tmp/runit-package.log"; then

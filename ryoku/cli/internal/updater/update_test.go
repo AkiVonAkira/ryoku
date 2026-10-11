@@ -586,6 +586,44 @@ func TestPackagePowerCutoverRetriesIncompleteAdoption(t *testing.T) {
 	}
 }
 
+func TestPackagePowerCutoverRecoveryUsesInstalledHelper(t *testing.T) {
+	bin := t.TempDir()
+	systemctl := filepath.Join(bin, "systemctl")
+	if err := os.WriteFile(systemctl, []byte("#!/bin/sh\nexit 3\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	helper := filepath.Join(bin, "ryoku-power-cutover")
+	if err := os.WriteFile(helper, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	t.Setenv("RYOKU_HOST_INIT", "systemd")
+
+	oldMarker := packagePowerCutoverMarker
+	oldHelper := packagePowerCutoverHelper
+	oldSudo := sudoPackagePowerCutover
+	t.Cleanup(func() {
+		packagePowerCutoverMarker = oldMarker
+		packagePowerCutoverHelper = oldHelper
+		sudoPackagePowerCutover = oldSudo
+	})
+	packagePowerCutoverMarker = filepath.Join(bin, "missing-marker")
+	packagePowerCutoverHelper = helper
+
+	var got []string
+	sudoPackagePowerCutover = func(args ...string) error {
+		got = append([]string(nil), args...)
+		return nil
+	}
+	if err := ensurePackagePowerCutover(); err != nil {
+		t.Fatalf("ensure package power cutover: %v", err)
+	}
+	want := []string{"env", "RYOKU_CUTOVER_STAGED=1", helper, "package"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("package power cutover recovery argv = %q, want %q", got, want)
+	}
+}
+
 func TestConfigReloadResultAcceptsProviderWithoutReload(t *testing.T) {
 	if err := configReloadResult(wm.ErrUnsupported); err != nil {
 		t.Fatalf("unsupported reload should defer to provider file watching: %v", err)

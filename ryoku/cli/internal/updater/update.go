@@ -977,8 +977,11 @@ func acquirePowerCutoverLock() (*os.File, error) {
 
 const updateSleepGuardUnit = "ryoku-power-cutover-guard.service"
 
-// A var so tests point it at a fixture.
-var packagePowerCutoverMarker = "/var/lib/ryoku/power-cutover-hook-active"
+// Vars so tests point the package recovery at fixtures.
+var (
+	packagePowerCutoverMarker = "/var/lib/ryoku/power-cutover-hook-active"
+	packagePowerCutoverHelper = "/usr/bin/ryoku-power-cutover"
+)
 
 func needsPackagePowerCutover(markerPresent, rootGuardActive bool) bool {
 	return !markerPresent || rootGuardActive
@@ -991,6 +994,8 @@ func needsPackagePowerCutover(markerPresent, rootGuardActive bool) bool {
 var cutoverMarkerExistsAsRoot = func(path string) bool {
 	return exec.Command("sudo", "-n", "test", "-e", path).Run() == nil
 }
+
+var sudoPackagePowerCutover = sys.Sudo
 
 // packageCutoverMarkerPresent reports whether the adoption marker exists.
 // /var/lib/ryoku is root-owned and a drifted mode there hides the marker from
@@ -1015,14 +1020,16 @@ func ensurePackagePowerCutover() error {
 	if !needsPackagePowerCutover(markerPresent, rootGuardActive) {
 		return nil
 	}
-	const helper = "/usr/bin/ryoku-power-cutover"
+	helper := packagePowerCutoverHelper
 	if _, err := os.Stat(helper); err != nil {
 		if os.IsNotExist(err) && !rootGuardActive {
 			return nil
 		}
 		return fmt.Errorf("inspect package power cutover helper: %w", err)
 	}
-	if err := sys.Sudo(helper, "package"); err != nil {
+	if err := sudoPackagePowerCutover(
+		"env", "RYOKU_CUTOVER_STAGED=1", helper, "package",
+	); err != nil {
 		return fmt.Errorf("adopt packaged power policy in live sessions: %w", err)
 	}
 	return nil
