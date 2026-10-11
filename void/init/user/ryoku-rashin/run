@@ -7,6 +7,8 @@ load_session_env
 BIN=${RYOKU_BIN_DIR:-/usr/bin}
 _here=$(dirname "$0")
 
-[ -d "$_here/../ryoku-prowl" ] && sv up "$_here/../ryoku-prowl" >/dev/null 2>&1 || true
+if [ -d "$_here/../ryoku-prowl" ]; then
+	sv up "$_here/../ryoku-prowl" >/dev/null 2>&1 || true
+fi
 
 exec "$BIN/ryoku-rashin" serve --if-enabled
