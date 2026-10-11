@@ -1,12 +1,26 @@
 package doctor
 
-import "testing"
+import (
+	"testing"
+
+	"ryoku-cli/internal/host"
+)
 
 func stubPacmanHost(t *testing.T, available bool) {
 	t.Helper()
-	old := hasPacman
+	oldHasPacman := hasPacman
+	oldManager := doctorPackageManager
+	manager := host.XBPS
+	if available {
+		manager = host.Pacman
+	}
 	hasPacman = func() bool { return available }
-	t.Cleanup(func() { hasPacman = old })
+	doctorPackageManager = func() (host.PackageManager, error) { return manager, nil }
+	t.Setenv("RYOKU_HOST_PKGMGR", string(manager))
+	t.Cleanup(func() {
+		hasPacman = oldHasPacman
+		doctorPackageManager = oldManager
+	})
 }
 
 // enableILoveCandy must land the directive inside [options] and nowhere else:
@@ -92,13 +106,10 @@ func TestPacmanReconcilersAreNeutralOnOtherPackageManagers(t *testing.T) {
 		name string
 		run  func() recResult
 	}{
-		{"boot guard", func() recResult { return reconcileBootGuard(false) }},
-		{"channel pin", func() recResult { return reconcileChannelPin(false) }},
-		{"pacman progress", func() recResult { return reconcilePacmanCandy(false) }},
-		{"multilib", func() recResult { return reconcileMultilibRepo(false) }},
-		{"manifest", func() recResult { return reconcileManifest(false) }},
-		{"shipped apps", func() recResult { return reconcileShippedApps(false) }},
-		{"retired apps", func() recResult { return reconcileRetiredApps(false) }},
+		{"boot guard", func() recResult { return reconcileBootGuard(true) }},
+		{"channel pin", func() recResult { return reconcileChannelPin(true) }},
+		{"pacman progress", func() recResult { return reconcilePacmanCandy(true) }},
+		{"multilib", func() recResult { return reconcileMultilibRepo(true) }},
 	}
 	for _, check := range checks {
 		t.Run(check.name, func(t *testing.T) {

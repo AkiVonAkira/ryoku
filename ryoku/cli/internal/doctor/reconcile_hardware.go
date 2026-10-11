@@ -447,7 +447,7 @@ func reconcileNvidiaModeset(checkOnly bool) recResult {
 				withFix(i18n.T("ryoku doctor  (restores nouveau, rebuilds the initramfs)"))
 		}
 		if err := restoreNouveauConfig(); err != nil {
-			if manager != host.XBPS {
+			if manager == host.Pacman {
 				return failRes(i18n.T("could not remove the stale NVIDIA config: %v"), err).
 					withFix("sudo rm /etc/modprobe.d/nvidia.conf /etc/mkinitcpio.conf.d/nvidia.conf && sudo mkinitcpio -P")
 			}
@@ -458,11 +458,7 @@ func reconcileNvidiaModeset(checkOnly bool) recResult {
 			return warnRes(i18n.T("restored Nouveau, but the initramfs rebuild failed: %v"), err).
 				withFix(nvidiaInitramfsAdvice())
 		}
-		detail := i18n.T("no nvidia module exists for the installed kernel(s); restored nouveau and rebuilt the initramfs so the next boot has a display. Install a matching driver (pacman -Syu nvidia-open) and run ryoku doctor again to switch back")
-		if manager == host.XBPS {
-			detail = fmt.Sprintf(i18n.T("no nvidia module exists for the installed kernel(s); restored nouveau and rebuilt the initramfs so the next boot has a display. %s, then run ryoku doctor again"), host.Default().InstallAdvice(nvidiaRecommendedVoidPackage()))
-		}
-		return fixedRes("%s", detail)
+		return fixedRes("%s", nvidiaMissingModuleDetail(manager))
 	}
 	initramfs := readFileSafe(initramfsPath)
 	if nvidiaConfigOKFor(manager, modprobe, initramfs) {
@@ -554,6 +550,18 @@ func nvidiaRecommendedVoidPackage() string {
 		return "nvidia580"
 	}
 	return "nvidia"
+}
+
+func nvidiaMissingModuleDetail(manager host.PackageManager) string {
+	const restored = "no nvidia module exists for the installed kernel(s); restored nouveau and rebuilt the initramfs so the next boot has a display."
+	if manager == host.DNF {
+		return i18n.T(restored + " Fedora keeps Nouveau active in this release; proprietary driver changes are left to the user")
+	}
+	pkg := "nvidia-open"
+	if manager == host.XBPS {
+		pkg = nvidiaRecommendedVoidPackage()
+	}
+	return fmt.Sprintf(i18n.T(restored+" %s, then run ryoku doctor again to switch back"), host.Default().InstallAdvice(pkg))
 }
 
 // ---- reconciler: NVIDIA update guard hook ------------------------------------

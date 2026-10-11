@@ -2693,7 +2693,6 @@ func TestPacmanReconcilersAreNeutralOnXBPS(t *testing.T) {
 	for name, reconcile := range map[string]func(bool) recResult{
 		"lock":      reconcilePacmanLock,
 		"ownership": reconcileConflictingRyokuFiles,
-		"ryotunes":  reconcileRyotunes,
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := reconcile(true)

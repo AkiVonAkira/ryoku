@@ -305,6 +305,30 @@ func TestFedoraNvidiaStaysOnNouveauWithManualRPMFusionAdvice(t *testing.T) {
 		t.Fatalf("NVIDIA result = %+v", result)
 	}
 	assertNoForeignPackageAdvice(t, result)
+
+	detail := nvidiaMissingModuleDetail(host.DNF)
+	if !strings.Contains(detail, "keeps Nouveau active") ||
+		strings.Contains(detail, "nvidia-open") || strings.Contains(detail, "mkinitcpio") || strings.Contains(detail, "pacman") {
+		t.Fatalf("Fedora missing-module detail = %q", detail)
+	}
+
+	bin := t.TempDir()
+	log := bin + "/sudo.log"
+	if err := os.WriteFile(bin+"/sudo", []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >\"$NVIDIA_TEST_LOG\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NVIDIA_TEST_LOG", log)
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	if err := rebuildInitramfs(); err != nil {
+		t.Fatalf("Fedora initramfs rebuild: %v", err)
+	}
+	body, err := os.ReadFile(log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(body)); got != "dracut --regenerate-all --force" {
+		t.Fatalf("Fedora initramfs command = %q", got)
+	}
 }
 
 func TestFedoraBootReconcilersSkipWithoutForeignBootAdvice(t *testing.T) {
