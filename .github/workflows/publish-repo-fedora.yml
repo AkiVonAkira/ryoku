@@ -121,7 +121,7 @@ jobs:
     name: "Build signed RPM repo (Fedora ${{ matrix.fedora }})"
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -130,19 +130,64 @@ jobs:
       image: fedora:${{ matrix.fedora }}
     steps:
       - name: Install checkout tools
-        run: dnf install -y git tar gzip curl
+        run: dnf install -y git tar gzip curl rclone
 
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Snapshot the published package set
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CHANNEL: ${{ needs.prepare.outputs.channel }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./bin/ryoku-r2-config
+          mirror="$RUNNER_TEMP/fedora-${{ matrix.fedora }}-published"
+          mkdir -p "$mirror"
+          if [[ $CHANNEL == stable ]]; then
+            published="fedora/${{ matrix.fedora }}/x86_64"
+          else
+            published="fedora/${{ matrix.fedora }}/channels/testing/x86_64"
+          fi
+          rclone copy "Ryoku:$R2_BUCKET/$published/" "$mirror/" \
+            --include '*.rpm' --include 'upstream-inputs.tsv' --exclude '*' || true
+          echo "RYOKU_RPM_MIRROR=$mirror" >> "$GITHUB_ENV"
+
 
       - name: Install build dependencies from the RPM specs
         shell: bash
         run: |
           set -euo pipefail
           dnf install -y dnf-plugins-core dnf5-plugins rpm-build rpm-sign createrepo_c gnupg2
+          build_coprs=fedora/packages/build-coprs.tsv
+          if [[ -f $build_coprs ]]; then
+            while IFS=$'\t' read -r copr packages why || [[ -n $copr ]]; do
+              [[ -n $copr && $copr != \#* && $copr != copr ]] || continue
+              owner=${copr%%/*}
+              project=${copr#*/}
+              [[ -n $owner && -n $project && $project != "$copr" && -n $packages ]] || {
+                echo "::error::Invalid row in $build_coprs: $copr"
+                exit 1
+              }
+              cat > "/etc/yum.repos.d/ryoku-build-copr-$owner-$project.repo" <<EOF
+          [ryoku-build-copr-$owner-$project]
+          name=Ryoku build dependency: $owner/$project
+          baseurl=https://download.copr.fedorainfracloud.org/results/$owner/$project/fedora-\$releasever-\$basearch/
+          enabled=1
+          gpgcheck=1
+          repo_gpgcheck=0
+          gpgkey=https://download.copr.fedorainfracloud.org/results/$owner/$project/pubkey.gpg
+          includepkgs=$packages
+          skip_if_unavailable=1
+          EOF
+            done < "$build_coprs"
+          fi
           dnf builddep -y fedora/packages/rpm/*.spec
 
       - name: Prepare SRPMs and build the signed repository
@@ -196,14 +241,18 @@ jobs:
           compression-level: 0
 
   container-install:
-    name: "Install packaged desktops (Fedora ${{ matrix.fedora }})"
+    name: "Install packaged desktops (Fedora ${{ matrix.fedora }}, ${{ matrix.profile }})"
     needs: [prepare, build]
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
         fedora: ${{ fromJSON(needs.prepare.outputs.releases) }}
+        profile:
+          - plain
+          - tuned-ppd
+          - power-profiles-daemon
     container:
       image: fedora:${{ matrix.fedora }}
     steps:
@@ -224,6 +273,7 @@ jobs:
       - name: Install both desktops from the signed repository
         env:
           EXPECTED_RELEASE: ${{ needs.prepare.outputs.release }}
+          POWER_PROFILE_PROVIDER: ${{ matrix.profile }}
         shell: bash
         run: |
           set -euo pipefail
@@ -277,10 +327,36 @@ jobs:
           EOF
           done < fedora/packages/coprs.tsv
 
+          case "$POWER_PROFILE_PROVIDER" in
+            plain)
+              ;;
+            tuned-ppd|power-profiles-daemon)
+              dnf install -y "$POWER_PROFILE_PROVIDER"
+              ;;
+            *)
+              echo "::error::Unknown power profile scenario: $POWER_PROFILE_PROVIDER"
+              exit 1
+              ;;
+          esac
+
           dnf clean all
           dnf makecache --refresh
           dnf install -y ryoku ryoku-desktop ryoku-desktop-niri
           dnf install -y ryoku-desktop-hyprland
+
+          if [[ $POWER_PROFILE_PROVIDER != plain ]]; then
+            rpm -q "$POWER_PROFILE_PROVIDER" >/dev/null || {
+              echo "::error::$POWER_PROFILE_PROVIDER was removed during the Ryoku install"
+              exit 1
+            }
+          fi
+          mapfile -t quickshell_repos < <(
+            dnf5 repoquery --installed --qf '%{from_repo}' quickshell
+          )
+          [[ " ${quickshell_repos[*]} " == *" ryoku "* ]] || {
+            echo "::error::quickshell was not installed from the ryoku repository: ${quickshell_repos[*]:-missing}"
+            exit 1
+          }
 
           installed=$(awk -F= '$1 == "RELEASE" { print substr($0, index($0, "=") + 1); exit }' /etc/ryoku-release)
           [[ $installed == "$EXPECTED_RELEASE" ]] || {
@@ -292,7 +368,7 @@ jobs:
     name: "Publish RPM repo (Fedora ${{ matrix.fedora }})"
     needs: [prepare, build, container-install]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -335,6 +411,7 @@ jobs:
           tar -C "$artifact" -xf fedora/packages/rpm/fedora-repo.tar
           src="$artifact/x86_64"
           [[ -s $src/release.json ]] || { echo '::error::Tested repository has no release.json'; exit 1; }
+          [[ -f $src/upstream-inputs.tsv ]] || { echo '::error::Tested repository has no upstream-inputs.tsv'; exit 1; }
           shopt -s nullglob
           rpms=("$src"/*.rpm)
           ((${#rpms[@]})) || { echo '::error::Tested repository has no RPMs'; exit 1; }
@@ -364,6 +441,7 @@ jobs:
             local source=$1 destination=$2
             rclone sync "$source/" "$destination/" --include '*.rpm' --exclude '*' -P
             rclone sync "$source/repodata/" "$destination/repodata/" -P
+            rclone copyto "$source/upstream-inputs.tsv" "$destination/upstream-inputs.tsv" -P
             rclone copyto "$source/release.json" "$destination/release.json" -P
             rclone check "$source/" "$destination/" --one-way
           }
@@ -375,6 +453,7 @@ jobs:
             echo "::error::Fedora ${{ matrix.fedora }} $ledger_channel ledger does not list $RELEASE as latest"
             exit 1
           }
+          rclone copyto fedora/releases "$REMOTE/fedora/releases" -P
           echo "::notice::Published Fedora ${{ matrix.fedora }} $CHANNEL release $RELEASE"
 
   notify-failure:

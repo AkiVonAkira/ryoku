@@ -1,19 +1,16 @@
 %global prowl_commit 5ba05eb922ff023e3cbc2b9a3768829179bca980
-%global prowl_sha256 08fbd327fccd1210b19b621914f134e38eaf196ea216f11f9036e83c40c0212f
+%global ryoku_vendor go
 
 Name:           prowl
 Version:        0.17.2
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Prowl model gateway and code intelligence for Ryoku Rashin
 License:        MIT
 URL:            https://github.com/neur0map/prowl
-Source0:        ryoku-prowl-source.tar.gz
+Source0:        https://github.com/neur0map/prowl/archive/%{prowl_commit}.tar.gz#/prowl-%{prowl_commit}.tar.gz
+Source100:      %{name}-%{version}-vendor.tar.gz
 ExclusiveArch:  x86_64
 %global debug_package %{nil}
-BuildRequires:  bash
-BuildRequires:  coreutils
-BuildRequires:  findutils
-BuildRequires:  tar
 BuildRequires:  gcc
 BuildRequires:  golang >= 1.26.4
 BuildRequires:  glibc-devel
@@ -29,18 +26,19 @@ It includes its indexing model so project indexing does not download one at
 runtime.
 
 %prep
-rm -rf source
-mkdir source
-tar -xf %{SOURCE0} -C source --strip-components=1
+%autosetup -n prowl-%{prowl_commit}
+tar -xf %{SOURCE100}
 
 %build
-cd source
-export RYOKU_PKGVER=%{version}
-export PROWL_COMMIT=%{prowl_commit}
-bash fedora/packages/rpm/stage-package.sh %{name} "$PWD/stage" %{_libdir}
+CGO_ENABLED=1 \
+  GOFLAGS='-mod=vendor -modcacherw -buildmode=pie -trimpath' \
+  go build -tags sqlite_fts5 \
+    -ldflags '-s -w -X main.version=v%{version} -X main.commit=%{prowl_commit} -X main.managedBy=dnf' \
+    -o prowl ./cmd/prowl
 
 %install
-cp -a source/stage/. %{buildroot}/
-find %{buildroot} -type f -o -type l | sed 's|^%{buildroot}||' > rpm-files
+install -Dm755 prowl %{buildroot}%{_bindir}/prowl
 
-%files -f rpm-files
+%files
+%license LICENSE NOTICE.md
+%{_bindir}/prowl
