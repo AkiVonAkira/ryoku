@@ -41,10 +41,12 @@ The payload ref selects the RPM channel: `main` uses stable, `unstable-dev`
 uses testing, and a release tag uses that frozen release. Fedora updates,
 channel moves and rollback then use `ryoku update`, `ryoku track` and
 `ryoku rollback` like the other packaged editions. NVIDIA stays on nouveau in
-this release. Workstation's GDM is changed to SDDM. On KDE the plan's greeter
-toggle starts off only when System Settings owns SDDM through
-`kde_settings.conf`; otherwise it starts on and selects Ryoku's greeter, and
-turning it off keeps KDE's.
+this release. Workstation's GDM is changed to SDDM. Fedora KDE's Breeze theme
+is detected in `/usr/lib/sddm/sddm.conf.d/kde_settings.conf`, so the plan keeps
+it by default. Toggling Ryoku's greeter on selects its administrator drop-in;
+only an active theme in the higher-precedence `/etc/sddm.conf` needs a managed
+selection there. Toggling it off removes Ryoku's selections and keeps KDE's
+theme.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash

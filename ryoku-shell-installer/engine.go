@@ -260,8 +260,7 @@ func defaultPlan(f *facts, compositorChoices ...[]string) *plan {
 		aur:       aur,
 		omarchy:   f.omarchyRepo || f.omarchyMirror || len(f.omarchyGuards) > 0,
 		monPins:   len(f.monOutputs) > 0,
-		// when KDE's sddm-kcm owns sddm.conf.d the user chose that greeter
-		// look; keep it unless they opt in.
+		// KDE-owned greeter settings are preserved unless the user opts in.
 		greeter:    !f.kdeSddmConf,
 		resume:     f.prevRun != nil,
 		compositor: compositor,
@@ -665,6 +664,41 @@ func (e *engine) sudoWrite(path, content string) error {
 	c.Stdout, c.Stderr = io.Discard, io.Discard
 	if err := c.Run(); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
+	}
+	return nil
+}
+
+func (e *engine) configureSDDMMainTheme(enabled bool) error {
+	const path = "/etc/sddm.conf"
+	original, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	next, changed := updateRyokuSDDMMainTheme(string(original), enabled)
+	if !changed {
+		return nil
+	}
+	if enabled && !e.dry {
+		if e.backupDir == "" {
+			return errors.New(i18n.T("cannot preserve /etc/sddm.conf without an install backup directory"))
+		}
+		backup := filepath.Join(e.backupDir, "sddm.conf")
+		if _, statErr := os.Stat(backup); errors.Is(statErr, os.ErrNotExist) {
+			if err := os.WriteFile(backup, original, 0o644); err != nil {
+				return err
+			}
+		} else if statErr != nil {
+			return statErr
+		}
+	}
+	if err := e.sudoWrite(path, next); err != nil {
+		return err
+	}
+	if enabled {
+		e.recordRestore(`sudo cp "$DIR/sddm.conf" /etc/sddm.conf`)
 	}
 	return nil
 }
@@ -2003,18 +2037,19 @@ func stepSession(e *engine) error {
 		return err
 	}
 
-	// greeter policy: install-qylock wrote 99-ryoku.conf and sddm/setup wrote
-	// 10-ryoku-wayland.conf (DisplayServer=wayland). SDDM reads conf.d lexically
-	// and later files win per key, so KDE's kde_settings.conf outranks the theme.
-	// The greeter toggle decides who ends up on top; opting out drops both Ryoku
-	// files so the user's greeter theme AND display server stand.
+	// SDDM loads vendor drop-ins first, administrator drop-ins next, and
+	// /etc/sddm.conf last. A managed main-file block is needed only when that
+	// last file has an active theme assignment that would beat Ryoku's drop-in.
+	if err := e.configureSDDMMainTheme(e.p.greeter); err != nil {
+		return err
+	}
 	switch {
 	case !e.p.greeter:
 		if err := e.sudo("rm", "-f", "/etc/sddm.conf.d/99-ryoku.conf", "/etc/sddm.conf.d/zz-ryoku.conf", "/etc/sddm.conf.d/10-ryoku-wayland.conf"); err != nil {
 			return err
 		}
 		e.say(i18n.T("kept your current SDDM greeter (Ryoku's theme and Wayland greeter are installed, not selected)"))
-	case e.f.kdeSddmConf:
+	case e.f.kdeSddmAdminConf:
 		zz := "# written by ryoku-shell-install: sorts after kde_settings.conf so the\n" +
 			"# ryoku greeter theme wins. delete this file to get the KDE greeter back.\n" +
 			"[Theme]\nCurrent=ryoku\n"
@@ -2664,7 +2699,7 @@ func stepVerify(e *engine) error {
 	}
 	if e.p.switchDM && e.p.greeter {
 		if theme := effectiveSDDMTheme(); theme != "" && theme != "ryoku" {
-			e.say(gWarn + " " + i18n.Tf("an SDDM drop-in still selects greeter theme %s; check /etc/sddm.conf.d", theme))
+			e.say(gWarn + " " + i18n.Tf("SDDM still selects greeter theme %s; check /etc/sddm.conf and its drop-ins", theme))
 		}
 	}
 	if e.d().id != "fedora" && e.f.hasNvidia && e.f.secureBoot && !e.p.nvidia {

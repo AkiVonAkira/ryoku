@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -125,15 +127,74 @@ func TestParseKwinOutputs(t *testing.T) {
 }
 
 func TestThemeCurrent(t *testing.T) {
-	kde := "[General]\nHaltCommand=x\n[Theme]\nCurrent=breeze\n"
-	ryoku := "[Theme]\nCurrent=ryoku\n"
-	if got := themeCurrent(kde, themeCurrent(ryoku, "")); got != "breeze" {
-		t.Fatalf("later file must win, got %q", got)
+	text := "[General]\nCurrent=wrong\n[Theme]\n#Current=commented\nCurrent = breeze # trailing comment\nCurrent=ryoku\n"
+	got, ok := themeCurrent(text)
+	if !ok || got != "ryoku" {
+		t.Fatalf("theme Current = %q, %v, want ryoku, true", got, ok)
 	}
-	if got := themeCurrent(ryoku, themeCurrent(kde, "")); got != "ryoku" {
-		t.Fatalf("later file must win, got %q", got)
+	if got, ok := themeCurrent("[Autologin]\nSession=plasma\n"); ok || got != "" {
+		t.Fatalf("non-theme config returned %q, %v", got, ok)
 	}
-	if got := themeCurrent("[Autologin]\nSession=plasma\n", "prev"); got != "prev" {
-		t.Fatalf("no theme section keeps the previous winner, got %q", got)
+}
+
+func writeSDDMTestFile(t *testing.T, root, path, content string) {
+	t.Helper()
+	full := sddmPath(root, path)
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInactiveSDDMMainThemeStaysUntouched(t *testing.T) {
+	stockArch := "[Theme]\n#Current=breeze\n"
+	if got, changed := updateRyokuSDDMMainTheme(stockArch, true); changed || got != stockArch {
+		t.Fatalf("stock Arch main config must stay byte-for-byte unchanged: changed=%v\n%s", changed, got)
+	}
+}
+
+func TestFedoraSDDMThemePrecedenceAndOwnership(t *testing.T) {
+	root := t.TempDir()
+	writeSDDMTestFile(t, root, "/usr/lib/sddm/sddm.conf.d/kde_settings.conf", "[Theme]\nCurrent=01-breeze-fedora\n")
+	writeSDDMTestFile(t, root, "/usr/lib/sddm/sddm.conf.d/plasma-wayland.conf", "[General]\nDisplayServer=wayland\n")
+	writeSDDMTestFile(t, root, "/etc/sddm.conf", "[Theme]\n#Current=01-breeze-fedora\n")
+
+	state := effectiveSDDMThemeAt(root, "01-breeze-fedora")
+	if state.current != "01-breeze-fedora" || !strings.HasSuffix(state.source, "kde_settings.conf") {
+		t.Fatalf("stock Fedora theme = %+v", state)
+	}
+	if !kdeOwnsSDDMTheme(root, "fedora", []string{"KDE Plasma"}) {
+		t.Fatal("Fedora KDE vendor drop-in must preserve Breeze by default")
+	}
+	if kdeOwnsSDDMTheme(root, "arch", []string{"KDE Plasma"}) {
+		t.Fatal("vendor drop-in must not change Arch's existing greeter default")
+	}
+
+	writeSDDMTestFile(t, root, "/etc/sddm.conf.d/99-ryoku.conf", "[Theme]\nCurrent=ryoku\n")
+	state = effectiveSDDMThemeAt(root, "01-breeze-fedora")
+	if state.current != "ryoku" || !strings.HasSuffix(state.source, "99-ryoku.conf") {
+		t.Fatalf("administrator drop-in did not beat Fedora vendor config: %+v", state)
+	}
+
+	main := "[Theme]\nCurrent=custom-kde\n"
+	writeSDDMTestFile(t, root, "/etc/sddm.conf", main)
+	state = effectiveSDDMThemeAt(root, "01-breeze-fedora")
+	if state.current != "custom-kde" || !strings.HasSuffix(state.source, "/etc/sddm.conf") {
+		t.Fatalf("main config did not beat both drop-in directories: %+v", state)
+	}
+
+	selected, changed := updateRyokuSDDMMainTheme(main, true)
+	if !changed {
+		t.Fatal("active main-file theme must receive the managed override")
+	}
+	writeSDDMTestFile(t, root, "/etc/sddm.conf", selected)
+	if state = effectiveSDDMThemeAt(root, "01-breeze-fedora"); state.current != "ryoku" {
+		t.Fatalf("managed main-file selection did not win: %+v", state)
+	}
+	restored, changed := updateRyokuSDDMMainTheme(selected, false)
+	if !changed || restored != main {
+		t.Fatalf("disabling managed selection changed original config: changed=%v\n%s", changed, restored)
 	}
 }

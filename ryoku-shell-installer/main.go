@@ -183,7 +183,7 @@ func buildItems(f *facts, p *plan, compositorChoices ...[]string) []planItem {
 	}
 	gd := i18n.T("points the SDDM login screen at the Ryoku qylock greeter")
 	if f.kdeSddmConf {
-		gd = i18n.T("KDE's login screen settings own SDDM here; toggle on to let the Ryoku theme outrank kde_settings.conf")
+		gd = i18n.T("keeps KDE's current login theme by default; toggle on to select the Ryoku greeter instead")
 	}
 	it = append(it, planItem{label: "Ryoku greeter theme", detail: gd, on: &p.greeter})
 	// only offered when nothing better was salvaged: an existing fr/be/de/...

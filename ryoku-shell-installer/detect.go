@@ -52,7 +52,8 @@ type facts struct {
 	niriFound        bool
 	swayFound        bool         // sway config present; sway stays as a fallback session
 	desktops         []string     // installed desktop environments (kept, never removed)
-	kdeSddmConf      bool         // KDE's sddm-kcm drop-in owns /etc/sddm.conf.d
+	kdeSddmConf      bool         // KDE currently owns the effective SDDM theme
+	kdeSddmAdminConf bool         // KDE settings live in /etc/sddm.conf.d
 	monOutputs       []niriOutput // monitor intent salvaged from the old setup
 	monSource        string       // config the outputs came from (niri, GNOME, KDE, ...)
 	kbLayout         string
@@ -180,6 +181,17 @@ func mirrorlistHasOmarchy(list string) bool {
 		}
 	}
 	return false
+}
+
+func kdeOwnsSDDMTheme(root, distroID string, desktops []string) bool {
+	if _, err := os.Stat(sddmPath(root, "/etc/sddm.conf.d/kde_settings.conf")); err == nil {
+		return true
+	}
+	if distroID != "fedora" || !hasDesktop(desktops, "KDE Plasma") {
+		return false
+	}
+	state := effectiveSDDMThemeAt(root, "01-breeze-fedora")
+	return state.current != "" && state.current != "ryoku"
 }
 
 // Omarchy 4 ships an alpm hook that aborts every `pacman -Syu` unless
@@ -312,9 +324,9 @@ func detect() *facts {
 		f.niriFound = f.distro.installedPkg("niri")
 		f.desktops = detectDesktops()
 	}
-	if _, err := os.Stat("/etc/sddm.conf.d/kde_settings.conf"); err == nil {
-		f.kdeSddmConf = true
-	}
+	_, err = os.Stat("/etc/sddm.conf.d/kde_settings.conf")
+	f.kdeSddmAdminConf = err == nil
+	f.kdeSddmConf = kdeOwnsSDDMTheme("/", f.distroID, f.desktops)
 
 	// an ex-Omarchy box keeps the [omarchy] repo and, worse, Omarchy's own
 	// mirror for core/extra; a converted machine must depend on neither.
