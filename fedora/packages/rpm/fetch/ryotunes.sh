@@ -11,7 +11,7 @@ die() {
   exit 1
 }
 
-for tool in curl jq sha256sum tar pnpm; do
+for tool in curl jq sha256sum tar gzip pnpm; do
   command -v "$tool" >/dev/null 2>&1 || die "$tool is required"
 done
 
@@ -70,10 +70,16 @@ grep -Eq "^version = \"$version\"$" "$source_dir/Cargo.toml" \
 
 (
   cd "$source_dir/ui"
-  pnpm install --frozen-lockfile
+  pnpm install --frozen-lockfile \
+    --virtual-store-dir=node_modules/.pnpm \
+    --config.prefer-symlinked-executables=true
+  rm -f node_modules/.modules.yaml node_modules/.pnpm-workspace-state-v1.json
   rm -rf .svelte-kit build
   tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
-    -czf "$sources/ryotunes-$version-node_modules.tar.gz" node_modules
+    --format=pax \
+    --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime \
+    -cf - node_modules |
+    gzip -n > "$sources/ryotunes-$version-node_modules.tar.gz"
 )
 install -m0644 "$work/$archive" "$sources/$archive"
 printf '%s\n' "$version" > "$sources/.version"

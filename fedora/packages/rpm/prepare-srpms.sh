@@ -376,8 +376,10 @@ prepare_spec_sources() {
       )
     fi
     [[ -d $module_root/vendor ]] || die "$package: vendoring produced no vendor directory"
-    tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 \
-      --numeric-owner -C "$module_root" -cf - vendor \
+    tar --sort=name --format=posix --mtime=@0 --owner=0 --group=0 \
+      --numeric-owner \
+      --pax-option='exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime' \
+      -C "$module_root" -cf - vendor \
       | gzip -n > "$source_dir/$expected_vendor"
     rm -rf "$vendor_work"
   fi

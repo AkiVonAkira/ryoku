@@ -81,6 +81,8 @@ builds. After resolving a fetch hook's dynamic `.version`,
 `prepare-srpms.sh` records each upstream binary identity and an input digest in
 `upstream-rpms.tsv`. The digest covers the fully expanded spec and every Source
 file included in the SRPM, including the generated vendor archive.
+Generated dependency archives use fixed ownership, timestamps, ordering, and
+gzip headers so rebuilding unchanged sources produces the same digest.
 
 `build-rpm-repo.sh` publishes those digests as `upstream-inputs.tsv` and reuses
 a mirrored upstream RPM only when its published manifest has the same digest
