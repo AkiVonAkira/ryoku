@@ -12,7 +12,7 @@ BuildRequires:  findutils
 BuildRequires:  golang >= 1.26.4
 Requires:       dnf
 Requires:       snapper
-Recommends:     lua
+Suggests:       lua
 
 %description
 ryoku, built from the shared Ryoku source and package payload recipe.

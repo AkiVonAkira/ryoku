@@ -14,7 +14,7 @@ Requires:       uv
 Requires:       nodejs24
 Requires:       gcc
 Requires:       prowl
-Recommends:     sqlite
+Suggests:       sqlite
 
 %description
 ryoku-rashin, built from the shared Ryoku source and package payload recipe.

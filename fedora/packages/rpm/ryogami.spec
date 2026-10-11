@@ -28,7 +28,7 @@ Requires:       ImageMagick
 Requires:       qt6-qtmultimedia
 Requires:       qt6-qtimageformats
 Requires:       skwd-paper-bin
-Recommends:     yt-dlp
+Suggests:       yt-dlp
 
 %description
 ryogami, built from the shared Ryoku source and package payload recipe.
