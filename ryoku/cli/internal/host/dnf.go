@@ -2,7 +2,9 @@ package host
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -30,6 +32,33 @@ func selectDNFCommand(lookPath func(string) bool) string {
 		return "dnf5"
 	}
 	return "dnf"
+}
+
+// DNF keeps imported repository keys below the cache directory even after
+// `dnf clean all`; remove the whole per-URL cache when the base URL changes.
+func (a *App) clearDNFRepoCache() error {
+	dirs := []string{"/var/cache/libdnf5", "/var/cache/dnf"}
+	if override := strings.TrimSpace(a.getenv("RYOKU_DNF_CACHE_DIR")); override != "" {
+		dirs = []string{override}
+	}
+	for _, dir := range dirs {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return err
+		}
+		for _, entry := range entries {
+			if entry.Name() != ryokuRepoName && !strings.HasPrefix(entry.Name(), ryokuRepoName+"-") {
+				continue
+			}
+			if err := os.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (a *App) fedoraTablePath() string {

@@ -321,6 +321,40 @@ func TestDNFRepoConfigRewritesOnlyRyokuBaseURL(t *testing.T) {
 	}
 }
 
+func TestDNFRepoURLChangeDropsRyokuCacheIncludingPubring(t *testing.T) {
+	dir := t.TempDir()
+	repo := filepath.Join(dir, "ryoku.repo")
+	if err := os.WriteFile(repo, []byte("[ryoku]\nbaseurl=https://old.invalid/repo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cache := filepath.Join(dir, "cache")
+	stale := filepath.Join(cache, "ryoku-deadbeef", "pubring")
+	other := filepath.Join(cache, "fedora-deadbeef", "repodata")
+	for _, path := range []string{stale, other} {
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(stale, "stale.pub"), []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	app, _, _ := testApp(&fakeRunner{}, map[string]string{
+		"RYOKU_HOST_PKGMGR":     "dnf",
+		"RYOKU_DNF_REPO_CONFIG": repo,
+		"RYOKU_DNF_CACHE_DIR":   cache,
+	})
+	if err := app.RepoSetURL("https://new.invalid/repo"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cache, "ryoku-deadbeef")); !os.IsNotExist(err) {
+		t.Fatalf("stale Ryoku cache survived URL change: %v", err)
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Fatalf("unrelated DNF cache was removed: %v", err)
+	}
+}
+
 func TestParseDNFRepoPackagesHandlesRealDNF5AndDNF4Rows(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -376,6 +410,7 @@ func TestDNFRepoArgvForDNF5AndDNF4(t *testing.T) {
 				return Result{}
 			}}
 			app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+			app.cfg.UID = 0
 			command := "dnf"
 			query := " repoquery -y --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n"
 			if tc.name == "dnf5" {
@@ -400,11 +435,82 @@ func TestDNFRepoArgvForDNF5AndDNF4(t *testing.T) {
 	}
 }
 
+func TestDNFStatusUsesRootRefreshedCacheWithoutSudo(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		paths    map[string]bool
+		command  string
+		cacheDir string
+		query    string
+	}{
+		{
+			name:     "dnf5",
+			paths:    map[string]bool{"dnf5": true},
+			command:  "dnf5",
+			cacheDir: "/var/cache/libdnf5",
+			query:    "repoquery -y --available",
+		},
+		{
+			name:     "dnf4",
+			paths:    map[string]bool{"dnf": true},
+			command:  "dnf",
+			cacheDir: "/var/cache/dnf",
+			query:    "repoquery -y",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := &fakeRunner{paths: tc.paths, answer: func(command Command) Result {
+				if strings.Contains(argv(command), "-C --setopt=cachedir="+tc.cacheDir) {
+					return Result{Output: "ryoku-desktop\t0:2.0-1.fc44\n"}
+				}
+				return Result{Output: "ryoku-desktop\t0:1.0-1.fc44\n"}
+			}}
+			app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+			app.cfg.UID = 1000
+
+			version, err := app.RepoAvailableVersion("ryoku-desktop")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if version != "0:2.0-1.fc44" {
+				t.Fatalf("available version = %q, want root-refreshed cache version", version)
+			}
+			want := tc.command + " -C --setopt=cachedir=" + tc.cacheDir + " " + tc.query +
+				" --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n"
+			if len(runner.commands) != 1 || argv(runner.commands[0]) != want {
+				t.Fatalf("status commands = %v, want only %q", runner.commands, want)
+			}
+		})
+	}
+}
+
+func TestDNFStatusFallsBackWhenSystemCacheIsAbsent(t *testing.T) {
+	runner := &fakeRunner{paths: map[string]bool{"dnf5": true}, answer: func(command Command) Result {
+		if strings.Contains(argv(command), "-C --setopt=cachedir=/var/cache/libdnf5") {
+			return Result{}
+		}
+		return Result{Output: "ryoku-desktop\t0:1.0-1.fc44\n"}
+	}}
+	app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+	app.cfg.UID = 1000
+
+	version, err := app.RepoAvailableVersion("ryoku-desktop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version != "0:1.0-1.fc44" {
+		t.Fatalf("fallback available version = %q", version)
+	}
+	if len(runner.commands) != 2 || strings.Contains(argv(runner.commands[1]), "sudo") {
+		t.Fatalf("fallback commands = %v, want system cache then ordinary user query", runner.commands)
+	}
+}
+
 func TestDNFRepoSyncAndInstalledSet(t *testing.T) {
 	listing := "up\t0:2.0-1.fc44\ndown\t0:2.0-1.fc44\nequal\t(none):2.0-1.fc44\nabsent\t0:1.0-1.fc44\n"
 	runner := &fakeRunner{paths: map[string]bool{"dnf5": true}, answer: func(command Command) Result {
 		switch argv(command) {
-		case "dnf5 repoquery -y --available --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n":
+		case "sudo dnf5 repoquery -y --available --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n":
 			return Result{Output: listing}
 		case "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n up":
 			return Result{Output: "0:1.0-1.fc44\n"}
@@ -419,6 +525,7 @@ func TestDNFRepoSyncAndInstalledSet(t *testing.T) {
 		}
 	}}
 	app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+	app.cfg.UID = 1000
 	if err := app.RepoSync(false); err != nil {
 		t.Fatal(err)
 	}
@@ -454,7 +561,7 @@ func TestDNFRepoInstalledSetIncludesUpToDatePackages(t *testing.T) {
 	const version = "0:2.0-1.fc44"
 	runner := &fakeRunner{paths: map[string]bool{"dnf5": true}, answer: func(command Command) Result {
 		switch argv(command) {
-		case "dnf5 repoquery -y --available --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n":
+		case "sudo dnf5 repoquery -y --available --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n":
 			return Result{Output: "ryoku\t" + version + "\n"}
 		case "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n ryoku":
 			return Result{Output: version + "\n"}
@@ -463,11 +570,44 @@ func TestDNFRepoInstalledSetIncludesUpToDatePackages(t *testing.T) {
 		}
 	}}
 	app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+	app.cfg.UID = 1000
 	set, skipped, err := app.RepoInstalledSet(false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(set, []string{"ryoku-" + version}) || skipped != 0 {
 		t.Fatalf("up-to-date set = %v, skipped = %d", set, skipped)
+	}
+}
+
+func TestDNFInstalledSetUsesTransactionMetadataCache(t *testing.T) {
+	const (
+		oldVersion = "0:0.95.8-1.fc44"
+		newVersion = "0:0.95.9-1.fc44"
+	)
+	runner := &fakeRunner{paths: map[string]bool{"dnf5": true}, answer: func(command Command) Result {
+		switch argv(command) {
+		case "dnf5 repoquery -y --available --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n":
+			return Result{Output: "ryoku-desktop\t" + oldVersion + "\n"}
+		case "sudo dnf5 repoquery -y --available --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n":
+			return Result{Output: "ryoku-desktop\t" + newVersion + "\n"}
+		case "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n ryoku-desktop":
+			return Result{Output: oldVersion + "\n"}
+		default:
+			return Result{Code: 1}
+		}
+	}}
+	app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+	app.cfg.UID = 1000
+
+	set, skipped, err := app.RepoInstalledSet(false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"ryoku-desktop-" + newVersion}; !reflect.DeepEqual(set, want) || skipped != 0 {
+		t.Fatalf("installed set = %v, skipped = %d, want %v from root's refreshed metadata", set, skipped, want)
+	}
+	if got := argv(runner.commands[0]); !strings.HasPrefix(got, "sudo dnf5 repoquery ") {
+		t.Fatalf("repository decision used %q, want the root DNF cache used by the transaction", got)
 	}
 }
