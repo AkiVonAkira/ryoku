@@ -14,6 +14,10 @@ for finer detail.
   user is no longer in a mango session.
 
 ### Fixed
+- Stable Release now publishes all four edition repositories from the release
+  tag and starts the Void ISO alongside the Arch and CachyOS images. Release
+  documentation and installer plans identify the experimental Void, Fedora, and
+  Wayfire paths and use the canonical `ryoku-dev/ryoku` repository.
 - Void installs now use Ryoku's GPU Screen Recorder 6.1.3 package, including the `gsr-cli` recording controls.
 - The doctor's reverse-PRIME warning (#270, a black panel after login on a
   hybrid-GPU laptop) now also fires when a forced or drifted GPU render pin

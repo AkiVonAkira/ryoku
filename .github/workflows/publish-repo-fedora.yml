@@ -151,13 +151,27 @@ jobs:
           mirror="$RUNNER_TEMP/fedora-${{ matrix.fedora }}-published"
           mkdir -p "$mirror"
           if [[ $CHANNEL == stable ]]; then
-            published="fedora/${{ matrix.fedora }}/x86_64"
+            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.fedora }}/x86_64/" "$mirror/" \
+              --filter '- *-debuginfo-*.rpm' \
+              --filter '- *-debugsource-*.rpm' \
+              --filter '+ *.rpm' \
+              --filter '+ upstream-inputs.tsv' \
+              --filter '- *' || true
+            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.fedora }}/channels/testing/x86_64/" "$mirror/" \
+              --filter '- *-debuginfo-*.rpm' \
+              --filter '- *-debugsource-*.rpm' \
+              --filter '+ *.rpm' \
+              --filter '+ upstream-inputs.tsv' \
+              --filter '- *' \
+              --ignore-existing || true
           else
-            published="fedora/${{ matrix.fedora }}/channels/testing/x86_64"
+            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.fedora }}/channels/testing/x86_64/" "$mirror/" \
+              --filter '- *-debuginfo-*.rpm' \
+              --filter '- *-debugsource-*.rpm' \
+              --filter '+ *.rpm' \
+              --filter '+ upstream-inputs.tsv' \
+              --filter '- *' || true
           fi
-          rclone copy "Ryoku:$R2_BUCKET/$published/" "$mirror/" \
-            --exclude '*-debuginfo-*.rpm' --exclude '*-debugsource-*.rpm' \
-            --include '*.rpm' --include 'upstream-inputs.tsv' --exclude '*' || true
           echo "RYOKU_RPM_MIRROR=$mirror" >> "$GITHUB_ENV"
 
 
@@ -445,11 +459,12 @@ jobs:
 
           publish() {
             local source=$1 destination=$2
-            rclone sync "$source/" "$destination/" --include '*.rpm' --exclude '*' -P
+            rclone copy "$source/" "$destination/" --filter '+ *.rpm' --filter '- *' -P
             rclone sync "$source/repodata/" "$destination/repodata/" -P
             rclone copyto "$source/upstream-inputs.tsv" "$destination/upstream-inputs.tsv" -P
+            rclone sync "$source/" "$destination/" --filter '+ *.rpm' --filter '- *' -P
+            rclone check "$source/" "$destination/" --one-way --exclude 'release.json'
             rclone copyto "$source/release.json" "$destination/release.json" -P
-            rclone check "$source/" "$destination/" --one-way
           }
 
           publish "$src" "$frozen"

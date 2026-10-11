@@ -117,6 +117,14 @@
   the other plugin packages.
 
 ### Fixed
+- **Stable releases publish every native repository from the workflow-created
+  tag.** Stable Release explicitly dispatches the pacman, XBPS, and RPM
+  publishers because its token-created tag cannot trigger their tag workflows.
+  First stable builds adopt tested upstream bytes without adopting the
+  channel-specific testing desktop package. Every native publisher writes
+  `release.json` last as its completion marker; Fedora also uploads new RPMs
+  before switching metadata and pruning old bytes. Variant ISO manifests point
+  at their own `latest-cachyos` or `latest-void` metadata.
 - **Void packages record the published release name, channel, and source commit.**
 
 - **A wayfire session rebinds its provider at login.** login1 reports the

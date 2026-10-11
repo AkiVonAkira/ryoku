@@ -207,10 +207,11 @@ RYOKU_VOID_ISO_WORKTREE=1 \
 ```
 
 `.github/workflows/publish-repo-void.yml` builds and signs the XBPS repository:
-`unstable-dev` pushes publish testing, and `v*` tags publish a frozen release
-and move stable. `.github/workflows/build-iso-void.yml` builds the ISO on
-`void-v*` tags or a manual dispatch. See `void/packages/README.md` and
-`void/iso/README.md` for the build inputs.
+`unstable-dev` pushes publish testing, and Stable Release dispatches it on each
+`v*` tag to publish a frozen release and move stable. That stable path then
+dispatches `.github/workflows/build-iso-void.yml` from the frozen repository;
+the ISO upload refreshes the ledger with `images.void`. See
+`void/packages/README.md` and `void/iso/README.md` for the build inputs.
 
 ### Build the Fedora artifacts
 
@@ -246,8 +247,10 @@ signature, and `release.json`. SRPMs stay in the build artifact and are not
 published. `.github/workflows/publish-repo-fedora.yml` builds and tests each
 supported Fedora release in its own container, publishes stable or testing
 heads and their frozen targets, uploads `fedora/releases`, and rebuilds the
-ledgers. Fedora has no ISO workflow. See `fedora/packages/rpm/README.md` for the
-spec, checksum, vendoring, fetch-hook, and local-build details.
+ledgers. Stable Release dispatches it on the release tag. Fedora has no ISO
+workflow. See `fedora/packages/rpm/README.md` for the spec, checksum, vendoring,
+fetch-hook, and local-build details. The release-day order and verification
+endpoints are in `docs/updates.md`, "Release-day checklist".
 
 The R2 retention Worker lives in `release/r2-retention/`. Run its focused tests
 with `node --test release/r2-retention/test/*.test.js`, then deploy from that

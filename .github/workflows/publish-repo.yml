@@ -184,11 +184,14 @@ jobs:
           rclone copy "Ryoku:$R2_BUCKET/$PREFIX/x86_64/" "$mirror/" --include '*.pkg.tar.zst' || true
           if [[ $CHANNEL == stable ]]; then
             rclone copy "Ryoku:$R2_BUCKET/x86_64/" "$mirror/" --include '*.pkg.tar.zst' --ignore-existing || true
-            # rclone applies filter rules in order and stops at the first match, so
-            # the exclude must come before the include or ryoku-desktop's
-            # testing bytes are adopted anyway (they carry CHANNEL=testing, and
-            # the container install then fails the release).
-            rclone copy "Ryoku:$R2_BUCKET/channels/testing/x86_64/" "$mirror/" --exclude 'ryoku-desktop-*' --include '*.pkg.tar.zst' --ignore-existing || true
+            # rclone evaluates filters in order, so reject ryoku-desktop before
+            # accepting the remaining packages. Its testing bytes carry the
+            # wrong channel marker and must rebuild for stable.
+            rclone copy "Ryoku:$R2_BUCKET/channels/testing/x86_64/" "$mirror/" \
+              --filter '- ryoku-desktop-*' \
+              --filter '+ *.pkg.tar.zst' \
+              --filter '- *' \
+              --ignore-existing || true
           fi
 
       - name: Verify hard dependencies exist in the official repos or [ryoku]
@@ -364,17 +367,21 @@ jobs:
           # Order matters (issue #21): if ryoku.db goes live before the packages
           # and .sig files it lists, SigLevel=Required installs fail with
           # "Maximum file size exceeded", because a missing .sig returns an HTML
-          # 404 that overruns pacman's signature size cap. So push packages and
-          # sigs first, the db last, then prune superseded versions. Keep each db
-          # and its .sig in one transfer: pacman fetches a db's sig even when the
-          # db is unchanged (304), so a db and sig from different builds served at
-          # once wedge a box on "invalid or corrupted database"; the client heals
-          # it (ryoku update, doctor).
+          # 404 that overruns pacman's signature size cap. Push packages and
+          # signatures first, the db next, prune superseded versions, and write
+          # release.json last as the completion marker. Keep each db and its
+          # .sig in one transfer: pacman fetches a db's sig even when the db is
+          # unchanged (304), so a db and sig from different builds served at
+          # once wedge a box on "invalid or corrupted database"; the client
+          # heals it (ryoku update, doctor).
           publish() {
             local src=$1 remote=$2
-            rclone copy "$src" "$remote" --exclude 'ryoku.db*' --exclude 'ryoku.files*' -P
-            rclone copy "$src" "$remote" --include 'ryoku.db*' --include 'ryoku.files*' -P
-            rclone sync "$src" "$remote" -P
+            rclone copy "$src" "$remote" \
+              --exclude 'ryoku.db*' --exclude 'ryoku.files*' --exclude 'release.json' -P
+            rclone copy "$src" "$remote" \
+              --filter '+ ryoku.db*' --filter '+ ryoku.files*' --filter '- *' -P
+            rclone sync "$src" "$remote" --exclude 'release.json' -P
+            rclone copyto "$src/release.json" "${remote%/}/release.json" -P
           }
           src="$GITHUB_WORKSPACE/release/repo/out/x86_64"
           publish "$src" "Ryoku:$R2_BUCKET/$PREFIX/x86_64/"

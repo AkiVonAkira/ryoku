@@ -134,7 +134,7 @@ jobs:
           set -euo pipefail
           ./bin/ryoku-r2-config
           if [[ $CHANNEL == stable && ${FORCE:-false} != true ]]; then
-            existing=$(rclone lsf "Ryoku:$R2_BUCKET/$PREFIX/x86_64/")
+            existing=$(rclone lsf "Ryoku:$R2_BUCKET/$PREFIX/x86_64/" 2>/dev/null || true)
             if [[ -n $existing ]]; then
               echo "::error::$PREFIX/x86_64 already exists; a release is published once. Re-run with force_release to overwrite."
               exit 1
@@ -146,7 +146,10 @@ jobs:
           if [[ $CHANNEL == stable ]]; then
             rclone copy "Ryoku:$R2_BUCKET/void/x86_64/" "$mirror/" --include '*.xbps' || true
             rclone copy "Ryoku:$R2_BUCKET/void/channels/testing/x86_64/" "$mirror/" \
-              --exclude 'ryoku-desktop-*' --include '*.xbps' --ignore-existing || true
+              --filter '- ryoku-desktop-*' \
+              --filter '+ *.xbps' \
+              --filter '- *' \
+              --ignore-existing || true
           else
             rclone copy "Ryoku:$R2_BUCKET/void/channels/testing/x86_64/" "$mirror/" \
               --include '*.xbps' || true
@@ -273,9 +276,12 @@ jobs:
 
           publish() {
             local source=$1 destination=$2
-            rclone copy "$source" "$destination" --exclude 'x86_64-repodata' -P
-            rclone copy "$source" "$destination" --include 'x86_64-repodata' --exclude '*' -P
-            rclone sync "$source" "$destination" -P
+            rclone copy "$source" "$destination" \
+              --exclude 'x86_64-repodata' --exclude 'release.json' -P
+            rclone copy "$source" "$destination" \
+              --filter '+ x86_64-repodata' --filter '- *' -P
+            rclone sync "$source" "$destination" --exclude 'release.json' -P
+            rclone copyto "$source/release.json" "$destination/release.json" -P
           }
           publish "$src" "Ryoku:$R2_BUCKET/$PREFIX/x86_64/"
           echo "::notice::Published Void $CHANNEL to $PREFIX/x86_64 (packages and signatures first, repodata last)"

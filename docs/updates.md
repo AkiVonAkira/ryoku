@@ -383,13 +383,15 @@ by lane (base, dev, hardware, AUR, first-party, compositor, provisioned).
 A release is a tag: `main` advances only by fast-forward from `unstable-dev`
 (`RYOKU_RELEASE_PUSH=1 git push origin unstable-dev:main`; the `pre-push` hook
 refuses every other push to `main`, see `docs/development.md`, "Branches and
-pushing"), and publishing nothing on that push. The maintainer runs **Stable Release**
-(`bump_type: none` tags the `VERSION` main already carries; a bump rewrites it
-first), which tags `main`, publishes `releases/<tag>/`, moves the stable
-pointer onto it, records the ledger entry, and dispatches both release ISOs
-(plain Arch and CachyOS) from that frozen directory, so an ISO named for a
-release installs exactly that release. Arch itself keeps rolling between
-releases; only the Ryoku set is frozen.
+pushing"), and publishing nothing on that push. The maintainer runs **Stable
+Release** (`bump_type: none` tags the `VERSION` main already carries; a bump
+rewrites it first). Because a tag pushed with the workflow token cannot trigger
+tag-push workflows, Stable Release explicitly dispatches the pacman, Void, and
+Fedora publishers on that tag. Each publisher writes its frozen
+`releases/<tag>/` repository, moves its stable pointer, and rebuilds its ledger.
+The pacman publisher then dispatches the plain Arch and CachyOS ISOs; the Void
+publisher dispatches the Void ISO from its frozen repository. Fedora has no ISO.
+Arch itself keeps rolling between releases; only the Ryoku set is frozen.
 
 **Work on `unstable-dev` reaches testing on every push, and stable only when a
 release is tagged.**
@@ -436,6 +438,40 @@ then rebuild the matching ledger. `release-ledger.yml` rebuilds every Arch,
 Void, and supported Fedora ledger on demand. `RYOKU_RELEASE_BASE` overrides the
 bucket base used for ledger and repository URLs, which keeps mirrors and tests
 on one origin.
+
+### Release-day checklist
+
+1. Fast-forward `main` from the green `unstable-dev` tip, then dispatch **Stable
+   Release** on `main`. It creates the `v*` tag and dispatches
+   `publish-repo.yml`, `publish-repo-void.yml`, and
+   `publish-repo-fedora.yml` on that tag.
+2. Wait for all three publishers. Their stable `release.json` files must name
+   the tag at `stable/x86_64/release.json`,
+   `stable/void/x86_64/release.json`, and
+   `stable/fedora/<N>/x86_64/release.json`. Check the matching frozen files
+   below each edition's `releases/<tag>/x86_64/`. Confirm
+   `stable/fedora/releases` lists every release in the tagged
+   `fedora/releases` file.
+3. Wait for **Build ISO**, **Build CachyOS ISO**, and **Build Void ISO**. Check
+   `https://iso.ryoku.dev/stable/latest.json`,
+   `latest-cachyos.json`, and `latest-void.json`: each `installer_ref` must be
+   the tag and every named ISO, checksum, signature, and manifest URL must
+   return HTTP 200.
+4. Dispatch `release-ledger.yml` on `main` after all three images upload. Verify
+   `stable/releases/index.json` has the tag as `latest` with `images.plain` and
+   `images.cachyos`; `stable/void/releases/index.json` has `images.void`; and
+   every `stable/fedora/<N>/releases/index.json` has the tag as `latest` and no
+   image map.
+5. Dispatch `install-test.yml` on `main` manually. It gates Arch and CachyOS
+   package installs and the plain Arch ISO VM path. Void's publisher separately
+   installs its exact XBPS artifact in a clean Void container, and Fedora's
+   publisher installs both desktop variants for every supported Fedora release
+   and power-profile scenario. The Void ISO workflow runs its installer
+   preflight and image-content checks, but release day has no automated Void VM
+   install and Fedora has no ISO.
+6. Verify `release-notes.yml` published the tag's GitHub release. It is
+   dispatched by Stable Release and does not prove that repositories or images
+   finished, so the endpoint checks above remain required.
 
 The scheduled Cloudflare Worker in `release/r2-retention/` runs every six hours.
 It keeps the newest ten stable releases and unstable builds per edition and
@@ -605,14 +641,17 @@ island (when the channel serves the next line) and the Hub's Updates page.
   in step. It fails when an Arch package has neither a native build nor a
   translation-table row for either edition, and when an unavailable row has no
   reason. The Delivery check runs it on every push.
-- The install-test workflow builds the ISO and runs a real, unattended install in
-  a VM, then verifies the desktop comes up, so a broken install or a missing
-  package is caught before a user hits it.
-- The publish (`publish-repo.yml`) builds and signs the repo once, keeps it as
-  a workflow artifact, installs ryoku-desktop from that artifact on Arch and
-  CachyOS with the release key verified (`installation/tests/container-install.sh`
-  with `RYOKU_PREBUILT_REPO=1`), and uploads the same artifact. What was tested
-  is byte-for-byte what ships; a run that fails the gate publishes nothing.
+- `install-test.yml` installs the pacman artifact on Arch and CachyOS, then runs
+  the plain Arch ISO installer in a VM when KVM is available. It must be
+  dispatched manually after tag-dispatched ISO builds.
+- `publish-repo.yml` builds and signs the pacman repository once, installs
+  `ryoku-desktop` from that exact artifact on Arch and CachyOS with the release
+  key verified, and only then uploads it. `publish-repo-void.yml` does the same
+  with the XBPS artifact in a clean Void container.
+- `publish-repo-fedora.yml` installs each exact RPM artifact on every supported
+  Fedora release, for both desktops and all supported power-profile providers,
+  before publishing. Fedora has no ISO; the Void ISO workflow has preflight and
+  image-content gates but no full VM-install job.
 - `bin/ryoku-dev-lint-qml <config-root>...` fails on QML that cannot load. The
   publish gate (`installation/tests/container-install.sh`) runs it over the
   materialized shell and Hub trees against the installed Qt modules, the same
