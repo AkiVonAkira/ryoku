@@ -1413,6 +1413,76 @@ func TestMigrateShellConfig(t *testing.T) {
 	}
 }
 
+// This is the frameBars shape written by the shell and Bar Studio. Its schema
+// version is live state, while the nested dock store is retired.
+func TestMigrateShellConfigAcceptsLiveFrameBarsSchema(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "shell-live-framebars.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var currentConfig map[string]any
+	if err := json.Unmarshal(raw, &currentConfig); err != nil {
+		t.Fatal(err)
+	}
+	currentFrameBars := currentConfig["frameBars"]
+
+	if out, changes, err := migrateShellConfig(raw); err != nil || out != nil || changes != nil {
+		t.Fatalf("live frameBars must already be current: out=%s changes=%v err=%v", out, changes, err)
+	}
+
+	var staleConfig map[string]any
+	if err := json.Unmarshal(raw, &staleConfig); err != nil {
+		t.Fatal(err)
+	}
+	delete(staleConfig["frameBars"].(map[string]any), "version")
+	stale, err := json.Marshal(staleConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	migrated, changes, err := migrateShellConfig(stale)
+	if err != nil || len(changes) == 0 {
+		t.Fatalf("an unversioned frameBars store must migrate: changes=%v err=%v", changes, err)
+	}
+	var migratedConfig map[string]any
+	if err := json.Unmarshal(migrated, &migratedConfig); err != nil {
+		t.Fatal(err)
+	}
+	if got := migratedConfig["frameBars"]; !reflect.DeepEqual(got, currentFrameBars) {
+		t.Fatalf("migration changed effective frameBars values:\n got: %#v\nwant: %#v", got, currentFrameBars)
+	}
+	if out, changes, err := migrateShellConfig(migrated); err != nil || out != nil || changes != nil {
+		t.Fatalf("migrated frameBars must be idempotent: out=%s changes=%v err=%v", out, changes, err)
+	}
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	path := filepath.Join(sys.ConfigHome(), "ryoku", "shell.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, stale, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if result := reconcileShellConfig(false); result.status != recFixed {
+		t.Fatalf("first reconcile status = %s, want fixed: %s", result.status.label(), result.detail)
+	}
+	fixed, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := reconcileShellConfig(false); result.status != recOK {
+		t.Fatalf("second reconcile status = %s, want ok: %s", result.status.label(), result.detail)
+	}
+	again, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(again) != string(fixed) {
+		t.Fatal("second reconcile changed shell.json")
+	}
+}
+
 // Shell config normalization keeps the retired quick-settings record intact so
 // the capture and stage reconcilers can inspect it later in the same doctor run.
 // Other unknown menu ids still drop out against the live frame-bars catalog.

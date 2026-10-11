@@ -582,6 +582,10 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **Bar Studio no longer revives the retired frame-local dock store.** New
+  frame-bar writes keep the schema version but leave dock settings in the
+  universal top-level store; legacy nested pins remain readable until doctor
+  migrates them.
 - **Running apps with reverse-DNS desktop IDs show their real dock icon.**
   Window app IDs such as `xwaylandvideobridge` now resolve
   `org.kde.xwaylandvideobridge.desktop` through the shell's shared desktop-entry

@@ -2183,7 +2183,6 @@ func defaultFrameBarsFromLegacy(_ map[string]any) map[string]any {
 			"weather":   map[string]any{"anchor": "right", "minWidth": float64(320), "expansion": "never", "widgets": []any{"weather"}},
 		},
 		"surfaces": map[string]any{},
-		"dock":     map[string]any{"pinned": []any{}},
 	}
 }
 
@@ -2308,15 +2307,19 @@ func normalizeFrameBars(v any) (map[string]any, []string) {
 			outSurfaces[id] = surface
 		}
 	}
-	dockRaw, dockOut := frameMap(source["dock"]), frameMap(out["dock"])
-	if pinned, ok := dockRaw["pinned"].([]any); ok {
-		outPinned := make([]any, 0, len(pinned))
-		for _, value := range pinned {
-			if id, ok := value.(string); ok {
-				outPinned = append(outPinned, id)
+	if dockRaw, present := source["dock"]; present {
+		dockSource := frameMap(dockRaw)
+		dockOut := map[string]any{"pinned": []any{}}
+		if pinned, ok := dockSource["pinned"].([]any); ok {
+			outPinned := make([]any, 0, len(pinned))
+			for _, value := range pinned {
+				if id, ok := value.(string); ok {
+					outPinned = append(outPinned, id)
+				}
 			}
+			dockOut["pinned"] = outPinned
 		}
-		dockOut["pinned"] = outPinned
+		out["dock"] = dockOut
 	}
 	before, _ := json.Marshal(source)
 	after, _ := json.Marshal(out)
