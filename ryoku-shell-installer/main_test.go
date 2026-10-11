@@ -144,6 +144,36 @@ func TestVoidPlanShowsEditionNotice(t *testing.T) {
 	}
 }
 
+func TestExperimentalEditionAndWayfireLabels(t *testing.T) {
+	voidNotice := strings.Join(editionNotice(&facts{distro: voidLinux}, editionCompositorPlan{}), "\n")
+	if got := strings.Count(voidNotice, "experimental edition"); got != 1 {
+		t.Fatalf("Void experimental label count = %d, want 1", got)
+	}
+	fedoraNotice := strings.Join(editionNotice(
+		&facts{distro: fedoraLinux},
+		editionCompositorPlan{available: []string{"hyprland", "niri"}},
+	), "\n")
+	if got := strings.Count(fedoraNotice, "experimental edition"); got != 1 {
+		t.Fatalf("Fedora experimental label count = %d, want 1", got)
+	}
+
+	items := buildItems(&facts{}, &plan{}, []string{"hyprland", "niri", "wayfire"})
+	for _, item := range items {
+		if item.label != "Compositor" {
+			continue
+		}
+		for _, option := range item.options {
+			if option.key == "wayfire" {
+				if !strings.Contains(option.label, "experimental") {
+					t.Fatalf("Wayfire label = %q, want experimental marker", option.label)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("Wayfire compositor option missing")
+}
+
 func TestFedoraPlanKeepsNouveauAndSkipsAUR(t *testing.T) {
 	f := &facts{distro: fedoraLinux, hasNvidia: true}
 	p := defaultPlan(f)

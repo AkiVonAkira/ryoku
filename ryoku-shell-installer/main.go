@@ -119,9 +119,15 @@ func buildItems(f *facts, p *plan, compositorChoices ...[]string) []planItem {
 	}
 	compositorOptions := make([]choiceOption, 0, len(availableCompositors))
 	for _, provider := range availableCompositors {
+		label := compositorLabel(provider)
+		detail := i18n.Tf("Installs the %s Ryoku desktop variant.", label)
+		if provider == wm.ProviderWayfire {
+			label = i18n.Tf("%s (experimental)", label)
+			detail = i18n.T("Installs the experimental Wayfire Ryoku desktop variant.")
+		}
 		compositorOptions = append(compositorOptions, choiceOption{
-			key: provider, label: compositorLabel(provider),
-			detail:      i18n.Tf("Installs the %s Ryoku desktop variant.", compositorLabel(provider)),
+			key: provider, label: label,
+			detail:      detail,
 			recommended: provider == availableCompositors[0],
 		})
 	}
@@ -726,7 +732,7 @@ func voidEditionNotice(f *facts) []string {
 		return nil
 	}
 	notice := []string{
-		i18n.T("Ryoku on Void"),
+		i18n.T("Ryoku on Void (experimental edition)"),
 		i18n.T("niri only: Hyprland needs GCC 15; Void ships GCC 14."),
 	}
 	if f.btrfsRoot {
@@ -746,7 +752,7 @@ func editionNotice(f *facts, compositors editionCompositorPlan) []string {
 		return nil
 	}
 	notice := []string{
-		i18n.T("Ryoku on Fedora"),
+		i18n.T("Ryoku on Fedora (experimental edition)"),
 		i18n.Tf("Compositors: %s.", strings.Join(compositors.available, ", ")),
 	}
 	return append(notice, compositors.omitted...)

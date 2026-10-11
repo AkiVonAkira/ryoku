@@ -27,7 +27,7 @@ import (
 // line-anchored so a commented-out "#[ryoku]" stanza does not count.
 var ryokuStanzaRe = regexp.MustCompile(`(?m)^\[ryoku\]`)
 
-const repoURL = "https://github.com/ryoku-dev/ryoku-arch.git"
+const repoURL = "https://github.com/ryoku-dev/ryoku.git"
 
 // The Ryoku channels an installer payload ref belongs to. unstable-dev is what
 // each testing repository rebuilds on every push; everything else matches the

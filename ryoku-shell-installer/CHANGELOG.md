@@ -58,6 +58,11 @@
   steps, so a stuck stable install can be finished on unstable.
 
 ### Fixed
+- **Release plans name experimental paths before installation.** Void and Fedora
+  plans show one experimental-edition notice, Wayfire is marked experimental
+  in the compositor choice, and payloads are fetched from the canonical
+  `ryoku-dev/ryoku` repository. The Void documentation now matches its packaged
+  Ryotunes, GlazePKG, controller, and shell extras.
 - **Debian source installs keep a complete checkout that `ryoku update` can
   use.** They clone into `~/ryoku-arch` with full history and source paths,
   refresh the requested ref in place on reruns, and leave deploy's recorded

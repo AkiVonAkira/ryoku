@@ -4,18 +4,18 @@
 # on an existing supported machine. Kept deliberately dumb: every real decision
 # lives in the ryoku-shell-install binary this script downloads.
 #
-#   curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku-arch/main/ryoku-shell-installer/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
 #
 # args after `bash -s --` are forwarded to the installer (--yes, --dry-run).
 # RYOKU_SHELL_REF picks the git ref to fetch the installer and payload from.
 # unstable-dev also puts the box on the unstable (testing) package channel:
 #
-#   curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku-arch/unstable-dev/ryoku-shell-installer/install.sh | RYOKU_SHELL_REF=unstable-dev bash
+#   curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/unstable-dev/ryoku-shell-installer/install.sh | RYOKU_SHELL_REF=unstable-dev bash
 set -euo pipefail
 
 main() {
   local ref="${RYOKU_SHELL_REF:-main}"
-  local raw="https://raw.githubusercontent.com/ryoku-dev/ryoku-arch/${ref}/ryoku-shell-installer"
+  local raw="https://raw.githubusercontent.com/ryoku-dev/ryoku/${ref}/ryoku-shell-installer"
 
   # English on purpose: this bootstrap runs before any Ryoku catalog exists on
   # the box to translate from; the ryoku-shell-install binary it fetches does that.
@@ -73,8 +73,8 @@ main() {
       *) say "warning: ${PRETTY_NAME:-unknown distro} is not recognised; continuing as ${ryoku_family}" ;;
     esac
   fi
-  if [[ $ryoku_family == debian || $ryoku_family == void ]]; then
-    say "${ryoku_family^} detected: the desktop is built from source, which takes a few minutes"
+  if [[ $ryoku_family == debian ]]; then
+    say "Debian detected: the desktop is built from source, which takes a few minutes"
   fi
 
   # global, not local: the EXIT trap fires after main returns, when a local is

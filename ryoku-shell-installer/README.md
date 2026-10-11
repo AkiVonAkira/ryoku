@@ -2,24 +2,24 @@
 
 Install the Ryoku desktop on an existing machine, without the ISO.
 
-Arch-based hosts install signed packages from `[ryoku]`. Void installs the same
-desktop package set from the signed Ryoku XBPS repository, with niri, runit,
-elogind and Turnstile. Fedora installs the packaged desktop from the signed
-Ryoku RPM repository and restricted dependency COPRs. Debian remains the
-source-build path: its package manager supplies the runtime and build
-dependencies, and the installer fetches the pinned fonts and cursor theme its
-archive does not carry.
+Arch-based hosts install signed packages from `[ryoku]`. Void and Fedora are
+experimental editions in 1.0. Void installs the same desktop package set from
+the signed Ryoku XBPS repository, with niri, runit, elogind and Turnstile.
+Fedora installs the packaged desktop from the signed Ryoku RPM repository and
+restricted dependency COPRs. Debian remains the source-build path: its package
+manager supplies the runtime and build dependencies, and the installer fetches
+the pinned fonts and cursor theme its archive does not carry.
 
 The Void edition is niri-only because Hyprland needs GCC 15 and Void ships GCC
-14. Zen Browser, LocalSend, Voxtype, asusctl, Ryotunes, and a few small extras
-are not available. A conversion keeps the machine's existing bootloader and
-snapshot stack; the shell installer provisions neither. Snapshot rollback works
-when the existing root is btrfs with snapper set up, and `ryoku doctor`
-converges the snapper config the same way it does on Arch. XBPS has no
-transaction hooks, so use `ryoku update --system` for base updates to keep the
-snapshot safety net.
+14. Wayfire, Zen Browser, LocalSend, Voxtype, asusctl, adw-gtk-theme, and GPU
+passthrough are not available. A conversion keeps the machine's existing
+bootloader and snapshot stack; the shell installer provisions neither.
+Snapshot rollback works when the existing root is btrfs with snapper set up,
+and `ryoku doctor` converges the snapper config the same way it does on Arch.
+XBPS has no transaction hooks, so use `ryoku update --system` for base updates
+to keep the snapshot safety net.
 
-## Fedora
+## Fedora (experimental)
 
 Fedora KDE Plasma and Workstation use the same public installer command. The
 installer supports published mutable x86_64 Fedora 44 and 45 systems with
