@@ -1,9 +1,11 @@
-// Package ryotunesrelease consumes official Ryotunes GitHub release packages.
+// Package ryotunesrelease consumes official Ryotunes Arch release packages.
 // Ryoku's pacman repository mirrors and signs the same packages independently.
+// Fedora and Void install and update Ryotunes through their native Ryoku
+// repositories and never use this package.
 //
 // Check reports availability without installing. Upgrade updates an existing
-// installation but respects absence. Ensure also installs an absent package
-// when Doctor is reconciling a managed Ryoku desktop.
+// Arch installation but respects absence. Ensure also installs an absent
+// package when Doctor is reconciling a managed Arch desktop.
 //
 // All operations are context-bounded. Installation resolves the release fresh,
 // verifies its checksum and package metadata, and never downgrades.
@@ -61,11 +63,11 @@ const wantEpoch = "1"
 const checkCacheTTL = time.Hour
 
 // Check reports the installed and latest Ryotunes versions without mutating any
-// package. The published asset is an Arch package, so this stays inactive on
-// other package managers until a native release lane exists. It performs a
-// bounded, cached release lookup; when Ryotunes is not installed it returns a
-// zero Status and does no network at all. A lookup that fails with nothing
-// cached returns an error rather than a false "up to date".
+// package. The published asset is an Arch package, so DNF and XBPS hosts return
+// without querying its release channel; their native repository owns updates.
+// On Arch it performs a bounded, cached release lookup. When Ryotunes is not
+// installed it returns a zero Status and does no network at all. A lookup that
+// fails with nothing cached returns an error rather than a false "up to date".
 func Check(ctx context.Context) (Status, error) {
 	if manager, _ := host.Default().PackageManager(); manager != host.Pacman {
 		return Status{}, nil

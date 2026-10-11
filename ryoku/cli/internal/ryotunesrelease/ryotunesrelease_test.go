@@ -556,21 +556,25 @@ func TestVerifyStagedDigest(t *testing.T) {
 }
 
 func TestPackageOperationsAreUnavailableWithoutPacman(t *testing.T) {
-	t.Setenv("RYOKU_HOST_PKGMGR", "xbps")
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	for name, operation := range map[string]func(context.Context) (Status, error){
-		"check":   Check,
-		"upgrade": Upgrade,
-		"ensure":  Ensure,
-	} {
-		t.Run(name, func(t *testing.T) {
-			status, err := operation(ctx)
-			if err != nil {
-				t.Fatalf("%s returned %v", name, err)
-			}
-			if status != (Status{}) {
-				t.Fatalf("%s status = %+v", name, status)
+	for _, manager := range []string{"dnf", "xbps"} {
+		t.Run(manager, func(t *testing.T) {
+			t.Setenv("RYOKU_HOST_PKGMGR", manager)
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			for name, operation := range map[string]func(context.Context) (Status, error){
+				"check":   Check,
+				"upgrade": Upgrade,
+				"ensure":  Ensure,
+			} {
+				t.Run(name, func(t *testing.T) {
+					status, err := operation(ctx)
+					if err != nil {
+						t.Fatalf("%s returned %v", name, err)
+					}
+					if status != (Status{}) {
+						t.Fatalf("%s status = %+v", name, status)
+					}
+				})
 			}
 		})
 	}
