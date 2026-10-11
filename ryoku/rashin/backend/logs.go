@@ -34,6 +34,7 @@ const (
 	logsFileDepth = 2
 	logsFileCount = 4
 	pacmanLogPath = "/var/log/pacman.log"
+	xbpsLogPath   = "/var/log/xbps.log"
 )
 
 // logsConfig is the parsed window: how far back to look and how many lines to
@@ -248,20 +249,32 @@ func buildComponentSections(spec componentSpec, cfg logsConfig) []logSection {
 // updatesSections gathers the system-change trail: the doctor report, the last
 // update run, and recent native package transactions.
 func updatesSections(cfg logsConfig) []logSection {
+	return updatesSectionsFor(logsPackageManager(), cfg)
+}
+
+func updatesSectionsFor(manager string, cfg logsConfig) []logSection {
 	state := filepath.Join(home(), ".local", "state", "ryoku")
 	secs := []logSection{
 		fileSection(filepath.Join(state, "doctor-report.txt"), cfg),
 		fileSection(filepath.Join(state, "update-log.txt"), cfg),
 	}
-	if logsPackageManager() == "dnf" {
+	switch manager {
+	case "dnf":
 		return append(secs, dnfHistorySection("", cfg))
+	case "xbps":
+		return append(secs, transactionLogSection(xbpsLogPath, cfg.lines))
+	case "pacman":
+		return append(secs, transactionLogSection(pacmanLogPath, cfg.lines))
+	default:
+		return append(secs, logSection{head: "native package transactions", note: "package manager unavailable"})
 	}
-	if body := pacmanTail(cfg.lines); body != "" {
-		secs = append(secs, logSection{head: pacmanLogPath + " (recent transactions)", body: body})
-	} else {
-		secs = append(secs, logSection{head: pacmanLogPath, note: "unreadable or empty"})
+}
+
+func transactionLogSection(path string, lines int) logSection {
+	if body := tailFile(path, lines); body != "" {
+		return logSection{head: path + " (recent transactions)", body: body}
 	}
-	return secs
+	return logSection{head: path, note: "unreadable or empty"}
 }
 
 // compositorSections resolves the active window manager through the seam and
@@ -404,22 +417,39 @@ func packageSections(name string, cfg logsConfig) []logSection {
 	if err != nil {
 		return []logSection{{head: "PATH lookup for " + name, note: name + " is not on PATH (a script, an alias, or a Flatpak)"}}
 	}
-	if logsPackageManager() == "dnf" {
-		return dnfPackageSections(binPath, cfg)
-	}
-	ownHead := "pacman -Qqo " + binPath
-	out, ok := probe(logsProbeTimeout, "pacman", "-Qqo", binPath)
+	head := "ryoku-host pkg owner " + binPath
+	out, ok := probe(logsProbeTimeout, "ryoku-host", "pkg", "owner", binPath)
 	pkg := strings.TrimSpace(out)
 	if !ok || pkg == "" {
-		return []logSection{{head: ownHead, note: binPath + " is not owned by a pacman package (an AUR build, a script, or a Flatpak)"}}
+		return []logSection{{head: head, note: binPath + " is not owned by a native package (a script or a Flatpak)"}}
 	}
-	secs := []logSection{{head: ownHead, body: pkg}}
-	if body := pacmanPackageLines(pkg, cfg.lines); body != "" {
-		secs = append(secs, logSection{head: pacmanLogPath + " (transactions for " + pkg + ")", body: body})
+	secs := []logSection{{head: head, body: pkg}}
+	var history logSection
+	switch logsPackageManager() {
+	case "dnf":
+		history = dnfHistorySection(pkg, cfg)
+	case "xbps":
+		history = packageLogSection(xbpsLogPath, pkg, cfg.lines)
+	case "pacman":
+		history = packageLogSection(pacmanLogPath, pkg, cfg.lines)
+	default:
+		history = logSection{head: "native package transactions for " + pkg, note: "package manager unavailable"}
+	}
+	return append(secs, history)
+}
+
+func packageLogSection(path, pkg string, lines int) logSection {
+	head := path + " (transactions for " + pkg + ")"
+	var body string
+	if path == pacmanLogPath {
+		body = pacmanPackageLines(pkg, lines)
 	} else {
-		secs = append(secs, logSection{head: pacmanLogPath + " (transactions for " + pkg + ")", note: "no recorded transactions"})
+		body = xbpsPackageLines(pkg, lines)
 	}
-	return secs
+	if body == "" {
+		return logSection{head: head, note: "no recorded transactions"}
+	}
+	return logSection{head: head, body: body}
 }
 
 // flatpakSection notes when the target is a Flatpak and where its logs live.
@@ -717,24 +747,6 @@ func dnfHistorySection(pkg string, cfg logsConfig) logSection {
 	return logSection{head: head, body: tailLines(out, cfg.lines), note: "no recorded transactions"}
 }
 
-func dnfPackageSections(binPath string, cfg logsConfig) []logSection {
-	head := "ryoku-host pkg owner " + binPath
-	out, ok := probe(logsProbeTimeout, "ryoku-host", "pkg", "owner", binPath)
-	pkg := strings.TrimSpace(out)
-	if !ok || pkg == "" {
-		return []logSection{{head: head, note: binPath + " is not owned by an RPM package (a script or a Flatpak)"}}
-	}
-	return []logSection{
-		{head: head, body: pkg},
-		dnfHistorySection(pkg, cfg),
-	}
-}
-
-// pacmanTail returns the last n lines of pacman.log.
-func pacmanTail(n int) string {
-	return tailFile(pacmanLogPath, n)
-}
-
 // pacmanPackageLines keeps the pacman.log transactions for one package.
 func pacmanPackageLines(pkg string, n int) string {
 	data, err := os.ReadFile(pacmanLogPath)
@@ -752,6 +764,20 @@ func pacmanPackageLines(pkg string, n int) string {
 				kept = append(kept, l)
 				break
 			}
+		}
+	}
+	return tailLines(strings.Join(kept, "\n"), n)
+}
+
+func xbpsPackageLines(pkg string, n int) string {
+	data, err := os.ReadFile(xbpsLogPath)
+	if err != nil {
+		return ""
+	}
+	var kept []string
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Contains(line, pkg) {
+			kept = append(kept, line)
 		}
 	}
 	return tailLines(strings.Join(kept, "\n"), n)

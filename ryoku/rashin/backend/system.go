@@ -514,13 +514,10 @@ func readCronScripts(p, cadence string) ([]CronEntry, bool) {
 	return entries, true
 }
 
-// packageOwnsFile asks pacman whether a packaged file owns the path. On a
-// non-Arch box or for a hand-dropped script the answer is simply "no".
+// packageOwnsFile asks the host package seam whether an installed package owns
+// the path. Hand-dropped scripts simply return false.
 func packageOwnsFile(path string) bool {
-	if _, err := exec.LookPath("pacman"); err != nil {
-		return false
-	}
-	out, err := sysProbe(4, "pacman", "-Qoq", path)
+	out, err := sysProbe(4, "ryoku-host", "pkg", "owner", path)
 	return err == nil && strings.TrimSpace(out) != ""
 }
 

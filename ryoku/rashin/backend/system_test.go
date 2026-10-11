@@ -1,9 +1,23 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestPackageOwnsFileUsesHostSeam(t *testing.T) {
+	bin := t.TempDir()
+	host := filepath.Join(bin, "ryoku-host")
+	if err := os.WriteFile(host, []byte("#!/bin/sh\n[ \"$1 $2 $3\" = 'pkg owner /usr/bin/tool' ] || exit 2\nprintf 'tool-package\\n'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	if !packageOwnsFile("/usr/bin/tool") {
+		t.Fatal("host-owned file reported unowned")
+	}
+}
 
 func TestParseUnitJSON(t *testing.T) {
 	out := `[{"unit":"ssh.service","load":"loaded","active":"active","sub":"running","description":"OpenSSH daemon"},` +
