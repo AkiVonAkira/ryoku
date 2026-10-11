@@ -10,9 +10,9 @@ BuildRequires:  bash
 BuildRequires:  coreutils
 BuildRequires:  findutils
 BuildRequires:  golang >= 1.26.4
-Requires:       curl
+Requires:       bash
 Requires:       jq
-Requires:       systemd
+Requires:       ryoku-extras
 
 %description
 ryoku-palette-bridge, built from the shared Ryoku source and package payload recipe.

@@ -234,6 +234,12 @@ this, `ryoku update` installs both; the ERTM change needs a reboot, or
 `modprobe -r btusb && modprobe btusb` to take effect without one. A pad paired
 while ERTM was on should be removed and re-paired.
 
+On Fedora with Secure Boot enabled, DKMS signs xpadneo with
+`/var/lib/dkms/mok.key`. Enroll its public certificate with
+`sudo mokutil --import /var/lib/dkms/mok.pub`, set the one-time password, reboot,
+and choose Enroll MOK on the firmware screen. Until that enrollment is complete,
+the module is built and signed but the kernel will refuse to load it.
+
 ## Bluetooth headphones connect, then disconnect a few seconds later
 
 **Symptom.** A headset or earbuds pair and connect, then drop within a few

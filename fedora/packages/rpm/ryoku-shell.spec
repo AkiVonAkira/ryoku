@@ -17,9 +17,26 @@ BuildRequires:  wayland-protocols-devel
 BuildRequires:  ffmpeg-free-devel
 Requires:       quickshell >= 0.3.0
 Requires:       ffmpeg-free
+Requires:       libwayland-client
+Requires:       libwayland-cursor
+Requires:       libwayland-egl
+Requires:       libwayland-server
 Requires:       jq
-Requires:       uv
 Requires:       python3
+Requires:       uv
+Requires:       socat
+Requires:       gum
+Requires:       qrencode
+Requires:       upower
+Requires:       brightnessctl
+Requires:       ddcutil
+Requires:       wtype
+Requires:       wl-clipboard
+Requires:       zenity
+Requires:       ppd-service
+Requires:       NetworkManager
+Requires:       curl
+Requires:       libnotify
 
 %description
 ryoku-shell, built from the shared Ryoku source and package payload recipe.

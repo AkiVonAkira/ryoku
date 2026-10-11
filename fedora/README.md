@@ -1,8 +1,9 @@
 # Fedora edition
 
-The Fedora edition installs Ryoku on mutable Fedora 44 Workstation or Server,
-`x86_64`, with systemd and either Hyprland or niri. rpm-ostree systems are
-refused. Use the same public installer as the other existing-system editions:
+The Fedora edition installs Ryoku on mutable Fedora 44 or 45 Workstation and
+KDE Plasma systems, `x86_64`, with systemd and either Hyprland or niri.
+rpm-ostree systems are refused. Use the same public installer as the other
+existing-system editions:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
@@ -10,13 +11,15 @@ curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-in
 
 The installer uses dnf5 or dnf, verifies and imports Ryoku's release key, adds
 the signed RPM repository for the running Fedora release, and replaces GDM with
-SDDM. Package-restricted COPR repositories provide only the Hyprland stack,
-starship, lazygit, and yazi packages Fedora lacks. Ryoku's own packages come
-from its signed repository.
+SDDM. Ryoku's signed repository carries every Fedora-compatible package from
+the Arch desktop set, including Ryoku's quickshell 0.3 or newer build, desktop
+tools, fonts, cursors, wallpaper support, controller support, and optional apps.
+Package-restricted COPR repositories provide only the Hyprland stack, starship,
+lazygit, and yazi packages that Fedora 44 and 45 lack.
 
 Release jobs prepare SRPMs from the shared tree, rebuild and sign the binary
-RPMs and `repomd.xml`, install-test both desktops in a clean Fedora container,
-then publish the tested repository. For Fedora release `<N>`, the public layout
+RPMs and `repomd.xml`, install-test both desktops on Fedora 44 and 45, then
+publish the tested repositories. For Fedora release `<N>`, the public layout
 below `https://repo.ryoku.dev/` is:
 
 ```text

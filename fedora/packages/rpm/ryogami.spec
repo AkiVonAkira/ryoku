@@ -25,8 +25,10 @@ BuildRequires:  ffmpeg-free-devel
 Requires:       quickshell >= 0.3.0
 Requires:       ffmpeg-free
 Requires:       ImageMagick
-Requires:       curl
-Requires:       inotify-tools
+Requires:       qt6-qtmultimedia
+Requires:       qt6-qtimageformats
+Requires:       skwd-paper-bin
+Recommends:     yt-dlp
 
 %description
 ryogami, built from the shared Ryoku source and package payload recipe.

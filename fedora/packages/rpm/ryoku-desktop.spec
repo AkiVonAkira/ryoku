@@ -27,7 +27,11 @@ Requires:       ryoku-extras = %{version}-%{release}
 Requires:       sddm-theme-ryoku = %{version}-%{release}
 Requires:       ryoku-desktop-compositor
 Requires:       dnf
+Requires:       gpk
 Requires:       quickshell >= 0.3.0
+Requires:       gpu-screen-recorder
+Requires:       wl-clip-persist
+Requires:       ryoku-cursor-material
 Requires:       xorg-x11-server-Xwayland
 Requires:       qt6-qtwayland
 Requires:       qt5-qtwayland
@@ -77,7 +81,7 @@ Requires:       zbar
 Requires:       wtype
 Requires:       libqalculate
 Requires:       upower
-Requires:       power-profiles-daemon
+Requires:       ppd-service
 Requires:       ddcutil
 Requires:       hypridle
 Requires:       hyprpicker
@@ -85,18 +89,25 @@ Requires:       kernel-devel
 Requires:       kernel-headers
 Requires:       dkms
 
+Recommends:     power-profiles-daemon
 Recommends:     kitty
 Recommends:     fish
+Recommends:     blesh
 Recommends:     zsh
 Recommends:     zsh-autosuggestions
+Recommends:     zsh-history-substring-search
 Recommends:     zsh-syntax-highlighting
+Recommends:     ryoku-oh-my-zsh
 Recommends:     starship
 Recommends:     fastfetch
 Recommends:     yazi
 Recommends:     neovim
 Recommends:     nautilus
 Recommends:     nautilus-python
+Recommends:     ryotunes
+Recommends:     waifu2x-ncnn-vulkan
 Recommends:     pavucontrol
+Recommends:     songrec
 Recommends:     openrgb
 Recommends:     gamescope
 Recommends:     gamemode
@@ -112,6 +123,12 @@ Recommends:     quickemu
 Recommends:     libisoburn
 Recommends:     spice-gtk
 Recommends:     spice-gtk-tools
+Recommends:     picocom
+Recommends:     telnet
+Recommends:     freerdp
+Recommends:     tigervnc
+Recommends:     asusctl
+Recommends:     ryoku-extras
 
 Provides:       ryostore
 Provides:       ryovm

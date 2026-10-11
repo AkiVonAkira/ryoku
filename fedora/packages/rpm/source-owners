@@ -3,5 +3,12 @@
 ryoku/assets/wallpapers ryoku-desktop
 ryoku/i18n/catalog ryoku-desktop
 .rpm-extras ryoku-extras
-.rpm-prowl prowl
+.rpm-ryoku-oh-my-zsh ryoku-oh-my-zsh
+.rpm-ryoku-hypr-plugins ryoku-hypr-plugins
+.rpm-ryoku-keysounds ryoku-keysounds
+.rpm-hypr-dynamic-cursors hypr-dynamic-cursors
+.rpm-hyprglass hyprglass
+.rpm-hyprgrass hyprgrass
+.rpm-imgborders imgborders
+.rpm-hyprland-preview-share-picker hyprland-preview-share-picker
 ryoku-shell-installer/ryoku-shell-install -
