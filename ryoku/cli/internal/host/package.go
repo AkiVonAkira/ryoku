@@ -351,11 +351,12 @@ func (a *App) xbps(args []string) int {
 		return ExitOK
 	}
 	if verb == "owner" {
-		result := a.run("xbps-query", "-o", rest[0])
-		if result.Code == 0 {
-			return ExitOK
+		owner, err := a.PackageOwner(rest[0])
+		if err != nil {
+			return ExitFalse
 		}
-		return ExitFalse
+		fmt.Fprintln(a.cfg.Stdout, owner)
+		return ExitOK
 	}
 	if verb == "available" && rest[0] == "--aur" {
 		rest = rest[1:]

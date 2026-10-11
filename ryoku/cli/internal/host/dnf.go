@@ -148,7 +148,7 @@ func (a *App) dnf(args []string) int {
 	switch verb {
 	case "installed":
 		for _, name := range translated {
-			if a.probe("rpm", "-q", "--quiet", name).Code != 0 {
+			if !a.dnfPackageInstalled(name) {
 				return ExitFalse
 			}
 		}
@@ -161,7 +161,7 @@ func (a *App) dnf(args []string) int {
 		}
 		return ExitOK
 	case "version":
-		result := a.query("rpm", "-q", "--qf", "%{EPOCHNUM}:%{VERSION}-%{RELEASE}\n", translated[0])
+		result := a.query("rpm", "-q", "--whatprovides", "--qf", "%{EPOCHNUM}:%{VERSION}-%{RELEASE}\n", translated[0])
 		if result.Code != 0 {
 			return ExitFalse
 		}
@@ -171,13 +171,24 @@ func (a *App) dnf(args []string) int {
 		action := "install"
 		if upgrade {
 			action = "upgrade"
+		} else {
+			pending := make([]string, 0, len(translated))
+			for _, name := range translated {
+				if !a.dnfPackageInstalled(name) {
+					pending = append(pending, name)
+				}
+			}
+			if len(pending) == 0 {
+				return ExitOK
+			}
+			translated = pending
 		}
 		command := []string{action, "-y", "--setopt=install_weak_deps=False"}
 		return commandExit(a.run(a.dnfCommand(), append(command, translated...)...))
 	case "remove":
 		installed := make([]string, 0, len(translated))
 		for _, name := range translated {
-			if a.probe("rpm", "-q", "--quiet", name).Code == 0 {
+			if a.dnfPackageInstalled(name) {
 				installed = append(installed, name)
 			}
 		}
@@ -195,20 +206,18 @@ func (a *App) dnf(args []string) int {
 	return ExitUsage
 }
 
+func (a *App) dnfPackageInstalled(name string) bool {
+	return a.probe("rpm", "-q", "--whatprovides", "--quiet", name).Code == 0
+}
+
 func (a *App) dnfPackageAvailable(name string) bool {
 	command := a.dnfCommand()
-	args := []string{"repoquery", "-y", "--qf", dnfNameQueryFormat, name}
+	args := []string{"repoquery", "-y", "--whatprovides=" + name, "--qf", dnfNameQueryFormat}
 	if command == "dnf5" {
-		args = []string{"repoquery", "-y", "--available", "--qf", dnfNameQueryFormat, name}
+		args = []string{"repoquery", "-y", "--available", "--whatprovides=" + name, "--qf", dnfNameQueryFormat}
 	}
 	result := a.query(command, args...)
-	if result.Code == 0 && strings.TrimSpace(result.Output) != "" {
-		return true
-	}
-	if command == "dnf" {
-		return a.probe(command, "list", "-y", "--available", name).Code == 0
-	}
-	return false
+	return result.Code == 0 && strings.TrimSpace(result.Output) != ""
 }
 
 func (a *App) dnfCount(foreign bool) int {

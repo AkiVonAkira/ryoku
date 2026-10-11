@@ -406,13 +406,13 @@ func TestDNFRepoSyncAndInstalledSet(t *testing.T) {
 		switch argv(command) {
 		case "dnf5 repoquery -y --available --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n":
 			return Result{Output: listing}
-		case "rpm -q --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n up":
+		case "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n up":
 			return Result{Output: "0:1.0-1.fc44\n"}
-		case "rpm -q --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n down":
+		case "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n down":
 			return Result{Output: "0:3.0-1.fc44\n"}
-		case "rpm -q --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n equal":
+		case "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n equal":
 			return Result{Output: "0:2.0-1.fc44\n"}
-		case "rpm -q --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n absent":
+		case "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n absent":
 			return Result{Code: 1}
 		default:
 			return Result{}
@@ -456,7 +456,7 @@ func TestDNFRepoInstalledSetIncludesUpToDatePackages(t *testing.T) {
 		switch argv(command) {
 		case "dnf5 repoquery -y --available --repo=ryoku --qf %{name}\t%{epoch}:%{version}-%{release}\n":
 			return Result{Output: "ryoku\t" + version + "\n"}
-		case "rpm -q --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n ryoku":
+		case "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n ryoku":
 			return Result{Output: version + "\n"}
 		default:
 			return Result{}

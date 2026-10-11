@@ -371,9 +371,15 @@ func TestXBPSOwnershipAndExplicitStateUseNativeTools(t *testing.T) {
 		}
 		return Result{}
 	}}
-	app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "xbps", "RYOKU_HOST_PKG_TABLE": table})
+	app, stdout, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "xbps", "RYOKU_HOST_PKG_TABLE": table})
 	if owner, err := app.PackageOwner("/usr/bin/ryogami"); err != nil || owner != "ryogami" {
 		t.Fatalf("owner = %q, %v", owner, err)
+	}
+	if code := app.Package([]string{"owner", "/usr/bin/ryogami"}); code != ExitOK {
+		t.Fatalf("owner command exit = %d", code)
+	}
+	if got := stdout.String(); got != "ryogami\n" {
+		t.Fatalf("owner command output = %q", got)
 	}
 	if code := app.Package([]string{"explicit", "identity"}); code != ExitOK {
 		t.Fatalf("explicit exit = %d", code)

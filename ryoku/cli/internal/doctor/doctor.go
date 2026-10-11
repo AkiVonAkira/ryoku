@@ -219,6 +219,9 @@ func reconcilers() []reconciler {
 	checks := []reconciler{
 		{i18n.T("interface language"), reconcileShellLanguage},
 	}
+	if fedora {
+		checks = append(checks, reconciler{i18n.T("Fedora release"), reconcileFedoraRelease})
+	}
 	if !fedora {
 		checks = append(checks,
 			reconciler{i18n.T("swap kept out of snapshots"), reconcileSwapSubvolume},

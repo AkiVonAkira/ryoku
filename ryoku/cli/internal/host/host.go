@@ -5,6 +5,7 @@ package host
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -128,6 +129,8 @@ type Config struct {
 	Stdout            io.Writer
 	Stderr            io.Writer
 	Getenv            func(string) string
+	HTTPClient        *http.Client
+	FedoraReleasesURL string
 	SystemdRuntimeDir string
 	UserServiceDir    string
 	SystemServiceDir  string
@@ -167,6 +170,12 @@ func New(cfg Config) *App {
 	}
 	if cfg.Getenv == nil {
 		cfg.Getenv = os.Getenv
+	}
+	if cfg.HTTPClient == nil {
+		cfg.HTTPClient = &http.Client{Timeout: fedoraReleaseTimeout}
+	}
+	if cfg.FedoraReleasesURL == "" {
+		cfg.FedoraReleasesURL = FedoraReleasesURL
 	}
 	if cfg.SystemdRuntimeDir == "" {
 		cfg.SystemdRuntimeDir = "/run/systemd/system"

@@ -222,7 +222,11 @@ func Update(args []string) (err error) {
 		set = s
 		switch {
 		case len(set) == 0 && held == 0:
-			e := fmt.Errorf(i18n.T("no packages from the [ryoku] repository are installed; `ryoku doctor` checks the repo setup"))
+			message := fedoraReleaseNotice()
+			if message == "" {
+				message = i18n.T("no packages from the [ryoku] repository are installed; `ryoku doctor` checks the repo setup")
+			}
+			e := errors.New(message)
 			progress.fail(e)
 			return e
 		case len(set) == 0:
@@ -1847,6 +1851,8 @@ func Status(args []string) error {
 		// The pin is a frozen release OLDER than what is installed (#291): the box
 		// can take no updates, and "behind N commit(s)" reads exactly backwards.
 		fmt.Printf(i18n.T("channel pin:   %s is older than the installed %s; run `ryoku track %s` to reconcile\n"), orDash(r.Channel), orDash(r.Release), sys.TrackName(r.RecoverChannel))
+	case r.RepositoryNotice != "":
+		fmt.Println(r.RepositoryNotice)
 	case r.Available:
 		fmt.Printf(i18n.T("available:     %s\n"), orDash(r.Latest))
 		fmt.Printf(i18n.T("behind:        %d commit(s)\n"), r.Behind)
@@ -1919,8 +1925,9 @@ type statusReport struct {
 	// the installed release (the boot-guard-revert wedge, #291): the box can take
 	// no updates and "behind N" would read backwards. RecoverChannel names the
 	// channel `ryoku track` moves back to.
-	ChannelPinStale bool   `json:"channelPinStale,omitempty"`
-	RecoverChannel  string `json:"recoverChannel,omitempty"`
+	ChannelPinStale  bool   `json:"channelPinStale,omitempty"`
+	RecoverChannel   string `json:"recoverChannel,omitempty"`
+	RepositoryNotice string `json:"repositoryNotice,omitempty"`
 }
 
 // withSpace is a release name as a prefix: "Onogoro " or "" when unnamed.
@@ -1939,6 +1946,7 @@ func withSpace(name string) string {
 // is the same commit subjects a dev box shows, not bare package names.
 func buildStatus() statusReport {
 	r := baseStatus()
+	r.RepositoryNotice = fedoraReleaseNotice()
 	// The user's lane, check-only. It never sets Available: `ryoku update`
 	// would not move any of it, and a button that promises otherwise is how a
 	// box ends up looking updated while its kernel never moves.

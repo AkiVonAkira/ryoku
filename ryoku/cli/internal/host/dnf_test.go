@@ -11,7 +11,7 @@ import (
 func fedoraPackageFixture(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "fedora.tsv")
-	body := "arch\tfedora\tlanes\tnotes\nfd\tfd-find\tdesktop\t\ngithub-cli\tgh\tdesktop\t\nmatugen\tryoku-extras\tdesktop\tBundled by the Ryoku extras RPM.\nmissing\t-\tdesktop\tNot in Fedora.\n"
+	body := "arch\tfedora\tlanes\tnotes\nfd\tfd-find\tdesktop\t\ngithub-cli\tgh\tdesktop\t\npower-profiles-daemon\tppd-service\tdesktop\tProvided by power-profiles-daemon or tuned-ppd.\nmatugen\tryoku-extras\tdesktop\tBundled by the Ryoku extras RPM.\nmissing\t-\tdesktop\tNot in Fedora.\n"
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestDNFPackageCommandsForDNF5AndDNF4(t *testing.T) {
 			name:          "dnf5",
 			paths:         map[string]bool{"dnf5": true, "rpm": true},
 			command:       "dnf5",
-			available:     "dnf5 repoquery -y --available --qf %{name}\n fd-find",
+			available:     "dnf5 repoquery -y --available --whatprovides=fd-find --qf %{name}\n",
 			explicit:      "dnf5 mark user -y fd-find",
 			remove:        "dnf5 remove -y --setopt=clean_requirements_on_remove=False fd-find",
 			installAdvice: "sudo dnf5 install fd-find gh",
@@ -42,7 +42,7 @@ func TestDNFPackageCommandsForDNF5AndDNF4(t *testing.T) {
 			name:          "dnf4",
 			paths:         map[string]bool{"dnf": true, "rpm": true},
 			command:       "dnf",
-			available:     "dnf repoquery -y --qf %{name}\n fd-find",
+			available:     "dnf repoquery -y --whatprovides=fd-find --qf %{name}\n",
 			explicit:      "dnf mark install -y fd-find",
 			remove:        "dnf remove -y --setopt=clean_requirements_on_remove=False fd-find",
 			installAdvice: "sudo dnf install fd-find gh",
@@ -50,12 +50,23 @@ func TestDNFPackageCommandsForDNF5AndDNF4(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			installed := map[string]bool{}
 			runner := &fakeRunner{paths: tc.paths, answer: func(command Command) Result {
-				if strings.HasPrefix(argv(command), tc.command+" repoquery") {
+				line := argv(command)
+				if strings.HasPrefix(line, tc.command+" repoquery") {
 					return Result{Output: "fd-find\n"}
 				}
-				if command.Name == "rpm" {
+				if strings.HasPrefix(line, tc.command+" install ") {
+					installed["fd-find"] = true
+					installed["gh"] = true
 					return Result{}
+				}
+				if command.Name == "rpm" {
+					fields := strings.Fields(line)
+					if len(fields) > 0 && installed[fields[len(fields)-1]] {
+						return Result{}
+					}
+					return Result{Code: 1}
 				}
 				return Result{}
 			}}
@@ -117,26 +128,118 @@ func TestDNFPackageCommandsForDNF5AndDNF4(t *testing.T) {
 	}
 }
 
-func TestDNF4AvailabilityFallsBackWithoutRepoquery(t *testing.T) {
-	table := fedoraPackageFixture(t)
-	runner := &fakeRunner{paths: map[string]bool{"dnf": true}, answer: func(command Command) Result {
-		switch argv(command) {
-		case "dnf repoquery -y --qf %{name}\n fd-find":
-			return Result{Code: 1}
-		case "dnf list -y --available fd-find":
-			return Result{}
-		default:
-			return Result{Code: 1}
-		}
-	}}
-	app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf", "RYOKU_HOST_PKG_TABLE": table})
-	if code := app.Package([]string{"available", "fd"}); code != ExitOK {
-		t.Fatalf("available exit = %d", code)
+func TestDNFAvailabilityUsesBoundProviderFilter(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		paths   map[string]bool
+		real    string
+		missing string
+	}{
+		{
+			name:    "dnf5",
+			paths:   map[string]bool{"dnf5": true},
+			real:    "dnf5 repoquery -y --available --whatprovides=filesystem --qf %{name}\n",
+			missing: "dnf5 repoquery -y --available --whatprovides=ryoku-definitely-missing --qf %{name}\n",
+		},
+		{
+			name:    "dnf4",
+			paths:   map[string]bool{"dnf": true},
+			real:    "dnf repoquery -y --whatprovides=filesystem --qf %{name}\n",
+			missing: "dnf repoquery -y --whatprovides=ryoku-definitely-missing --qf %{name}\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := &fakeRunner{paths: tc.paths, answer: func(command Command) Result {
+				if argv(command) == tc.real {
+					return Result{Output: "filesystem\n"}
+				}
+				return Result{}
+			}}
+			app, _, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+
+			if !app.dnfPackageAvailable("filesystem") {
+				t.Fatal("filesystem reported unavailable")
+			}
+			if app.dnfPackageAvailable("ryoku-definitely-missing") {
+				t.Fatal("missing package reported available")
+			}
+
+			got := []string{argv(runner.commands[0]), argv(runner.commands[1])}
+			want := []string{tc.real, tc.missing}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("availability commands = %v, want %v", got, want)
+			}
+		})
 	}
-	got := []string{argv(runner.commands[0]), argv(runner.commands[1])}
-	want := []string{"dnf repoquery -y --qf %{name}\n fd-find", "dnf list -y --available fd-find"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("availability commands = %v, want %v", got, want)
+}
+
+func TestDNFCapabilityChecksUseProviders(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		paths     map[string]bool
+		available string
+	}{
+		{
+			name:      "dnf5",
+			paths:     map[string]bool{"dnf5": true, "rpm": true},
+			available: "dnf5 repoquery -y --available --whatprovides=ppd-service --qf %{name}\n",
+		},
+		{
+			name:      "dnf4",
+			paths:     map[string]bool{"dnf": true, "rpm": true},
+			available: "dnf repoquery -y --whatprovides=ppd-service --qf %{name}\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			table := fedoraPackageFixture(t)
+			runner := &fakeRunner{paths: tc.paths, answer: func(command Command) Result {
+				switch {
+				case command.Name == "rpm" && strings.Contains(argv(command), "--qf"):
+					return Result{Output: "0:2.28.0-1.fc44\n"}
+				case command.Name == "rpm":
+					return Result{}
+				case strings.Contains(argv(command), "repoquery"):
+					return Result{Output: "tuned-ppd\n"}
+				default:
+					return Result{}
+				}
+			}}
+			app, stdout, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf", "RYOKU_HOST_PKG_TABLE": table})
+
+			if code := app.Package([]string{"installed", "power-profiles-daemon"}); code != ExitOK {
+				t.Fatalf("installed exit = %d", code)
+			}
+			if got := argv(runner.commands[0]); got != "rpm -q --whatprovides --quiet ppd-service" {
+				t.Fatalf("installed argv = %q", got)
+			}
+
+			runner.commands = nil
+			if code := app.Package([]string{"version", "power-profiles-daemon"}); code != ExitOK {
+				t.Fatalf("version exit = %d", code)
+			}
+			if got := argv(runner.commands[0]); got != "rpm -q --whatprovides --qf %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n ppd-service" {
+				t.Fatalf("version argv = %q", got)
+			}
+			if got := stdout.String(); got != "0:2.28.0-1.fc44\n" {
+				t.Fatalf("version output = %q", got)
+			}
+
+			runner.commands = nil
+			if code := app.Package([]string{"available", "power-profiles-daemon"}); code != ExitOK {
+				t.Fatalf("available exit = %d", code)
+			}
+			if got := argv(runner.commands[0]); got != tc.available {
+				t.Fatalf("available argv = %q, want %q", got, tc.available)
+			}
+
+			runner.commands = nil
+			if code := app.Package([]string{"install", "power-profiles-daemon"}); code != ExitOK {
+				t.Fatalf("install exit = %d", code)
+			}
+			if len(runner.commands) != 1 || argv(runner.commands[0]) != "rpm -q --whatprovides --quiet ppd-service" {
+				t.Fatalf("provided capability install commands = %v", runner.commands)
+			}
+		})
 	}
 }
 

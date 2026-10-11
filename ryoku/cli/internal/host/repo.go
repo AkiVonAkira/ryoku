@@ -668,7 +668,7 @@ func (a *App) installedVersion(manager PackageManager, name string) (string, boo
 	if manager == XBPS {
 		command, args = "xbps-query", []string{"-p", "pkgver", name}
 	} else if manager == DNF {
-		command, args = "rpm", []string{"-q", "--qf", "%{EPOCHNUM}:%{VERSION}-%{RELEASE}\n", name}
+		command, args = "rpm", []string{"-q", "--whatprovides", "--qf", "%{EPOCHNUM}:%{VERSION}-%{RELEASE}\n", name}
 	}
 	result := a.query(command, args...)
 	if result.Code != 0 {

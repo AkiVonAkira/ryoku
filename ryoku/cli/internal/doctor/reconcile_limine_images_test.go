@@ -576,6 +576,9 @@ func TestInstalledKernelVersionsInaccessibleMetadata(t *testing.T) {
 // TestInstalledKernelVersionsUnavailableModulesDir verifies that a missing or unreadable
 // /usr/lib/modules directory returns an error and does not falsely report okRes.
 func TestInstalledKernelVersionsUnavailableModulesDir(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses the permission-denied fixture")
+	}
 	dir := t.TempDir()
 
 	origDir, origESP, origPkg := limineModulesDir, limineESPConf, liminePkgInstalled
@@ -675,6 +678,9 @@ func TestReconcileLimineKernelImagesIncompleteDiscoveryPreventsPruneAndRebuild(t
 // TestIncompleteKernelMetadataBlocksDestructivePruning tests missing pkgbase,
 // missing vmlinuz, and empty pkgbase, asserting no mutations occur under uncertainty.
 func TestIncompleteKernelMetadataBlocksDestructivePruning(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses the permission-denied fixture")
+	}
 	stubLimineBootGates(t)
 	for _, tc := range []struct {
 		name       string
