@@ -7,6 +7,13 @@
   through the DNF host seam instead of assuming pacman. The Fedora installer
   uses the shared hardware and session helpers, switches GDM to SDDM, and keeps
   NVIDIA on nouveau in this release.
+- **Void and Fedora share one package-lane resolver.**
+  `system/packages/resolve` reads either edition's translation table for the
+  desktop, development, hardware, session, and compositor lanes.
+
+- **Package cutover waits for the native transaction.** The deferred live
+  session cutover now waits for DNF or RPM work and the XBPS lock as well as
+  pacman's database lock.
 
 - **The system helpers ask the host instead of assuming systemd and pacman.**
   DNS, the network kill switch, the Wi-Fi backend and region, Docker, the audio

@@ -86,47 +86,52 @@ snapper stack already exist; `ryoku doctor` converges the root config.
 
 ### Fedora
 
-Fedora packages come from a signed RPM repository for each supported Fedora
-release. Fedora 44 stable uses
-`https://repo.ryoku.dev/stable/fedora/44/x86_64`; testing uses
-`https://repo.ryoku.dev/stable/fedora/44/channels/testing/x86_64`. The installer
-verifies and imports Ryoku's release key and writes
+Fedora packages come from a signed RPM repository for each release listed at
+`https://repo.ryoku.dev/stable/fedora/releases`, currently Fedora 44 and 45.
+Release `<N>` uses `https://repo.ryoku.dev/stable/fedora/<N>/x86_64`; testing
+uses `https://repo.ryoku.dev/stable/fedora/<N>/channels/testing/x86_64`. Before
+sudo or any system change, the installer requires repository metadata for the
+running release and selected channel. It refuses an unpublished release and
+prints the supported list. Atomic and other rpm-ostree systems are refused.
+
+The installer verifies and imports Ryoku's release key and writes
 `/etc/yum.repos.d/ryoku.repo`. Separate package-restricted COPR files supply the
 Hyprland stack, starship, lazygit, and yazi packages Fedora lacks. Ryoku-owned
-packages do not come from COPR.
+packages, including Quickshell, come from Ryoku's signed repository.
 
 `ryoku update` refreshes the selected repository, moves the installed Ryoku RPM
 set in one DNF transaction, then runs the same stage-two cutover, materialize,
-and doctor flow. `ryoku update --system` also upgrades the Fedora base. Fedora
-boots through GRUB and has no Ryoku snapshot or snapshot boot-menu support, so
-updates skip snapper. `ryoku rollback` and the boot guard still move the Ryoku
-set back by package downgrade, leaving Fedora and its kernel current.
+and doctor flow. `ryoku update --system` also upgrades the Fedora base. On a
+Fedora release Ryoku has not published yet, update and doctor explain that the
+Ryoku packages remain at their current versions. Fedora boots through GRUB and
+has no Ryoku snapshot or snapshot boot-menu support, so updates skip snapper.
+`ryoku rollback` and the boot guard still move the Ryoku set back by package
+downgrade, leaving Fedora and its kernel current.
 
-### Ryotunes: an external app on its own channel
+### Ryotunes by edition
 
-Ryotunes updates are released independently as prebuilt Arch packages on
-[ryoku-dev/ryotunes](https://github.com/ryoku-dev/ryotunes)' GitHub releases
-(`ryotunes-<ver>-1-x86_64.pkg.tar.zst`, with a `.sha256` beside it). This lane
-applies only to Arch and CachyOS; Ryotunes is not currently packaged for Void
-or Fedora. On Arch and CachyOS:
+Ryotunes releases independently on
+[ryoku-dev/ryotunes](https://github.com/ryoku-dev/ryotunes). Arch and CachyOS
+import the prebuilt package from that release lane. Void and Fedora package the
+same application in their signed Ryoku repositories, so XBPS and DNF install
+and update it with the rest of the native Ryoku set.
+
+On Arch and CachyOS:
 
 - **`ryoku update` installs a newer build.** It re-reads the latest release
   fresh, verifies the download by sha256 and by its own pacman metadata (name,
   version, `x86_64`), installs it with `pacman -U`, and only ever moves the
   version forward. A build that is not strictly newer is left alone, so an
   external build is never downgraded, and a box without Ryotunes installed gets
-  nothing (a removal stays removed).
+  nothing.
 - **`ryoku doctor --check` reports a pending release** without installing
   anything. Advisory findings also appear with `--verbose` and `--json`; plain
   doctor remains quiet for advisory notes. Failed release lookups are reported
   as unavailable rather than "up to date".
 - Ryotunes is **excluded from the `[ryoku]` update set** so the repo's base
-  build can never overwrite a newer external one. Only the download origin Ryoku
-  trusts (the `ryoku-dev/ryotunes` GitHub release path) is used, and the package
-  lands through `pacman -U`, which honours pacman's signature policy and file
-  ownership -- never a raw `/usr/bin` replacement. The `[ryoku]` repo still
-  builds the `ryotunes` package (a sha256-pinned source tarball) for the initial
-  install.
+  build can never overwrite a newer external one. Only the trusted
+  `ryoku-dev/ryotunes` release path is used. The package lands through
+  `pacman -U`, which honours pacman's signature policy and file ownership.
 
 ## `ryoku update`
 
@@ -596,6 +601,10 @@ island (when the channel serves the next line) and the Hub's Updates page.
 - `bin/ryoku-dev-verify-delivery` flags orphan configs (hard fail) and reports
   the publish lag. It runs in `pre-commit`, `post-commit`, and the Delivery check
   workflow.
+- `bin/ryoku-edition-parity` keeps the Arch, Void, and Fedora package catalogues
+  in step. It fails when an Arch package has neither a native build nor a
+  translation-table row for either edition, and when an unavailable row has no
+  reason. The Delivery check runs it on every push.
 - The install-test workflow builds the ISO and runs a real, unattended install in
   a VM, then verifies the desktop comes up, so a broken install or a missing
   package is caught before a user hits it.

@@ -131,11 +131,11 @@ Everything else waits in Ryoku Settings (`Super + ,`).
 ## Requirements
 
 Ryoku is `x86_64` only. Arch and CachyOS sessions can run Hyprland or niri; the
-Void edition runs niri; Fedora 44 supports either compositor on a mutable
-systemd install. The ISO editions boot in UEFI mode and refuse Secure Boot
-unless you have enrolled your own keys because Limine ships unsigned. Fedora
-keeps GRUB and does not accept rpm-ostree systems. There is no 32-bit or legacy
-BIOS build.
+Void edition runs niri; Fedora 44 and 45 support either compositor on mutable
+Workstation, KDE Plasma, Server, and spin installs. The ISO editions boot in
+UEFI mode and refuse Secure Boot unless you have enrolled your own keys because
+Limine ships unsigned. Fedora keeps GRUB and refuses Atomic and other
+rpm-ostree systems. There is no 32-bit or legacy BIOS build.
 
 |  | Minimum | Recommended |
 |---|---|---|
@@ -231,24 +231,34 @@ Preview everything it would do without changing anything by appending
 
 ### Fedora Linux
 
-The Fedora edition installs on mutable Fedora 44 Workstation or Server,
-`x86_64`, with systemd. Run the same shell installer used above:
+The Fedora edition installs on mutable Fedora 44 or 45 Workstation, KDE Plasma,
+Server, and other spins, `x86_64`, with systemd. Run the same shell installer
+used above:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
 ```
 
-It uses dnf5 (or dnf when dnf5 is unavailable), verifies Ryoku's release key,
-adds the signed repository for the running Fedora release, installs the chosen
-Hyprland or niri desktop, and replaces GDM with SDDM. Package-restricted COPR
-repositories supply only the Hyprland stack, starship, lazygit, and yazi pieces
-Fedora does not provide. Ryoku-owned software still comes from Ryoku's signed
-RPM repository. rpm-ostree systems are refused.
+Before sudo or any system change, the installer checks that Ryoku publishes the
+selected channel for the running release. If not, it stops and names the
+supported releases from
+`https://repo.ryoku.dev/stable/fedora/releases`. It uses dnf5, or dnf when dnf5
+is unavailable, verifies Ryoku's release key, adds the signed repository,
+installs the chosen Hyprland or niri desktop, and configures SDDM. GDM systems
+move to SDDM; KDE keeps its existing SDDM greeter configuration by default.
+Atomic and other rpm-ostree systems are refused.
 
-Fedora 44 stable uses
-`https://repo.ryoku.dev/stable/fedora/44/x86_64`; every `unstable-dev` push
-publishes testing at
-`https://repo.ryoku.dev/stable/fedora/44/channels/testing/x86_64`. Tagged
+Ryoku's repository carries the full Fedora-compatible desktop set, including a
+Ryoku-built Quickshell, Ryotunes, GPU Screen Recorder, wallpaper support, fonts,
+cursors, controller tools, and the Hyprland plugins. Package-restricted COPR
+repositories supply only the Hyprland stack, starship, lazygit, and yazi pieces
+Fedora does not provide. Fedora's normal `tuned-ppd` and
+`power-profiles-daemon` providers both work; Ryoku keeps whichever one the
+system already uses.
+
+For Fedora release `<N>`, stable is
+`https://repo.ryoku.dev/stable/fedora/<N>/x86_64` and testing is
+`https://repo.ryoku.dev/stable/fedora/<N>/channels/testing/x86_64`. Tagged
 releases and successful testing builds are frozen below the same Fedora root,
 with stable and testing ledgers for the ten retained rollback targets.
 
@@ -257,7 +267,8 @@ with stable and testing ledgers for the ten retained rollback targets.
 | No Fedora ISO | Fedora is installed by converting an existing mutable system. |
 | No snapshots or snapshot boot menu | Fedora keeps GRUB, which Ryoku's snapshot boot flow does not drive. |
 | NVIDIA stays on nouveau | Ryoku does not manage Fedora's proprietary NVIDIA packages in this release. |
-| No Zen Browser, Ryotunes, or several small extras | They are not published in the Fedora package lane yet. |
+| No Wayfire desktop | Fedora ships Wayfire 0.10.1; Ryoku's Wayfire desktop requires 0.11. |
+| No AUR-only extras | Packages such as Zen Browser, LocalSend, Voxtype, Looking Glass, and SteamCMD do not have Fedora packages in this lane. |
 
 `ryoku update`, `ryoku track`, and `ryoku rollback` use DNF and the signed RPM
 repositories. Rollback and the boot guard can downgrade the Ryoku package set,
@@ -278,8 +289,10 @@ before changing the machine:
 | niri only | Ryoku needs Hyprland 0.55+, which requires GCC 15 and C++26; Void currently ships GCC 14. |
 | No Zen Browser, LocalSend, or Voxtype | They are available only from the AUR. Dictation is disabled because it uses Voxtype. |
 | No asusctl | Its service has no faithful runit shutdown integration yet. |
-| No Ryotunes or several small extras | They are not packaged for Void yet. |
 | No GPU passthrough | Looking Glass and the kvmfr module are AUR-only; the Hub disables the control and states why. |
+
+GlazePKG (`gpk`), dualsensectl, Ryoku's packaged Oh My Zsh, and Ryotunes ship
+from Ryoku's signed Void repository.
 
 Packages come from Ryoku's signed XBPS repository. Stable releases use
 `https://repo.ryoku.dev/stable/void/x86_64`; every `unstable-dev` push publishes

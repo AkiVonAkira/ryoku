@@ -68,6 +68,12 @@ without invoking snapper. What the update runs next depends on the world:
   remains the separate Fedora lane. The run reports how many packages the
   system lane is holding.
 
+Fedora packages are published per release. If the running release has no Ryoku
+repository, `ryoku update` leaves the installed Ryoku RPMs in place and says
+that packages stay at their current versions. `ryoku doctor` reports the same
+condition as a `Fedora release` warning instead of treating an unavailable
+repository as an empty install.
+
 On a terminal the run is a curated console: a header, one line per step with
 its time and anything it found, a live line for the step in flight, a progress
 bar, and a closing card. Everything the steps and their tools print (the native
@@ -102,6 +108,10 @@ the channel you are; on a packaged install it shows the installed
 `ryoku-desktop` version, what the signed repository offers, and the count of
 pending distribution packages. Those are listed as `system:` because plain
 `ryoku update` does not take them. It ends with the snapshot count.
+
+On Fedora, status uses the same publication check as update. An unpublished
+running release is named directly, rather than being reported as having no
+Ryoku packages installed.
 
 `--json` is the data seam the Hub and the update island read; it is not meant for
 humans.
@@ -183,8 +193,12 @@ at once; on a dev checkout it drops the override and leaves the re-lay to
 
 `ryoku-host` is the internal operating-system seam used by scripts, the Hub,
 and the CLI. Package names passed to it use the Arch/Ryoku catalogue; the host
-backend translates them for XBPS or DNF when needed. The host-facing verbs
-include:
+backend translates them for XBPS or DNF when needed. A Fedora translation may
+name a capability rather than a concrete RPM. For example,
+`power-profiles-daemon` maps to `ppd-service`, so installed, version,
+availability, and install checks accept either tuned-ppd or
+power-profiles-daemon without replacing the active provider. The host-facing
+verbs include:
 
 - `capabilities` prints the detected package manager and init system plus
   snapshot and AUR support as one JSON object.

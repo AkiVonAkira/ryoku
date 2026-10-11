@@ -6,7 +6,8 @@
 - **The desktop now has a Fedora host path.** Package and service actions use
   DNF and systemd through `ryoku-host`, the Hub reflects Fedora's unavailable
   snapshot and AUR capabilities, and updates and compositor package switches
-  avoid pacman-only commands.
+  avoid pacman-only commands. Update, status, and doctor name an unpublished
+  Fedora release instead of reporting an empty package set.
 - **The window-manager seam can vet plugins and read foreign configs.** Each
   provider declares which foreign shell interfaces it serves, and
   `ryoku wm compat <dir>` scans a plugin folder for the ones it needs and says
@@ -212,6 +213,15 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Power profile controls work with Fedora's default provider.** The Hub,
+  Nomarchy, game mode, and `ryoku-power` send profile reads and writes through
+  the shell daemon's provider-neutral D-Bus client, so tuned-ppd works alongside
+  the existing power-profiles-daemon path.
+- **Fedora and Void desktop helpers stay on their native package managers.**
+  Package search, update counters, build hints, Ryovm, Rashin package history,
+  compositor reclaim, and Ryotunes installation no longer fall through to
+  pacman-only commands. Screen recording also falls back to an encoder the
+  machine supports when H.264 is unavailable.
 - **Wayfire can send a window to the previous or next workspace.** The
   `SUPER + SHIFT + Prior` / `Next` rows were reported as unsupported because
   wayfire's grid has no native relative-move method; the provider now steps the

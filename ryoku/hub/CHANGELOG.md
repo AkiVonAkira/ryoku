@@ -13,7 +13,8 @@
 - **Fedora settings use the host's real capabilities.** Updates run through
   DNF, package-backed controls use the host seam, AUR actions stay unavailable,
   and the Updates page hides snapshot rollback with the Fedora GRUB reason
-  instead of offering a dead action.
+  instead of offering a dead action. Power profile controls go through the shell
+  daemon, so they work with tuned-ppd or power-profiles-daemon.
 - **Updates stays clear when snapshots are unavailable.** The page shows the
   host's short snapshot note near its header and hides snapshot ids, rollback
   copy and the rollback action. GPU changes and config imports keep their file

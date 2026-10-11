@@ -10,6 +10,20 @@
   `repomd.xml`, install-tests both compositor packages, and publishes no SRPMs
   or ISO. Retention keeps the latest ten stable and unstable targets for each
   Fedora release.
+- **Fedora 44 and 45 ship the full compatible Ryoku package set.** Ryoku builds
+  Quickshell, GPU Screen Recorder, GlazePKG, Ryotunes, skwd-paper, the Hyprland
+  plugins, fonts, cursors, controller support, and the remaining desktop
+  dependencies as signed RPMs. The workflow publishes the supported release
+  list at `stable/fedora/releases`.
+- **Fedora upstream RPMs have one verified source pipeline.** Specs use checksum
+  manifests, locked Go or Cargo vendor archives, and verified fetch hooks.
+  Builds stay offline and may reuse an identical, signed, dependency-solvable
+  upstream RPM from the published repository; Ryoku-tree RPMs always rebuild.
+- **Void ships GlazePKG, dualsensectl, Ryoku's Oh My Zsh, and Ryotunes.** The
+  signed XBPS repository now carries all four.
+- **Edition parity is a delivery gate.** `bin/ryoku-edition-parity` requires
+  every Arch package to have a build or an explained translation row for Void
+  and Fedora.
 - **The R2 bucket keeps the last ten of everything.** A scheduled Cloudflare
   Worker (`r2-retention/`) keeps ten stable releases and ten unstable builds
   per edition and Fedora release, plus ten ISOs for each image-producing
@@ -137,21 +151,13 @@
   ensures `ryogami` instead of `awww` when it puts the wallpaper daemon back.
 
 ### Changed
-- **Ryotunes updates on its own release channel, not the `[ryoku]` repo.**
-- **Ryotunes also updates on its own GitHub release channel.**
-  Ryotunes is released independently as a prebuilt Arch package on
-  ryoku-dev/ryotunes' GitHub releases (`ryotunes-<ver>-1-x86_64.pkg.tar.zst` and a
-  `.sha256` beside it). `ryoku update` now tracks those directly
-  (`ryoku/cli/internal/ryotunesrelease`): it verifies the download by sha256 and
-  by its own pacman name/version/arch, installs it with `pacman -U`, and only
-  ever moves the version forward, so an external build is never downgraded.
-  `ryoku doctor` reports a pending release without installing it, and Ryotunes is
-  dropped from the explicit `[ryoku]` update set so the repo's base build cannot
-  overwrite a newer one. The `[ryoku]` repo still builds the `ryotunes` package
-  (the retained sha256-pinned source tarball) for the initial install only. The
-  old auto-bump path is retired with it: `.github/workflows/ryotunes-release.yml`
-  and `bin/ryoku-release-ryotunes` are gone, and the Ryotunes release dispatch
-  into this repo with them.
+- **Ryotunes follows the package lane for each edition.** Arch and CachyOS keep
+  the independently released prebuilt package from ryoku-dev/ryotunes. `ryoku
+  update` verifies its checksum and pacman metadata, installs only a newer
+  version, and the doctor reports a pending release without changing the
+  system. Void and Fedora install and update their native Ryotunes packages
+  through the signed XBPS and RPM repositories instead of running the pacman
+  release path.
 - **`ryoku-shell` ships `ryostage`, not the two old engines.** Depth and Parallax
   merged into one engine: the package installs `/usr/bin/ryostage` and no longer
   ships `ryoku-depth` or `ryoku-parallax-engine`. `deploy.sh` removes the two old

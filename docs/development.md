@@ -161,6 +161,13 @@ every supported install has run it, so the set stays small instead of piling up.
   `pip --user`, `go install`, `cargo install`, `pipx`, `mise`). Do not
   reintroduce root-global installs or assume `sudo`.
 
+When an Arch package is added, give Void and Fedora a native build or a row in
+their `translations.tsv`. A `-` mapping must say why the edition cannot ship
+it. Run `bin/ryoku-edition-parity`; CI runs the same gate and rejects a package
+that is missing from either edition. The installer resolves both translation
+tables through `system/packages/resolve`, so add the package to the right lane
+instead of maintaining a second installer list.
+
 ### Build the Void artifacts
 
 Build the XBPS repository in the official Void container:
@@ -207,9 +214,9 @@ and move stable. `.github/workflows/build-iso-void.yml` builds the ISO on
 
 ### Build the Fedora artifacts
 
-Fedora RPMs are built for every release listed in `fedora/releases`. Prepare
-the source RPMs from tracked files, then rebuild and assemble the signed binary
-repository:
+Fedora RPMs are built for every release listed in `fedora/releases`, currently
+44 and 45. Prepare the source RPMs from tracked files, then rebuild and assemble
+the signed binary repository:
 
 ```sh
 RYOKU_PKGVER=1.2.3 \
@@ -224,12 +231,23 @@ RYOKU_RPM_SIGNING_KEY=EB6D3C0F55A7B3CABA6B2838847B274F025DD6E3 \
   fedora/packages/rpm/build-rpm-repo.sh
 ```
 
+Ryoku-tree specs stage payload from the checkout and take the release version.
+Upstream specs keep their own version and release. Each URL source needs a
+dist-git checksum manifest under `fedora/packages/rpm/sources/`. Go and Cargo
+specs vendor locked dependencies into `Source100` for offline rebuilding.
+Verified fetch hooks under `fedora/packages/rpm/fetch/` produce sources that
+cannot be named by a static URL. The repository builder may reuse a published
+upstream RPM only when its complete identity matches, its Ryoku signature
+verifies, and DNF can solve it for the target release. Ryoku-tree packages
+always rebuild.
+
 The output contains signed binary RPMs, `repodata/`, its detached armored
 signature, and `release.json`. SRPMs stay in the build artifact and are not
 published. `.github/workflows/publish-repo-fedora.yml` builds and tests each
 supported Fedora release in its own container, publishes stable or testing
-heads and their frozen targets, and rebuilds the ledgers. Fedora has no ISO
-workflow. See `fedora/packages/rpm/README.md` for local-build overrides.
+heads and their frozen targets, uploads `fedora/releases`, and rebuilds the
+ledgers. Fedora has no ISO workflow. See `fedora/packages/rpm/README.md` for the
+spec, checksum, vendoring, fetch-hook, and local-build details.
 
 The R2 retention Worker lives in `release/r2-retention/`. Run its focused tests
 with `node --test release/r2-retention/test/*.test.js`, then deploy from that

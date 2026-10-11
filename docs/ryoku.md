@@ -3,9 +3,10 @@
 Ryoku (力, "power") is a hand-built Linux distribution: a complete, opinionated
 Wayland desktop plus the installer and system definition that reproduce it on
 any machine. It ships Arch and CachyOS editions with Hyprland or niri, an
-`x86_64` glibc Void edition with niri, runit, Turnstile, and elogind, and a
-mutable Fedora 44 edition with systemd and either compositor. The whole thing
-lives in this repository; a live machine is only a deployment target.
+`x86_64` glibc Void edition with niri, runit, Turnstile, and elogind, and
+mutable Fedora 44 and 45 editions with systemd and either compositor. Fedora
+supports Workstation, KDE Plasma, Server, and spins. The whole thing lives in
+this repository; a live machine is only a deployment target.
 
 ## Philosophy
 
@@ -91,7 +92,8 @@ locked behind a text editor.
 - **The installers** share one desktop contract. `installation/` and
   `void/iso/` build the ISO paths and carry their packages offline.
   `ryoku-shell-installer/` converts an existing supported system and is the
-  Fedora path; Fedora keeps GRUB and has no Ryoku ISO or snapshots.
+  Fedora path; Fedora keeps GRUB and has no Ryoku ISO or snapshots. Atomic and
+  other rpm-ostree editions are refused.
 - **Rashin** (`ryoku/rashin/`, optional and off by default) is the agent OS: a
   machine-generated knowledge vault, a local daemon with a web dashboard, and a
   one-click Hermes setup, so any coding agent starts with an exact map of the

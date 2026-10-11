@@ -178,7 +178,8 @@ System-level definition installed into the target.
   wrappers (repo, AUR, remove, multilib), and `ryoku-cmd-present`.
 - `packages/` the package sets: `base.packages` (every machine, pacstrapped),
   `hardware.packages` (per-profile microcode and GPU drivers), `dev.packages`
-  (language toolchains, pacstrapped), `aur.packages` (built post-install).
+  (language toolchains, pacstrapped), `aur.packages` (built post-install), and
+  `resolve`, the shared lane resolver used by Void and Fedora.
 
 ## `installation/` the build
 
@@ -274,8 +275,9 @@ The x86_64 glibc Void edition, with XBPS package translation and runit plus
 Turnstile init integration. `void/README.md` is the index.
 
 - `packages/` translates the shared package closure without copying it:
-  `translations.tsv` maps package names and lanes, `sets/` holds Void-only
-  additions, and `resolve` emits the selected XBPS names.
+  `translations.tsv` maps package names and lanes, and `sets/` holds Void-only
+  additions. The shared `system/packages/resolve` emits the selected XBPS
+  names.
 - `packages/srcpkgs/` holds the Ryoku XBPS templates.
   `ryoku-keyring/files/` contains the committed public-key plist shipped to
   trust the signed repository.
@@ -297,33 +299,40 @@ built from `ryoku/cli/cmd/ryoku-host` with the backends in
 
 ## `fedora/` the Fedora port
 
-The mutable Fedora 44 `x86_64` edition, with DNF package translation, systemd,
-and either Hyprland or niri. `fedora/README.md` is the index.
+The mutable Fedora 44 and 45 `x86_64` editions, with DNF package translation,
+systemd, and either Hyprland or niri. Workstation, KDE Plasma, Server, and spins
+are supported; Atomic and other rpm-ostree systems are refused.
+`fedora/README.md` is the index.
 
-- `releases` lists the Fedora releases the publish workflow builds.
-- `packages/translations.tsv` maps the shared Arch package catalogue to Fedora
-  names and records packages that are unavailable.
+- `releases` lists the Fedora releases the publish workflow builds and uploads
+  to `stable/fedora/releases`.
+- `packages/translations.tsv` maps the shared Arch package catalogue and lanes
+  to Fedora names and explains each unavailable package.
 - `packages/coprs.tsv` names the package-restricted COPR repositories used only
   for the Hyprland stack, starship, lazygit, and yazi pieces Fedora lacks.
-- `packages/rpm/` holds the RPM specs and payload recipes. It prepares SRPMs,
-  rebuilds signed binary RPMs, signs `repomd.xml`, and emits `release.json`.
+- `packages/rpm/` holds the Ryoku-tree and upstream RPM specs. `sources/`
+  contains checksum manifests, `fetch/` contains verified source hooks, and
+  `prepare-srpms.sh` vendors Go and Cargo dependencies for offline rebuilds.
+  The repository build can reuse an identical trusted upstream RPM already
+  published for the same Fedora release.
 - `.github/workflows/publish-repo-fedora.yml` builds and install-tests every
   supported Fedora release, then publishes moving stable and testing heads,
   frozen releases and unstable builds, and their ledgers below
   `stable/fedora/<N>/`.
 
-Fedora is installed through the shell installer, not an ISO; rpm-ostree systems
-are refused. The installer replaces GDM with SDDM and leaves NVIDIA on nouveau.
-Fedora keeps GRUB and does not provide Ryoku snapshots or a snapshot boot menu.
-Package rollback and the boot guard use DNF downgrades.
+Fedora is installed through the shell installer, not an ISO. It leaves NVIDIA
+on nouveau, keeps GRUB, and does not provide Ryoku snapshots or a snapshot boot
+menu. Wayfire is unavailable because Fedora ships 0.10.1 and Ryoku requires
+0.11. Package rollback and the boot guard use DNF downgrades.
 
 ## Tooling
 
 - `bin/` repo tooling: the release version helpers (`ryoku-release-version`,
-  `ryoku-release-bump`), the CI/hook checks (`ryoku-dev-scan-slop`,
-  `ryoku-dev-audit-shell-binds`), and `art/` for art authoring (`ryodither` bakes
-  an image or gif into a 1-bit bone-on-transparent decor; `tiling-demos`
-  generates the Appearance tiling-layout preview loops).
+  `ryoku-release-bump`), the CI and hook checks
+  (`ryoku-dev-scan-slop`, `ryoku-dev-audit-shell-binds`), the
+  `ryoku-edition-parity` package coverage gate, and `art/` for art authoring
+  (`ryodither` bakes an image or gif into a 1-bit bone-on-transparent decor;
+  `tiling-demos` generates the Appearance tiling-layout preview loops).
 - `tests/` standalone CI check scripts (install chroot-safety, shell tool
   availability).
 - `.github/` the workflows and issue/PR templates; `.githooks/` the commit gates.
