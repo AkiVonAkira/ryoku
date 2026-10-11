@@ -78,7 +78,7 @@ converge_void_packages() {
     done <"$ledger"
   fi
 
-  if ! resolved="$(sh "$repo_root/void/packages/resolve" "${resolve_args[@]}")"; then
+  if ! resolved="$(sh "$repo_root/system/packages/resolve" --table "$table" "${resolve_args[@]}")"; then
     say "could not resolve the Void package set; deploy stopped before building" >&2
     return 1
   fi

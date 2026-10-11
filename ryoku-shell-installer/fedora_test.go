@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -144,8 +147,24 @@ func TestFedoraPackagePlanUsesTranslationsAndAllRepos(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(table), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	resolver, err := os.ReadFile(filepath.Join("..", "system", "packages", "resolve"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolverPath := filepath.Join(payload, "system/packages/resolve")
+	if err := os.MkdirAll(filepath.Dir(resolverPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(resolverPath, resolver, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	data := "arch\tfedora\tlanes\tnotes\n" +
 		"chromium\tchromium\tdesktop\t\n" +
+		"ryoku\tryoku\tdesktop\tRyoku-owned RPM.\n" +
+		"ryoku-desktop\tryoku-desktop\tdesktop\tRyoku-owned RPM.\n" +
+		"ryoku-desktop-hyprland\t-\thyprland\tUnavailable in this fixture.\n" +
+		"ryoku-desktop-niri\tryoku-desktop-niri\tdesktop\tRyoku-owned RPM.\n" +
+		"ryoku-desktop-wayfire\t-\tdesktop\tUnavailable in this fixture.\n" +
 		"zsh\tzsh\tdesktop\t\n" +
 		"zsh-autosuggestions\tzsh-autosuggestions\tdesktop\t\n" +
 		"zsh-history-substring-search\t-\tdesktop\tNot packaged.\n" +
@@ -173,14 +192,220 @@ func TestFedoraPackagePlanUsesTranslationsAndAllRepos(t *testing.T) {
 		}
 	}
 	output := strings.Join(lines, "\n")
-	wantCommand := "DRYRUN: sudo -n " + d.installCmd[0] + " install -y ryoku ryoku-desktop ryoku-desktop-niri chromium zsh zsh-autosuggestions zsh-syntax-highlighting"
+	wantCommand := "DRYRUN: sudo -n " + d.installCmd[0] + " install -y chromium ryoku ryoku-desktop ryoku-desktop-niri zsh zsh-autosuggestions zsh-syntax-highlighting"
 	if !strings.Contains(output, wantCommand) {
 		t.Fatalf("Fedora package command missing:\n%s", output)
 	}
 	if strings.Contains(output, "--repo") {
 		t.Fatalf("Fedora install restricted dependency resolution to one repo:\n%s", output)
 	}
-	if !strings.Contains(output, "zsh-history-substring-search is not available on Fedora; skipping it") {
-		t.Fatalf("unavailable translation was not explained:\n%s", output)
+}
+
+func TestFedoraPackagePlanUsesDesktopDevHardwareAndHyprlandLanes(t *testing.T) {
+	e := &engine{
+		f:       &facts{distro: newFedoraLinux(), gpus: []string{"amdgpu"}},
+		p:       &plan{browser: "firefox", shell: "fish", compositor: "hyprland", devtools: true},
+		payload: filepath.Clean(".."),
+	}
+	packages, err := e.readEditionPackages("fedora")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make(map[string]bool, len(packages))
+	for _, pkg := range packages {
+		got[pkg] = true
+	}
+	for _, want := range []string{"ryoku-desktop", "ryoku-desktop-hyprland", "firefox", "golang", "amd-ucode-firmware", "hyprland"} {
+		if !got[want] {
+			t.Errorf("resolved Fedora plan is missing %s", want)
+		}
+	}
+	if got["ryoku-desktop-niri"] {
+		t.Fatal("Hyprland package plan also installed the niri compositor variant")
+	}
+}
+
+type httpDoerFunc func(*http.Request) (*http.Response, error)
+
+func (fn httpDoerFunc) Do(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
+
+func httpResponse(status int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Header:     make(http.Header),
+	}
+}
+
+func TestFedoraReleaseGateChecksChannelBeforeChanges(t *testing.T) {
+	osRelease := filepath.Join(t.TempDir(), "os-release")
+	if err := os.WriteFile(osRelease, []byte("ID=fedora\nVERSION_ID=44\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RYOKU_RPM_REPO", "")
+	var requests []string
+	client := httpDoerFunc(func(req *http.Request) (*http.Response, error) {
+		requests = append(requests, req.Method+" "+req.URL.String())
+		return httpResponse(http.StatusOK, ""), nil
+	})
+	if err := fedoraReleaseGate(client, "unstable-dev", osRelease); err != nil {
+		t.Fatal(err)
+	}
+	want := "HEAD https://repo.ryoku.dev/stable/fedora/44/channels/testing/x86_64/repodata/repomd.xml"
+	if len(requests) != 1 || requests[0] != want {
+		t.Fatalf("release requests = %v, want [%s]", requests, want)
+	}
+}
+
+func TestFedoraReleaseGateRefusesUnpublishedAndSkipsOverride(t *testing.T) {
+	osRelease := filepath.Join(t.TempDir(), "os-release")
+	if err := os.WriteFile(osRelease, []byte("ID=fedora\nVERSION_ID=43\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RYOKU_RPM_REPO", "")
+	calls := 0
+	client := httpDoerFunc(func(req *http.Request) (*http.Response, error) {
+		calls++
+		if req.URL.String() == fedoraReleasesURL {
+			return httpResponse(http.StatusOK, "44\n45\n"), nil
+		}
+		return httpResponse(http.StatusNotFound, ""), nil
+	})
+	err := fedoraReleaseGate(client, "main", osRelease)
+	want := "Ryoku does not publish packages for Fedora 43 yet. Supported: 44, 45. Upgrade Fedora first with sudo dnf system-upgrade."
+	if err == nil || err.Error() != want {
+		t.Fatalf("gate error = %v, want %q", err, want)
+	}
+	if calls != 2 {
+		t.Fatalf("release gate made %d requests, want 2", calls)
+	}
+
+	t.Setenv("RYOKU_RPM_REPO", "/srv/ryoku")
+	calls = 0
+	if err := fedoraReleaseGate(client, "main", osRelease); err != nil {
+		t.Fatalf("override was gated: %v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("override made %d HTTP requests", calls)
+	}
+}
+
+func TestFedoraReleaseGateFallsBackToGET(t *testing.T) {
+	osRelease := filepath.Join(t.TempDir(), "os-release")
+	if err := os.WriteFile(osRelease, []byte("ID=fedora\nVERSION_ID=44\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RYOKU_RPM_REPO", "")
+	var methods []string
+	client := httpDoerFunc(func(req *http.Request) (*http.Response, error) {
+		methods = append(methods, req.Method)
+		if req.Method == http.MethodHead {
+			return httpResponse(http.StatusMethodNotAllowed, ""), nil
+		}
+		return httpResponse(http.StatusOK, "repository metadata"), nil
+	})
+	if err := fedoraReleaseGate(client, "main", osRelease); err != nil {
+		t.Fatalf("GET fallback was rejected: %v", err)
+	}
+	if got := strings.Join(methods, ","); got != "HEAD,GET" {
+		t.Fatalf("release probe methods = %q, want HEAD,GET", got)
+	}
+}
+
+func TestFedoraReleaseGateReportsNetworkFailure(t *testing.T) {
+	osRelease := filepath.Join(t.TempDir(), "os-release")
+	if err := os.WriteFile(osRelease, []byte("ID=fedora\nVERSION_ID=44\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RYOKU_RPM_REPO", "")
+	client := httpDoerFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("network offline")
+	})
+	err := fedoraReleaseGate(client, "main", osRelease)
+	if err == nil || !strings.Contains(err.Error(), "repository for Fedora 44 could not be reached") {
+		t.Fatalf("network gate error = %v", err)
+	}
+	if strings.Contains(err.Error(), "does not publish packages") {
+		t.Fatalf("network failure was reported as an unpublished release: %v", err)
+	}
+}
+
+func TestFedoraCompositorsComeFromEditionTable(t *testing.T) {
+	table := []byte("arch\tfedora\tlanes\tnotes\n" +
+		"ryoku-desktop-hyprland\tryoku-desktop-hyprland\thyprland\tRyoku-owned RPM.\n" +
+		"ryoku-desktop-niri\tryoku-desktop-niri\tdesktop\tRyoku-owned RPM.\n" +
+		"ryoku-desktop-wayfire\t-\tdesktop\tFedora ships Wayfire 0.10.1; Ryoku requires 0.11.\n")
+	plan, err := parseEditionCompositors(table)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(plan.available, ","); got != "hyprland,niri" {
+		t.Fatalf("Fedora compositors = %q, want hyprland,niri", got)
+	}
+	if got := strings.Join(plan.omitted, "\n"); !strings.Contains(got, "Wayfire unavailable") || !strings.Contains(got, "requires 0.11") {
+		t.Fatalf("Wayfire omission was not explained: %s", got)
+	}
+}
+
+func TestFedoraSessionHandlesGDMKDEAndPowerProfiles(t *testing.T) {
+	d := newFedoraLinux()
+	f := &facts{distro: d, currentDM: "gdm.service", kdeSddmConf: true, username: "ryoku"}
+	p := defaultPlan(f, []string{"niri"})
+	if p.greeter {
+		t.Fatal("KDE-owned SDDM configuration must keep its greeter by default")
+	}
+	if got := f.otherDM(); got != "gdm.service" {
+		t.Fatalf("display-manager.service -> gdm detected as %q", got)
+	}
+
+	events := make(chan any, 128)
+	e := &engine{f: f, p: p, dry: true, payload: "/payload", events: events}
+	if err := stepSession(e); err != nil {
+		t.Fatal(err)
+	}
+	close(events)
+	var lines []string
+	for event := range events {
+		if line, ok := event.(evLine); ok {
+			lines = append(lines, line.line)
+		}
+	}
+	output := strings.Join(lines, "\n")
+	if !strings.Contains(output, "systemctl disable gdm.service") {
+		t.Fatalf("GDM was not disabled before the SDDM setup:\n%s", output)
+	}
+	if !strings.Contains(output, "rm -f /etc/sddm.conf.d/99-ryoku.conf /etc/sddm.conf.d/zz-ryoku.conf") {
+		t.Fatalf("KDE greeter ownership was not preserved:\n%s", output)
+	}
+	events = make(chan any, 4)
+	e.events = events
+	if err := enableFedoraPowerProfiles(e, t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	close(events)
+	if len(events) != 0 {
+		t.Fatal("power-profiles-daemon was enabled without an installed unit")
+	}
+
+	unitDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(unitDir, "power-profiles-daemon.service"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	events = make(chan any, 4)
+	e.events = events
+	if err := enableFedoraPowerProfiles(e, unitDir); err != nil {
+		t.Fatal(err)
+	}
+	close(events)
+	output = ""
+	for event := range events {
+		if line, ok := event.(evLine); ok {
+			output += line.line + "\n"
+		}
+	}
+	if !strings.Contains(output, "systemctl enable power-profiles-daemon.service") {
+		t.Fatalf("installed power-profiles-daemon unit was not enabled:\n%s", output)
 	}
 }

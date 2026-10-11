@@ -21,18 +21,28 @@ snapshot safety net.
 
 ## Fedora
 
-Fedora Workstation and Server use the same public installer command. The
-installer supports mutable x86_64 Fedora systems with systemd and either dnf5
-or dnf. rpm-ostree editions are refused. It imports the verified Ryoku release
-key, writes `/etc/yum.repos.d/ryoku.repo`, adds only the package-restricted
-COPRs listed by the release payload, and installs `ryoku`, `ryoku-desktop` and
-the selected Hyprland or niri variant. Fedora has no Ryoku ISO.
+Fedora KDE Plasma and Workstation use the same public installer command. The
+installer supports published mutable x86_64 Fedora 44 and 45 systems with
+systemd and either dnf5 or dnf. Before sudo or any system change, it checks that
+the selected Ryoku channel publishes repository metadata for the running Fedora
+release. An unpublished release is refused with the current supported list;
+`RYOKU_RPM_REPO` skips that public-repository check for local repository tests.
+rpm-ostree editions are refused.
+
+The installer imports the verified Ryoku release key, writes
+`/etc/yum.repos.d/ryoku.repo`, adds only the package-restricted COPRs listed by
+the release payload, and offers the compositor variants present in Fedora's
+package table. Fedora currently offers Hyprland and niri; Wayfire is omitted
+because Fedora's 0.10.1 build is older than Ryoku's required 0.11. The same
+table resolves the desktop, optional developer, detected hardware and Hyprland
+package lanes. Fedora has no Ryoku ISO.
 
 The payload ref selects the RPM channel: `main` uses stable, `unstable-dev`
 uses testing, and a release tag uses that frozen release. Fedora updates,
 channel moves and rollback then use `ryoku update`, `ryoku track` and
 `ryoku rollback` like the other packaged editions. NVIDIA stays on nouveau in
-this release.
+this release. Workstation's GDM is changed to SDDM; KDE's existing SDDM greeter
+configuration stays selected by default.
 
 ```bash
 curl -fsSL https://ryoku.dev/install.sh | bash

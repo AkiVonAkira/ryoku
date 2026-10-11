@@ -76,23 +76,26 @@ func TestReadBasePackagesSkipsBootChain(t *testing.T) {
 
 func TestVoidPackagePlanMatchesResolver(t *testing.T) {
 	root := filepath.Clean("..")
-	p := &plan{browser: "chromium", shell: "zsh", devtools: true}
+	p := &plan{browser: "chromium", shell: "zsh", compositor: "niri", devtools: true}
 	f := &facts{distro: voidLinux, hasNvidia: true}
 	e := &engine{f: f, p: p, payload: root}
 
-	got, err := e.readVoidPackages()
+	got, err := e.readEditionPackages("void")
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := filepath.Join(root, "void", "packages", "resolve")
+	resolver := filepath.Join(root, "system", "packages", "resolve")
 	args := []string{
 		resolver,
+		"--table", filepath.Join(root, "void", "packages", "translations.tsv"),
 		"--lane", "desktop",
 		"--lane", "dev",
 		"--lane", "hardware:amd",
 		"--lane", "hardware:intel",
 		"--lane", "hardware:nvidia",
 		"--session",
+		"--drop", "ryoku-desktop-hyprland",
+		"--drop", "ryoku-desktop-wayfire",
 		"--drop", "firefox",
 		"--drop", "zen-browser-bin",
 		"--drop", "fish",
@@ -112,7 +115,7 @@ func TestVoidPackagedTransactionsContainMetaPackagesWithoutBuildSet(t *testing.T
 	t.Setenv("RYOKU_XBPS_REPO", "https://repo.test/void")
 	e := &engine{
 		f:       &facts{distro: voidLinux, hasNvidia: true},
-		p:       &plan{browser: "firefox", shell: "fish"},
+		p:       &plan{browser: "firefox", shell: "fish", compositor: "niri"},
 		payload: filepath.Clean(".."),
 		dry:     true,
 		events:  make(chan any, 16),
@@ -191,7 +194,7 @@ func TestVoidHardwareLanesMirrorArchProfiles(t *testing.T) {
 		{name: "vm", f: &facts{gpus: []string{"virtio_gpu"}}, want: "vm"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := strings.Join(voidHardwareLanes(tc.f), " "); got != tc.want {
+			if got := strings.Join(hardwareLanes(tc.f), " "); got != tc.want {
 				t.Fatalf("hardware lanes = %q, want %q", got, tc.want)
 			}
 		})

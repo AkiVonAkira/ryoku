@@ -156,5 +156,5 @@ void_enable_service() {
 }
 
 void_resolve() {
-  "$RYOKU_RESOLVER" "$@"
+  "$RYOKU_RESOLVER" --table "$RYOKU_REPO/void/packages/translations.tsv" "$@"
 }

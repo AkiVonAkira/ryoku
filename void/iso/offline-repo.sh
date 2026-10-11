@@ -15,7 +15,7 @@ VERIFY_ROOT=${RYOKU_VOID_ISO_VERIFY_ROOT:-$WORK}
 KEYS_OUT=${RYOKU_VOID_ISO_KEYS_OUT:-$DEST/.keys}
 RYOKU_REPO=${RYOKU_VOID_ISO_RYOKU_REPO:-}
 VOID_MIRROR=${RYOKU_VOID_ISO_MIRROR:-https://repo-default.voidlinux.org/current}
-RESOLVE=$REPO_ROOT/void/packages/resolve
+RESOLVE=$REPO_ROOT/system/packages/resolve
 
 log() { printf '\033[1;35m::\033[0m %s\n' "$*"; }
 die() { printf 'offline-repo.sh: error: %s\n' "$*" >&2; exit 1; }
@@ -89,6 +89,7 @@ repositories=(
 
 mapfile -t target_packages < <(
 	"$RESOLVE" \
+		--table "$REPO_ROOT/void/packages/translations.tsv" \
 		--lane system \
 		--lane desktop \
 		--lane dev \

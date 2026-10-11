@@ -8,8 +8,8 @@ maintaining a second desktop list.
   unavailable.
 - `sets/session.packages` adds the runit, Turnstile, elogind, and login
   foundation. `sets/build.packages` adds source-build tools.
-- `resolve` selects lanes, drops requested packages, enables required Void
-  repositories, and prints a sorted XBPS set.
+- `../../system/packages/resolve` selects lanes, drops requested packages,
+  enables required Void repositories, and prints a sorted XBPS set.
 - `srcpkgs/` contains the Ryoku package templates. The
   `limine-snapper-sync` 1.32.1 template builds a native image with Void's
   Mandrel and installs its runit watcher.
@@ -26,8 +26,8 @@ The NVIDIA hardware lane leaves driver selection to
 module builds.
 
 ```sh
-void/packages/resolve --lane desktop --lane dev --session --build
-void/packages/resolve --lane desktop --lane hardware:amd --drop chromium
+system/packages/resolve --table void/packages/translations.tsv --lane desktop --lane dev --session --build
+system/packages/resolve --table void/packages/translations.tsv --lane desktop --lane hardware:amd --drop chromium
 ```
 
 ## Build the repository

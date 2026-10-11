@@ -10,6 +10,15 @@
   The shared session, configuration, doctor and verification steps finish the
   install; rpm-ostree systems are refused and Fedora stays on nouveau this
   release.
+- **Fedora installs are release-gated and table-driven.** Before sudo or any
+  system change, the installer requires published repository metadata for the
+  running Fedora release and reports the published release list when refusing;
+  local `RYOKU_RPM_REPO` tests skip the gate. Fedora's edition table supplies
+  the Hyprland and niri choices and resolves desktop, development, hardware and
+  Hyprland package lanes through the same resolver Void uses. The plan explains
+  why Wayfire is unavailable. Workstation moves from GDM to SDDM, KDE keeps its
+  configured greeter, and `power-profiles-daemon` is enabled only when its unit
+  is installed so tuned-ppd remains active.
 - **Void btrfs conversions now describe snapshot rollback accurately.** Plans
   use the same btrfs check as Arch, omit the old unsupported warning, and explain
   that `ryoku update --system` keeps base updates inside the snapshot safety net.
@@ -21,11 +30,11 @@
   `ryoku-desktop-niri`. It then materializes the packaged config and provisions
   the runit and Turnstile session. The old source build and font-fetch path is
   gone on Void.
-- **Void package planning comes from the shared translation table.** The
-  installer asks `void/packages/resolve` for the desktop, selected development
-  and detected hardware lanes plus the session set, then gives XBPS that exact
-  result. Browser and login-shell exclusions are passed to the same resolver
-  instead of being maintained in a second Go package map.
+- **Void and Fedora package planning share one resolver.** The installer asks
+  `system/packages/resolve` for each edition's desktop, selected development
+  and detected hardware lanes plus the Hyprland lane when selected. Void adds
+  its session set and retains the exact XBPS package plan. Browser and
+  login-shell exclusions pass through the same resolver.
 - **Debian source installs include Ryoku's Bibata cursor family.** They fetch
   the pinned upstream archive used by `ryoku-cursors`, verify its checksum and
   install every left- and right-handed colour variant.

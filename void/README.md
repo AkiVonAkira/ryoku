@@ -12,7 +12,7 @@ and C++26, while Void currently ships GCC 14.
 | Path | Purpose |
 |---|---|
 | `packages/translations.tsv` | Maps the shared package closure to XBPS, including documented omissions. |
-| `packages/sets/`, `packages/resolve` | Adds Void-only sets and resolves install lanes. |
+| `../system/packages/resolve` | Resolves shared package lanes for the Void table. |
 | `packages/srcpkgs/` | Ryoku's XBPS templates and the committed `ryoku-keyring` trust plist. |
 | `packages/repo/` | Builds, signs, and indexes the XBPS repository. |
 | `init/` | Translates system and user services from systemd to runit and Turnstile. |

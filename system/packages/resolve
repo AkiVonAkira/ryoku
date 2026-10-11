@@ -4,23 +4,20 @@ set -eu
 LC_ALL=C
 export LC_ALL
 
-script_dir=$(CDPATH='' cd -P "$(dirname "$0")" && pwd)
-table=$script_dir/translations.tsv
-session_set=$script_dir/sets/session.packages
-build_set=$script_dir/sets/build.packages
+table=
 wanted_lanes=
 dropped=
 with_session=0
 with_build=0
 
 usage() {
-	printf '%s\n' 'usage: resolve [--lane L]... [--drop ARCHNAME]... [--session] [--build] [--table FILE]' >&2
+	printf '%s\n' 'usage: resolve --table FILE [--lane L]... [--drop ARCHNAME]... [--session] [--build]' >&2
 	exit 2
 }
 
 valid_lane() {
 	case $1 in
-		desktop|dev|system|extra|optional|hyprland|hardware:amd|hardware:intel|hardware:nvidia|hardware:vm) return 0 ;;
+		desktop|dev|system|extra|optional|hyprland|wayfire|hardware:amd|hardware:intel|hardware:nvidia|hardware:vm) return 0 ;;
 		*) return 1 ;;
 	esac
 }
@@ -56,11 +53,15 @@ while [ "$#" -gt 0 ]; do
 	esac
 done
 
+[ -n "$table" ] || usage
 [ -r "$table" ] || {
 	printf 'resolve: cannot read table: %s\n' "$table" >&2
 	exit 1
 }
 
+table_dir=$(CDPATH='' cd -P "$(dirname "$table")" && pwd)
+session_set=$table_dir/sets/session.packages
+build_set=$table_dir/sets/build.packages
 tmp=$(mktemp "${TMPDIR:-/tmp}/ryoku-packages.XXXXXX") || exit 1
 trap 'rm -f "$tmp"' EXIT HUP INT TERM
 
@@ -75,14 +76,19 @@ function package_name(name) {
 BEGIN {
 	header = 0
 	valid["desktop"] = valid["dev"] = valid["system"] = 1
-	valid["extra"] = valid["optional"] = valid["hyprland"] = 1
+	valid["extra"] = valid["optional"] = valid["hyprland"] = valid["wayfire"] = 1
 	valid["hardware:amd"] = valid["hardware:intel"] = 1
 	valid["hardware:nvidia"] = valid["hardware:vm"] = 1
 }
 /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
 !header {
 	header = 1
-	if ($0 != "arch\tvoid\tlanes\tnotes") bad("expected arch, void, lanes, notes header")
+	if (NF != 4 || $1 != "arch" || $3 != "lanes" || $4 != "notes" ||
+	    $2 !~ /^[a-z][a-z0-9-]*$/) {
+		bad("expected arch, edition, lanes, notes header")
+	} else {
+		edition = $2
+	}
 	next
 }
 {
@@ -92,7 +98,7 @@ BEGIN {
 	}
 	if (!package_name($1)) bad("invalid Arch package name")
 	if (seen[$1]++) bad("duplicate Arch package name " $1)
-	if ($2 == "" || $3 == "") bad("void and lanes columns are required")
+	if ($2 == "" || $3 == "") bad(edition " and lanes columns are required")
 
 	lane_count = split($3, row_lanes, ",")
 	selected = (wanted == "")
@@ -104,7 +110,7 @@ BEGIN {
 	}
 
 	repository = "main"
-	if ($4 ~ /^repo=/) {
+	if (edition == "void" && $4 ~ /^repo=/) {
 		repository = substr($4, 6)
 		if (repository !~ /^(ryoku|multilib|nonfree|multilib-nonfree)$/)
 			bad("unknown package repository " repository)
@@ -115,24 +121,29 @@ BEGIN {
 	special = ($2 == "@repo" || $2 == "-")
 	if (special) {
 		if ($4 == "") bad("special mapping " $2 " requires notes")
-		if ($4 ~ /^repo=/) bad("special mapping cannot declare a package repository")
-		if ($2 == "@repo" && $4 != "Ryoku-owned package built from the checkout.")
+		if (edition == "void" && $4 ~ /^repo=/)
+			bad("special mapping cannot declare a package repository")
+		if (edition == "void" && $2 == "@repo" &&
+		    $4 != "Ryoku-owned package built from the checkout.")
 			bad("@repo mapping must use the checkout-owned package note")
 	} else {
-		if ($4 != "" && $4 !~ /^repo=(ryoku|multilib|nonfree|multilib-nonfree)$/)
+		if (edition == "void" && $4 != "" &&
+		    $4 !~ /^repo=(ryoku|multilib|nonfree|multilib-nonfree)$/)
 			bad("plain mapping notes must be a repository declaration")
 		name_count = split($2, names, /[[:space:]]+/)
 		for (i = 1; i <= name_count; i++)
-			if (!package_name(names[i])) bad("invalid Void package name " names[i])
+			if (!package_name(names[i])) bad("invalid " edition " package name " names[i])
 	}
 
 	if (!failed && selected && !index(dropped, "|" $1 "|")) {
 		if ($2 == "@repo") print $1
 		else if (!special) {
 			for (i = 1; i <= name_count; i++) print names[i]
-			if (repository == "multilib") print "void-repo-multilib"
-			else if (repository == "nonfree") print "void-repo-nonfree"
-			else if (repository == "multilib-nonfree") print "void-repo-multilib-nonfree"
+			if (edition == "void") {
+				if (repository == "multilib") print "void-repo-multilib"
+				else if (repository == "nonfree") print "void-repo-nonfree"
+				else if (repository == "multilib-nonfree") print "void-repo-multilib-nonfree"
+			}
 		}
 	}
 }

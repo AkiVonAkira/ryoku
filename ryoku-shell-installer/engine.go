@@ -231,15 +231,18 @@ type plan struct {
 	shell      string // fish, zsh or bash
 }
 
-func defaultPlan(f *facts) *plan {
+func defaultPlan(f *facts, compositorChoices ...[]string) *plan {
 	shell := "fish"
 	if _, ok := loginShellPath[filepath.Base(f.userShell)]; ok {
 		shell = filepath.Base(f.userShell)
 	}
-	compositor := compositors()[0]
-	if f.distro != nil && f.distro.id == "void" {
-		compositor = wm.ProviderNiri
+	availableCompositors := wm.Providers()
+	if len(compositorChoices) > 0 && len(compositorChoices[0]) > 0 {
+		availableCompositors = compositorChoices[0]
+	} else if f.distro != nil && f.distro.id == "void" {
+		availableCompositors = []string{wm.ProviderNiri}
 	}
+	compositor := availableCompositors[0]
 	nvidia := f.hasNvidia && !(f.secureBoot && !f.sbctlSigned)
 	aur := true
 	if f.distro != nil && f.distro.id == "fedora" {
@@ -332,13 +335,6 @@ func filterChoicePackages(pkgs []string, p *plan) []string {
 		}
 	}
 	return out
-}
-
-// compositors lists the window managers with a shipped variant package, in
-// wm.Providers order. --compositor picks one; the default is the first. The
-// verify and package steps read plan.compositor, so a pick flows end to end.
-func compositors() []string {
-	return wm.Providers()
 }
 
 // monitorPinFile is the hand-pinned display file for a compositor, relative to
@@ -800,10 +796,8 @@ func (e *engine) resolvePayload() {
 
 func (e *engine) payloadSparsePaths() []string {
 	switch e.d().id {
-	case "void":
-		return append(append([]string{}, sparsePaths...), "void/packages")
-	case "fedora":
-		return append(append([]string{}, sparsePaths...), "fedora/packages")
+	case "void", "fedora":
+		return append(append([]string{}, sparsePaths...), "system/packages", e.d().id+"/packages")
 	default:
 		return sparsePaths
 	}
@@ -866,11 +860,8 @@ func stepPayload(e *engine) error {
 	// a cache from an older installer can come out of the update missing paths
 	// the current engine needs; a broken cache is worth less than a fresh clone.
 	required := filepath.Join(e.payload, "system/packages/base.packages")
-	switch e.d().id {
-	case "void":
-		required = filepath.Join(e.payload, "void/packages/resolve")
-	case "fedora":
-		required = filepath.Join(e.payload, "fedora/packages/translations.tsv")
+	if e.d().id == "void" || e.d().id == "fedora" {
+		required = filepath.Join(e.payload, "system/packages/resolve")
 	}
 	if _, err := os.Stat(required); err != nil && !e.dry {
 		e.say(i18n.T("payload cache is incomplete; recloning it fresh"))
@@ -1518,7 +1509,7 @@ func (e *engine) providerAnswers() bool {
 	return bin != "" && exec.Command(bin, "caps").Run() == nil
 }
 
-func voidHardwareLanes(f *facts) []string {
+func hardwareLanes(f *facts) []string {
 	if f != nil && f.hasNvidia {
 		return []string{"amd", "intel", "nvidia"}
 	}
@@ -1543,152 +1534,53 @@ func voidHardwareLanes(f *facts) []string {
 	}
 }
 
-func (e *engine) readVoidPackages() ([]string, error) {
-	resolver := filepath.Join(e.payload, "void", "packages", "resolve")
+func (e *engine) readEditionPackages(edition string) ([]string, error) {
+	resolver := filepath.Join(e.payload, "system", "packages", "resolve")
+	table := filepath.Join(e.payload, edition, "packages", "translations.tsv")
 	if _, err := os.Stat(resolver); err != nil && e.dry {
-		e.say(i18n.T("DRYRUN: payload not cloned; would resolve the Void package plan"))
+		e.say(i18n.Tf("DRYRUN: payload not cloned; would resolve the %s package plan", edition))
 		return nil, nil
 	}
-	args := []string{resolver, "--lane", "desktop"}
-	if e.p != nil && e.p.devtools {
-		args = append(args, "--lane", "dev")
-	}
-	for _, lane := range voidHardwareLanes(e.f) {
-		args = append(args, "--lane", "hardware:"+lane)
-	}
-	args = append(args, "--session")
+	args := []string{resolver, "--table", table, "--lane", "desktop"}
 	p := e.p
 	if p == nil {
-		p = &plan{}
+		p = &plan{browser: "firefox", shell: "fish"}
+	}
+	if p.devtools {
+		args = append(args, "--lane", "dev")
+	}
+	for _, lane := range hardwareLanes(e.f) {
+		args = append(args, "--lane", "hardware:"+lane)
+	}
+	if p.compositor == wm.ProviderHyprland {
+		args = append(args, "--lane", "hyprland")
+	}
+	if edition == "void" {
+		args = append(args, "--session")
+	}
+	for _, provider := range wm.Providers() {
+		if provider != p.compositor {
+			args = append(args, "--drop", "ryoku-desktop-"+provider)
+		}
 	}
 	for _, pkg := range choiceDropPackages(p) {
 		args = append(args, "--drop", pkg)
 	}
 	out, err := exec.Command("sh", args...).CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("resolve Void package plan: %w: %s", err, strings.TrimSpace(string(out)))
+		return nil, fmt.Errorf("resolve %s package plan: %w: %s", edition, err, strings.TrimSpace(string(out)))
 	}
 	return strings.Fields(string(out)), nil
 }
 
-type fedoraTranslation struct {
-	packages string
-	notes    string
-}
-
-func readFedoraTranslations(path string) (map[string]fedoraTranslation, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	rows := make(map[string]fedoraTranslation)
-	header := false
-	validPkg := regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9+_.-]*$`)
-	for lineNo, line := range strings.Split(string(data), "\n") {
-		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
-			continue
-		}
-		if !header {
-			header = true
-			if line != "arch\tfedora\tlanes\tnotes" {
-				return nil, fmt.Errorf(i18n.T("%s:%d: expected arch, fedora, lanes, notes header"), path, lineNo+1)
-			}
-			continue
-		}
-		fields := strings.Split(line, "\t")
-		if len(fields) != 4 {
-			return nil, fmt.Errorf(i18n.T("%s:%d: expected four tab-separated columns"), path, lineNo+1)
-		}
-		if fields[0] == "" || fields[1] == "" || fields[2] == "" {
-			return nil, fmt.Errorf(i18n.T("%s:%d: arch, fedora and lanes are required"), path, lineNo+1)
-		}
-		if !validPkg.MatchString(fields[0]) {
-			return nil, fmt.Errorf(i18n.T("%s:%d: invalid Arch package name %q"), path, lineNo+1, fields[0])
-		}
-		if fields[1] != "-" {
-			for _, pkg := range strings.Fields(fields[1]) {
-				if !validPkg.MatchString(pkg) {
-					return nil, fmt.Errorf(i18n.T("%s:%d: invalid Fedora package name %q"), path, lineNo+1, pkg)
-				}
-			}
-		}
-		if _, exists := rows[fields[0]]; exists {
-			return nil, fmt.Errorf(i18n.T("%s:%d: duplicate Arch package %s"), path, lineNo+1, fields[0])
-		}
-		rows[fields[0]] = fedoraTranslation{packages: fields[1], notes: fields[3]}
-	}
-	if !header {
-		return nil, fmt.Errorf(i18n.T("%s: missing header"), path)
-	}
-	return rows, nil
-}
-
-func (e *engine) readFedoraPackages() ([]string, error) {
-	path := filepath.Join(e.payload, "fedora/packages/translations.tsv")
-	rows, err := readFedoraTranslations(path)
-	if err != nil {
-		if e.dry && os.IsNotExist(err) {
-			e.say(i18n.T("DRYRUN: payload not cloned; would map Fedora browser and login-shell packages"))
-			return nil, nil
-		}
-		return nil, fmt.Errorf(i18n.T("read Fedora package table: %w"), err)
-	}
-	p := e.p
-	if p == nil {
-		p = &plan{browser: "firefox", shell: "fish"}
-	}
-	browser := p.browser
-	if browser == "" {
-		browser = "firefox"
-	}
-	shell := p.shell
-	if shell == "" {
-		shell = "fish"
-	}
-	wanted := []string{browserPackage[browser], shell}
-	wanted = append(wanted, shellStackPackages[shell]...)
-	if p.devtools {
-		wanted = append(wanted, devPkgs...)
-	}
-	var packages []string
-	for _, archName := range uniquePackages(wanted) {
-		row, ok := rows[archName]
-		if !ok {
-			packages = append(packages, archName)
-			continue
-		}
-		switch row.packages {
-		case "-":
-			if row.notes == "" {
-				e.say(i18n.Tf("note: %s is not available on Fedora; skipping it", archName))
-			} else {
-				e.say(i18n.Tf("note: %s is not available on Fedora; skipping it (%s)", archName, row.notes))
-			}
-		default:
-			packages = append(packages, strings.Fields(row.packages)...)
-		}
-	}
-	return uniquePackages(packages), nil
-}
-
 func stepPackages(e *engine) error {
 	d := e.d()
-	if d.id == "void" {
-		pkgs, err := e.readVoidPackages()
+	if d.id == "void" || d.id == "fedora" {
+		pkgs, err := e.readEditionPackages(d.id)
 		if err != nil {
 			return err
 		}
-		pkgs = uniquePackages(append(pkgs,
-			"ryoku-keyring", "ryoku-desktop", "ryoku-desktop-niri"))
 		return installPackagePlan(e, d, pkgs)
-	}
-	if d.id == "fedora" {
-		extras, err := e.readFedoraPackages()
-		if err != nil {
-			return err
-		}
-		pkgs := append([]string{"ryoku", "ryoku-desktop", "ryoku-desktop-" + e.p.compositor}, extras...)
-		return installPackagePlan(e, d, uniquePackages(pkgs))
 	}
 	base, err := e.readBasePackages()
 	if err != nil {
@@ -2026,6 +1918,18 @@ func ensureFedoraGroups(e *engine) error {
 	return nil
 }
 
+func enableFedoraPowerProfiles(e *engine, unitDirs ...string) error {
+	if len(unitDirs) == 0 {
+		unitDirs = []string{"/usr/lib/systemd/system", "/lib/systemd/system"}
+	}
+	for _, dir := range unitDirs {
+		if _, err := os.Stat(filepath.Join(dir, "power-profiles-daemon.service")); err == nil {
+			return e.sudo("systemctl", "enable", "power-profiles-daemon.service")
+		}
+	}
+	return nil
+}
+
 func stepSession(e *engine) error {
 	if e.usesRunit() {
 		if err := wireRunitServices(e); err != nil {
@@ -2037,6 +1941,9 @@ func stepSession(e *engine) error {
 	}
 	if e.d().id == "fedora" {
 		if err := ensureFedoraGroups(e); err != nil {
+			return err
+		}
+		if err := enableFedoraPowerProfiles(e); err != nil {
 			return err
 		}
 	}

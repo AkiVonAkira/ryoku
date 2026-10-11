@@ -14,6 +14,7 @@ import (
 
 	"ryoku-i18n"
 	"ryoku-i18n/catalog"
+	"ryoku-wm"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -65,22 +66,23 @@ type model struct {
 	tailTransient bool
 	failIdx       int
 	failMsg       string
-	failCount     int // consecutive failures at failIdx; retry stays offered below the cap
+	failCount     int  // consecutive failures at failIdx; retry stays offered below the cap
 	intAsk        bool // one ctrl+c pressed during install, awaiting the second
 
-	dry        bool
-	ref        string
-	payload    string
-	compositor string // --compositor pick; "" installs the default variant
-	browser    string // --browser or RYOKU_BROWSER override
-	shell      string // --shell or RYOKU_LOGIN_SHELL override
-	exitReboot bool
+	dry                bool
+	ref                string
+	payload            string
+	compositor         string // --compositor pick; "" installs the default variant
+	browser            string // --browser or RYOKU_BROWSER override
+	shell              string // --shell or RYOKU_LOGIN_SHELL override
+	editionCompositors editionCompositorPlan
+	exitReboot         bool
 }
 
-func newTUIModel(dry bool, ref, payload, compositor, browser, shell string) model {
+func newTUIModel(dry bool, ref, payload, compositor, browser, shell string, editionCompositors editionCompositorPlan) model {
 	return model{
 		state: "scan", dry: dry, ref: ref, payload: payload, compositor: compositor,
-		browser: browser, shell: shell,
+		browser: browser, shell: shell, editionCompositors: editionCompositors,
 	}
 }
 
@@ -103,7 +105,7 @@ func (m model) waitEv() tea.Cmd {
 	return func() tea.Msg { return <-ch }
 }
 
-func buildItems(f *facts, p *plan) []planItem {
+func buildItems(f *facts, p *plan, compositorChoices ...[]string) []planItem {
 	// labels stay English here: groupPlanItems matches them against planGroups
 	// to insert section headers, so they are compared, not just shown. viewPlan
 	// translates them at the render site. Details are display-only -> wrapped.
@@ -111,7 +113,24 @@ func buildItems(f *facts, p *plan) []planItem {
 	if f.distro != nil && f.distro.id == "fedora" {
 		zenDetail = i18n.T("Not packaged on Fedora; choosing it leaves browser installation unchanged.")
 	}
+	availableCompositors := wm.Providers()
+	if len(compositorChoices) > 0 && len(compositorChoices[0]) > 0 {
+		availableCompositors = compositorChoices[0]
+	}
+	compositorOptions := make([]choiceOption, 0, len(availableCompositors))
+	for _, provider := range availableCompositors {
+		compositorOptions = append(compositorOptions, choiceOption{
+			key: provider, label: compositorLabel(provider),
+			detail:      i18n.Tf("Installs the %s Ryoku desktop variant.", compositorLabel(provider)),
+			recommended: provider == availableCompositors[0],
+		})
+	}
 	var it = []planItem{
+		{
+			label:   i18n.T("Compositor"),
+			pick:    &p.compositor,
+			options: compositorOptions,
+		},
 		{
 			label: i18n.T("Browser"),
 			pick:  &p.browser,
@@ -133,9 +152,9 @@ func buildItems(f *facts, p *plan) []planItem {
 	}
 	if f.prevRun != nil {
 		it = append(it, planItem{
-			label: "Resume the previous run",
+			label:  "Resume the previous run",
 			detail: i18n.Tf("%d step(s) already finished last time; keeps that run's backup dir and skips them (toggle off to redo everything)", len(f.prevRun.Completed)),
-			on: &p.resume,
+			on:     &p.resume,
 		})
 	}
 	if f.hasNvidia && (f.distro == nil || f.distro.id != "fedora") {
@@ -171,14 +190,14 @@ func buildItems(f *facts, p *plan) []planItem {
 	// setup already carries its own layout into keyboard.lua.
 	if f.kbLayout == "" || f.kbLayout == "us" {
 		it = append(it, planItem{
-			label: "AZERTY keyboard (French)",
+			label:  "AZERTY keyboard (French)",
 			detail: i18n.T("sets layout fr for Hyprland, the console (KEYMAP=fr), and the SDDM login screen; turns the Belgian toggle off"),
-			on: &p.azertyFR,
+			on:     &p.azertyFR,
 		})
 		it = append(it, planItem{
-			label: "AZERTY keyboard (Belgian)",
+			label:  "AZERTY keyboard (Belgian)",
 			detail: i18n.T("sets layout be for Hyprland, the console (KEYMAP=be-latin1), and the SDDM login screen; turns the French toggle off"),
-			on: &p.azertyBE,
+			on:     &p.azertyBE,
 		})
 	}
 	if len(f.otherNet) > 0 {
@@ -313,7 +332,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case scanMsg:
 		m.f = msg.f
-		m.p = defaultPlan(m.f)
+		m.p = defaultPlan(m.f, m.editionCompositors.available)
 		if m.compositor != "" {
 			m.p.compositor = m.compositor
 		}
@@ -321,7 +340,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.f.distro != nil && m.f.distro.id == "fedora" {
 			m.p.aur = false
 		}
-		m.items = groupPlanItems(buildItems(m.f, m.p))
+		m.items = groupPlanItems(buildItems(m.f, m.p, m.editionCompositors.available))
 		m.sel = firstToggle(m.items)
 		if needsManjaroAck(m.f) {
 			m.state = "ack"
@@ -702,7 +721,6 @@ func bulletRow(label, value string, labelW int) string {
 	return fg(cSub, padTo(gBullet, 3)) + labeledRow(label, value, labelW)
 }
 
-
 func voidEditionNotice(f *facts) []string {
 	if f == nil || f.distro == nil || f.distro.id != "void" {
 		return nil
@@ -715,6 +733,23 @@ func voidEditionNotice(f *facts) []string {
 		notice = append(notice, i18n.T("Update the base system with ryoku update --system so it is snapshotted; XBPS has no update hooks."))
 	}
 	return append(notice, i18n.T("Unavailable: Zen Browser, LocalSend, Voxtype and asusctl."))
+}
+
+func editionNotice(f *facts, compositors editionCompositorPlan) []string {
+	if f == nil || f.distro == nil {
+		return nil
+	}
+	if f.distro.id == "void" {
+		return voidEditionNotice(f)
+	}
+	if f.distro.id != "fedora" {
+		return nil
+	}
+	notice := []string{
+		i18n.T("Ryoku on Fedora"),
+		i18n.Tf("Compositors: %s.", strings.Join(compositors.available, ", ")),
+	}
+	return append(notice, compositors.omitted...)
 }
 
 func (m model) viewPlan() string {
@@ -750,7 +785,7 @@ func (m model) viewPlan() string {
 
 	choiceLabelW, optionW := choiceColumns(m.items)
 	choiceDetailIndent := 4 + choiceLabelW
-	notice := voidEditionNotice(f)
+	notice := editionNotice(f, m.editionCompositors)
 	var b strings.Builder
 	b.WriteString(bold(cText, i18n.Tf("Install plan for %s", f.hostname)) + "\n")
 	b.WriteString(fg(cText, machine) + "\n")
@@ -972,7 +1007,7 @@ func (m model) viewFailed() string {
 
 // ---- headless (--yes) ----
 
-func runHeadless(dry bool, ref, payload, compositor, browser, shell string) int {
+func runHeadless(dry bool, ref, payload, compositor, browser, shell string, editionCompositors editionCompositorPlan) int {
 	fmt.Println(bold(cBrand, "ryoku-shell-install") + fg(cSub, " "+i18n.T("(headless)")))
 	f := detect()
 	if needsManjaroAck(f) {
@@ -981,7 +1016,7 @@ func runHeadless(dry bool, ref, payload, compositor, browser, shell string) int 
 		fmt.Println(i18n.T("run without --yes to read the warning, or set RYOKU_ALLOW_MANJARO=1 to accept the risk here."))
 		return 1
 	}
-	p := defaultPlan(f)
+	p := defaultPlan(f, editionCompositors.available)
 	if compositor != "" {
 		p.compositor = compositor
 	}
@@ -997,9 +1032,9 @@ func runHeadless(dry bool, ref, payload, compositor, browser, shell string) int 
 		fmt.Println(i18n.Tf("resuming the interrupted previous run: %d step(s) already done", len(f.prevRun.Completed)))
 	}
 	// A machine-readable plan dump keeps unattended runs auditable.
-	fmt.Printf("plan: browser=%s shell=%s nvidia=%v sddm=%v greeter-theme=%v networkmanager=%v remove-shells=%v aur=%v devtools=%v omarchy-cleanup=%v monitor-pins=%v azerty-fr=%v azerty-be=%v\n",
-		p.browser, p.shell, p.nvidia, p.switchDM, p.greeter, p.switchNet, p.rivals, p.aur, p.devtools, p.omarchy, p.monPins, p.azertyFR, p.azertyBE)
-	if notice := voidEditionNotice(f); len(notice) > 0 {
+	fmt.Printf("plan: compositor=%s browser=%s shell=%s nvidia=%v sddm=%v greeter-theme=%v networkmanager=%v remove-shells=%v aur=%v devtools=%v omarchy-cleanup=%v monitor-pins=%v azerty-fr=%v azerty-be=%v\n",
+		p.compositor, p.browser, p.shell, p.nvidia, p.switchDM, p.greeter, p.switchNet, p.rivals, p.aur, p.devtools, p.omarchy, p.monPins, p.azertyFR, p.azertyBE)
+	if notice := editionNotice(f, editionCompositors); len(notice) > 0 {
 		fmt.Println()
 		for _, line := range notice {
 			fmt.Println(line)
@@ -1096,7 +1131,7 @@ func main() {
 			die(err.Error())
 		}
 	}
-	comp := chooseCompositor(*compositor)
+
 	if os.Geteuid() == 0 {
 		die(i18n.T("run as your normal user, not root; sudo is used where needed"))
 	}
@@ -1116,21 +1151,40 @@ func main() {
 		die(i18n.T("unsupported init: Arch, Debian and Fedora installs need systemd; Void installs need runit"))
 	}
 
+	if *uninstall {
+		if !*dry {
+			primeSudo()
+		}
+		os.Exit(runUninstall(*yes, *dry))
+	}
+
+	client := fedoraReleaseHTTPClient()
+	if d.id == "fedora" {
+		if err := fedoraReleaseGate(client, *ref, "/etc/os-release"); err != nil {
+			die(err.Error())
+		}
+		if os.Getenv("RYOKU_RPM_REPO") != "" {
+			fmt.Println(i18n.T("Fedora release gate: skipped by RYOKU_RPM_REPO."))
+		} else if release, err := fedoraReleaseVersion("/etc/os-release"); err == nil {
+			fmt.Println(i18n.Tf("Fedora release gate: packages are published for Fedora %s.", release))
+		}
+	}
+	editionCompositors, err := loadEditionCompositors(client, d, *ref, *payload)
+	if err != nil {
+		die(err.Error())
+	}
+	comp := chooseCompositor(*compositor, editionCompositors.available)
 	if !*dry {
 		primeSudo()
 	}
-
-	if *uninstall {
-		os.Exit(runUninstall(*yes, *dry))
-	}
 	if *yes {
-		os.Exit(runHeadless(*dry, *ref, *payload, comp, *browser, *shell))
+		os.Exit(runHeadless(*dry, *ref, *payload, comp, *browser, *shell, editionCompositors))
 	}
 	if !stdoutIsTTY() {
 		die(i18n.T("unable to run interactively; re-run with --yes for the default plan"))
 	}
 
-	fm, err := tea.NewProgram(newTUIModel(*dry, *ref, *payload, comp, *browser, *shell)).Run()
+	fm, err := tea.NewProgram(newTUIModel(*dry, *ref, *payload, comp, *browser, *shell, editionCompositors)).Run()
 	if err != nil {
 		die(err.Error())
 	}
@@ -1149,18 +1203,18 @@ func needsManjaroAck(f *facts) bool {
 	return f.distroID == "manjaro" && os.Getenv("RYOKU_ALLOW_MANJARO") != "1"
 }
 
-// chooseCompositor validates a --compositor pick against the shipped variants,
+// chooseCompositor validates a --compositor pick against the edition variants,
 // returning "" for the default (the first). An unknown name dies with the list.
-func chooseCompositor(choice string) string {
+func chooseCompositor(choice string, available []string) string {
 	if choice == "" {
 		return ""
 	}
-	for _, c := range compositors() {
-		if c == choice {
+	for _, compositor := range available {
+		if compositor == choice {
 			return choice
 		}
 	}
-	die(i18n.Tf("unknown compositor %q; choose one of: %s", choice, strings.Join(compositors(), ", ")))
+	die(i18n.Tf("unknown compositor %q; choose one of: %s", choice, strings.Join(available, ", ")))
 	return ""
 }
 

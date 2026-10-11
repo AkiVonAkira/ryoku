@@ -18,6 +18,7 @@ fi
 # Select XBPS's cache before sourcing the shared filesystem library.
 : "${RYOKU_PACKAGE_CACHE_DIR:=/var/cache/xbps}"
 : "${RYOKU_CHROOT_CMD:=chroot}"
+# shellcheck disable=SC2034  # read by the sourced installer libraries
 RYOKU_TARGET_CHROOT=chroot
 
 # shellcheck source=installation/backend/lib/common.sh
@@ -72,7 +73,7 @@ fi
 : "${RYOKU_SUBVOL_SNAPSHOTS:=1}"
 : "${RYOKU_ONLINE:=0}"
 : "${RYOKU_OFFLINE_REPO:=/run/initramfs/live/ryoku/repo}"
-: "${RYOKU_RESOLVER:=$RYOKU_REPO/void/packages/resolve}"
+: "${RYOKU_RESOLVER:=$RYOKU_REPO/system/packages/resolve}"
 : "${RYOKU_XBPS_KEYRING_DIR:=$RYOKU_REPO/void/packages/srcpkgs/ryoku-keyring/files}"
 : "${RYOKU_PACKAGE_CACHE_DIR:=/var/cache/xbps}"
 : "${RYOKU_CHROOT_CMD:=chroot}"

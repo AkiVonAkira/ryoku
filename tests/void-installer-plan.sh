@@ -12,8 +12,8 @@ fail() {
 command -v docker >/dev/null 2>&1 || fail "docker is required"
 [[ -x $repo/ryoku-shell-installer/ryoku-shell-install ]] ||
   fail "committed ryoku-shell-install binary is missing or not executable"
-[[ -x $repo/void/packages/resolve ]] ||
-  fail "void/packages/resolve is missing or not executable"
+[[ -x $repo/system/packages/resolve ]] ||
+  fail "system/packages/resolve is missing or not executable"
 
 if ! docker run --rm -i -v "$repo:/repo:ro" "$image" /bin/sh -s <<'HARNESS'
 set -eu
@@ -61,7 +61,7 @@ resolved=/tmp/resolved.packages
 installed=/tmp/planned.packages
 # The installer's hardware lane depends on the container's detected GPU, so
 # compare its package transaction with the union of every hardware lane.
-if ! sh /repo/void/packages/resolve \
+if ! sh /repo/system/packages/resolve --table /repo/void/packages/translations.tsv \
   --lane desktop --lane hardware:amd --lane hardware:intel \
   --lane hardware:nvidia --lane hardware:vm --session > "$resolved"; then
   fail "void package resolver rejected the installer lanes"
