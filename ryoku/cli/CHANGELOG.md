@@ -196,14 +196,22 @@
   prefix optional module types with `-`, and those `-auth` and `-session` lines
   now count as login-keyring wiring instead of being misreported as
   `never-ask` (`internal/keyring/pam.go`).
-- **`ryoku doctor` warns when boot state cannot be verified.** Inaccessible
-  boot files, incomplete kernel metadata, and failed free-space measurements
-  now produce warnings instead of misleading success reports. Doctor also
-  avoids pruning boot entries or rebuilding kernel images when the required
-  state cannot be verified (`internal/doctor/reconcile_limine.go`,
-  `internal/doctor/reconcile_boot_space.go`,
-  `internal/doctor/reconcile_limine_images.go`,
-  `internal/doctor/reconcile_limine_entries.go`).
+- **Doctor distinguishes a protected ESP from a broken boot check.** Permission
+  denial under a root-only `/boot` is an advisory note, so a healthy hardened
+  install no longer raises the post-update health warning. Other inspection
+  failures remain warnings, and real boot drift still surfaces. The Limine
+  autoboot check migrates the old numeric fallback to a kernel entry path while
+  preserving `remember_last_entry`, and no longer claims the countdown loops
+  when a remembered entry takes precedence (`internal/doctor/`).
+- **A read-only doctor run through sudo audits the desktop user, not root.**
+  `SUDO_USER` supplies the home, XDG paths, identity, runtime directory and
+  session bus. Repair mode refuses a whole-command sudo so user files cannot be
+  created under `/root` or with root ownership; each system repair requests its
+  own privilege (`internal/doctor/user_context.go`).
+- **Updates reset only user services that are actually failed.** Unloaded or
+  inactive idle, clamshell, wallpaper and cutover-guard units are left alone,
+  so `systemctl` no longer logs misleading `Unit ... not loaded` failures
+  (`internal/updater/update.go`, `internal/host/service.go`).
 - **Existing installs use their console layout at the disk unlock prompt.** The
   doctor adds the `ryoku-console-keys` initramfs hook right after `udev` in
   `/etc/mkinitcpio.conf.d/ryoku.conf` once ryoku-desktop ships it, and rebuilds

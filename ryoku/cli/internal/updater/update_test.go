@@ -66,6 +66,34 @@ func TestWantedSnapperHelpers(t *testing.T) {
 	}
 }
 
+func TestResetFailedUserUnitsSkipsUnloadedUnits(t *testing.T) {
+	t.Setenv("RYOKU_HOST_INIT", "systemd")
+	oldService := service
+	var reset []string
+	service = func(args ...string) int {
+		if len(args) >= 3 && args[1] == "is-failed" {
+			switch args[2] {
+			case "ryoku-idle.service":
+				return host.ExitAbsent
+			case "ryoku-clamshell.service":
+				return host.ExitFalse
+			case "failed.service":
+				return host.ExitOK
+			}
+		}
+		if len(args) >= 2 && args[1] == "reset-failed" {
+			reset = append([]string(nil), args[2:]...)
+		}
+		return host.ExitOK
+	}
+	t.Cleanup(func() { service = oldService })
+
+	resetFailedUserUnits("ryoku-idle.service", "ryoku-clamshell.service", "failed.service")
+	if !reflect.DeepEqual(reset, []string{"failed.service"}) {
+		t.Fatalf("reset-failed units = %v, want only the loaded failed unit", reset)
+	}
+}
+
 func TestVoidSnapshotHelperUsesPackageAndServiceSeams(t *testing.T) {
 	t.Setenv("RYOKU_HOST_PKGMGR", "xbps")
 	var calls [][]string

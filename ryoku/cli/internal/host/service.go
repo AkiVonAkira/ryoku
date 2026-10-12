@@ -11,9 +11,9 @@ import (
 
 var serviceVerbs = map[string]bool{
 	"start": true, "stop": true, "restart": true, "try-restart": true,
-	"reload": true, "is-active": true, "is-enabled": true, "enable": true,
-	"disable": true, "kill": true, "reset-failed": true, "daemon-reload": true,
-	"failed": true,
+	"reload": true, "is-active": true, "is-enabled": true, "is-failed": true,
+	"enable": true, "disable": true, "kill": true, "reset-failed": true,
+	"daemon-reload": true, "failed": true,
 }
 
 const runitUserDisabledMarker = ".ryoku-disabled"
@@ -282,7 +282,7 @@ func (a *App) systemdService(user bool, verb string, now bool, names []string) i
 	if now {
 		args = append(args, "--now")
 	}
-	if verb == "is-active" || verb == "is-enabled" {
+	if verb == "is-active" || verb == "is-enabled" || verb == "is-failed" {
 		args = append(args, "--quiet")
 	}
 	for _, name := range names {
@@ -299,6 +299,9 @@ func (a *App) systemdService(user bool, verb string, now bool, names []string) i
 		return ExitFalse
 	}
 	if verb == "is-enabled" && result.Code == 1 {
+		return ExitFalse
+	}
+	if verb == "is-failed" && (result.Code == 1 || result.Code == 3) {
 		return ExitFalse
 	}
 	return ExitFailure

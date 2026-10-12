@@ -131,7 +131,7 @@ func repoAvailableVersion(name string) string {
 	return version
 }
 
-func service(args ...string) int {
+var service = func(args ...string) int {
 	return host.Default().Service(args)
 }
 

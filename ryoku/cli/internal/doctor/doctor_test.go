@@ -2141,6 +2141,7 @@ func TestMergeLimineConfHealsAdoptedRoot(t *testing.T) {
 func TestLimineEnsureAutoboot(t *testing.T) {
 	const conf = `timeout: 3
 default_entry: 2
+remember_last_entry: yes
 interface_branding: Ryoku Bootloader
 
 /Ryoku Linux
@@ -2158,6 +2159,9 @@ interface_branding: Ryoku Bootloader
 /Windows
     protocol: efi_chainload
 `
+	if !limineRemembersLastEntry(conf) {
+		t.Fatal("remember_last_entry: yes was not recognized")
+	}
 	if p := limineFirstKernelPath(conf); p != "Ryoku Linux/linux" {
 		t.Fatalf("first kernel path = %q, want Ryoku Linux/linux", p)
 	}
@@ -2173,6 +2177,9 @@ interface_branding: Ryoku Bootloader
 	}
 	if !strings.Contains(got, "remember_last_entry: yes") {
 		t.Errorf("remember_last_entry not enabled:\n%s", got)
+	}
+	if strings.Count(got, "remember_last_entry: yes") != 1 {
+		t.Errorf("existing remember_last_entry was not preserved exactly once:\n%s", got)
 	}
 	if again, changed2 := limineEnsureAutoboot(got); changed2 || again != got {
 		t.Error("limineEnsureAutoboot is not idempotent")

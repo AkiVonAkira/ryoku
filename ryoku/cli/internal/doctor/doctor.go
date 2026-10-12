@@ -204,6 +204,13 @@ func noteRes(f string, a ...any) recResult {
 	return recResult{status: recNote, detail: fmt.Sprintf(f, a...)}
 }
 
+func inspectionRes(permissionOnly bool, f string, a ...any) recResult {
+	if permissionOnly {
+		return noteRes(f, a...)
+	}
+	return warnRes(f, a...)
+}
+
 func (r recResult) withFix(f string, a ...any) recResult {
 	r.remedy = fmt.Sprintf(f, a...)
 	return r
@@ -484,6 +491,9 @@ func Run(args []string) error {
 	// read-only modes never mutate; showAll also lists ok + advisory notes.
 	readOnly := checkOnly || wantReport || wantExplain || wantJSON
 	showAll := readOnly || verboseFlag
+	if err := configureDoctorUser(readOnly); err != nil {
+		return err
+	}
 	findings := runReconcilers(readOnly)
 	if wantJSON {
 		return emitFindingsJSON(findings)

@@ -113,6 +113,8 @@ type limineLayoutState struct {
 	legacyEFIInaccessible bool
 	toolEFIExists         bool
 	toolEFIInaccessible   bool
+	permissionDenied      bool
+	otherInspectionError  bool
 	installerTool         bool // limine-install on PATH
 }
 
@@ -168,14 +170,30 @@ var liminePathProbe = probePresence
 // genuine ENOENT reports absence; any other failure marks the file as existing
 // but unreadable so callers avoid false missing-file conclusions.
 func probeFile(path string) (content string, exists, readable bool) {
+	content, exists, readable, _ = probeFileError(path)
+	return content, exists, readable
+}
+
+func probeFileError(path string) (content string, exists, readable bool, err error) {
 	b, err := os.ReadFile(path)
 	if err == nil {
-		return string(b), true, true
+		return string(b), true, true, nil
 	}
 	if errors.Is(err, os.ErrNotExist) {
-		return "", false, false
+		return "", false, false, nil
 	}
-	return "", true, false
+	return "", true, false, err
+}
+
+func (s *limineLayoutState) recordInspectionError(err error) {
+	if err == nil {
+		return
+	}
+	if errors.Is(err, os.ErrPermission) {
+		s.permissionDenied = true
+		return
+	}
+	s.otherInspectionError = true
 }
 
 func gatherLimineLayoutState() limineLayoutState {
@@ -185,15 +203,20 @@ func gatherLimineLayoutState() limineLayoutState {
 		toolEFIExists:   sys.Exists(limineEFIPath()),
 		installerTool:   sys.Has("limine-install"),
 	}
-	s.espConf, s.espConfExists, s.espConfReadable = probeFile(limineESPConf)
-	s.shadowConf, s.shadowExists, s.shadowReadable = probeFile(limineShadow)
-	if exists, err := liminePathProbe(limineLegacyEFI); err != nil {
+	var err error
+	s.espConf, s.espConfExists, s.espConfReadable, err = probeFileError(limineESPConf)
+	s.recordInspectionError(err)
+	s.shadowConf, s.shadowExists, s.shadowReadable, err = probeFileError(limineShadow)
+	s.recordInspectionError(err)
+	if exists, probeErr := liminePathProbe(limineLegacyEFI); probeErr != nil {
 		s.legacyEFIInaccessible = true
+		s.recordInspectionError(probeErr)
 	} else {
 		s.legacyEFIExists = exists
 	}
-	if exists, err := liminePathProbe(limineToolEFI); err != nil {
+	if exists, probeErr := liminePathProbe(limineToolEFI); probeErr != nil {
 		s.toolEFIInaccessible = true
+		s.recordInspectionError(probeErr)
 	} else {
 		s.toolEFIExists = exists
 	}
@@ -221,7 +244,8 @@ func reconcileLimineLayout(checkOnly bool) recResult {
 		default:
 			detail = i18n.T("cannot read the limine config under /boot to verify the boot menu layout")
 		}
-		return warnRes(detail).withFix("sudo ryoku doctor --check")
+		return inspectionRes(st.permissionDenied && !st.otherInspectionError, detail).
+			withFix("sudo ryoku doctor --check")
 	case limineLayoutOK:
 		return okRes(i18n.T("boot menu lives in /boot/limine.conf; nothing shadows it"))
 	}
@@ -690,7 +714,8 @@ func reconcileLimineBootEntry(checkOnly bool) recResult {
 		return okRes(i18n.T("not a limine-managed boot on this box"))
 	}
 	if exists, err := liminePathProbe(limineEFIPath()); err != nil {
-		return warnRes(i18n.T("cannot inspect %s to verify the UEFI boot entry"), limineEFIPath()).
+		return inspectionRes(errors.Is(err, os.ErrPermission),
+			i18n.T("cannot inspect %s to verify the UEFI boot entry"), limineEFIPath()).
 			withFix("sudo ryoku doctor --check")
 	} else if !exists {
 		return okRes(i18n.T("not a limine-managed boot on this box"))
@@ -1214,6 +1239,15 @@ func limineIsNumeric(s string) bool {
 	return true
 }
 
+func limineRemembersLastEntry(conf string) bool {
+	for _, line := range strings.Split(conf, "\n") {
+		if value, ok := strings.CutPrefix(strings.TrimSpace(line), "remember_last_entry:"); ok {
+			return strings.EqualFold(strings.TrimSpace(value), "yes")
+		}
+	}
+	return false
+}
+
 // reconcileLimineAutoboot makes the countdown autoboot the kernel instead of
 // looping. The installer and older reconcilers set a numeric default_entry
 // believing it lands on the kernel "inside" the boot-menu directory, but Limine
@@ -1239,6 +1273,10 @@ func reconcileLimineAutoboot(checkOnly bool) recResult {
 		return okRes(i18n.T("limine autoboots the kernel and remembers the last one"))
 	}
 	if checkOnly {
+		if limineIsNumeric(strings.TrimSpace(limineDefaultEntry(string(b)))) && limineRemembersLastEntry(string(b)) {
+			return wouldRes(i18n.T("limine has a legacy numeric default_entry; remember_last_entry takes precedence when a saved entry exists, and the fallback will be migrated to the kernel entry path")).
+				withFix(i18n.T("ryoku doctor migrates default_entry to the kernel entry path and preserves remember_last_entry"))
+		}
 		return wouldRes(i18n.T("limine default_entry lands on the EFI fallback, not the kernel, so the boot countdown loops forever")).
 			withFix(i18n.T("ryoku doctor points default_entry at the kernel entry path and enables remember_last_entry"))
 	}

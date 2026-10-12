@@ -148,8 +148,11 @@ func TestGatherLimineLayoutStateDistinguishesEACCESFromENOENT(t *testing.T) {
 		}
 
 		res := reconcileLimineLayout(true)
-		if res.status != recWarn {
-			t.Errorf("reconcileLimineLayout on unreadable config: got status %d, want recWarn (%d)", res.status, recWarn)
+		if res.status != recNote {
+			t.Errorf("reconcileLimineLayout on permission-denied config: got status %d, want recNote (%d)", res.status, recNote)
+		}
+		if warns, fails := printFindings([]finding{{name: "limine boot menu layout", res: res}}, false); warns != 0 || fails != 0 {
+			t.Errorf("permission-only layout inspection counted as health issue: warns=%d fails=%d", warns, fails)
 		}
 		if !strings.Contains(res.detail, "cannot read the limine config under /boot") {
 			t.Errorf("unexpected detail: %s", res.detail)
@@ -191,7 +194,7 @@ func TestReconcileLimineBootEntryPermissions(t *testing.T) {
 		t.Errorf("missing EFI binary: got %+v, want recOK (not limine-managed)", resMissing)
 	}
 
-	// Permission denied: warns instead of falsely reporting not a limine boot
+	// Permission denied: reports an advisory note instead of a health issue.
 	if os.Geteuid() == 0 {
 		t.Log("skipping permission-denied EFI binary test when running as root (root bypasses DAC permissions)")
 	} else {
@@ -210,8 +213,11 @@ func TestReconcileLimineBootEntryPermissions(t *testing.T) {
 
 		limineToolEFI = efiFile
 		resDenied := reconcileLimineBootEntry(true)
-		if resDenied.status != recWarn {
-			t.Errorf("permission-denied EFI binary: got status %d, want recWarn (%d)", resDenied.status, recWarn)
+		if resDenied.status != recNote {
+			t.Errorf("permission-denied EFI binary: got status %d, want recNote (%d)", resDenied.status, recNote)
+		}
+		if warns, fails := printFindings([]finding{{name: "limine boot entry", res: resDenied}}, false); warns != 0 || fails != 0 {
+			t.Errorf("permission-only EFI inspection counted as health issue: warns=%d fails=%d", warns, fails)
 		}
 		if !strings.Contains(resDenied.detail, "cannot inspect") {
 			t.Errorf("unexpected detail: %s", resDenied.detail)
