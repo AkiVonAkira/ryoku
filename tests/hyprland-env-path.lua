@@ -33,7 +33,7 @@ check("/usr/bin:" .. local_bin .. ":/opt/bin:" .. local_bin,
     local_bin .. ":/usr/bin:/opt/bin")
 check("/opt/.local/bin-tools:/usr/bin", local_bin .. ":/opt/.local/bin-tools:/usr/bin")
 check("/usr/bin::/opt/bin:", local_bin .. ":/usr/bin::/opt/bin:")
-check("", local_bin .. ":")
+check("", local_bin)
 check(local_bin, local_bin)
 check(local_bin .. ":" .. local_bin, local_bin)
 check(local_bin .. ":", local_bin .. ":")
