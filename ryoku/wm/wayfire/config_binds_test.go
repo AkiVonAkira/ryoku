@@ -48,21 +48,23 @@ func TestEveryCatalogueIdMappedOrReasoned(t *testing.T) {
 	}
 }
 
-// Wayfire names the media keys by their linux input codes, not a derived XF86
-// spelling, and the mouse button is a button: a wrong spelling would parse
-// silently and never fire. A wheel step and an unknown XF86 keysym stay
+// Wayfire names keys by linux input codes, including upstream's KEY_PRINT and
+// KEY_PLAYPAUSE spellings, and a mouse button remains a button. A wrong code
+// parses silently and never fires. Wheel steps and unknown XF86 keysyms stay
 // unmatched rather than guessed.
 func TestActivatorSpellings(t *testing.T) {
 	for chord, want := range map[string]string{
 		"XF86AudioRaiseVolume": "KEY_VOLUMEUP",
+		"XF86AudioPlay":        "KEY_PLAYPAUSE",
 		"XF86MonBrightnessUp":  "KEY_BRIGHTNESSUP",
 		"XF86TouchpadToggle":   "KEY_TOUCHPADTOGGLE",
+		"SUPER":                "<super>",
 		"SUPER + Q":            "<super> KEY_Q",
 		"SUPER + mouse:272":    "<super> BTN_LEFT",
 		"SUPER + CTRL + Left":  "<super> <ctrl> KEY_LEFT",
 		"SUPER + KP_1":         "<super> KEY_KP1",
 		"SUPER + KP_End":       "<super> KEY_KP1",
-		"SHIFT + Print":        "<shift> KEY_SYSRQ",
+		"SHIFT + Print":        "<shift> KEY_PRINT",
 		"SUPER + bracketleft":  "<super> KEY_LEFTBRACE",
 		"SUPER + mouse_up":     "",
 		"XF86Whatever":         "",
@@ -81,8 +83,8 @@ func TestActivatorSpellings(t *testing.T) {
 }
 
 // The resolved emission is the session's truth: each catalogue row lands on its
-// option with the shipped chord, families expand to their nine workspace
-// members, the tenth is reported, and no activator is claimed twice.
+// option with the shipped chord, families expand to all ten workspace members,
+// and no activator is claimed twice.
 func TestResolveEmitsCatalogue(t *testing.T) {
 	out, report := resolveBinds(defaultStore())
 	claimed := map[string]string{}
@@ -103,16 +105,26 @@ func TestResolveEmitsCatalogue(t *testing.T) {
 	}
 
 	for option, want := range map[string]outBind{
-		"command.binding_shell_launcher":             {activator: "<super> KEY_SPACE", commandOpt: "command_shell_launcher", cmd: "ryoku-shell launcher"},
-		"command.binding_window_close":               {activator: "<super> KEY_Q", extra: "<alt> KEY_F4", commandOpt: "command_window_close"},
-		"command.repeatable_binding_media_volume_up": {activator: "KEY_VOLUMEUP", commandOpt: "command_media_volume_up", cmd: "ryoku-volume up"},
-		"vswitch.binding_1":                          {activator: "<super> KEY_1 | <super> KEY_KP1"},
-		"vswitch.with_win_5":                         {activator: "<super> <alt> KEY_5 | <super> <alt> KEY_KP5"},
-		"vswitch.send_win_9":                         {activator: "<super> <shift> KEY_9 | <super> <shift> KEY_KP9"},
-		"wm-actions.toggle_fullscreen":               {activator: "<super> KEY_F"},
-		"fast-switcher.activate_forward":             {activator: "<alt> KEY_TAB"},
-		"move.activate":                              {activator: "<super> BTN_LEFT"},
-		"resize.activate":                            {activator: "<super> BTN_RIGHT"},
+		"command.binding_shell_launcher":                    {activator: "<super> KEY_SPACE", commandOpt: "command_shell_launcher", cmd: "ryoku-shell launcher"},
+		"command.binding_window_close":                      {activator: "<super> KEY_Q", extra: "<alt> KEY_F4", commandOpt: "command_window_close"},
+		"command.repeatable_binding_media_volume_up":        {activator: "KEY_VOLUMEUP", commandOpt: "command_media_volume_up", cmd: "ryoku-volume up"},
+		"command.always_binding_media_play":                 {activator: "KEY_PLAYPAUSE", commandOpt: "command_media_play", cmd: "playerctl play-pause"},
+		"command.always_binding_media_mute":                 {activator: "KEY_MUTE", commandOpt: "command_media_mute", cmd: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"},
+		"command.repeatable_binding_hardware_brightness_up": {activator: "KEY_BRIGHTNESSUP", commandOpt: "command_hardware_brightness_up", cmd: "ryoku-cmd-brightness +5"},
+		"command.always_binding_hardware_touchpad_toggle":   {activator: "KEY_TOUCHPADTOGGLE", commandOpt: "command_hardware_touchpad_toggle", cmd: "ryoku-wm-wayfire act input.touchpad toggle"},
+		"command.binding_shell_screenshot_print":            {activator: "KEY_PRINT", commandOpt: "command_shell_screenshot_print"},
+		"command.binding_workspace_hide_window":             {activator: "<super> KEY_H", commandOpt: "command_workspace_hide_window", cmd: "ryoku-wm-wayfire act window.hide focused"},
+		"command.binding_workspace_scratchpad":              {activator: "<super> <alt> KEY_H", commandOpt: "command_workspace_scratchpad", cmd: "ryoku-wm-wayfire act workspace.toggleSpecial scratchpad"},
+		"command.binding_window_preset_width":               {activator: "<super> KEY_R", commandOpt: "command_window_preset_width", cmd: "ryoku-wm-wayfire act window.presetWidth"},
+		"vswitch.binding_1":                                 {activator: "<super> KEY_1 | <super> KEY_KP1"},
+		"vswitch.with_win_5":                                {activator: "<super> <alt> KEY_5 | <super> <alt> KEY_KP5"},
+		"vswitch.send_win_9":                                {activator: "<super> <shift> KEY_9 | <super> <shift> KEY_KP9"},
+		"vswitch.binding_10":                                {activator: "<super> KEY_0 | <super> KEY_KP0"},
+		"wm-actions.toggle_fullscreen":                      {activator: "<super> KEY_F"},
+		"fast-switcher.activate":                            {activator: "<alt> KEY_TAB"},
+		"shortcuts-inhibit.break_grab":                      {activator: "<super> <shift> KEY_ESC"},
+		"move.activate":                                     {activator: "<super> BTN_LEFT"},
+		"resize.activate":                                   {activator: "<super> BTN_RIGHT"},
 	} {
 		got, ok := opts[option]
 		if !ok {
@@ -132,20 +144,36 @@ func TestResolveEmitsCatalogue(t *testing.T) {
 			t.Errorf("%s cmd = %q, want %q", option, got.cmd, want.cmd)
 		}
 	}
-	if opts["vswitch.binding_10"].activator != "" {
-		t.Error("wayfire's grid holds nine workspaces; binding_10 must not exist")
-	}
 
 	var reasons []string
 	for _, u := range report {
 		reasons = append(reasons, u.Key+": "+u.Reason)
 	}
 	joined := strings.Join(reasons, "\n")
-	if !strings.Contains(joined, "(default SUPER + T)") || !strings.Contains(joined, "tabs") {
+	if !strings.Contains(joined, "(default SUPER + T)") || !strings.Contains(joined, "tabbed") {
 		t.Errorf("an impossible behaviour must be reported:\n%s", joined)
 	}
-	if !strings.Contains(joined, "SUPER + 0") || !strings.Contains(joined, "no tenth") {
-		t.Errorf("the tenth workspace member must be reported:\n%s", joined)
+	wantUnhonored := map[string]string{
+		"desktop.keybinds (default SUPER + T)":            "no tabbed layout",
+		"desktop.keybinds (default SUPER + bracketleft)":  "no keyboard merge action",
+		"desktop.keybinds (default SUPER + bracketright)": "no keyboard merge action",
+		"desktop.keybinds (default SUPER + mouse_up)":     "axis callbacks",
+		"desktop.keybinds (default SUPER + mouse_down)":   "axis callbacks",
+		"desktop.keybinds (default SUPER + CTRL + Prior)": "fixed cells",
+		"desktop.keybinds (default SUPER + CTRL + Next)":  "fixed cells",
+	}
+	if len(report) != len(wantUnhonored) {
+		t.Errorf("default unhonored report has %d rows, want %d: %v", len(report), len(wantUnhonored), report)
+	}
+	for _, u := range report {
+		want, ok := wantUnhonored[u.Key]
+		if !ok {
+			t.Errorf("unexpected default unhonored row: %+v", u)
+			continue
+		}
+		if !strings.Contains(u.Reason, want) {
+			t.Errorf("%s reason = %q, want it to mention %q", u.Key, u.Reason, want)
+		}
 	}
 	for _, u := range report {
 		if strings.Contains(u.Reason, "already taken") {
@@ -207,12 +235,14 @@ func TestResolvePriority(t *testing.T) {
 	}
 }
 
-// An unbound native option is written empty so the baseline layer cannot keep
-// it alive; an unbound command row simply never lands.
-func TestResolveUnbinds(t *testing.T) {
+// Native unbinds are explicitly switched off; command rows disappear. Release
+// customs use command's release list, not the regular binding list.
+func TestResolveUnbindsAndRelease(t *testing.T) {
 	s := defaultStore()
 	s.Unbinds = []string{"SUPER + mouse:272", "SUPER + Space"}
+	s.Keybinds = []Keybind{{Keys: "SUPER + Z", Action: "exec", Value: "notify-send released", Release: true}}
 	out, _ := resolveBinds(s)
+	foundRelease := false
 	for _, o := range out {
 		switch o.option {
 		case "activate":
@@ -221,7 +251,13 @@ func TestResolveUnbinds(t *testing.T) {
 			}
 		case "binding_shell_launcher":
 			t.Error("an unbound command row must not be emitted")
+		case "release_binding_ryoku_0":
+			foundRelease = o.section == "command" && o.activator == "<super> KEY_Z" &&
+				o.commandOpt == "command_ryoku_0" && o.cmd == "notify-send released"
 		}
+	}
+	if !foundRelease {
+		t.Error("a release custom must emit command's release binding pair")
 	}
 }
 
@@ -252,8 +288,8 @@ func TestExclusivesMatchBaseline(t *testing.T) {
 	}
 }
 
-// The baseline's Alt-Tab pair ships, so the catalogue's window.focusPrevious
-// row is not a reason but the option itself.
+// The baseline's Alt-Tab pair uses the v0.11 `activate` and
+// `activate_backward` options, so the catalogue points at the real forward key.
 func TestFastSwitcherShips(t *testing.T) {
 	raw, err := os.ReadFile("../../wayfire/wayfire.ini")
 	if err != nil {
@@ -264,11 +300,28 @@ func TestFastSwitcherShips(t *testing.T) {
 	if !ok || !strings.Contains(plugins, "fast-switcher") {
 		t.Errorf("plugins = %q; the Alt-Tab row needs fast-switcher", plugins)
 	}
-	if v, _ := d.get("fast-switcher", "activate_forward"); v != "<alt> KEY_TAB" {
-		t.Errorf("activate_forward = %q", v)
+	if v, _ := d.get("fast-switcher", "activate"); v != "<alt> KEY_TAB" {
+		t.Errorf("activate = %q", v)
 	}
 	if defaultBinds()["window.focusPrevious"].reason != "" {
 		t.Error("with fast-switcher shipped, window.focusPrevious must be a real option")
+	}
+}
+
+// Native catalogue rows depend on plugins whose v0.11 options they target.
+// Keeping the roster assertion beside the mappings prevents a valid-looking
+// option from landing in a section no loaded plugin reads.
+func TestNativeBindPluginsShip(t *testing.T) {
+	raw, err := os.ReadFile("../../wayfire/wayfire.ini")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := parseIni(raw)
+	plugins, _ := d.get("core", "plugins")
+	for _, plugin := range []string{"command", "fast-switcher", "grid", "move", "resize", "shortcuts-inhibit", "vswitch", "wm-actions", "wsets", "zoom"} {
+		if !containsField(plugins, plugin) {
+			t.Errorf("core.plugins = %q; missing %s for a shipped bind", plugins, plugin)
+		}
 	}
 }
 
@@ -316,16 +369,25 @@ func TestBindRowsCatalogueAndExclusives(t *testing.T) {
 	if r := byID["window.close"]; r.Unhonored != "" || !r.Rebindable || r.Chord != "SUPER + Q" {
 		t.Errorf("window.close = %+v", r)
 	}
-	if r := byID["workspace.focus"]; r.Chord != "SUPER + {n}" || !r.Rebindable {
-		t.Errorf("workspace.focus keeps the family chord: %+v", r)
+	if r := byID["window.resize"]; r.Unhonored != "" || r.Label != "Step window width" ||
+		!strings.Contains(r.Hint, "full") {
+		t.Errorf("Wayfire width preset row = %+v", r)
 	}
-	// The row renders a ten-key range, so the hint has to say the emission
-	// stops at nine, the same story apply's report tells.
+	if r := byID["workspace.focus"]; r.Chord != "SUPER + {n}" || !r.Rebindable {
+		t.Errorf("workspace.focus keeps the ten-member family chord: %+v", r)
+	}
 	for _, id := range []string{"workspace.focus", "workspace.moveWindow", "workspace.moveWindowSilent",
 		"workspace.focus.numpad", "workspace.moveWindow.numpad", "workspace.moveWindowSilent.numpad"} {
-		if r := byID[id]; !strings.Contains(r.Hint, "no tenth") && !strings.Contains(r.Hint, "nine") {
-			t.Errorf("%s hint = %q; the tenth member has nowhere to go", id, r.Hint)
+		if r := byID[id]; strings.Contains(r.Hint, "nine") || strings.Contains(r.Hint, "no tenth") {
+			t.Errorf("%s still claims the tenth workspace is missing: %q", id, r.Hint)
 		}
+	}
+	if r := byID["shell.inhibitShortcuts"]; r.Unhonored != "" ||
+		r.Label != "Restore desktop shortcuts" || !strings.Contains(r.Hint, "shortcut grab") {
+		t.Errorf("shortcut inhibitor row = %+v", r)
+	}
+	if r := byID["workspace.hideWindow"]; r.Unhonored != "" {
+		t.Errorf("wsets-backed hide window row = %+v", r)
 	}
 	if r := byID["media.volumeUp"]; r.Rebindable {
 		t.Error("a dedicated media key must stay fixed")

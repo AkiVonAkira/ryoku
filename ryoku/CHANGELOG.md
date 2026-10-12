@@ -213,6 +213,13 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Every Wayfire keybind from the catalogue that Wayfire can express is
+  wired.** The ten-workspace family on digits and the keypad, preset width
+  stepping, the scratchpad, recovering a grabbed keyboard, Print and the media
+  keys with the right repeat and always-on command modes now work; the chords
+  Wayfire 0.11 has no action for (tabs, merging, wheel workspace steps,
+  workspace reordering) say so in the switch review
+  (`wm/wayfire/config_binds.go`).
 - **Wayfire now keeps the complete shell window and display contract live.**
   Fullscreen changes immediately update fullscreen-sensitive bars, docks,
   notifications and OSDs; the scratchpad hides and restores windows without
