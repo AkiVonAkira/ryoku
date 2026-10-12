@@ -601,6 +601,10 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **Monitor reconnects now trigger the shell's screen-settle handler.** The
+  `screensChanged` callback restarts its Timer by QML id instead of reading a
+  nonexistent property from `root`; without the timer, the per-monitor surface
+  model could stay stale after an output reappeared (#312).
 - **Ryogami's Workshop tab finds your Wallpaper Engine scenes.** On the first
   run after an install the tab said "No Wallpaper Engine scenes yet" until
   ryogami restarted, because the picker never refreshed it after the first scan.
