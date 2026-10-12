@@ -149,12 +149,15 @@ type wayfireBuiltinRule struct {
 }
 
 const (
-	// geometry_ppt is the only window-rules geometry form relative to the
-	// output. It takes integer percentages, so the 99%-wide Hub is the exact
-	// full-page contract and the other profiles retain Hyprland's 92% by 88%
-	// screen-fit ceiling on every output. Wayfire's place plugin centres
-	// floating windows that do not carry an explicit geometry.
-	pageGeometry    = "set geometry_ppt 0 2 99 96"
+	// The Hub is a full page fitted to the work area, as Hyprland fits it on
+	// open. Wayfire's geometry rules only measure the whole output, so a
+	// percentage page slides under whatever the shell reserves (a frame edge,
+	// a bar) and hides the Hub's header; maximize is the one rule form that
+	// tracks the work area on every output. The other profiles keep
+	// Hyprland's 92% by 88% screen-fit ceiling, whose insets clear the shell's
+	// reserved edges, and Wayfire's place plugin centres floating windows that
+	// carry no explicit geometry.
+	pageFit         = "maximize"
 	largeGeometry   = "set geometry_ppt 4 6 92 88"
 	mediumGeometry  = "set geometry_ppt 15 17 70 66"
 	compactGeometry = "set geometry_ppt 20 24 60 52"
@@ -180,7 +183,7 @@ var wayfireBuiltinRules = []wayfireBuiltinRule{
 	{key: "spotify_lower", condition: `app_id is "spotify"`, floating: true},
 	{key: "spotify_upper", condition: `app_id is "Spotify"`, floating: true},
 	{key: "nautilus", condition: `app_id is "org.gnome.Nautilus"`, action: largeGeometry, floating: true},
-	{key: "hub", condition: `title is "Ryoku Settings"`, action: pageGeometry, floating: true},
+	{key: "hub", condition: `title is "Ryoku Settings"`, action: pageFit, floating: true},
 	{key: "rashin", condition: `title is "Rashin"`, action: largeGeometry, floating: true},
 	{key: "update", condition: `app_id is "dev.ryoku.update"`, action: largeGeometry, floating: true},
 	{key: "ryostore_title", condition: `title is "Ryostore"`, action: largeGeometry, floating: true},

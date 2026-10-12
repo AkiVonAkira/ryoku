@@ -43,7 +43,7 @@ func TestBuiltinWindowRulesCoverRyokuFloats(t *testing.T) {
 		condition string
 		action    string
 	}{
-		"hub":                         {`title is "Ryoku Settings"`, pageGeometry},
+		"hub":                         {`title is "Ryoku Settings"`, pageFit},
 		"nautilus":                    {`app_id is "org.gnome.Nautilus"`, largeGeometry},
 		"rashin":                      {`title is "Rashin"`, largeGeometry},
 		"update":                      {`app_id is "dev.ryoku.update"`, largeGeometry},
@@ -99,7 +99,7 @@ func TestBuiltinGeometryAndUserRulesCompose(t *testing.T) {
 	if got, _ := doc.get("window-rules", "ryoku_rule_0"); got != `on created if app_id is "kitty" then maximize` {
 		t.Errorf("store window rule was lost behind built-ins: %q", got)
 	}
-	if got, _ := doc.get("window-rules", "ryoku_builtin_hub"); got != `on created if title is "Ryoku Settings" then set geometry_ppt 0 2 99 96` {
+	if got, _ := doc.get("window-rules", "ryoku_builtin_hub"); got != `on created if title is "Ryoku Settings" then maximize` {
 		t.Errorf("Hub rule = %q", got)
 	}
 }

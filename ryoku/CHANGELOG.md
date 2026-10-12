@@ -220,8 +220,9 @@
   (`wm/wayfire/act.go`, `wm/wayfire/config_binds.go`).
 - **Wayfire closes one window per shortcut and gives Ryoku apps their intended
   geometry.** The compositor's duplicate close and workspace-switch defaults no
-  longer fire beside the shared catalogue. The Hub opens as a 99%-wide page,
-  while Ryoku tools, dialogs, file choosers, PiP and remote-console windows stay
+  longer fire beside the shared catalogue. The Hub opens as a full page fitted
+  to the work area, clear of the shell's bar and frame, while Ryoku tools,
+  dialogs, file choosers, PiP and remote-console windows stay
   out of the default tiling tree and use centred screen-fit rules
   (`wayfire/wayfire.ini`, `wm/wayfire/config_rules.go`).
 - **Wayfire's Window Manager page now exposes its real compositor settings.**

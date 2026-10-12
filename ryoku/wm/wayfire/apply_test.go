@@ -249,7 +249,7 @@ fingers = 3
 
 [window-rules]
 ryoku_builtin_nautilus = on created if app_id is "org.gnome.Nautilus" then set geometry_ppt 4 6 92 88
-ryoku_builtin_hub = on created if title is "Ryoku Settings" then set geometry_ppt 0 2 99 96
+ryoku_builtin_hub = on created if title is "Ryoku Settings" then maximize
 ryoku_builtin_rashin = on created if title is "Rashin" then set geometry_ppt 4 6 92 88
 ryoku_builtin_update = on created if app_id is "dev.ryoku.update" then set geometry_ppt 4 6 92 88
 ryoku_builtin_ryostore_title = on created if title is "Ryostore" then set geometry_ppt 4 6 92 88
