@@ -121,16 +121,43 @@ func renderStoreIni(s wayfireStore) iniDoc {
 	var d iniDoc
 
 	a := s.Appearance
-	// Wayfire numbers workspaces row-major. A 5x2 grid gives the neutral
-	// catalogue and workspace pills all ten slots without a compositor-only
-	// presentation path.
-	d.set("core", "vwidth", "5")
-	d.set("core", "vheight", "2")
-	d.set("simple-tile", "tile_by_default", "all")
+	w := s.Wayfire
+	d.set("core", "vwidth", strconv.Itoa(w.Workspace.Columns))
+	d.set("core", "vheight", strconv.Itoa(w.Workspace.Rows))
+	d.set("core", "preferred_decoration_mode", w.Decoration.Mode)
+	d.set("core", "xwayland", w.XWayland.Mode)
+	d.set("core", "focus_buttons", w.Focus.Buttons)
+	d.set("core", "focus_button_with_modifiers", boolText(w.Focus.WithModifiers))
+	d.set("core", "focus_buttons_passthrough", boolText(w.Focus.PassThrough))
+
+	// Tiling keeps Ryoku's dialogs and full-page apps (the Hub, file pickers)
+	// floating: they are sized by the built-in window rules, which simple-tile
+	// would otherwise override the moment it attaches them.
+	tile := "none"
+	if w.Tiling.TileByDefault != "none" {
+		tile = tileByDefaultMatcher()
+	}
+	d.set("simple-tile", "tile_by_default", tile)
+	d.set("simple-tile", "keep_fullscreen_on_adjacent", boolText(w.Tiling.KeepFullscreenOnAdjacent))
 	d.set("simple-tile", "inner_gap_size", strconv.Itoa(a.GapsIn))
 	d.set("simple-tile", "outer_horiz_gap_size", strconv.Itoa(a.GapsOut))
 	d.set("simple-tile", "outer_vert_gap_size", strconv.Itoa(a.GapsOut))
+
+	d.set("vswitch", "gap", strconv.Itoa(a.GapsWorkspaces))
+	d.set("vswitch", "wraparound", w.Workspace.Wraparound)
+
+	d.set("place", "mode", w.Placement.Mode)
+
 	d.set("decoration", "border_size", strconv.Itoa(a.BorderSize))
+	d.set("decoration", "title_height", strconv.Itoa(w.Decoration.TitleHeight))
+	d.set("decoration", "font", w.Decoration.Font)
+	d.set("decoration", "font_color", iniColor(w.Decoration.FontColor))
+	d.set("decoration", "font_scale", numText(w.Decoration.FontScale))
+	d.set("decoration", "button_order", w.Decoration.ButtonOrder)
+	d.set("decoration", "button_scale", numText(w.Decoration.ButtonScale))
+	d.set("decoration", "button_padding", strconv.Itoa(w.Decoration.ButtonPadding))
+	d.set("decoration", "ignore_views", w.Decoration.IgnoreViews)
+	d.set("decoration", "forced_views", w.Decoration.ForcedViews)
 	active, inactive := a.ActiveBorder, a.InactiveBorder
 	if a.BorderFollowsPalette {
 		if pa, pi, ok := borderPaletteColors(); ok {
@@ -145,6 +172,27 @@ func renderStoreIni(s wayfireStore) iniDoc {
 	d.set("decoration", "active_color", iniColor(active))
 	d.set("decoration", "inactive_color", iniColor(inactive))
 
+	d.set("blur", "blur_by_default", w.Blur.BlurByDefault)
+	d.set("blur", "method", w.Blur.Method)
+	d.set("blur", "saturation", numText(w.Blur.Saturation))
+	d.set("blur", "alpha_threshold", numText(w.Blur.AlphaThreshold))
+	d.set("blur", "alpha_exponent", numText(w.Blur.AlphaExponent))
+	for _, method := range []string{"box", "gaussian", "kawase", "bokeh"} {
+		d.set("blur", method+"_offset", strconv.Itoa(a.BlurSize))
+		d.set("blur", method+"_degrade", strconv.Itoa(w.Blur.Degrade))
+		d.set("blur", method+"_iterations", strconv.Itoa(a.BlurPasses))
+	}
+
+	d.set("wobbly", "friction", numText(w.Wobbly.Friction))
+	d.set("wobbly", "spring_k", numText(w.Wobbly.SpringK))
+	d.set("wobbly", "grid_resolution", strconv.Itoa(w.Wobbly.GridResolution))
+
+	d.set("zoom", "modifier", w.Zoom.Modifier)
+	d.set("zoom", "speed", numText(w.Zoom.Speed))
+	d.set("zoom", "smoothing_duration", strconv.Itoa(w.Zoom.SmoothingMs)+"ms linear")
+	d.set("zoom", "interpolation_method", w.Zoom.InterpolationMethod)
+
+	d.set("fast-switcher", "inactive_alpha", numText(w.FastSwitcher.InactiveOpacity))
 	in := s.Input
 	d.set("input", "xkb_layout", in.KbLayout)
 	d.set("input", "xkb_variant", in.KbVariant)
@@ -182,7 +230,7 @@ func renderStoreIni(s wayfireStore) iniDoc {
 
 	d.overlay(genWindowRules(s))
 
-	anim := s.Wayfire.Animation
+	anim := w.Animation
 	d.set("vswitch", "duration", animText(anim.WorkspaceSwitch))
 	d.set("animate", "duration", animText(anim.Window))
 	d.set("grid", "duration", animText(anim.Snap))
@@ -208,13 +256,26 @@ func renderStoreIni(s wayfireStore) iniDoc {
 	return d
 }
 
-// adjustPlugins enforces the two store toggles that are plugin presences rather
-// than options: animations off drops animate from core/plugins, blur off drops
-// blur. This runs after the merge, so a seed's plugin list is still the shape
-// of the list and only the store's off switch can carve a plugin out of it; a
-// store that leaves a plugin on never forces one back in.
+// adjustPlugins enforces the store toggles represented by plugin presence.
+// This runs after the merge, so a seed's plugin list is still the shape of the
+// list and only an off switch carves its plugin out. Its options section goes
+// with it so the generated config describes only plugins Wayfire will load.
 func adjustPlugins(d *iniDoc, s wayfireStore) {
-	if s.Appearance.Animations && s.Appearance.BlurEnabled {
+	sections := d.sections[:0]
+	for _, sec := range d.sections {
+		disabled := sec.name == "animate" && !s.Appearance.Animations ||
+			sec.name == "blur" && !s.Appearance.BlurEnabled ||
+			sec.name == "wobbly" && !s.Appearance.WobblyWindows
+		if !disabled {
+			sections = append(sections, sec)
+		}
+	}
+	for i := len(sections); i < len(d.sections); i++ {
+		d.sections[i] = iniSection{}
+	}
+	d.sections = sections
+
+	if s.Appearance.Animations && s.Appearance.BlurEnabled && s.Appearance.WobblyWindows {
 		return
 	}
 	value, ok := d.get("core", "plugins")
@@ -227,6 +288,9 @@ func adjustPlugins(d *iniDoc, s wayfireStore) {
 			continue
 		}
 		if p == "blur" && !s.Appearance.BlurEnabled {
+			continue
+		}
+		if p == "wobbly" && !s.Appearance.WobblyWindows {
 			continue
 		}
 		keep = append(keep, p)
@@ -407,9 +471,11 @@ var desktopHandled = map[string]bool{
 }
 
 var appearanceEmitted = map[string]bool{
-	"gapsIn": true, "gapsOut": true, "borderSize": true, "activeOpacity": true,
+	"gapsIn": true, "gapsOut": true, "gapsWorkspaces": true,
+	"borderSize": true, "activeOpacity": true,
 	"activeBorder": true, "inactiveBorder": true, "borderFollowsPalette": true,
-	"animations": true, "blurEnabled": true,
+	"animations": true, "blurEnabled": true, "blurSize": true, "blurPasses": true,
+	"wobblyWindows": true,
 }
 
 func appearanceReason(leaf string) string {
@@ -427,13 +493,11 @@ func appearanceReason(leaf string) string {
 	case strings.HasPrefix(leaf, "dim"):
 		return "wayfire has no window dimming."
 	case strings.HasPrefix(leaf, "blur"):
-		return "wayfire's blur is tuned by method and iterations in the shipped config, not by size and passes."
+		return "Wayfire's blur plugin has no equivalent for this neutral blur control."
 	case leaf == "layout":
 		return "Wayfire uses simple-tile for every window and cannot select Hyprland's dwindle, master or scrolling algorithms."
 	case leaf == "windowStyle":
 		return "wayfire has no window-open style presets; set the window-open animation on the Animations page instead."
-	case leaf == "wobblyWindows":
-		return "wayfire has no wobbly-windows effect."
 	case leaf == "animatedBorder" || leaf == "borderAngleSpeed":
 		return "wayfire's border colour is static; there is no rotating-border animation."
 	}

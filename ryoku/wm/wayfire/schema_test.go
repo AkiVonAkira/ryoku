@@ -32,6 +32,7 @@ func TestSchemaRowsResolveAgainstStore(t *testing.T) {
 	}
 
 	seen := map[string]bool{}
+	pageCounts := map[string]int{}
 	for _, raw := range rows {
 		var row struct {
 			Key, Label, Desc, Ctl, Src, Page, Tab, Group, Caps string
@@ -57,15 +58,20 @@ func TestSchemaRowsResolveAgainstStore(t *testing.T) {
 			t.Errorf("row %q must name its page and read desktop.json, got page=%q src=%q",
 				row.Key, row.Page, row.Src)
 		}
-		if strings.HasPrefix(row.Key, "wm.wayfire.depthdeck.") && row.Caps != "deckLayout" {
-			t.Errorf("depthdeck row %q must be gated by deckLayout, got %q", row.Key, row.Caps)
+		if strings.HasPrefix(row.Key, "wm.wayfire.depthdeck.") {
+			if row.Caps != "deckLayout" {
+				t.Errorf("depthdeck row %q must be gated by deckLayout, got %q", row.Key, row.Caps)
+			}
+		} else if row.Caps != "" {
+			t.Errorf("row %q is gated by unavailable capability %q", row.Key, row.Caps)
 		}
+		pageCounts[row.Page]++
 
 		switch row.Ctl {
-		case "sw", "slid", "step":
-		case "chips":
+		case "sw", "slid", "step", "color", "text":
+		case "chips", "seg":
 			if len(row.Opts) == 0 {
-				t.Errorf("row %q offers chips but no options", row.Key)
+				t.Errorf("row %q offers choices but no options", row.Key)
 			}
 			for _, o := range row.Opts {
 				if row.OptLabels[o] == "" {
@@ -88,5 +94,11 @@ func TestSchemaRowsResolveAgainstStore(t *testing.T) {
 				break
 			}
 		}
+	}
+	if got := pageCounts["windowmanager"]; got != 47 {
+		t.Errorf("windowmanager rows = %d, want 47", got)
+	}
+	if got := pageCounts["animations"]; got != 9 {
+		t.Errorf("animation rows = %d, want 9", got)
 	}
 }

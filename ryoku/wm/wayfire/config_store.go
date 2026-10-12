@@ -19,15 +19,12 @@ import (
 // and the seed files in one pass. A leaf left out of the structs below would
 // never reach that file.
 
-// Appearance: the frame, opacity, tiling-gap and effect leaves Wayfire's own
-// sections cover. simple-tile supplies the same default tiled desktop and inner
-// and outer gap intent as the sibling providers. Window-rules can set one
-// baseline opacity when a view is created, but Wayfire has no focus event to
-// maintain a distinct inactive opacity. Rounding, shadows, glow, dimming and
-// blur tuning have no matching key and are reported unhonored.
+// Appearance holds the neutral window settings Wayfire can express. The Hub
+// already owns these rows, so the Wayfire schema must not duplicate them.
 type Appearance struct {
 	GapsIn               int     `json:"gapsIn"`
 	GapsOut              int     `json:"gapsOut"`
+	GapsWorkspaces       int     `json:"gapsWorkspaces"`
 	BorderSize           int     `json:"borderSize"`
 	ActiveOpacity        float64 `json:"activeOpacity"`
 	ActiveBorder         string  `json:"activeBorder"`
@@ -35,6 +32,9 @@ type Appearance struct {
 	BorderFollowsPalette bool    `json:"borderFollowsPalette"`
 	Animations           bool    `json:"animations"`
 	BlurEnabled          bool    `json:"blurEnabled"`
+	BlurSize             int     `json:"blurSize"`
+	BlurPasses           int     `json:"blurPasses"`
+	WobblyWindows        bool    `json:"wobblyWindows"`
 }
 
 // Input: the keyboard, pointer and touchpad leaves Wayfire's input and vswipe
@@ -125,6 +125,72 @@ type AnimKind struct {
 	Curve      string `json:"curve"`
 }
 
+// The structures below mirror public Wayfire 0.11 metadata options. They stay
+// under wm.wayfire because no neutral desktop key describes the same setting.
+type WayfireTiling struct {
+	TileByDefault            string `json:"tileByDefault"`
+	KeepFullscreenOnAdjacent bool   `json:"keepFullscreenOnAdjacent"`
+}
+
+type WayfireWorkspace struct {
+	Columns    int    `json:"columns"`
+	Rows       int    `json:"rows"`
+	Wraparound string `json:"wraparound"`
+}
+
+type WayfireDecoration struct {
+	Mode          string  `json:"mode"`
+	TitleHeight   int     `json:"titleHeight"`
+	Font          string  `json:"font"`
+	FontColor     string  `json:"fontColor"`
+	FontScale     float64 `json:"fontScale"`
+	ButtonOrder   string  `json:"buttonOrder"`
+	ButtonScale   float64 `json:"buttonScale"`
+	ButtonPadding int     `json:"buttonPadding"`
+	IgnoreViews   string  `json:"ignoreViews"`
+	ForcedViews   string  `json:"forcedViews"`
+}
+
+type WayfireBlur struct {
+	Method         string  `json:"method"`
+	Saturation     float64 `json:"saturation"`
+	BlurByDefault  string  `json:"blurByDefault"`
+	Degrade        int     `json:"degrade"`
+	AlphaThreshold float64 `json:"alphaThreshold"`
+	AlphaExponent  float64 `json:"alphaExponent"`
+}
+
+type WayfireWobbly struct {
+	Friction       float64 `json:"friction"`
+	SpringK        float64 `json:"springK"`
+	GridResolution int     `json:"gridResolution"`
+}
+
+type WayfireZoom struct {
+	Modifier            string  `json:"modifier"`
+	Speed               float64 `json:"speed"`
+	SmoothingMs         int     `json:"smoothingMs"`
+	InterpolationMethod string  `json:"interpolationMethod"`
+}
+
+type WayfireFastSwitcher struct {
+	InactiveOpacity float64 `json:"inactiveOpacity"`
+}
+
+type WayfireFocus struct {
+	Buttons       string `json:"buttons"`
+	WithModifiers bool   `json:"withModifiers"`
+	PassThrough   bool   `json:"passThrough"`
+}
+
+type WayfireXWayland struct {
+	Mode string `json:"mode"`
+}
+
+type WayfirePlacement struct {
+	Mode string `json:"mode"`
+}
+
 // Depthdeck mirrors the [depthdeck] option block one for one, so the deck's
 // knobs are store leaves the Hub can draw and apply can write back verbatim.
 type Depthdeck struct {
@@ -147,8 +213,18 @@ type Depthdeck struct {
 // key. This is the wayfire twin of wm.niri.*, so the Hub can surface them
 // without every other compositor pretending to have them.
 type Wayfire struct {
-	Animation WayfireAnim `json:"animation"`
-	Depthdeck Depthdeck   `json:"depthdeck"`
+	Animation    WayfireAnim         `json:"animation"`
+	Tiling       WayfireTiling       `json:"tiling"`
+	Workspace    WayfireWorkspace    `json:"workspace"`
+	Decoration   WayfireDecoration   `json:"decoration"`
+	Blur         WayfireBlur         `json:"blur"`
+	Wobbly       WayfireWobbly       `json:"wobbly"`
+	Zoom         WayfireZoom         `json:"zoom"`
+	FastSwitcher WayfireFastSwitcher `json:"fastSwitcher"`
+	Focus        WayfireFocus        `json:"focus"`
+	XWayland     WayfireXWayland     `json:"xwayland"`
+	Placement    WayfirePlacement    `json:"placement"`
+	Depthdeck    Depthdeck           `json:"depthdeck"`
 }
 
 // WayfireAnim is the compositor's animation tree. The duration kinds map to
@@ -199,9 +275,12 @@ type neutralStore struct {
 func defaultStore() wayfireStore {
 	return wayfireStore{
 		Appearance: Appearance{
-			GapsIn: 12, GapsOut: 18, BorderSize: 4, ActiveOpacity: 1,
+			GapsIn: 12, GapsOut: 18, GapsWorkspaces: 20,
+			BorderSize: 4, ActiveOpacity: 1,
 			ActiveBorder: "#e0563b", InactiveBorder: "#313a4d",
-			BorderFollowsPalette: true, Animations: true, BlurEnabled: false,
+			BorderFollowsPalette: true, Animations: true,
+			BlurEnabled: false, BlurSize: 2, BlurPasses: 2,
+			WobblyWindows: true,
 		},
 		Input: Input{
 			KbLayout: "us", NumlockByDefault: false,
@@ -229,6 +308,37 @@ func defaultStore() wayfireStore {
 				CloseStyle:      "zoom",
 				MinimizeStyle:   "squeezimize",
 			},
+			Tiling: WayfireTiling{
+				TileByDefault: "all", KeepFullscreenOnAdjacent: true,
+			},
+			Workspace: WayfireWorkspace{
+				Columns: 5, Rows: 2, Wraparound: "false",
+			},
+			Decoration: WayfireDecoration{
+				Mode: "client", TitleHeight: 0, Font: "sans-serif",
+				FontColor: "#ffffff", FontScale: 0.8,
+				ButtonOrder: "minimize maximize close", ButtonScale: 0.7,
+				ButtonPadding: 4, IgnoreViews: "none", ForcedViews: "none",
+			},
+			Blur: WayfireBlur{
+				Method: "kawase", Saturation: 1,
+				BlurByDefault: `type is "toplevel"`, Degrade: 3,
+				AlphaThreshold: 0.5, AlphaExponent: 1,
+			},
+			Wobbly: WayfireWobbly{
+				Friction: 3, SpringK: 8, GridResolution: 6,
+			},
+			Zoom: WayfireZoom{
+				Modifier: "<super>", Speed: 0.01, SmoothingMs: 300,
+				InterpolationMethod: "0",
+			},
+			FastSwitcher: WayfireFastSwitcher{InactiveOpacity: 0.7},
+			Focus: WayfireFocus{
+				Buttons:       "BTN_LEFT | BTN_MIDDLE | BTN_RIGHT",
+				WithModifiers: false, PassThrough: true,
+			},
+			XWayland:  WayfireXWayland{Mode: "true"},
+			Placement: WayfirePlacement{Mode: "center"},
 			Depthdeck: Depthdeck{
 				Enabled: true, Scatter: true, CardEdgeScatter: true,
 				CardScatterReshuffle: true, CardPeekMin: 24, CardPeekMax: 80,

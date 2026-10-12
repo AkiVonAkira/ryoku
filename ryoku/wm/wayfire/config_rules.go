@@ -135,6 +135,102 @@ func overrideLost(a AppOverride) []string {
 	return lost
 }
 
+// A simple-tile matcher decides whether a window ever joins the tiling tree.
+// Once a view is attached, the plugin ignores ordinary untile and geometry
+// requests, so Ryoku's designed floating windows must be excluded before their
+// created rules run. Wayfire's condition language has exact and substring
+// comparisons rather than regular expressions; alternatives from the Hyprland
+// rules are consequently listed as separate rows.
+type wayfireBuiltinRule struct {
+	key       string
+	condition string
+	action    string
+	floating  bool
+}
+
+const (
+	// geometry_ppt is the only window-rules geometry form relative to the
+	// output. It takes integer percentages, so the 99%-wide Hub is the exact
+	// full-page contract and the other profiles retain Hyprland's 92% by 88%
+	// screen-fit ceiling on every output. Wayfire's place plugin centres
+	// floating windows that do not carry an explicit geometry.
+	pageGeometry    = "set geometry_ppt 0 2 99 96"
+	largeGeometry   = "set geometry_ppt 4 6 92 88"
+	mediumGeometry  = "set geometry_ppt 15 17 70 66"
+	compactGeometry = "set geometry_ppt 20 24 60 52"
+)
+
+var wayfireBuiltinRules = []wayfireBuiltinRule{
+	{key: "system_pavucontrol", condition: `app_id is "pavucontrol"`, floating: true},
+	{key: "system_network", condition: `app_id is "nm-connection-editor"`, floating: true},
+	{key: "system_bluetooth", condition: `app_id is "blueman-manager"`, floating: true},
+	{key: "system_polkit_kde", condition: `app_id is "org.kde.polkit-kde-authentication-agent-1"`, floating: true},
+	{key: "system_portal_gtk", condition: `app_id is "xdg-desktop-portal-gtk"`, floating: true},
+	{key: "system_polkit", condition: `app_id is "hyprpolkitagent"`, floating: true},
+
+	{key: "picker_open_file", condition: `title is "Open File"`, floating: true},
+	{key: "picker_save_file", condition: `title is "Save File"`, floating: true},
+	{key: "picker_save_as", condition: `title is "Save As"`, floating: true},
+	{key: "picker_choose_files", condition: `title is "Choose Files"`, floating: true},
+	{key: "picker_open_folder", condition: `title is "Open Folder"`, floating: true},
+	{key: "picture_in_picture", condition: `title contains "Picture-in-Picture"`, floating: true},
+	{key: "picture_in_picture_chromium", condition: `title contains "Picture in picture"`, floating: true},
+
+	{key: "ghosttype", condition: `app_id is "Ghosttype-app"`, floating: true},
+	{key: "spotify_lower", condition: `app_id is "spotify"`, floating: true},
+	{key: "spotify_upper", condition: `app_id is "Spotify"`, floating: true},
+	{key: "nautilus", condition: `app_id is "org.gnome.Nautilus"`, action: largeGeometry, floating: true},
+	{key: "hub", condition: `title is "Ryoku Settings"`, action: pageGeometry, floating: true},
+	{key: "rashin", condition: `title is "Rashin"`, action: largeGeometry, floating: true},
+	{key: "update", condition: `app_id is "dev.ryoku.update"`, action: largeGeometry, floating: true},
+	{key: "ryostore_title", condition: `title is "Ryostore"`, action: largeGeometry, floating: true},
+	{key: "ryovm", condition: `title is "ryovm"`, action: largeGeometry, floating: true},
+	{key: "ryoport_ssh", condition: `app_id is "dev.ryoku.ryoport_ssh"`, action: compactGeometry, floating: true},
+	{key: "ryoport_spicy", condition: `app_id is "spicy"`, floating: true},
+	{key: "ryoport_console", condition: `app_id is "dev.ryoku.ryoport_console"`, floating: true},
+	{key: "ryoport_vnc_lower", condition: `app_id is "vncviewer"`, floating: true},
+	{key: "ryoport_vnc_upper", condition: `app_id is "Vncviewer"`, floating: true},
+	{key: "ryostore_app", condition: `app_id is "ryostore"`, action: mediumGeometry, floating: true},
+	{key: "rashin_setup", condition: `app_id is "ryoku-rashin-setup"`, action: mediumGeometry, floating: true},
+	{key: "looking_glass", condition: `app_id is "looking-glass-client"`, action: largeGeometry, floating: true},
+	{key: "qemu_lower", condition: `app_id is "qemu"`, action: largeGeometry, floating: true},
+	{key: "qemu_upper", condition: `app_id is "Qemu"`, action: largeGeometry, floating: true},
+	{key: "welcome", condition: `title is "Welcome to Ryoku"`, action: largeGeometry, floating: true},
+	{key: "ryotunes", condition: `app_id is "ryotunes"`, floating: true},
+	{key: "ryotunes_qml", condition: `app_id is "org.quickshell" & title is "Ryotunes"`, floating: true},
+
+	// Chromium's native-Wayland share indicator has no usable pointer geometry.
+	// Hyprland parks it on special:sharebar; Wayfire's closest equivalent is the
+	// last cell in Ryoku's 5x2 grid. It opens away from the current desktop and
+	// remains reachable if Chromium ever fixes the surface.
+	{key: "chromium_sharebar", condition: `app_id is "" & title contains "is sharing"`, action: "assign_workspace 4 1", floating: true},
+}
+
+var defaultTileByMatcher = buildTileByDefaultMatcher()
+
+func buildTileByDefaultMatcher() string {
+	conditions := make([]string, 0, len(wayfireBuiltinRules))
+	for _, r := range wayfireBuiltinRules {
+		if r.floating {
+			conditions = append(conditions, "("+r.condition+")")
+		}
+	}
+	return "!(" + strings.Join(conditions, " | ") + ")"
+}
+
+func tileByDefaultMatcher() string {
+	return defaultTileByMatcher
+}
+
+func genBuiltinWindowRules(d *iniDoc) {
+	for _, r := range wayfireBuiltinRules {
+		if r.action != "" {
+			d.set("window-rules", "ryoku_builtin_"+r.key,
+				"on created if "+r.condition+" then "+r.action)
+		}
+	}
+}
+
 // genWindowRules renders the neutral rules and per-app overrides into the
 // window-rules section. Wayfire has no focus-change event, so activeOpacity is
 // the one baseline alpha assigned when each toplevel opens; inactiveOpacity
@@ -142,6 +238,7 @@ func overrideLost(a AppOverride) []string {
 // so their more specific alpha value wins.
 func genWindowRules(s wayfireStore) iniDoc {
 	var d iniDoc
+	genBuiltinWindowRules(&d)
 	if a := s.Appearance.ActiveOpacity; a >= 0 && a < 1 {
 		d.set("window-rules", "ryoku_active_opacity",
 			"on created if type is \"toplevel\" then set alpha "+strconv.FormatFloat(a, 'f', -1, 64))

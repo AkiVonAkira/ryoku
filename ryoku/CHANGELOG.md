@@ -218,6 +218,17 @@
   neighbours, resize and preset keys change split weights, centre detaches
   before placing, and config reload reopens the deployed path
   (`wm/wayfire/act.go`, `wm/wayfire/config_binds.go`).
+- **Wayfire closes one window per shortcut and gives Ryoku apps their intended
+  geometry.** The compositor's duplicate close and workspace-switch defaults no
+  longer fire beside the shared catalogue. The Hub opens as a 99%-wide page,
+  while Ryoku tools, dialogs, file choosers, PiP and remote-console windows stay
+  out of the default tiling tree and use centred screen-fit rules
+  (`wayfire/wayfire.ini`, `wm/wayfire/config_rules.go`).
+- **Wayfire's Window Manager page now exposes its real compositor settings.**
+  Tiling defaults, workspace grid and wraparound, title bars, blur, wobble,
+  desktop zoom, Alt+Tab opacity, click-to-focus and XWayland controls write the
+  matching Wayfire 0.11 options instead of leaving the page empty
+  (`wm/wayfire/schema.json`, `wm/wayfire/apply.go`).
 - **Every Wayfire keybind from the catalogue that Wayfire can express is
   wired.** The ten-workspace family on digits and the keypad, preset width
   stepping, the scratchpad, recovering a grabbed keyboard, Print and the media

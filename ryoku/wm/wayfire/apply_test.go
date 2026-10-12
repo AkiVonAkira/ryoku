@@ -117,48 +117,38 @@ func TestComposeLastWins(t *testing.T) {
 vwidth = 5
 plugins = animate blur grid
 vheight = 2
+preferred_decoration_mode = client
+xwayland = true
+focus_buttons = BTN_LEFT | BTN_MIDDLE | BTN_RIGHT
+focus_button_with_modifiers = false
+focus_buttons_passthrough = true
 
 [decoration]
 border_size = 1
+title_height = 0
+font = sans-serif
+font_color = \#FFFFFFFF
+font_scale = 0.8
+button_order = minimize maximize close
+button_scale = 0.7
+button_padding = 4
+ignore_views = none
+forced_views = none
 active_color = \#112233FF
 inactive_color = \#445566FF
 
 [simple-tile]
-tile_by_default = all
+tile_by_default = ` + tileByDefaultMatcher() + `
+keep_fullscreen_on_adjacent = true
 inner_gap_size = 12
 outer_horiz_gap_size = 18
 outer_vert_gap_size = 18
-
-[input]
-xkb_layout = us
-xkb_variant = 
-xkb_options = 
-kb_numlock_default_state = false
-mouse_cursor_speed = 0
-mouse_accel_profile = default
-touchpad_cursor_speed = 0
-touchpad_accel_profile = default
-left_handed_mode = false
-mouse_natural_scroll = false
-mouse_scroll_speed = 1
-natural_scroll = true
-touchpad_scroll_speed = 1
-tap_to_click = true
-tap_and_drag = true
-click_method = button-areas
-middle_emulation = false
-disable_touchpad_while_typing = true
-kb_repeat_rate = 25
-kb_repeat_delay = 600
-cursor_theme = Bibata-Modern-Ice
-cursor_size = 24
-
-[vswipe]
-enable_vertical = false
-enable_horizontal = false
-fingers = 3
+key_toggle = <super> KEY_A
+key_toggle_maximized = <super> KEY_D
 
 [vswitch]
+gap = 20
+wraparound = false
 duration = 250ms circle
 binding_1 = <super> KEY_1 | <super> KEY_KP1
 binding_2 = <super> KEY_2 | <super> KEY_KP2
@@ -191,6 +181,88 @@ send_win_8 = <super> <shift> KEY_8 | <super> <shift> KEY_KP8
 send_win_9 = <super> <shift> KEY_9 | <super> <shift> KEY_KP9
 send_win_10 = <super> <shift> KEY_0 | <super> <shift> KEY_KP0
 
+[place]
+mode = center
+
+[blur]
+blur_by_default = type is "toplevel"
+method = kawase
+saturation = 1
+alpha_threshold = 0.5
+alpha_exponent = 1
+box_offset = 2
+box_degrade = 3
+box_iterations = 2
+gaussian_offset = 2
+gaussian_degrade = 3
+gaussian_iterations = 2
+kawase_offset = 2
+kawase_degrade = 3
+kawase_iterations = 2
+bokeh_offset = 2
+bokeh_degrade = 3
+bokeh_iterations = 2
+
+[wobbly]
+friction = 3
+spring_k = 8
+grid_resolution = 6
+
+[zoom]
+modifier = <super>
+speed = 0.01
+smoothing_duration = 300ms linear
+interpolation_method = 0
+
+[fast-switcher]
+inactive_alpha = 0.7
+activate = <alt> KEY_TAB
+
+[input]
+xkb_layout = us
+xkb_variant = 
+xkb_options = 
+kb_numlock_default_state = false
+mouse_cursor_speed = 0
+mouse_accel_profile = default
+touchpad_cursor_speed = 0
+touchpad_accel_profile = default
+left_handed_mode = false
+mouse_natural_scroll = false
+mouse_scroll_speed = 1
+natural_scroll = true
+touchpad_scroll_speed = 1
+tap_to_click = true
+tap_and_drag = true
+click_method = button-areas
+middle_emulation = false
+disable_touchpad_while_typing = true
+kb_repeat_rate = 25
+kb_repeat_delay = 600
+cursor_theme = Bibata-Modern-Ice
+cursor_size = 24
+
+[vswipe]
+enable_vertical = false
+enable_horizontal = false
+fingers = 3
+
+[window-rules]
+ryoku_builtin_nautilus = on created if app_id is "org.gnome.Nautilus" then set geometry_ppt 4 6 92 88
+ryoku_builtin_hub = on created if title is "Ryoku Settings" then set geometry_ppt 0 2 99 96
+ryoku_builtin_rashin = on created if title is "Rashin" then set geometry_ppt 4 6 92 88
+ryoku_builtin_update = on created if app_id is "dev.ryoku.update" then set geometry_ppt 4 6 92 88
+ryoku_builtin_ryostore_title = on created if title is "Ryostore" then set geometry_ppt 4 6 92 88
+ryoku_builtin_ryovm = on created if title is "ryovm" then set geometry_ppt 4 6 92 88
+ryoku_builtin_ryoport_ssh = on created if app_id is "dev.ryoku.ryoport_ssh" then set geometry_ppt 20 24 60 52
+ryoku_builtin_ryostore_app = on created if app_id is "ryostore" then set geometry_ppt 15 17 70 66
+ryoku_builtin_rashin_setup = on created if app_id is "ryoku-rashin-setup" then set geometry_ppt 15 17 70 66
+ryoku_builtin_looking_glass = on created if app_id is "looking-glass-client" then set geometry_ppt 4 6 92 88
+ryoku_builtin_qemu_lower = on created if app_id is "qemu" then set geometry_ppt 4 6 92 88
+ryoku_builtin_qemu_upper = on created if app_id is "Qemu" then set geometry_ppt 4 6 92 88
+ryoku_builtin_welcome = on created if title is "Welcome to Ryoku" then set geometry_ppt 4 6 92 88
+ryoku_builtin_chromium_sharebar = on created if app_id is "" & title contains "is sharing" then assign_workspace 4 1
+
 [animate]
 duration = 250ms circle
 open_animation = zoom
@@ -218,8 +290,6 @@ maximized_front_scale = 0.9
 [command]
 command_window_close = jq -e '(.barStyle // "qsbar") == "iris" and .inir.closeConfirm.enabled == true' "${XDG_CONFIG_HOME:-$HOME/.config}/ryoku/shell.json" >/dev/null 2>&1 && qs -c shell ipc call closeConfirm trigger || ryoku-wm-wayfire act window.close focused
 binding_window_close = <super> KEY_Q | <alt> KEY_F4
-command_window_float = ryoku-wm-wayfire act window.float focused
-binding_window_float = <super> KEY_A
 command_window_preset_width = ryoku-wm-wayfire act window.presetWidth
 binding_window_preset_width = <super> KEY_R
 command_window_preset_height = ryoku-wm-wayfire act window.presetHeight
@@ -380,9 +450,6 @@ toggle_fullscreen = <super> KEY_F
 toggle_sticky = <super> <shift> KEY_P
 toggle_maximize = <super> KEY_D
 
-[fast-switcher]
-activate = <alt> KEY_TAB
-
 [shortcuts-inhibit]
 break_grab = <super> <shift> KEY_ESC
 
@@ -525,6 +592,7 @@ func TestUnhonoredNamesLosses(t *testing.T) {
 	for _, key := range []string{
 		"desktop.appearance.gapsIn", "desktop.appearance.gapsOut",
 		"desktop.appearance.activeOpacity", "desktop.appearance.borderSize",
+		"desktop.appearance.blurSize",
 		"desktop.input.kbLayout", "desktop.cursor.theme", "desktop.cursor.size",
 		"desktop.env", "desktop.apps",
 		"desktop.keybindRebinds", "desktop.unbinds",
@@ -574,22 +642,36 @@ func TestPaletteGateInCompose(t *testing.T) {
 	}
 }
 
-// The two plugin-presence toggles carve their plugin out of the composed list
-// and nothing else moves; both on leaves the defaults' list untouched.
+// The three plugin-presence toggles carve their plugin and inactive options
+// section out of the composed file; all on leaves the defaults' list untouched.
 func TestPluginsAdjustedByStore(t *testing.T) {
 	wayfireHome(t)
-	withDefaults(t, "[core]\nplugins =   animate   blur   grid  \n")
+	withDefaults(t, "[core]\nplugins =   animate   blur   grid   wobbly  \n")
 
-	off := writeStore(t, `{"desktop":{"appearance":{"animations":false,"blurEnabled":true,"borderFollowsPalette":false}}}`)
+	off := writeStore(t, `{"desktop":{"appearance":{"animations":false,"blurEnabled":true,"wobblyWindows":true,"borderFollowsPalette":false}}}`)
 	body := string(mustCompose(t, loadStore(off)))
-	if strings.Contains(body, "plugins = animate") || !strings.Contains(body, "plugins = blur grid") {
-		t.Errorf("animations off must drop animate only:\n%s", body)
+	if strings.Contains(body, "plugins = animate") || !strings.Contains(body, "plugins = blur grid wobbly") ||
+		strings.Contains(body, "[animate]\n") {
+		t.Errorf("animations off must drop animate and its options:\n%s", body)
 	}
 
-	on := writeStore(t, `{"desktop":{"appearance":{"animations":true,"blurEnabled":true,"borderFollowsPalette":false}}}`)
+	blurOff := writeStore(t, `{"desktop":{"appearance":{"animations":true,"blurEnabled":false,"wobblyWindows":true,"borderFollowsPalette":false}}}`)
+	body = string(mustCompose(t, loadStore(blurOff)))
+	if !strings.Contains(body, "plugins = animate grid wobbly") || strings.Contains(body, "[blur]\n") {
+		t.Errorf("blur off must drop blur and its options:\n%s", body)
+	}
+
+	wobbleOff := writeStore(t, `{"desktop":{"appearance":{"animations":true,"blurEnabled":true,"wobblyWindows":false,"borderFollowsPalette":false}}}`)
+	body = string(mustCompose(t, loadStore(wobbleOff)))
+	if strings.Contains(body, "plugins = animate blur grid wobbly") ||
+		!strings.Contains(body, "plugins = animate blur grid") || strings.Contains(body, "[wobbly]\n") {
+		t.Errorf("wobbly windows off must drop wobbly and its options:\n%s", body)
+	}
+
+	on := writeStore(t, `{"desktop":{"appearance":{"animations":true,"blurEnabled":true,"wobblyWindows":true,"borderFollowsPalette":false}}}`)
 	body = string(mustCompose(t, loadStore(on)))
-	if !strings.Contains(body, "plugins = animate   blur   grid") {
-		t.Errorf("both toggles on must leave the defaults list's inner spacing alone:\n%s", body)
+	if !strings.Contains(body, "plugins = animate   blur   grid   wobbly") {
+		t.Errorf("all toggles on must leave the defaults list's inner spacing alone:\n%s", body)
 	}
 }
 
@@ -650,8 +732,13 @@ func TestDefaultsCarryWayfireNamespace(t *testing.T) {
 	if err := json.Unmarshal(own, &ownLeaves); err != nil {
 		t.Fatalf("decode wm.wayfire: %v", err)
 	}
-	if _, ok := ownLeaves["depthdeck"]; !ok {
-		t.Errorf("wm.wayfire must carry depthdeck")
+	for _, key := range []string{
+		"animation", "tiling", "workspace", "decoration", "blur", "wobbly",
+		"zoom", "fastSwitcher", "focus", "xwayland", "placement", "depthdeck",
+	} {
+		if _, ok := ownLeaves[key]; !ok {
+			t.Errorf("wm.wayfire must carry %s", key)
+		}
 	}
 	var desktop map[string]json.RawMessage
 	if err := json.Unmarshal(top["desktop"], &desktop); err != nil {
@@ -815,7 +902,7 @@ func TestStoreSectionsEmitted(t *testing.T) {
 	for _, want := range []string{
 		"vwidth = 5",
 		"vheight = 2",
-		"tile_by_default = all",
+		"tile_by_default = " + tileByDefaultMatcher(),
 		"inner_gap_size = 14",
 		"outer_horiz_gap_size = 21",
 		"outer_vert_gap_size = 21",
@@ -857,6 +944,93 @@ func TestStoreSectionsEmitted(t *testing.T) {
 	}
 	if strings.Contains(body, "BAD-NAME") {
 		t.Errorf("an invalid environment name reached the generated commands:\n%s", body)
+	}
+}
+
+// These are the Wayfire 0.11 metadata options behind the provider-only Hub
+// rows. Each stored value must land on its exact section/key, while the neutral
+// workspace-gap and blur controls feed the matching Wayfire tuning.
+func TestWindowManagerSettingsEmitted(t *testing.T) {
+	s := defaultStore()
+	s.Appearance.GapsWorkspaces = 37
+	s.Appearance.BlurSize = 6
+	s.Appearance.BlurPasses = 5
+	s.Wayfire.Tiling = WayfireTiling{TileByDefault: "none", KeepFullscreenOnAdjacent: false}
+	s.Wayfire.Workspace = WayfireWorkspace{Columns: 4, Rows: 3, Wraparound: "on_end"}
+	s.Wayfire.Placement.Mode = "pointer"
+	s.Wayfire.Decoration = WayfireDecoration{
+		Mode: "server", TitleHeight: 22, Font: "Cantarell",
+		FontColor: "#123456", FontScale: 0.6, ButtonOrder: "close minimize",
+		ButtonScale: 0.5, ButtonPadding: 8,
+		IgnoreViews: `app_id is "plain"`, ForcedViews: `app_id is "framed"`,
+	}
+	s.Wayfire.Blur = WayfireBlur{
+		Method: "gaussian", Saturation: 1.4, BlurByDefault: `app_id is "glass"`,
+		Degrade: 4, AlphaThreshold: 0.3, AlphaExponent: 2,
+	}
+	s.Wayfire.Wobbly = WayfireWobbly{Friction: 2.5, SpringK: 9, GridResolution: 8}
+	s.Wayfire.Zoom = WayfireZoom{
+		Modifier: "<alt>", Speed: 0.02, SmoothingMs: 450, InterpolationMethod: "1",
+	}
+	s.Wayfire.FastSwitcher.InactiveOpacity = 0.55
+	s.Wayfire.Focus = WayfireFocus{Buttons: "BTN_LEFT", WithModifiers: true, PassThrough: false}
+	s.Wayfire.XWayland.Mode = "lazy"
+
+	d := renderStoreIni(s)
+	wants := []struct {
+		section, key, value string
+	}{
+		{"core", "vwidth", "4"},
+		{"core", "vheight", "3"},
+		{"core", "preferred_decoration_mode", "server"},
+		{"core", "xwayland", "lazy"},
+		{"core", "focus_buttons", "BTN_LEFT"},
+		{"core", "focus_button_with_modifiers", "true"},
+		{"core", "focus_buttons_passthrough", "false"},
+		{"simple-tile", "tile_by_default", "none"},
+		{"simple-tile", "keep_fullscreen_on_adjacent", "false"},
+		{"vswitch", "gap", "37"},
+		{"vswitch", "wraparound", "on_end"},
+		{"place", "mode", "pointer"},
+		{"decoration", "title_height", "22"},
+		{"decoration", "font", "Cantarell"},
+		{"decoration", "font_color", "#123456FF"},
+		{"decoration", "font_scale", "0.6"},
+		{"decoration", "button_order", "close minimize"},
+		{"decoration", "button_scale", "0.5"},
+		{"decoration", "button_padding", "8"},
+		{"decoration", "ignore_views", `app_id is "plain"`},
+		{"decoration", "forced_views", `app_id is "framed"`},
+		{"blur", "blur_by_default", `app_id is "glass"`},
+		{"blur", "method", "gaussian"},
+		{"blur", "saturation", "1.4"},
+		{"blur", "alpha_threshold", "0.3"},
+		{"blur", "alpha_exponent", "2"},
+		{"blur", "box_offset", "6"},
+		{"blur", "box_degrade", "4"},
+		{"blur", "box_iterations", "5"},
+		{"blur", "gaussian_offset", "6"},
+		{"blur", "gaussian_degrade", "4"},
+		{"blur", "gaussian_iterations", "5"},
+		{"blur", "kawase_offset", "6"},
+		{"blur", "kawase_degrade", "4"},
+		{"blur", "kawase_iterations", "5"},
+		{"blur", "bokeh_offset", "6"},
+		{"blur", "bokeh_degrade", "4"},
+		{"blur", "bokeh_iterations", "5"},
+		{"wobbly", "friction", "2.5"},
+		{"wobbly", "spring_k", "9"},
+		{"wobbly", "grid_resolution", "8"},
+		{"zoom", "modifier", "<alt>"},
+		{"zoom", "speed", "0.02"},
+		{"zoom", "smoothing_duration", "450ms linear"},
+		{"zoom", "interpolation_method", "1"},
+		{"fast-switcher", "inactive_alpha", "0.55"},
+	}
+	for _, want := range wants {
+		if got, ok := d.get(want.section, want.key); !ok || got != want.value {
+			t.Errorf("[%s] %s = %q, want %q", want.section, want.key, got, want.value)
+		}
 	}
 }
 

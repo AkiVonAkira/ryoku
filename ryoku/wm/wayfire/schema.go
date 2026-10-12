@@ -10,14 +10,12 @@ import (
 //go:embed schema*.json
 var schemaFS embed.FS
 
-// runSchema prints wayfire's exclusive settings rows, in the shape the Hub's
-// settings renderer already consumes. The rows live in topical files
-// (schema.json for the depth deck, schema_anim.json for the animation
-// durations and curves), one concern each; this concatenates them into the
-// single rows array the Hub expects, so wayfire's exclusives surface without
-// a Hub edit, the same way the siblings' do. Each row carries its own page
-// tag, so the depth-deck rows land on the shared window-manager page while
-// the animation rows reach the animation page.
+// runSchema prints Wayfire's exclusive settings rows in the shape the Hub's
+// shared renderer consumes. schema.json owns the Window Manager controls and
+// schema_anim.json owns animation durations and curves. Concatenating those
+// topical arrays lets the provider add complete settings pages without a Hub
+// edit, the same way the sibling providers do. Each row carries its page tag,
+// so Window Manager and Animations receive only their own controls.
 func runSchema() error {
 	rows, err := loadSchemaRows()
 	if err != nil {
