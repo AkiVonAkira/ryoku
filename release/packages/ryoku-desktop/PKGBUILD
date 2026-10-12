@@ -227,7 +227,7 @@ optdepends=(
   'waifu2x-ncnn-vulkan: AI upscale for ryoshot Beautify HD and ryowalls Enhance'
   'pavucontrol: GUI mixer behind the bar Open audio button'
   'songrec: Recognize Music in the launcher'
-  'openrgb: keyboard and mouse lighting (Settings > Appearance > Lighting)'
+  'openrgb: keyboard and mouse lighting (Ryogami settings > Lighting)'
   'gamescope: nested gaming micro-compositor'
   'gamemode: gaming performance governor Steam invokes'
   'mangohud: in-game FPS and frametime overlay'

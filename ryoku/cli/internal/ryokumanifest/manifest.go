@@ -172,7 +172,7 @@ func Apps() []App {
 		{"waifu2x-ncnn-vulkan", "AI upscale behind ryoshot Beautify HD and ryowalls Enhance"},
 		{"pavucontrol", "the GUI mixer the bar's Open audio button launches"},
 		{"songrec", "Recognize Music in the launcher"},
-		{"openrgb", "keyboard and mouse lighting (Settings > Appearance > Lighting)"},
+		{"openrgb", "keyboard and mouse lighting (Ryogami settings > Lighting)"},
 		{"gamescope", "the nested gaming micro-compositor"},
 		{"gamemode", "the gaming performance governor Steam invokes"},
 		{"mangohud", "the in-game FPS and frametime overlay"},
