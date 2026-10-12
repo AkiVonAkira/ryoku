@@ -306,7 +306,7 @@ Singleton {
     function cycleKeyboardLayout() { root._act("keyboard.cycleLayout", "keyboardLayoutSwitch", []); }
     function setCursor(theme, size) { root._act("cursor.set", "cursorSet", [String(theme), String(size)]); }
     function reloadConfig(scope) { root._act("config.reload", "configReload", [String(scope || "")]); }
-    function setOutputPower(output, on) { root._act("output.power", "outputPower", [String(output), on ? "on" : "off"]); }
+    function setOutputPower(output, on) { root._act("output.power", "outputPower", [on ? "on" : "off", String(output)]); }
     function toggleOverview() { root._act("overview.toggle", "nativeOverview", []); }
     function enterSubmap(name) { root._act("submap.enter", "submap", [String(name)]); }
     function resetSubmap() { root._act("submap.reset", "submap", []); }
