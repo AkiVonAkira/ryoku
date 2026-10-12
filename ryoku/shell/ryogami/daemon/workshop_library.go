@@ -528,15 +528,28 @@ func (w *workshopLib) watch() {
 	}
 }
 
-func (w *workshopLib) downloadedSet() map[string]bool {
-	set := map[string]bool{}
-	for _, id := range w.downloadedIDs() {
-		set[id] = true
+func (d *daemon) allowWorkshopDownloadEvent(id, status string, now time.Time) bool {
+	d.workshopProgressMu.Lock()
+	defer d.workshopProgressMu.Unlock()
+	if d.workshopProgress == nil {
+		d.workshopProgress = map[string]progressEventState{}
 	}
-	return set
+	last, has := d.workshopProgress[id]
+	if status != "downloading" {
+		delete(d.workshopProgress, id)
+		return true
+	}
+	if !has || last.status != status || now.Sub(last.at) >= progressMinInterval {
+		d.workshopProgress[id] = progressEventState{status: status, at: now}
+		return true
+	}
+	return false
 }
 
 func (d *daemon) emitWorkshopDownload(id, status string, progress float64, message, path string) {
+	if !d.allowWorkshopDownloadEvent(id, status, time.Now()) {
+		return
+	}
 	data := map[string]interface{}{"id": id, "status": status}
 	if progress > 0 {
 		data["progress"] = progress
@@ -548,6 +561,9 @@ func (d *daemon) emitWorkshopDownload(id, status string, progress float64, messa
 		data["path"] = path
 	}
 	d.broadcast("ryogami.workshop.download", data)
+	if d.tasks == nil {
+		return
+	}
 	// Steam and steamcmd own the transfer, so the chip reports it but cannot stop it.
 	task := "download:we-" + id
 	switch status {
