@@ -93,7 +93,9 @@ func TestWorkspaceAndWindowFrames(t *testing.T) {
 	}
 	active := 0
 	counts := map[string]int{}
+	ids := map[string]bool{}
 	for _, w := range ws {
+		ids[w.ID] = true
 		if w.Active {
 			active++
 			if w.ID != "1:1:0" {
@@ -119,6 +121,9 @@ func TestWorkspaceAndWindowFrames(t *testing.T) {
 			t.Errorf("fullscreen reported on %q, want the cell the view sits on", w.ID)
 		}
 	}
+	if got := s.outputFrame(s.outputs[0]).ActiveWorkspace; got != "1:1:0" {
+		t.Errorf("active output workspace is %q, want handle 1:1:0", got)
+	}
 
 	wins := s.windowFrame()
 	if len(wins) != 3 {
@@ -133,8 +138,13 @@ func TestWorkspaceAndWindowFrames(t *testing.T) {
 	if wins[1].Floating != true || wins[2].Floating {
 		t.Errorf("floating flags wrong: an untilled window must float, tiled fullscreen must not")
 	}
-	if wins[0].Workspace != "2" {
-		t.Errorf("current-cell window maps to workspace %q, want 2", wins[0].Workspace)
+	for _, win := range wins {
+		if !ids[win.Workspace] {
+			t.Errorf("window %s workspace %q does not match a workspace id", win.ID, win.Workspace)
+		}
+	}
+	if wins[0].Workspace != "1:1:0" {
+		t.Errorf("current-cell window maps to workspace %q, want handle 1:1:0", wins[0].Workspace)
 	}
 }
 

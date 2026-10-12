@@ -162,7 +162,8 @@ Singleton {
         const o = root.outputByName(name);
         if (!o || !o.activeWorkspace)
             return false;
-        const ws = root.workspaceByName(o.activeWorkspace);
+        const key = String(o.activeWorkspace);
+        const ws = root.workspaceById(key) || root.workspaceByName(key);
         return !!ws && ws.fullscreen === true;
     }
 
@@ -220,11 +221,12 @@ Singleton {
         return null;
     }
 
-    function windowsOnWorkspace(name) {
+    function windowsOnWorkspace(key) {
+        const workspace = root._wsId(key);
         const list = root.windows;
         const out = [];
         for (let i = 0; i < list.length; i++)
-            if (list[i].workspace === name)
+            if (String(list[i].workspace) === workspace)
                 out.push(list[i]);
         return out;
     }

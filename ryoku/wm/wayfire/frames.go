@@ -260,9 +260,8 @@ func workspaceHandle(wset int64, x, y int) string {
 	return strconv.FormatInt(wset, 10) + ":" + strconv.Itoa(x) + ":" + strconv.Itoa(y)
 }
 
-// workspaceName is the flat cell name every consumer keys on: row-major from
-// 1, the same number hyprland hands a dispatcher, so the shell compares one
-// shape whatever compositor feeds it. Handles never leak into names.
+// workspaceName is the row-major display label for a cell. Identity stays in
+// workspaceHandle so equal labels in different sets never collide.
 func workspaceName(x, y, gridW int) string {
 	return strconv.Itoa(y*gridW + x + 1)
 }
@@ -343,10 +342,9 @@ func (s *stage) wsetByIndex(index int64) (wayfireWset, bool) {
 }
 
 // cellOfView resolves the output and the set's current workspace the
-// derivation needs, plus the grid width the flat name needs. A view whose set
-// is unknown falls back to its output's current cell, which is where an
-// ordinary view lives anyway; a view with no output reports grid width 0,
-// which callers fold back into the handle.
+// derivation needs, plus its grid width. A view whose set is unknown falls back
+// to its output's current cell, which is where an ordinary view lives anyway;
+// a view with no output reports grid width 0.
 func (s *stage) cellOfView(v wayfireView) (int, int, int) {
 	out, ok := s.outputByName(v.OutputName)
 	if !ok {
@@ -440,13 +438,8 @@ func (s *stage) windowFrame() []wm.Window {
 	})
 	out := make([]wm.Window, 0, len(ordered))
 	for i, v := range ordered {
-		x, y, gridW := s.cellOfView(v)
-		// Consumers compare names, so the frame carries the flat name; a
-		// grid-less stage keeps the handle, the only key that still works.
+		x, y, _ := s.cellOfView(v)
 		workspace := workspaceHandle(v.WsetIndex, x, y)
-		if gridW > 0 {
-			workspace = workspaceName(x, y, gridW)
-		}
 		rect := v.rect()
 		frame := wm.Window{
 			ID:         strconv.FormatInt(v.ID, 10),
@@ -475,7 +468,7 @@ func (s *stage) outputFrame(o wayfireOutput) wm.Output {
 		X:               int(math.Round(o.Geometry.X)),
 		Y:               int(math.Round(o.Geometry.Y)),
 		Focused:         o.Name == s.focused,
-		ActiveWorkspace: activeWorkspaceName(o),
+		ActiveWorkspace: activeWorkspaceHandle(o),
 	}
 	section, ok := s.config["output:"+o.Name]
 	if !ok {
@@ -514,15 +507,10 @@ func (s *stage) outputsFrame() []wm.Output {
 	return out
 }
 
-// activeWorkspaceName is the flat name of the cell an output shows, the same
-// key its windows report. An output with no grid configured (before the first
-// configure) keeps the handle: the name would be a guess, the handle still
-// round-trips through an act.
-func activeWorkspaceName(o wayfireOutput) string {
-	if o.Workspace.GridWidth <= 0 {
-		return workspaceHandle(o.WsetIndex, o.Workspace.X, o.Workspace.Y)
-	}
-	return workspaceName(o.Workspace.X, o.Workspace.Y, o.Workspace.GridWidth)
+// activeWorkspaceHandle is the provider-owned key for the cell an output
+// shows, matching Workspace.ID and Window.Workspace.
+func activeWorkspaceHandle(o wayfireOutput) string {
+	return workspaceHandle(o.WsetIndex, o.Workspace.X, o.Workspace.Y)
 }
 
 // keyboardPair folds wayfire's "unknown" layout (no keyboard ever named one)

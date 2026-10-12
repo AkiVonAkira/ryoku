@@ -221,6 +221,11 @@
   workspace action resolver now keeps an exact provider id before falling back
   to a display name, so overlapping ids and names cannot redirect focus or
   window moves to a different workspace (`ui/Singletons/Wm.qml`).
+- **Wayfire windows stay attached to their workspace everywhere in the
+  desktop.** Window and output frames now carry the same opaque workspace id as
+  the workspace frame, so active-workspace filters, fullscreen checks, widget
+  power saving, and deck frost see the windows on screen
+  (`wm/wayfire/frames.go`, `wm/state.go`, `ui/Singletons/Wm.qml`).
 - **Power profile controls work with Fedora's default provider.** The Hub,
   Nomarchy, game mode, and `ryoku-power` send profile reads and writes through
   the shell daemon's provider-neutral D-Bus client, so tuned-ppd works alongside
