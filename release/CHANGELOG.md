@@ -126,6 +126,14 @@
   the other plugin packages.
 
 ### Fixed
+- **Fedora Ryogami requires the real OpenH264.** `ffmpeg-free` can satisfy its
+  H.264 library with the `noopenh264` stub, which makes every H.264 encode and
+  decode fail; `ryogami` now requires `openh264` from Fedora's Cisco
+  repository (`fedora/packages/rpm/ryogami.spec`).
+- **Fedora and Void desktops ship `pactl`.** Arch's `libpulse` carries the
+  tool Ryogami's audio ducking calls, so the edition tables now map it to the
+  libraries plus `pulseaudio-utils` (`fedora|void/packages/translations.tsv`,
+  the `ryoku-desktop` and `skwd-paper-bin` recipes).
 - **Stable releases publish every native repository from the workflow-created
   tag.** Stable Release explicitly dispatches the pacman, XBPS, and RPM
   publishers because its token-created tag cannot trigger their tag workflows.

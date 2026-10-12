@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- **`ryoku-hub lighting follow <device>|--all on|off`.** One verb puts a device
+  on the palette accent in a mode that can show it (its Static mode, else a
+  Direct or Custom per-LED mode), names devices whose modes carry no colour
+  instead of adopting them, and hands devices back. Every report marks each
+  device `following` (`backend/lighting.go`).
 - **The Hub speaks to every edition through `ryoku-host`.** A `Host` singleton
   reads `ryoku-host capabilities` (package manager, init, snapshots, AUR), and
   schema rows can gate on it with `hostCaps` the way they gate on compositor
@@ -63,6 +68,13 @@
   exposes a battery or battery tuning controls.
 - **Desktop has a Deck frost slider.** Its full 0 to 100 percent range writes
   the validated shell setting, and zero turns the effect off.
+- **Lighting writes land on the intended device with OpenRGB 1.0.** The SDK
+  client spoke protocol 5 and addressed devices by list position. OpenRGB 1.0
+  (Arch, CachyOS, Void) routes protocol-5 writes through controller IDs, so
+  after a hotplug or a detection pass the accent painted another device or
+  nothing. The client now speaks protocol 6 with controller IDs and write
+  acknowledgements, and keeps protocol 5 for Fedora's OpenRGB 1.0~rc2
+  (`backend/openrgb.go`).
 - **Interface scale is editable in Global.** The whole shell reads the one
   `fontScale` value that scales every surface and popout, but no Hub control
   reached it: a hand-set value silently reverted to the factory 1.3 on a stale
@@ -138,6 +150,9 @@
   (`quickshell/SchemaPage.qml`, `quickshell/AppPicker.qml`)
 
 ### Removed
+- **The orphaned Lighting page.** Nothing loaded `pages/LightingTab.qml` since
+  the Appearance page left the Hub; its controls now live in the wallpaper
+  picker's Settings > Lighting.
 - **The Desktop page drops Brand and Pickers.** Renaming the desktop and
   swapping its mark are gone, and the picker style moved to QS Bar Settings,
   the bar it belongs to. General keeps the reload cover
