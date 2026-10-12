@@ -164,6 +164,11 @@
   `internal/sys/release.go`, `internal/updater/release.go`).
 
 ### Fixed
+- **Doctor repairs login entries that are missing their Ryoku desktop
+  variant.** It installs the coinstallable variant before config materializes,
+  so a separately installed compositor receives the shell, wallpaper, and
+  keybinds. Distribution lanes that do not carry the variant explain that the
+  session will be bare instead of attempting an unavailable package.
 - **Repository failures now identify filtered Ryoku DNS.** Update and doctor
   recognize private, loopback, and known sinkhole answers for `ryoku.dev` and
   point to the encrypted-DNS recovery steps instead of leaving a package-manager
