@@ -92,6 +92,8 @@ func Update(args []string) (err error) {
 	stage2 := len(args) >= 2 && args[0] == "--stage2"
 	channelSwitch := false
 	withSystem := false
+	updateWait = false
+	updateForce = false
 	for _, a := range args {
 		if a == "-v" || a == "--verbose" {
 			verboseLog = true
@@ -101,6 +103,12 @@ func Update(args []string) (err error) {
 		}
 		if a == "--system" || a == "--full" {
 			withSystem = true
+		}
+		if a == "--wait" {
+			updateWait = true
+		}
+		if a == "--force" || a == "--unchecked" {
+			updateForce = true
 		}
 	}
 
@@ -132,13 +140,32 @@ func Update(args []string) (err error) {
 	// through the Hub (authorizeGUI).
 	primeSudo()
 
+	checkout := sys.ResolveRepo() != ""
+	var failedBuild channelBuild
+	if !checkout {
+		channel := ryokuChannel()
+		if build, ok := channelBuildStatus(channel); ok {
+			if build.inProgress(time.Now()) && !updateForce {
+				if updateWait {
+					build = waitForChannelBuild(channel, 45*time.Minute, func(line string) { fmt.Println(line) })
+				}
+				if build.inProgress(time.Now()) {
+					return fmt.Errorf(i18n.T("the %s channel is being rebuilt for %s (started %d min ago): %s. Run again when it finishes, or ryoku update --wait"),
+						sys.DisplayChannel(channel), shortSHA(build.Commit), channelBuildAgeMinutes(build, time.Now()), build.Run)
+				}
+			}
+			if build.State == "failed" {
+				failedBuild = build
+			}
+		}
+	}
+
 	// The raw firehose lands in the per-update log on every path: the terminal
 	// only ever shows the curated console, and a run that fails must still
 	// leave the real output behind for support to read.
 	logPath := startUpdateLog(false)
 	defer stopUpdateLog()
 
-	checkout := sys.ResolveRepo() != ""
 	con = openConsole(verboseLog, channelLine(checkout), releaseLine(checkout),
 		func() string { return i18n.T("now on ") + releaseLine(checkout) })
 	defer settleConsole(&err)
@@ -149,6 +176,13 @@ func Update(args []string) (err error) {
 		progress.begin(systemSteps)
 	default:
 		progress.begin(pkgSteps)
+	}
+	if failedBuild.State == "failed" {
+		progress.logf(i18n.T("The last build of %s failed for %s (%s); this update takes the previous good build"),
+			sys.DisplayChannel(failedBuild.Channel), shortSHA(failedBuild.Commit), failedBuild.Run)
+	}
+	if !checkout && ryokuChannel() == sys.ChannelTesting {
+		progress.logf(i18n.T("unstable now follows the source checkout; ryoku track unstable switches this box to it"))
 	}
 	trapStop()
 	if updateUI() == "hub" {
@@ -1864,6 +1898,25 @@ func Status(args []string) error {
 
 	fmt.Printf(i18n.T("config base:   %s\n"), sys.BaseConfigDir())
 	fmt.Printf(i18n.T("channel:       %s\n"), orDash(r.Channel))
+	if build := r.ChannelBuild; build != nil {
+		switch {
+		case build.inProgress(time.Now()):
+			fmt.Printf(i18n.T("build:         in progress for %s since %d min (%s)\n"),
+				shortSHA(build.Commit), channelBuildAgeMinutes(*build, time.Now()), build.Run)
+		case build.State == "failed":
+			fmt.Printf(i18n.T("build:         last build failed for %s (%s)\n"), shortSHA(build.Commit), build.Run)
+		}
+	}
+	if check := r.ChannelCheck; check != nil && r.Latest != "" && (check.State != "passed" || shortSHA(check.Commit) != shortSHA(r.Latest)) {
+		switch check.State {
+		case "failed":
+			fmt.Printf(i18n.T("checked:       tip %s failed its checks (%s)\n"), shortSHA(r.Latest), check.Run)
+		case "passed":
+			fmt.Printf(i18n.T("checked:       tip %s is newer than checked %s (%s)\n"), shortSHA(r.Latest), shortSHA(check.Commit), check.Run)
+		default:
+			fmt.Printf(i18n.T("checked:       tip %s is being checked (%s)\n"), shortSHA(r.Latest), check.Run)
+		}
+	}
 	if r.Release != "" {
 		if r.ChannelRelease != "" && r.ChannelRelease != r.Release {
 			fmt.Printf(i18n.T("release:       %s%s -> %s%s\n"), withSpace(r.ReleaseName), r.Release, withSpace(r.ChannelReleaseName), r.ChannelRelease)
@@ -1954,6 +2007,8 @@ type statusReport struct {
 	ChannelPinStale  bool   `json:"channelPinStale,omitempty"`
 	RecoverChannel   string `json:"recoverChannel,omitempty"`
 	RepositoryNotice string `json:"repositoryNotice,omitempty"`
+	ChannelBuild     *channelBuild   `json:"channelBuild,omitempty"`
+	ChannelCheck     *checkedPointer `json:"channelCheck,omitempty"`
 }
 
 // withSpace is a release name as a prefix: "Onogoro " or "" when unnamed.
@@ -1985,9 +2040,13 @@ func buildStatus() statusReport {
 // baseStatus builds the Ryoku-channel report: the git update channel on a
 // checkout, else the [ryoku] repo package versions on a packaged install.
 func baseStatus() statusReport {
+	checkout := sys.ResolveRepo() != ""
 	if r, ok := channelStatus(); ok {
 		// a checkout has no release, but it runs a named line (CODENAME)
 		r.ReleaseName = ReleaseName()
+		if check, ok := readCheckedPointer(); ok {
+			r.ChannelCheck = &check
+		}
 		return r
 	}
 	installed, _ := host.Default().PackageVersion("ryoku-desktop")
@@ -1999,7 +2058,17 @@ func baseStatus() statusReport {
 			}
 		}
 	}
-	return packagedStatus(installed, latest)
+	r := packagedStatus(installed, latest)
+	if checkout {
+		if check, ok := readCheckedPointer(); ok {
+			r.ChannelCheck = &check
+		}
+		return r
+	}
+	if build, ok := channelBuildStatus(ryokuChannel()); ok {
+		r.ChannelBuild = &build
+	}
+	return r
 }
 
 // packagedStatus builds the report for a packaged install from the running and

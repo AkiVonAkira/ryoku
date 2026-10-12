@@ -3,6 +3,18 @@
 ## Unreleased
 
 ### Added
+- **`ryoku update` checks the channel build before touching the box.** An
+  in-progress packaged build stops the run with its Actions URL; `--wait` polls
+  for completion and `--force` bypasses the hold. A failed last build warns and
+  leaves update on the previous published repository.
+- **`ryoku status` adds `build:` and `check:` lines.** Packaged boxes show an
+  in-progress or failed channel build, while source boxes show when the current
+  tip is still being checked. The JSON report carries the same `channelBuild`
+  and `channelCheck` records.
+- **`ryoku track unstable` is the source testing lane.** It follows
+  `unstable-dev` only as far as the Testing gate has passed, while `--wait`
+  polls a running gate and `--force` deploys the current tip. Frozen unstable
+  build names remain package pins for tracking and rollback.
 - **The host seam reconciles service activation from one manifest.**
   `ryoku-host svc reconcile` enables system services through systemd or runit,
   writes the ordered Turnstile session roster, and preserves explicit user
@@ -130,6 +142,10 @@
   (`internal/doctor/reconcile_boot_rw.go`).
 
 ### Changed
+- **`bin/ryoku-track` prepares one compositor-neutral source checkout.** It
+  clones `https://github.com/ryoku-dev/ryoku.git`, installs the toolchain
+  through the host package manager, and no longer writes a compositor config
+  file.
 - **The Prowl checks know only `prowl`.** The install check suggests
   `sudo pacman -S prowl`, `ryoku update` refreshes only `prowl`, and a
   dev-deployed `ryoku-prowl.service` that shadows the packaged unit is cleaned

@@ -243,7 +243,9 @@ SigLevel = Never
 Server = file://$OUT
 EOF
 fi
-if runuser -u "$TESTUSER" -- env "HOME=/home/$TESTUSER" ryoku track unstable 2>/tmp/track.err; then
+# `stable` is the packaged lane; `unstable` now selects the source checkout and
+# never reads the pacman repository, so only stable can prove the refusal.
+if runuser -u "$TESTUSER" -- env "HOME=/home/$TESTUSER" ryoku track stable 2>/tmp/track.err; then
   die "ryoku track must refuse a [ryoku] repo Ryoku does not publish"
 fi
 grep -q "does not publish" /tmp/track.err || die "unexpected track refusal: $(cat /tmp/track.err)"

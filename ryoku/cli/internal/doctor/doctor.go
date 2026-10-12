@@ -1213,13 +1213,13 @@ func reconcileRyokuChannel(checkOnly bool) recResult {
 		// a private mirror is deliberate, but it means no release reaches here.
 		switch ch := sys.ChannelOfServer(sys.RyokuServer()); {
 		case ch == sys.ChannelStable:
-			return okRes(i18n.T("ryoku channel: stable packages (named releases); `ryoku track unstable` follows the unstable channel"))
+			return okRes(i18n.T("ryoku channel: stable packages (named releases); `ryoku track unstable` follows unstable-dev from source"))
 		case ch == sys.ChannelTesting:
 			return okRes(i18n.T("ryoku channel: unstable packages (rebuilt on every push); `ryoku track stable` returns to stable releases"))
 		case sys.IsReleaseTag(ch):
 			return okRes(i18n.T("ryoku channel: pinned to release %s (packages); `ryoku track stable` follows releases again"), ch)
 		case sys.IsUnstableBuild(ch):
-			return okRes(i18n.T("ryoku channel: pinned to unstable build %s (packages); `ryoku track unstable` follows unstable builds again"), ch)
+			return okRes(i18n.T("ryoku channel: pinned to unstable build %s (packages); `ryoku track unstable` switches to the unstable-dev source checkout"), ch)
 		default:
 			return warnRes(i18n.T("the [ryoku] repo points at %s, which Ryoku does not publish; releases will not arrive from it"), sys.RyokuServer()).
 				withFix("ryoku track stable")
@@ -1267,13 +1267,13 @@ func reconcileVoidRyokuChannel(checkOnly bool) recResult {
 	channel, _ := app.RepoChannel()
 	switch {
 	case channel == sys.ChannelStable:
-		return okRes(i18n.T("ryoku channel: stable packages (named releases); `ryoku track unstable` follows the unstable channel"))
+		return okRes(i18n.T("ryoku channel: stable packages (named releases); `ryoku track unstable` follows unstable-dev from source"))
 	case channel == sys.ChannelTesting:
 		return okRes(i18n.T("ryoku channel: unstable packages (rebuilt on every push); `ryoku track stable` returns to stable releases"))
 	case sys.IsReleaseTag(channel):
 		return okRes(i18n.T("ryoku channel: pinned to release %s (packages); `ryoku track stable` follows releases again"), channel)
 	case sys.IsUnstableBuild(channel):
-		return okRes(i18n.T("ryoku channel: pinned to unstable build %s (packages); `ryoku track unstable` follows unstable builds again"), channel)
+		return okRes(i18n.T("ryoku channel: pinned to unstable build %s (packages); `ryoku track unstable` switches to the unstable-dev source checkout"), channel)
 	default:
 		return warnRes(i18n.T("the Ryoku XBPS repository points at %s, which Ryoku does not publish; releases will not arrive from it"), repository).
 			withFix("ryoku track stable")
@@ -1320,13 +1320,13 @@ func reconcileFedoraRyokuChannel(checkOnly bool) recResult {
 	channel, _ := app.RepoChannel()
 	switch {
 	case channel == sys.ChannelStable:
-		return okRes(i18n.T("ryoku channel: stable packages (named releases); `ryoku track unstable` follows the unstable channel"))
+		return okRes(i18n.T("ryoku channel: stable packages (named releases); `ryoku track unstable` follows unstable-dev from source"))
 	case channel == sys.ChannelTesting:
 		return okRes(i18n.T("ryoku channel: unstable packages (rebuilt on every push); `ryoku track stable` returns to stable releases"))
 	case sys.IsReleaseTag(channel):
 		return okRes(i18n.T("ryoku channel: pinned to release %s (packages); `ryoku track stable` follows releases again"), channel)
 	case sys.IsUnstableBuild(channel):
-		return okRes(i18n.T("ryoku channel: pinned to unstable build %s (packages); `ryoku track unstable` follows unstable builds again"), channel)
+		return okRes(i18n.T("ryoku channel: pinned to unstable build %s (packages); `ryoku track unstable` switches to the unstable-dev source checkout"), channel)
 	default:
 		return warnRes(i18n.T("the Ryoku RPM repository points at %s, which Ryoku does not publish; releases will not arrive from it"), repository).
 			withFix("ryoku track stable")
