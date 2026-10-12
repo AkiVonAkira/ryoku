@@ -17,6 +17,14 @@
   headless one exits at once.
 
 ### Fixed
+- `power/ryoku-clamshell`: **Wayfire lid close now locks, suspends, or enters
+  docked clamshell mode instead of being swallowed by the lid inhibitor.**
+  Wayfire 0.11 receives switch devices internally but exposes no switch binding
+  or IPC event, so its provider declares a system lid-edge source. The neutral
+  clamshell owner watches ACPI state, falls back to UPower, and routes each
+  transition through the existing cancellable policy and panel handoff. Other
+  providers keep their native switch callbacks and never start the watcher.
+  Covered by `tests/clamshell-policy.sh`.
 - **The lockscreen cutover waiter can no longer restart forever.** It ran the
   staged helper under /run, which the cutover retires once it finishes, so a
   waiter left behind failed every two seconds until the next reboot. It now
