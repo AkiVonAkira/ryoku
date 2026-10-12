@@ -103,11 +103,8 @@ Singleton {
     }
 
     property bool silent: false
-    // Any fullscreen window on what the focused monitor is showing. HyprlandData resolves
-    // the workspace through the client list, so this survives a workspace renumbering and
-    // ignores a fullscreen window that a silent move left holding keyboard focus off-screen.
     readonly property bool focusedWindowFullscreen:
-        HyprlandData.monitorHasFullscreenWindow(Wm.focusedOutput ?? "")
+        Wm.outputHasFullscreen(Wm.focusedOutput ?? "")
 
     readonly property bool autoSilent: (Config?.options.notifications.autoDndFullscreen ?? true) && focusedWindowFullscreen
     readonly property bool effectiveSilent: silent || autoSilent

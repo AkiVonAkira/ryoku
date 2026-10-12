@@ -772,7 +772,7 @@ Singleton {
 	}
 
 	function _matchingBrowserWindow(player) {
-		if (!CompositorService.nativeOverview || !player)
+		if (!player)
 			return null;
 
 		const playerTitle = root._normTitle(root.titleOf(player)).replace(/\s+-\s+youtube$/, "");
@@ -804,7 +804,7 @@ Singleton {
 	}
 
 	function _canUseBrowserNavigationFallback(player): bool {
-		return root.hasWtype && !GlobalStates.screenLocked && CompositorService.nativeOverview && root._isBrowserYoutubePlayer(player) && root._matchingBrowserWindow(player) !== null;
+		return root.hasWtype && !GlobalStates.screenLocked && root._isBrowserYoutubePlayer(player) && root._matchingBrowserWindow(player) !== null;
 	}
 
 	function _navigateBrowserYoutube(player, direction: string): void {

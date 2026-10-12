@@ -48,12 +48,12 @@ Singleton {
     readonly property bool pauseWhenWindowsPresent: Config.options?.background?.widgets?.powerSaving?.pauseWhenWindowsPresent ?? false
 
     function _hasWindowsOnActiveWorkspace(outputName: string): bool {
-        return CompositorService.nativeOverview && WorkspaceService.hasWindowsOnActiveWorkspace(outputName);
+        return WorkspaceService.hasWindowsOnActiveWorkspace(outputName);
     }
 
     function _fullscreenForOutput(outputName: string): bool {
         const scopedOutput = String(outputName ?? "");
-        if (scopedOutput.length === 0 || !CompositorService.nativeOverview)
+        if (scopedOutput.length === 0)
             return GameMode.hasVisibleFullscreenWindow;
         return GameMode.hasFullscreenOnOutput(scopedOutput);
     }

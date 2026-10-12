@@ -5,11 +5,11 @@ import Quickshell
 import Quickshell.Io
 import inir.modules.common
 import inir.services
+import Ryoku.Ui.Singletons
 
 /**
- * Service to manage "minimized" windows in Niri.
- * Since Niri doesn't have native minimize, stashed windows share an otherwise
- * empty workspace on their original output.
+ * Service to manage stashed windows for providers without native minimize.
+ * Stashed windows share an otherwise empty workspace on their original output.
  */
 Singleton {
     id: root
@@ -20,7 +20,8 @@ Singleton {
     // List of minimized window IDs for easy iteration
     property list<int> minimizedIds: []
     property bool recoveredPersistentState: false
-    readonly property bool actionReady: CompositorService.nativeOverview && Persistent.ready && WorkspaceService.actionReady
+    readonly property bool windowWorkspaceMap: Wm.caps.windowWorkspaceMap === true
+    readonly property bool actionReady: root.windowWorkspaceMap && Persistent.ready && WorkspaceService.actionReady
 
     function persistState() {
         if (!Persistent.ready) return;
@@ -38,7 +39,7 @@ Singleton {
     }
 
     function recoverPersistentState() {
-        if (recoveredPersistentState || !Persistent.ready || !CompositorService.nativeOverview) return;
+        if (recoveredPersistentState || !Persistent.ready || !root.windowWorkspaceMap) return;
         const entries = Persistent.states.orbit.stashEntries ?? [];
         if (entries.length > 0 && (WorkspaceService.windows ?? []).length === 0) return;
 

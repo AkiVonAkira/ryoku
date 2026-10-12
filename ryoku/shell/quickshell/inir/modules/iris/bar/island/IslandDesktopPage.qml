@@ -174,8 +174,8 @@ ColumnLayout {
     }
 
 
-    readonly property var workspaces: CompositorService.nativeOverview
-        ? (WorkspaceService.allWorkspaces ?? []).filter(ws => ws.output === page.island.targetScreen?.name) : []
+    readonly property var workspaces: (WorkspaceService.allWorkspaces ?? [])
+        .filter(ws => ws.output === page.island.targetScreen?.name)
     readonly property var activeWorkspace: page.workspaces.find(ws => ws.is_active) ?? null
     readonly property var focusedWindow: {
         const ws = page.activeWorkspace

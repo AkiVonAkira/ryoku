@@ -614,6 +614,9 @@
   leaving the desktop transparent (`quickshell/inir/services/CompositorService.qml`,
   `quickshell/shell/modules/wallpaper/Backdrop.qml`,
   `quickshell/shell/modules/wallpaper/skwd/edge-transition.frag`).
+- **Fullscreen shell reactions now follow the neutral window-manager state.**
+  Fullscreen windows hide the dock and widget canvas, silence banners, apply
+  game mode and OSD rules, and enable auto-DND under every supported compositor.
 - **Bluetooth devices stay connected after pairing.** Ryoku now stops discovery
   before it pairs or connects, trusts a new bond before connecting, and retries
   the first post-pair connection once. The shell, every bar style, Nomarchy and

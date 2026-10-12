@@ -781,8 +781,7 @@ Item {
     property bool pointerHeld: false
     onPointerHeldChanged: if (!root.pointerHeld && !root.pointerOnIsland && root.expanded && !root.pinned) leaveDelay.restart()
 
-    readonly property bool fullscreenCovered: CompositorService.nativeOverview
-        && GameMode.hasFullscreenOnOutput(root.targetScreen?.name ?? "")
+    readonly property bool fullscreenCovered: GameMode.hasFullscreenOnOutput(root.targetScreen?.name ?? "")
         && !WorkspaceService.inOverview
     readonly property bool suppressed: root.fullscreenCovered && !root.feedback && !root.expanded
     opacity: root.suppressed ? 0 : 1
