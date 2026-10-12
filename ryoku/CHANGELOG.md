@@ -213,6 +213,9 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **The previous-track and touchpad keys work on Wayfire.** Their bindings
+  named evdev keys that do not exist, so Wayfire dropped them at load; they now
+  use the kernel's names (`wm/wayfire/config_binds.go`).
 - **Wayfire's tiling shortcuts now act on the simple-tile layout.** Maximise
   and float work for tiled and floating windows, directional moves swap tiled
   neighbours, resize and preset keys change split weights, centre detaches

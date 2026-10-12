@@ -53,10 +53,10 @@ var wayfireKeys = map[string]string{
 
 	"XF86AudioRaiseVolume": "KEY_VOLUMEUP", "XF86AudioLowerVolume": "KEY_VOLUMEDOWN",
 	"XF86AudioMute": "KEY_MUTE", "XF86AudioPlay": "KEY_PLAYPAUSE",
-	"XF86AudioNext": "KEY_NEXTSONG", "XF86AudioPrev": "KEY_PREVSONG",
+	"XF86AudioNext": "KEY_NEXTSONG", "XF86AudioPrev": "KEY_PREVIOUSSONG",
 	"XF86MonBrightnessUp": "KEY_BRIGHTNESSUP", "XF86MonBrightnessDown": "KEY_BRIGHTNESSDOWN",
-	"XF86TouchpadToggle": "KEY_TOUCHPADTOGGLE",
-	"XF86TouchpadOn":     "KEY_TOUCHPADON", "XF86TouchpadOff": "KEY_TOUCHPADOFF",
+	"XF86TouchpadToggle": "KEY_TOUCHPAD_TOGGLE",
+	"XF86TouchpadOn":     "KEY_TOUCHPAD_ON", "XF86TouchpadOff": "KEY_TOUCHPAD_OFF",
 
 	// The NumLock-off keypad keysyms, on the keypad code they belong to.
 	"KP_End": "KEY_KP1", "KP_Down": "KEY_KP2", "KP_Next": "KEY_KP3",

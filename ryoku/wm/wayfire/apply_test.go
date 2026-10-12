@@ -433,17 +433,17 @@ always_binding_media_play = KEY_PLAYPAUSE
 command_media_next = playerctl next
 always_binding_media_next = KEY_NEXTSONG
 command_media_prev = playerctl previous
-always_binding_media_prev = KEY_PREVSONG
+always_binding_media_prev = KEY_PREVIOUSSONG
 command_hardware_brightness_up = ryoku-cmd-brightness +5
 repeatable_binding_hardware_brightness_up = KEY_BRIGHTNESSUP
 command_hardware_brightness_down = ryoku-cmd-brightness -5
 repeatable_binding_hardware_brightness_down = KEY_BRIGHTNESSDOWN
 command_hardware_touchpad_toggle = ryoku-wm-wayfire act input.touchpad toggle
-always_binding_hardware_touchpad_toggle = KEY_TOUCHPADTOGGLE
+always_binding_hardware_touchpad_toggle = KEY_TOUCHPAD_TOGGLE
 command_hardware_touchpad_on = ryoku-wm-wayfire act input.touchpad on
-always_binding_hardware_touchpad_on = KEY_TOUCHPADON
+always_binding_hardware_touchpad_on = KEY_TOUCHPAD_ON
 command_hardware_touchpad_off = ryoku-wm-wayfire act input.touchpad off
-always_binding_hardware_touchpad_off = KEY_TOUCHPADOFF
+always_binding_hardware_touchpad_off = KEY_TOUCHPAD_OFF
 
 [wm-actions]
 toggle_fullscreen = <super> KEY_F

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -57,7 +58,8 @@ func TestActivatorSpellings(t *testing.T) {
 		"XF86AudioRaiseVolume": "KEY_VOLUMEUP",
 		"XF86AudioPlay":        "KEY_PLAYPAUSE",
 		"XF86MonBrightnessUp":  "KEY_BRIGHTNESSUP",
-		"XF86TouchpadToggle":   "KEY_TOUCHPADTOGGLE",
+		"XF86TouchpadToggle":   "KEY_TOUCHPAD_TOGGLE",
+		"XF86AudioPrev":        "KEY_PREVIOUSSONG",
 		"SUPER":                "<super>",
 		"SUPER + Q":            "<super> KEY_Q",
 		"SUPER + mouse:272":    "<super> BTN_LEFT",
@@ -78,6 +80,25 @@ func TestActivatorSpellings(t *testing.T) {
 		}
 		if !ok || got != want {
 			t.Errorf("toWayfireActivator(%q) = %q, %v; want %q", chord, got, ok, want)
+		}
+	}
+}
+
+// Wayfire resolves activator keys through libevdev's code names and drops a
+// binding whose key it cannot name, silently, when the config loads. Every
+// spelling the keysym table emits must be a kernel key name.
+func TestKeysymTableUsesKernelKeyNames(t *testing.T) {
+	header, err := os.ReadFile("/usr/include/linux/input-event-codes.h")
+	if err != nil {
+		t.Skipf("kernel input header unavailable: %v", err)
+	}
+	known := map[string]bool{}
+	for _, m := range regexp.MustCompile(`(?m)^#define\s+((?:KEY|BTN)_[A-Z0-9_]+)`).FindAllSubmatch(header, -1) {
+		known[string(m[1])] = true
+	}
+	for keysym, code := range wayfireKeys {
+		if !known[code] {
+			t.Errorf("%s maps to %s, which is not a kernel key name", keysym, code)
 		}
 	}
 }
@@ -111,7 +132,7 @@ func TestResolveEmitsCatalogue(t *testing.T) {
 		"command.always_binding_media_play":                 {activator: "KEY_PLAYPAUSE", commandOpt: "command_media_play", cmd: "playerctl play-pause"},
 		"command.always_binding_media_mute":                 {activator: "KEY_MUTE", commandOpt: "command_media_mute", cmd: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"},
 		"command.repeatable_binding_hardware_brightness_up": {activator: "KEY_BRIGHTNESSUP", commandOpt: "command_hardware_brightness_up", cmd: "ryoku-cmd-brightness +5"},
-		"command.always_binding_hardware_touchpad_toggle":   {activator: "KEY_TOUCHPADTOGGLE", commandOpt: "command_hardware_touchpad_toggle", cmd: "ryoku-wm-wayfire act input.touchpad toggle"},
+		"command.always_binding_hardware_touchpad_toggle":   {activator: "KEY_TOUCHPAD_TOGGLE", commandOpt: "command_hardware_touchpad_toggle", cmd: "ryoku-wm-wayfire act input.touchpad toggle"},
 		"command.binding_shell_screenshot_print":            {activator: "KEY_PRINT", commandOpt: "command_shell_screenshot_print"},
 		"command.binding_workspace_hide_window":             {activator: "<super> KEY_H", commandOpt: "command_workspace_hide_window", cmd: "ryoku-wm-wayfire act window.hide focused"},
 		"command.binding_workspace_scratchpad":              {activator: "<super> <alt> KEY_H", commandOpt: "command_workspace_scratchpad", cmd: "ryoku-wm-wayfire act workspace.toggleSpecial scratchpad"},
