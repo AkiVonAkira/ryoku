@@ -563,6 +563,7 @@ func TestReconcileDisplayModes(t *testing.T) {
 		"if [ \"$1\" = settle ] && [ \"$2\" = --check ]; then exit ${CHK:-0}; fi\n"+
 		"if [ \"$1\" = settle ]; then exit ${SET:-0}; fi\nexit 0\n")
 	t.Setenv("PATH", bin)
+	t.Setenv("RYOKU_WM", "")
 	t.Setenv("XDG_CURRENT_DESKTOP", "hyprland") // a live session for wm.Detect()
 
 	t.Setenv("CHK", "0") // every display at its best available mode
