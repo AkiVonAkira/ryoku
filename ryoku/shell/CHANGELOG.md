@@ -605,6 +605,15 @@
   now found through `libraryfolders.vdf`, and scenes render with that install's
   assets, which also makes the WE assets directory setting do something
   (`ryogami/daemon/steam_libraries.go`, `ryogami/picker/src/core/library.cpp`).
+- **Wayfire keeps the desktop visible and wallpaper transitions render on its
+  GLES path.** Deck frost now counts only real application toplevels, so
+  layer-shell residue cannot turn the haze into an opaque cover over the
+  wallpaper and desktop widgets. The Edge transition no longer passes local
+  arrays between shader functions, which the GLSL ES 100 backend rejected, and
+  any unsupported catalogue shader falls back to the portable fade instead of
+  leaving the desktop transparent (`quickshell/inir/services/CompositorService.qml`,
+  `quickshell/shell/modules/wallpaper/Backdrop.qml`,
+  `quickshell/shell/modules/wallpaper/skwd/edge-transition.frag`).
 - **Bluetooth devices stay connected after pairing.** Ryoku now stops discovery
   before it pairs or connects, trusts a new bond before connecting, and retries
   the first post-pair connection once. The shell, every bar style, Nomarchy and
