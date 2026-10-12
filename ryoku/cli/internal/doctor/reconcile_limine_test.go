@@ -17,13 +17,16 @@ func stubLimineBootGates(t *testing.T) {
 	t.Helper()
 	oldManaged := limineManagedBoot
 	oldInstalled := doctorPackageInstalled
+	oldLimine := liminePkgInstalled
 	oldManager := doctorPackageManager
 	limineManagedBoot = func() bool { return true }
 	doctorPackageInstalled = func(string) bool { return true }
+	liminePkgInstalled = func(string) bool { return true }
 	doctorPackageManager = func() (host.PackageManager, error) { return host.Pacman, nil }
 	t.Cleanup(func() {
 		limineManagedBoot = oldManaged
 		doctorPackageInstalled = oldInstalled
+		liminePkgInstalled = oldLimine
 		doctorPackageManager = oldManager
 	})
 }
