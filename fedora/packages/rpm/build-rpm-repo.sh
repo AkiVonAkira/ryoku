@@ -8,7 +8,7 @@ mirror_input=${RYOKU_RPM_MIRROR:-}
 local_build=${RYOKU_RPM_LOCAL:-0}
 signing_key=${RYOKU_RPM_SIGNING_KEY:-}
 die() { printf 'build-rpm-repo: %s\n' "$*" >&2; exit 1; }
-for tool in rpmbuild createrepo_c cp find rpm; do
+for tool in rpmbuild createrepo_c cp find rpm go python3; do
   command -v "$tool" >/dev/null || die "missing $tool"
 done
 [[ $local_build == 0 || $local_build == 1 ]] || die 'RYOKU_RPM_LOCAL must be 0 or 1'
@@ -43,6 +43,25 @@ fi
 upstream_manifest="$srpms/upstream-rpms.tsv"
 [[ -f $upstream_manifest ]] \
   || die "missing upstream RPM identity manifest: $upstream_manifest"
+
+# Before the builds, so a package without a translation row fails fast.
+mapfile -t meta < <(python3 - "$srpms/release.json" <<'PYMETA'
+import json
+import sys
+
+data = json.load(open(sys.argv[1]))
+for key in ("release", "version", "commit", "channel"):
+    print(data[key])
+PYMETA
+)
+((${#meta[@]} == 4)) || die "could not read $srpms/release.json"
+manifest_bin="$work/ryoku-manifest"
+(cd "$root/ryoku/cli" && go build -mod=vendor -o "$manifest_bin" ./cmd/ryoku-manifest) \
+  || die 'could not build cmd/ryoku-manifest'
+"$manifest_bin" -repo "$root" -edition fedora -release "${meta[0]}" \
+  -version "${meta[1]}" -commit "${meta[2]}" -channel "${meta[3]}" \
+  -out "$out/manifest.json" \
+  || die 'could not generate manifest.json'
 
 keydb=
 if [[ -n $signing_key ]]; then
