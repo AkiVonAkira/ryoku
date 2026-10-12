@@ -582,6 +582,10 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **Bluetooth devices stay connected after pairing.** Ryoku now stops discovery
+  before it pairs or connects, trusts a new bond before connecting, and retries
+  the first post-pair connection once. The shell, every bar style, Nomarchy and
+  the Hub use the same sequence (#373).
 - **Screen recording works on machines without a hardware video encoder.**
   The codec check refused every GPU that could not encode H.264, AV1, VP9 or
   VP8, and any machine where GPU Screen Recorder's probe failed, so Intel
