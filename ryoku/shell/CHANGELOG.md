@@ -582,6 +582,16 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **Screen recording works on machines without a hardware video encoder.**
+  The codec check refused every GPU that could not encode H.264, AV1, VP9 or
+  VP8, and any machine where GPU Screen Recorder's probe failed, so Intel
+  boxes without VA-API, nouveau, virtual machines and broken-driver sessions
+  never started a capture. It now tries another hardware codec, then H.264 on
+  the CPU, and only refuses when nothing can encode. A capture that dies says
+  why: a pending restart after an NVIDIA driver update, a session without a
+  GPU driver, or GPU Screen Recorder's own error, also written to the journal
+  (`ryoku-cmd-record`) and to `~/.local/state/ryoku/recorder.log`. Region
+  captures pass the box straight to `-w`, since GSR 6 deprecated `-region`.
 - **Bar Studio no longer revives the retired frame-local dock store.** New
   frame-bar writes keep the schema version but leave dock settings in the
   universal top-level store; legacy nested pins remain readable until doctor
