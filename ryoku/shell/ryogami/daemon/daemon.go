@@ -296,6 +296,9 @@ func (d *daemon) serveTopic(conn net.Conn, r *bufio.Reader, name string) {
 // of order (the wire IDs make that safe).
 func (d *daemon) serveRequests(conn net.Conn, r *bufio.Reader, first string) {
 	connectionID := connectionSequence.Add(1)
+	if d.ui != nil {
+		defer d.ui.unsubscribed(connectionID)
+	}
 	if d.sources != nil {
 		d.sources.openSearchConnection(connectionID)
 		defer d.sources.dropSearchConnection(connectionID)
@@ -425,6 +428,18 @@ func (d *daemon) serveRequests(conn net.Conn, r *bufio.Reader, first string) {
 				return false
 			}
 			if was == nil && events != nil {
+				if d.ui != nil {
+					d.ui.subscribed(connectionID, func(name string, data map[string]interface{}) {
+						b, err := json.Marshal(event{Event: name, Data: data})
+						if err != nil {
+							return
+						}
+						select {
+						case events <- string(b):
+						default:
+						}
+					})
+				}
 				subscribed <- events
 			}
 			return true

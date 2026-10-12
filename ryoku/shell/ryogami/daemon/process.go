@@ -14,18 +14,28 @@ import (
 
 // managedProcess supervises the resident picker; a toggle only maps or unmaps its surface.
 type managedProcess struct {
-	mu     sync.Mutex
-	cmd    *exec.Cmd
-	qml    string
-	gpuEnv func() []string
-	gpu    []string
+	mu           sync.Mutex
+	cmd          *exec.Cmd
+	command      func(string, ...string) *exec.Cmd
+	qml          string
+	gpuEnv       func() []string
+	gpu          []string
+	ready        bool
+	startVisible bool
+	subscriberID uint64
+	pending      pickerPendingEvent
+}
+
+type pickerPendingEvent struct {
+	name string
+	data map[string]interface{}
 }
 
 func headless() bool { return os.Getenv("RYOGAMI_HEADLESS") != "" }
 
 // gpuEnv is read at each spawn so a changed GPU preference applies on the next start.
 func newPickerProcess(gpuEnv func() []string) *managedProcess {
-	return &managedProcess{qml: resolveShellQML(), gpuEnv: gpuEnv}
+	return &managedProcess{qml: resolveShellQML(), gpuEnv: gpuEnv, command: exec.Command}
 }
 
 // resolveShellQML finds the picker entry point: env override first (the dev
@@ -55,6 +65,10 @@ func (m *managedProcess) runningLocked() bool {
 	}
 	if m.cmd.ProcessState != nil {
 		m.cmd = nil
+		m.ready = false
+		m.startVisible = false
+		m.subscriberID = 0
+		m.pending = pickerPendingEvent{}
 		return false
 	}
 	return true
@@ -69,14 +83,26 @@ func (m *managedProcess) launch(extraEnv ...string) {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.launchLocked(extraEnv...)
+}
+
+func (m *managedProcess) launchLocked(extraEnv ...string) {
 	if m.runningLocked() {
 		return
 	}
+	m.ready = false
+	m.startVisible = false
+	m.subscriberID = 0
+	m.pending = pickerPendingEvent{}
 	m.clearLeftover()
 	// The picker watches the shell's palette file; a directory that does not exist yet
 	// cannot be watched, and on a first login the shell may not have created it.
 	_ = os.MkdirAll(filepath.Dir(themeColorsPath()), 0o755)
-	cmd := exec.Command("quickshell", "-p", m.qml)
+	command := m.command
+	if command == nil {
+		command = exec.Command
+	}
+	cmd := command("quickshell", "-p", m.qml)
 	var gpu []string
 	if m.gpuEnv != nil {
 		gpu = m.gpuEnv()
@@ -95,6 +121,7 @@ func (m *managedProcess) launch(extraEnv ...string) {
 	}
 	m.cmd = cmd
 	m.gpu = gpu
+	m.startVisible = slices.Contains(extraEnv, "RYOGAMI_START_VISIBLE=1")
 	go func() { _ = cmd.Wait() }()
 }
 
@@ -209,18 +236,63 @@ func (m *managedProcess) kill() {
 		_ = m.cmd.Process.Kill()
 		m.cmd = nil
 	}
+	m.ready = false
+	m.startVisible = false
+	m.subscriberID = 0
+	m.pending = pickerPendingEvent{}
 }
 
-// ensure reports whether the resident instance is up, cold-starting a visible
-// one when it is not (the daemon just booted, or the picker crashed). extra
-// rides on that cold start, so a request still lands on a picker that was not
-// there to hear the event.
+// ensure reports whether the resident picker is ready to receive an event. A
+// request arriving while its process connects is retained until subscription.
 func (m *managedProcess) ensure(extra ...string) bool {
-	if m.running() {
-		return true
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.runningLocked() {
+		if m.ready {
+			return true
+		}
+		pending := pickerPendingEvent{
+			name: "ryogami.wall.toggle",
+			data: map[string]interface{}{},
+		}
+		for _, entry := range extra {
+			if tab, ok := strings.CutPrefix(entry, "RYOGAMI_START_SETTINGS="); ok {
+				pending = pickerPendingEvent{
+					name: "ryogami.wall.settings",
+					data: map[string]interface{}{"tab": tab},
+				}
+				break
+			}
+		}
+		if pending.name != "ryogami.wall.toggle" || !m.startVisible {
+			m.pending = pending
+		}
+		return false
 	}
-	m.launch(append([]string{"RYOGAMI_START_VISIBLE=1"}, extra...)...)
+	if !headless() {
+		m.launchLocked(append([]string{"RYOGAMI_START_VISIBLE=1"}, extra...)...)
+	}
 	return false
+}
+
+func (m *managedProcess) subscribed(id uint64, deliver func(string, map[string]interface{})) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.pending.name != "" {
+		deliver(m.pending.name, m.pending.data)
+		m.pending = pickerPendingEvent{}
+	}
+	m.subscriberID = id
+	m.ready = true
+}
+
+func (m *managedProcess) unsubscribed(id uint64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.subscriberID == id {
+		m.subscriberID = 0
+		m.ready = false
+	}
 }
 
 // A resident picker hears the event; a dead one cold-starts straight onto the folio.

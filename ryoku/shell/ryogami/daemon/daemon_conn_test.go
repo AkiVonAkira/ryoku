@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -301,5 +302,55 @@ func TestClosingConnectionClearsSearchRegistry(t *testing.T) {
 	if len(sources.searchConnections) != 0 || len(sources.searches) != 0 || len(sources.searchLatest) != 0 || len(sources.thumbLatest) != 0 {
 		t.Fatalf("connection search state leaked: active=%v searches=%v latest=%v thumbs=%v",
 			sources.searchConnections, sources.searches, sources.searchLatest, sources.thumbLatest)
+	}
+}
+
+func TestPickerOpenDuringLaunchIsDeliveredAfterSubscribe(t *testing.T) {
+	d := &daemon{
+		events: newEventHub(),
+		ui: &managedProcess{
+			cmd: &exec.Cmd{Process: &os.Process{Pid: os.Getpid()}},
+		},
+	}
+	if d.ui.ensure() {
+		t.Fatal("picker without a subscriber reported ready")
+	}
+
+	server, client := net.Pipe()
+	t.Cleanup(func() { _ = client.Close() })
+	go func() {
+		defer server.Close()
+		d.handle(server)
+	}()
+	lines := make(chan string, 4)
+	go func() {
+		scanner := bufio.NewScanner(client)
+		for scanner.Scan() {
+			lines <- scanner.Text()
+		}
+		close(lines)
+	}()
+	if _, err := client.Write([]byte("{\"id\":1,\"method\":\"subscribe\"}\n")); err != nil {
+		t.Fatal(err)
+	}
+	next := func(what string) string {
+		t.Helper()
+		select {
+		case line := <-lines:
+			return line
+		case <-time.After(3 * time.Second):
+			t.Fatalf("timed out waiting for %s", what)
+			return ""
+		}
+	}
+	if reply := next("subscribe reply"); !strings.Contains(reply, `"subscribed":true`) {
+		t.Fatalf("subscribe reply = %s", reply)
+	}
+	var ev capturedEvent
+	if line := next("retained picker open"); json.Unmarshal([]byte(line), &ev) != nil || ev.Event != "ryogami.wall.toggle" {
+		t.Fatalf("retained event = %s", line)
+	}
+	if !d.ui.ensure() {
+		t.Fatal("subscribed picker did not report ready")
 	}
 }
