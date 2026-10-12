@@ -325,11 +325,12 @@ are supported; Atomic and other rpm-ostree systems are refused.
   `stable/fedora/<N>/`.
 - `iso/` builds an experimental console live ISO with kiwi-ng in a container:
   `build.sh` stages the shared live session, the TUI, and the Fedora backend
+  (`iso/backend/`, the Fedora install steps on the shared backend libraries)
   into the `kiwi/` image description. It is not published.
 
-Fedora is installed through the shell installer, not an ISO. It leaves NVIDIA
-on nouveau, keeps GRUB, and does not provide Ryoku snapshots or a snapshot boot
-menu. Wayfire is unavailable because Fedora ships 0.10.1 and Ryoku requires
+Fedora is installed through the shell installer, or experimentally from the
+unpublished `iso/` image. It leaves NVIDIA on nouveau, keeps GRUB, and does not
+provide Ryoku snapshots or a snapshot boot menu. Wayfire is unavailable because Fedora ships 0.10.1 and Ryoku requires
 0.11. Package rollback and the boot guard use DNF downgrades.
 
 ## Tooling

@@ -32,6 +32,13 @@
   Design Discord glyph included in the installer's Nerd Font.
 
 ### Added
+- **The installer supports the experimental Fedora live ISO.** It reads its
+  choices from Fedora's package table, explains the edition in a short
+  `Ryoku on Fedora` card, installs online only, lets Secure Boot stay on, keeps
+  legacy BIOS blocked, names GRUB instead of Limine, and always gives Ryoku its
+  own ESP alongside another OS. Apps the edition never delivers are hidden;
+  the PulseAudio GUI stays offered, since `ryoku doctor` installs it unless it
+  is unticked here.
 - **The Void installer explains the edition before setup begins.** A short card
   covers niri-only support, unavailable apps, and using `ryoku update --system`
   because XBPS has no transaction hooks.

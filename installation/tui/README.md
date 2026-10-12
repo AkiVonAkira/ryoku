@@ -48,7 +48,11 @@ Bash. The Void flow opens with a short edition notice after Welcome; Arch and
 CachyOS skip it. It then keeps the same backend environment contract, but greys
 out Hyprland with its packaging reason, offers niri, Firefox or Chromium, and
 omits AUR-only apps. The snapshot toggle, all three login shells, and the four
-hardware profiles remain available from the Void package table.
+hardware profiles remain available from the Void package table. The Fedora
+flow works the same way from `fedora/packages/translations.tsv`: its notice
+covers online-only installs, GRUB with Fedora's signed shim, nouveau, and the
+missing snapshot boot menu. Wayfire is greyed out, and apps the edition's
+backend never installs are hidden on both Void and Fedora.
 
 Some steps are conditional: the `gpu` (graphics mode) step matters only on a
 hybrid iGPU + dGPU laptop, and the pickers fall back to a small built-in list
@@ -67,9 +71,12 @@ that would destroy data unintentionally:
   enable UEFI" guidance. The Void backend installs Limine for BIOS on a whole
   disk, so on Void the card shows a caution, the disk step offers only the
   whole-disk strategy, and `installEnv` passes `RYOKU_FIRMWARE_MODE=bios`.
-- **Secure Boot blocks Review.** `secureBootEnabled` reads the last byte of the
-  `SecureBoot` efivar; when it is on, `reviewBlockReason` blocks the install
-  (Limine is unsigned). Mirrors the backend's preflight gate.
+  Fedora is UEFI-only and blocks BIOS like Arch.
+- **Secure Boot blocks Review, except on Fedora.** `secureBootEnabled` reads the
+  last byte of the `SecureBoot` efivar; when it is on, `secureBootBlocked`
+  blocks the install on Arch, CachyOS and Void (Limine is unsigned). Fedora
+  boots through its signed shim and GRUB, so Secure Boot may stay on. Mirrors
+  the backend's preflight gate.
 - **Live-medium exclusion.** `liveDisk` resolves the disk backing the archiso
   boot medium and `excludeDisk` hides it (plus zram / loop / `sr` / eMMC boot
   areas) from the target-disk picker, so the installer never offers to erase the
@@ -86,7 +93,10 @@ that would destroy data unintentionally:
   packages. `installEnv` emits the selected path with `RYOKU_ONLINE=0` and
   `RYOKU_OFFLINE_REPO`, using the same backend contract for both. An image
   without a usable repository gates Review on `netOnline()` and emits
-  `RYOKU_ONLINE=1`.
+  `RYOKU_ONLINE=1`. A Fedora image never has one, so it always installs online.
+- **Fedora uses its own ESP alongside another OS.** `espMode` returns
+  `dedicated` on Fedora, because Fedora's shim and GRUB packages own `EFI/BOOT`
+  and `EFI/fedora` on whatever ESP is mounted.
 
 ## Layout math, and how it mirrors the backend
 
