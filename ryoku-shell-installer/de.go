@@ -254,6 +254,9 @@ func parseKwinOutputs(b []byte) []niriOutput {
 
 func kwinOutput(name string, node map[string]any) niriOutput {
 	o := niriOutput{name: name}
+	if enabled, ok := node["enabled"].(bool); ok {
+		o.off = !enabled
+	}
 	if mode, ok := node["mode"].(map[string]any); ok {
 		w, wok := mode["width"].(float64)
 		h, hok := mode["height"].(float64)

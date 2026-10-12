@@ -58,6 +58,11 @@
   steps, so a stuck stable install can be finished on unstable.
 
 ### Fixed
+- **Carried monitor layouts no longer leave a laptop panel dark without a
+  live alternative.** GNOME, KDE, Hyprland, niri and sway output settings keep
+  an internal panel disabled only when another enabled connector is currently
+  connected. Otherwise the installer carries the panel over as enabled, while
+  preserving intentional disabled outputs on desktop layouts.
 - **Release plans name experimental paths before installation.** Void and Fedora
   plans show one experimental-edition notice, Wayfire is marked experimental
   in the compositor choice, and payloads are fetched from the canonical
