@@ -155,6 +155,10 @@
   accepts the live versioned frame-bar schema, preserves every effective rail
   and menu value, and no longer creates the retired nested dock store that the
   following reconciler immediately removes.
+- **Doctor findings are stable and fully translated.** A palette-driven animated
+  border is no longer mistaken for a stale fixed-colour pin on every run.
+  Count-led findings, NVIDIA sleep status, and hybrid-GPU power draw now pass
+  complete sentences through the catalog instead of leaving English fragments.
 - **Doctor skips the AMD action audit under tuned-ppd.** It reads
   power-profiles-daemon's optional action metadata over D-Bus and reports the
   row as not applicable when the active provider does not expose those actions.
