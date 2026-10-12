@@ -208,6 +208,13 @@ func runitName(name string) string {
 }
 
 func (a *App) Service(args []string) int {
+	if len(args) >= 2 && args[0] == "reconcile" {
+		checkOnly := len(args) == 3 && args[2] == "--check"
+		if (len(args) != 2 && !checkOnly) || (args[1] != "--user" && args[1] != "--system") {
+			return ExitUsage
+		}
+		return a.ServiceReconcile(args[1], checkOnly)
+	}
 	user := true
 	for len(args) > 0 && (args[0] == "--user" || args[0] == "--system") {
 		user = args[0] == "--user"

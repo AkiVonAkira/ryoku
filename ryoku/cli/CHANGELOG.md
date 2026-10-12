@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- **The host seam reconciles service activation from one manifest.**
+  `ryoku-host svc reconcile` enables system services through systemd or runit,
+  writes the ordered Turnstile session roster, and preserves explicit user
+  disables. Doctor applies the user scope after every update.
 - **Updates, channels, rollback, and doctor now work on Fedora.** The host seam
   detects dnf5 or dnf, translates the shared package catalogue, reads and
   rewrites `/etc/yum.repos.d/ryoku.repo`, and moves the exact RPM set served by

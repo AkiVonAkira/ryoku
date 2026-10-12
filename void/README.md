@@ -92,9 +92,10 @@ fails if a source unit has no row.
 
 System services install under `/etc/sv/`. Packaged user services live under
 `/usr/lib/ryoku/runit/user/` and are provisioned to
-`~/.config/service/` for Turnstile. `init/session/session-start` publishes the
-compositor environment, prepares the user D-Bus session, and starts the ordered
-`init/session-services` roster. `init/lib/wait-for` provides bounded dependency
+`~/.config/service/` for Turnstile. `system/services/manifest.tsv` owns their
+activation and order. `ryoku-host svc reconcile` writes the per-user roster;
+`init/session/session-start` publishes the compositor environment, reconciles
+that roster, and starts it. `init/lib/wait-for` provides bounded dependency
 waits because runit has no declarative ordering.
 
 Ryoku configures Turnstile, PAM, elogind-owned `/run/user`, and the user D-Bus

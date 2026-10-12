@@ -14,7 +14,8 @@ install_runit_payload() {
   install -Dm755 "$init_root/lib/wait-for" "$pkgdir/usr/lib/ryoku/runit/wait-for"
   install -Dm755 "$init_root/env/xdg-dirs" "$pkgdir/usr/lib/ryoku/runit/xdg-dirs"
   install -Dm755 "$init_root/session/session-start" "$pkgdir/usr/lib/ryoku/runit/session-start"
-  install -Dm644 "$init_root/session-services" "$pkgdir/usr/lib/ryoku/runit/session-services"
+  install -Dm440 "$_repo/void/packages/srcpkgs/ryoku-desktop/files/ryoku-service-health" \
+    "$pkgdir/etc/sudoers.d/ryoku-service-health"
   install -Dm644 "$init_root/env/environment-d" "$pkgdir/etc/profile.d/ryoku-environment-d.sh"
 
   install -Dm755 "$_repo/system/boot/limine/50-ryoku-limine" \
@@ -39,6 +40,8 @@ install_runit_payload() {
 
 package() {
   local cfg="$pkgdir/usr/share/ryoku/config"
+  install -Dm644 "$_repo/system/services/manifest.tsv" \
+    "$pkgdir/usr/share/ryoku/services.tsv"
 
   # /etc/ryoku-release: the named state this build is. build-repo.sh exports
   # RYOKU_RELEASE (a release tag on stable, the dev version on testing, a
@@ -79,10 +82,15 @@ EOF
       cp -a "${appdir}quickshell/." "$cfg/quickshell/$appname/"
     fi
     if [ "$has_cmake" = 1 ]; then
-      # compiled Qt app: build to a binary named for the app dir.
-      cmake -S "$appdir" -B "${appdir}build" -G Ninja -DCMAKE_BUILD_TYPE=Release
-      cmake --build "${appdir}build"
-      install -Dm755 "${appdir}build/$appname" "$pkgdir/usr/bin/$appname"
+      # A staging audit supplies already-built binaries so it can compare
+      # package paths without rebuilding the application.
+      if [[ -n ${RYOKU_PREBUILT_DIR:-} ]]; then
+        install -Dm755 "$RYOKU_PREBUILT_DIR/$appname" "$pkgdir/usr/bin/$appname"
+      else
+        cmake -S "$appdir" -B "${appdir}build" -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build "${appdir}build"
+        install -Dm755 "${appdir}build/$appname" "$pkgdir/usr/bin/$appname"
+      fi
     fi
     if [ -d "${appdir}bin" ]; then
       for b in "${appdir}bin/"*; do
@@ -95,8 +103,12 @@ EOF
       helperdir="$(dirname "$gomod")"
       helper="$(sed -n -E 's/^module[[:space:]]+//p' "$gomod" | head -1)"
       [ -n "$helper" ] || continue
-      ( cd "$helperdir" && go build -o "$helper" . )
-      install -Dm755 "$helperdir/$helper" "$pkgdir/usr/bin/$helper"
+      if [[ -n ${RYOKU_PREBUILT_DIR:-} ]]; then
+        install -Dm755 "$RYOKU_PREBUILT_DIR/$helper" "$pkgdir/usr/bin/$helper"
+      else
+        ( cd "$helperdir" && go build -o "$helper" . )
+        install -Dm755 "$helperdir/$helper" "$pkgdir/usr/bin/$helper"
+      fi
     done
     for d in "${appdir}"*.desktop; do
       [ -f "$d" ] && install -Dm644 "$d" "$pkgdir/usr/share/applications/$(basename "$d")"

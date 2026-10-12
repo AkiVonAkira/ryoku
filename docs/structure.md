@@ -180,6 +180,9 @@ System-level definition installed into the target.
   `hardware.packages` (per-profile microcode and GPU drivers), `dev.packages`
   (language toolchains, pacstrapped), `aur.packages` (built post-install), and
   `resolve`, the shared lane resolver used by Void and Fedora.
+- `services/manifest.tsv` is the activation source for systemd and runit. It
+  records each service's scope, lifecycle, two implementations, and the rule
+  that keeps an explicit user disable intact.
 
 ## `installation/` the build
 
@@ -287,11 +290,11 @@ Turnstile init integration. `void/README.md` is the index.
 - `.github/workflows/publish-repo-void.yml` publishes the testing and stable
   XBPS repositories. `.github/workflows/build-iso-void.yml` builds the Void ISO.
 - `init/` is the systemd-to-runit translation. `translations.tsv` is the
-  completeness manifest enforced by `tests/void-init.sh`; `system/` and `user/`
+  completeness map enforced by `tests/void-init.sh`; `system/` and `user/`
   hold runit service directories, `env/` handles the Turnstile environment,
-  `lib/wait-for` supplies bounded dependency waits, `session/session-start`
-  starts the login session, and `session-services` is the ordered user-service
-  roster.
+  `lib/wait-for` supplies bounded dependency waits, and `session/session-start`
+  starts the login session from the per-user roster that `ryoku-host` derives
+  from `system/services/manifest.tsv`.
 
 Runtime code does not import this directory. It invokes `/usr/bin/ryoku-host`,
 built from `ryoku/cli/cmd/ryoku-host` with the backends in

@@ -15,6 +15,7 @@ Host detection:
   repo sync
 
 Services:
+  svc reconcile <--system|--user> [--check]
   svc [--user|--system] <start|stop|restart|try-restart|reload|is-active|is-enabled|enable|disable|kill> [--now] <name>...
   svc [--user|--system] reset-failed <name>...
   svc [--user|--system] failed

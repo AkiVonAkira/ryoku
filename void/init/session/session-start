@@ -2,8 +2,8 @@
 # Republish the compositor environment before restarting supervised processes.
 
 INIT_LIB=${RYOKU_INIT_LIB:-/usr/lib/ryoku/runit}
-ROSTER=$INIT_LIB/session-services
 SERVICE_DIR=${RYOKU_USER_SERVICE_DIR:-$HOME/.config/service}
+ROSTER=${RYOKU_RUNIT_SESSION_SERVICES:-$SERVICE_DIR/.ryoku-session-services}
 ENV_DIR=${TURNSTILE_ENV_DIR:-$HOME/.config/service-env}
 POWER_CUTOVER=${RYOKU_POWER_CUTOVER:-ryoku-power-cutover}
 
@@ -44,6 +44,9 @@ else
 fi
 if ! ryoku-host session ensure --user; then
 	log "could not provision Ryoku user services"
+fi
+if ! ryoku-host svc reconcile --user; then
+	log "could not reconcile the Ryoku session roster"
 fi
 
 ryoku-reload-cover begin boot || true

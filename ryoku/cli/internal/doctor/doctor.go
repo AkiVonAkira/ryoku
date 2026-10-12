@@ -269,6 +269,7 @@ func reconcilers() []reconciler {
 		{i18n.T("retired cursor keys"), reconcileRetiredCursorLeaf},
 		{i18n.T("session target units"), reconcileSessionTarget},
 		{i18n.T("Turnstile session bus"), reconcileTurnstile},
+		{i18n.T("user service activation"), reconcileServiceManifest},
 		{i18n.T("desktop session components"), reconcileSessionComponents},
 		{i18n.T("desktop portal routing"), reconcilePortalRouting},
 		{i18n.T("desktop portal session"), reconcilePortalSession},

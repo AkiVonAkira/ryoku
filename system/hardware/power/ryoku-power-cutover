@@ -230,7 +230,7 @@ stop_session_services() {
     systemctl --user stop "$session_target"
     return
   fi
-  local roster=${RYOKU_RUNIT_SESSION_SERVICES:-/usr/lib/ryoku/runit/session-services}
+  local roster=${RYOKU_RUNIT_SESSION_SERVICES:-${RYOKU_USER_SERVICE_DIR:-${HOME:-}/.config/service}/.ryoku-session-services}
   local service
   [[ -r $roster ]] || return 0
   while IFS= read -r service; do
@@ -256,7 +256,7 @@ start_session_services() {
     systemctl --user start "$session_target"
     return
   fi
-  local roster=${RYOKU_RUNIT_SESSION_SERVICES:-/usr/lib/ryoku/runit/session-services}
+  local roster=${RYOKU_RUNIT_SESSION_SERVICES:-${RYOKU_USER_SERVICE_DIR:-${HOME:-}/.config/service}/.ryoku-session-services}
   local service service_dir=${RYOKU_USER_SERVICE_DIR:-${HOME:-}/.config/service}
   [[ -r $roster ]] || return 0
   while IFS= read -r service; do

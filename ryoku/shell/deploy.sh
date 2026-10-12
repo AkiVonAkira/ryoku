@@ -142,15 +142,10 @@ runit_restart_service() {
   sv restart "$service"
 }
 
-runit_enable_system_service() {
-  local name=$1
-  [[ -d /etc/sv/$name ]] || return 0
-  sudo install -d -m755 /etc/runit/runsvdir/default
-  sudo ln -sfn "/etc/sv/$name" "/etc/runit/runsvdir/default/$name"
-}
 
 install_runit_services() {
   local init_root="$here/../../void/init"
+  local manifest="$here/../../system/services/manifest.tsv"
   local src name file
 
   [[ -x $init_root/session/session-start ]] || {
@@ -161,7 +156,7 @@ install_runit_services() {
   sudo install -D -m755 "$init_root/lib/wait-for" /usr/lib/ryoku/runit/wait-for
   sudo install -D -m755 "$init_root/env/xdg-dirs" /usr/lib/ryoku/runit/xdg-dirs
   sudo install -D -m755 "$init_root/session/session-start" /usr/lib/ryoku/runit/session-start
-  sudo install -D -m644 "$init_root/session-services" /usr/lib/ryoku/runit/session-services
+  sudo install -D -m644 "$manifest" /usr/share/ryoku/services.tsv
   # environment.d has no reader without a systemd user manager; SDDM's session
   # script sources /etc/profile.d before it execs the compositor.
   sudo install -D -m644 "$init_root/env/environment-d" /etc/profile.d/ryoku-environment-d.sh
@@ -180,15 +175,10 @@ install_runit_services() {
       [[ -f $file ]] || continue
       sudo install -m"$(stat -c '%a' "$file")" "$file" "/etc/sv/$name/${file##*/}"
     done
-    runit_enable_system_service "$name"
   done
 
-  # elogind is left to D-Bus activation (Void's default): sddm's run script
-  # activates login1 before the greeter, and a supervised copy would lose the
-  # bus name to it and restart every second.
-  for name in polkitd NetworkManager bluetoothd power-profiles-daemon socklog-unix nanoklogd sddm; do
-    runit_enable_system_service "$name"
-  done
+  sudo /usr/bin/ryoku-host svc reconcile --system
+  /usr/bin/ryoku-host svc reconcile --user
   say "installed runit and Turnstile services"
 }
 

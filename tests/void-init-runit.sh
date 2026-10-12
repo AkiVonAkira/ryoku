@@ -187,8 +187,10 @@ RSD=
 ERSD=
 SRSD=
 CRSD=
+URSD=
+MRSD=
 cleanup() {
-	for pid in "$RSD" "$ERSD" "$SRSD" "$CRSD"; do
+	for pid in "$RSD" "$ERSD" "$SRSD" "$CRSD" "$URSD" "$MRSD"; do
 		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
 	done
 }
@@ -400,6 +402,7 @@ PATH="$WORK/bin:$PATH" \
 	TURNSTILE_ENV_DIR="$WORK/session-env" \
 	RYOKU_INIT_LIB="$WORK/session-lib" \
 	RYOKU_USER_SERVICE_DIR="$WORK/session-svc" \
+	RYOKU_RUNIT_SESSION_SERVICES="$WORK/session-lib/session-services" \
 	WAYLAND_DISPLAY=wayland-session DISPLAY=:9 \
 	/repo/void/init/session/session-start
 wait_stat_at "$WORK/session-svc" ryoku-idle run \
@@ -428,6 +431,7 @@ PATH="$WORK/bin:$PATH" \
 	TURNSTILE_ENV_DIR="$WORK/session-env" \
 	RYOKU_INIT_LIB="$WORK/session-lib" \
 	RYOKU_USER_SERVICE_DIR="$WORK/session-svc" \
+	RYOKU_RUNIT_SESSION_SERVICES="$WORK/session-lib/session-services" \
 	WAYLAND_DISPLAY=wayland-session \
 	/repo/void/init/session/session-start 2>"$WORK/disabled-session.log"
 sleep 1
@@ -440,6 +444,7 @@ PATH="$WORK/bin:$PATH" \
 	TURNSTILE_ENV_DIR="$WORK/session-env" \
 	RYOKU_INIT_LIB="$WORK/session-lib" \
 	RYOKU_USER_SERVICE_DIR="$WORK/session-svc" \
+	RYOKU_RUNIT_SESSION_SERVICES="$WORK/session-lib/session-services" \
 	WAYLAND_DISPLAY=wayland-session \
 	/repo/void/init/session/session-start 2>"$WORK/failed-provision.log"
 grep -q 'could not provision Ryoku user services' "$WORK/failed-provision.log" \
@@ -463,6 +468,7 @@ PATH="$WORK/bin:$PATH" \
 	TURNSTILE_ENV_DIR="$WORK/fresh-env" \
 	RYOKU_INIT_LIB="$WORK/session-lib" \
 	RYOKU_USER_SERVICE_DIR="$WORK/fresh-svc" \
+	RYOKU_RUNIT_SESSION_SERVICES="$WORK/session-lib/session-services" \
 	RYOKU_TEST_PROVISION_DIR="$WORK/fresh-svc" \
 	WAYLAND_DISPLAY=wayland-fresh \
 	/repo/void/init/session/session-start
@@ -540,6 +546,73 @@ kill -0 "$probe_pid" 2>/dev/null &&
 kill -0 "$probe_child" 2>/dev/null &&
 	fail "supervised transient child survived stop"
 pass "ryoku-host transient is supervised, stateful, and fully removed"
+
+#### 16. manifest upgrade convergence: N starts its declared services; N+1
+####     adds one service in each scope without another activation roster.
+UP=$WORK/manifest-upgrade
+mkdir -p "$UP/user" /etc/sv/manifest-system-n /etc/sv/manifest-system-n1 \
+	/etc/runit/runsvdir/default /usr/share/ryoku
+make_manifest_service() {
+	dir=$1
+	mkdir -p "$dir"
+	cat > "$dir/run" <<'EOF'
+#!/bin/sh
+exec sleep 300
+EOF
+	chmod +x "$dir/run"
+}
+make_manifest_service "$UP/user/manifest-user-n"
+make_manifest_service "$UP/user/manifest-user-n1"
+make_manifest_service /etc/sv/manifest-system-n
+make_manifest_service /etc/sv/manifest-system-n1
+touch "$UP/user/manifest-user-n/down" "$UP/user/manifest-user-n1/down"
+runsvdir "$UP/user" >/dev/null 2>&1 &
+URSD=$!
+runsvdir /etc/runit/runsvdir/default >/dev/null 2>&1 &
+MRSD=$!
+cat > /usr/share/ryoku/services.tsv <<'EOF'
+id	scope	activation	systemd_unit	runit_service	user_disable_rule
+manifest-user-n	user	session	-	manifest-user-n	preserve
+manifest-system-n	system	boot	-	manifest-system-n	none
+EOF
+RYOKU_HOST_INIT=runit RYOKU_USER_SERVICE_DIR="$UP/user" \
+	/ryoku-host svc reconcile --user ||
+	fail "manifest N user reconcile failed"
+RYOKU_HOST_INIT=runit /ryoku-host svc reconcile --system ||
+	fail "manifest N system reconcile failed"
+wait_stat_at "$UP/user" manifest-user-n run ||
+	fail "manifest N user service was not supervised and running"
+wait_stat_at /etc/runit/runsvdir/default manifest-system-n run ||
+	fail "manifest N system service was not supervised and running"
+RYOKU_HOST_INIT=runit RYOKU_USER_SERVICE_DIR="$UP/user" \
+	/ryoku-host svc --user disable --now manifest-user-n ||
+	fail "could not record the explicit user disable"
+wait_stat_at "$UP/user" manifest-user-n down ||
+	fail "explicitly disabled manifest N user service stayed up"
+cat > /usr/share/ryoku/services.tsv <<'EOF'
+id	scope	activation	systemd_unit	runit_service	user_disable_rule
+manifest-user-n	user	session	-	manifest-user-n	preserve
+manifest-system-n	system	boot	-	manifest-system-n	none
+manifest-user-n1	user	session	-	manifest-user-n1	preserve
+manifest-system-n1	system	boot	-	manifest-system-n1	none
+EOF
+RYOKU_HOST_INIT=runit RYOKU_USER_SERVICE_DIR="$UP/user" \
+	/ryoku-host svc reconcile --user ||
+	fail "manifest N+1 user reconcile failed"
+RYOKU_HOST_INIT=runit /ryoku-host svc reconcile --system ||
+	fail "manifest N+1 system reconcile failed"
+wait_stat_at "$UP/user" manifest-user-n1 run ||
+	fail "manifest N+1 user service was not supervised and running"
+wait_stat_at /etc/runit/runsvdir/default manifest-system-n1 run ||
+	fail "manifest N+1 system service was not supervised and running"
+wait_stat_at "$UP/user" manifest-user-n down ||
+	fail "manifest N+1 resurrected the explicitly disabled user service"
+grep -qxF manifest-user-n1 "$UP/user/.ryoku-session-services" ||
+	fail "manifest N+1 user service is absent from the generated roster"
+if grep -qxF manifest-user-n "$UP/user/.ryoku-session-services"; then
+	fail "explicitly disabled user service remained in the generated roster"
+fi
+pass "manifest N+1 starts new system and user services without reviving disables"
 
 kill $RSD 2>/dev/null || true
 echo "void-init live runit checks passed"

@@ -18,6 +18,7 @@ BuildRequires:  gcc-c++
 BuildRequires:  qt6-qtbase-devel
 BuildRequires:  qt6-qtdeclarative-devel
 Requires:       ryoku = %{version}-%{release}
+Requires(post): ryoku = %{version}-%{release}
 Requires:       ryoku-shell = %{version}-%{release}
 Requires:       ryogami = %{version}-%{release}
 Requires:       ryoku-hub = %{version}-%{release}
@@ -167,41 +168,9 @@ systemd-run --quiet --collect --unit=ryoku-power-cutover-guard.service \
 
 %post
 systemctl daemon-reload >/dev/null 2>&1 || :
-_enable_system_once() {
-  unit=$1
-  marker=$2
-  [ -e "/usr/lib/systemd/system/$unit" ] || return 0
-  [ ! -e "$marker" ] || return 0
-  systemctl enable "$unit" >/dev/null 2>&1 || :
-  if [ -d /run/systemd/system ]; then
-    systemctl start "$unit" >/dev/null 2>&1 || :
-  fi
-  install -d /var/lib/ryoku
-  : > "$marker"
-}
-_enable_user_once() {
-  unit=$1
-  marker=$2
-  [ -e "/usr/lib/systemd/user/$unit" ] || return 0
-  [ ! -e "$marker" ] || return 0
-  systemctl --global enable "$unit" >/dev/null 2>&1 || :
-  install -d /var/lib/ryoku
-  : > "$marker"
-}
-_enable_system_once bluetooth.service /var/lib/ryoku/bluetooth-enabled
-_enable_system_once rtkit-daemon.service /var/lib/ryoku/rtkit-enabled
-_enable_system_once power-profiles-daemon.service /var/lib/ryoku/power-profiles-enabled
-_enable_system_once ryoku-wifi-regdom.service /var/lib/ryoku/wifi-regdom-enabled
-_enable_user_once ryoku-ai-usage.timer /var/lib/ryoku/ai-usage-timer-enabled
-_enable_user_once ryoku-bluetooth-reset.service /var/lib/ryoku/bt-reset-enabled
-_enable_user_once ryoku-bt-agent.service /var/lib/ryoku/bt-agent-enabled
-_enable_user_once ryoku-bootstrap.service /var/lib/ryoku/bootstrap-enabled
+RYOKU_HOST_INIT=systemd /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>&1 || :
 /usr/bin/ryoku-bluetooth-tune >/dev/null 2>&1 || :
 /usr/bin/ryoku-wifi-regdom apply >/dev/null 2>&1 || :
-if [ ! -e /var/lib/ryoku/network-kill-switch.enabled ]; then
-  systemctl disable ryoku-network-kill-guard.service \
-    ryoku-network-kill-disconnect.service >/dev/null 2>&1 || :
-fi
 
 %posttrans
 [ -d /run/systemd/system ] || exit 0

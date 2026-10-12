@@ -62,19 +62,17 @@ void_deploy_user() {
 
   log 'provisioning Turnstile user services for %s' "$user"
   run "$RYOKU_TARGET_CHROOT" /mnt chpst -u "$user:$user" \
-    env "HOME=/home/$user" "USER=$user" "LOGNAME=$user" \
+    env "HOME=/home/$user" "USER=$user" "LOGNAME=$user" "RYOKU_HOST_INIT=runit" \
     ryoku-host session ensure --user
+  run "$RYOKU_TARGET_CHROOT" /mnt chpst -u "$user:$user" \
+    env "HOME=/home/$user" "USER=$user" "LOGNAME=$user" "RYOKU_HOST_INIT=runit" \
+    ryoku-host svc reconcile --user
 }
 
 void_services() {
   log "enabling the Void desktop services"
-  run chroot /mnt ryoku-host session ensure --system
-  local service
-  for service in ryoku-var-state ryoku-boot-guard ryoku-network-kill-guard \
-    ryoku-network-kill-disconnect dbus turnstiled polkitd NetworkManager \
-    bluetoothd power-profiles-daemon socklog-unix nanoklogd sddm; do
-    void_enable_service "$service"
-  done
+  run chroot /mnt env RYOKU_HOST_INIT=runit ryoku-host session ensure --system
+  run chroot /mnt env RYOKU_HOST_INIT=runit ryoku-host svc reconcile --system
   if [[ ${RYOKU_ENABLE_SERIAL:-0} == 1 ]]; then
     if [[ -n ${RYOKU_DRYRUN:-} || ! -e /mnt/etc/sv/agetty-ttyS0 ]]; then
       run cp -a /mnt/etc/sv/agetty-generic /mnt/etc/sv/agetty-ttyS0

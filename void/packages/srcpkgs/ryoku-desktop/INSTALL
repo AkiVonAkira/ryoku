@@ -16,24 +16,6 @@ session_running() {
 		pgrep -x ryoku-idle >/dev/null 2>&1
 }
 
-enable_service_once() {
-	name=$1
-	service=/etc/sv/$name
-	link=/etc/runit/runsvdir/default/$name
-	[ -d "$service" ] || return 0
-	mkdir -p /etc/runit/runsvdir/default
-	[ -e "$link" ] || [ -L "$link" ] || ln -s "$service" "$link"
-}
-
-enable_first_install_services() {
-	for name in \
-		ryoku-var-state \
-		ryoku-network-kill-guard ryoku-network-kill-disconnect \
-		polkitd NetworkManager bluetoothd power-profiles-daemon \
-		socklog-unix nanoklogd sddm; do
-		enable_service_once "$name"
-	done
-}
 
 tune_host() {
 	if command -v ryoku-bluetooth-tune >/dev/null 2>&1; then
@@ -72,11 +54,9 @@ case "$ACTION" in
 		;;
 	post)
 		refresh_caches
-		if [ "${UPDATE:-no}" != yes ]; then
-			enable_first_install_services
+		if [ -x /usr/bin/ryoku-host ]; then
+			RYOKU_HOST_INIT=runit /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>&1 || true
 		fi
-		# Older packages removed this link, so upgrades repair it too.
-		enable_service_once ryoku-boot-guard
 		tune_host
 		if [ "${RYOKU_MANAGED_UPDATE:-0}" != 1 ]; then
 			if [ -x /run/ryoku-power-cutover ] || session_running; then

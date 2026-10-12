@@ -75,6 +75,10 @@ Edit the repo, deploy, test on the running system.
   shipped to `/usr/bin` by the `ryoku-desktop` package (its PKGBUILD installs
   every `system/hardware/*/ryoku-*`), and invoked by name from Lua autostart or
   a keybind.
+- **A service:** add its systemd unit, its runit service directory, and one row
+  in `system/services/manifest.tsv`. The row owns boot, session, on-demand, and
+  disable-preservation policy for every edition. Add a behavior test that runs
+  the service under its real supervisor and proves its activation state.
 
 ## Branches and pushing
 

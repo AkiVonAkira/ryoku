@@ -8,14 +8,15 @@ set -euo pipefail
 ROOT=${RYOKU_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 INIT="$ROOT/void/init"
 MANIFEST="$INIT/translations.tsv"
+SERVICE_MANIFEST="$ROOT/system/services/manifest.tsv"
 
 fail() { echo "void-init: $*" >&2; exit 1; }
 
 [[ -f $MANIFEST ]] || fail "missing manifest: $MANIFEST"
 
-# --- 1. completeness: every systemd artifact in the repo has a manifest row.
-# The archiso live-image units are covered by one glob row (the Void ISO is a
-# future milestone); everything else must be named exactly.
+# --- 1. completeness: every systemd artifact in the repo has a translation row.
+# The Arch ISO live-image units are covered by one glob row; the Void ISO has
+# its own runit live-image service set.
 missing=()
 while IFS= read -r unit; do
 	case $unit in
@@ -52,6 +53,40 @@ while IFS=$'\t' read -r src verdict trans _notes; do
 	esac
 done < "$MANIFEST"
 
+[[ -f $SERVICE_MANIFEST ]] || fail "missing service activation manifest: $SERVICE_MANIFEST"
+service_dupes=$(cut -f1 "$SERVICE_MANIFEST" | grep -v '^#' | grep -v '^id$' | sort | uniq -d)
+[[ -z $service_dupes ]] || fail "duplicate service activation ids: $service_dupes"
+while IFS=$'\t' read -r id scope activation systemd_unit runit_service disable_rule; do
+	[[ $id == '#'* || $id == id ]] && continue
+	case $scope in system|user) ;; *) fail "invalid service scope '$scope': $id" ;; esac
+	case $activation in boot|enable-once|conditional|session|session-core|on-demand) ;;
+		*) fail "invalid service activation '$activation': $id" ;;
+	esac
+	[[ -n $systemd_unit && -n $runit_service && -n $disable_rule ]] \
+		|| fail "incomplete service activation row: $id"
+done < "$SERVICE_MANIFEST"
+
+while IFS= read -r unit; do
+	name=${unit##*/}
+	[[ $(grep -cxF "$name" <(cut -f4 "$SERVICE_MANIFEST")) == 1 ]] \
+		|| fail "payload systemd unit needs exactly one service activation row: ${unit#"$ROOT/"}"
+done < <(find \
+	"$ROOT/ryoku/shell/systemd/user" \
+	"$ROOT/ryoku/rashin/systemd" \
+	"$ROOT/ryoku/palette-bridge/packaging/systemd" \
+	"$ROOT/ryoku/cli/systemd" \
+	"$ROOT/system/hardware/network" \
+	"$ROOT/system/hardware/bluetooth" \
+	"$ROOT/fedora/system/hardware/network" \
+	-maxdepth 1 -type f \( -name '*.service' -o -name '*.timer' -o -name '*.target' \) | sort)
+
+for svc in "$INIT"/user/*/ "$INIT"/system/*/; do
+	name=${svc%/}
+	name=${name##*/}
+	[[ $(grep -cxF "$name" <(cut -f5 "$SERVICE_MANIFEST")) == 1 ]] \
+		|| fail "runit service needs exactly one service activation row: $name"
+done
+
 # --- 3. every translated service directory is a valid runit service:
 # executable POSIX scripts, correct user-service defaults, and shellcheck-clean.
 for helper in "$INIT/lib/wait-for" "$INIT/env/xdg-dirs" "$INIT/session/session-start"; do
@@ -61,9 +96,11 @@ done
 
 session_start=$INIT/session/session-start
 ensure_line=$(grep -nF 'ryoku-host session ensure --user' "$session_start" | cut -d: -f1)
+reconcile_line=$(grep -nF 'ryoku-host svc reconcile --user' "$session_start" | cut -d: -f1)
 lifecycle_line=$(grep -nF '"$POWER_CUTOVER" session-start-logged' "$session_start" | cut -d: -f1)
-[[ -n $ensure_line && -n $lifecycle_line && $ensure_line -lt $lifecycle_line ]] \
-	|| fail "session-start does not provision user services before binding their lifecycle"
+[[ -n $ensure_line && -n $reconcile_line && -n $lifecycle_line &&
+	$ensure_line -lt $reconcile_line && $reconcile_line -lt $lifecycle_line ]] \
+	|| fail "session-start does not provision and reconcile user services before binding their lifecycle"
 grep -qF '.ryoku-disabled' "$ROOT/system/hardware/power/ryoku-power-cutover" \
 	|| fail "runit session lifecycle does not preserve user-disabled services"
 
@@ -72,6 +109,10 @@ grep -qF 'sudo cp -R "$init_root/user/." /usr/lib/ryoku/runit/user/' "$deploy" \
 	|| fail "dev deploy does not install packaged user service sources"
 grep -qF '/usr/bin/ryoku-host session ensure --user' "$deploy" \
 	|| fail "dev deploy does not use the host provisioning path"
+grep -qF '/usr/bin/ryoku-host svc reconcile --user' "$deploy" \
+	|| fail "dev deploy does not reconcile the manifest-owned user roster"
+grep -qF '/usr/bin/ryoku-host svc reconcile --system' "$deploy" \
+	|| fail "dev deploy does not reconcile manifest-owned system services"
 if grep -qF 'cp -a "$src/." "$runit_service_root/$name/"' "$deploy"; then
 	fail "dev deploy still carries a second user service provisioning loop"
 fi
@@ -128,19 +169,20 @@ grep -qF 'ryoku-host session start xdg-desktop-portal-gnome.service xdg-desktop-
 grep -qF 'ryoku-host session start xdg-desktop-portal-hyprland.service xdg-desktop-portal-gtk.service' "$ROOT/ryoku/hyprland/modules/autostart.lua" \
 	|| fail "Hyprland autostart does not use the host session entrypoint"
 
-# --- 4. roster integrity: every named service exists, every session user
-# service is either in the roster or documented as on-demand in its comments.
-roster=$INIT/session-services
-[[ -f $roster ]] || fail "missing session roster: $roster"
-while IFS= read -r name; do
-	[[ -z $name || $name == '#'* ]] && continue
-	[[ -d $INIT/user/$name ]] || fail "roster names a service that does not exist: $name"
-done < "$roster"
+# --- 4. roster integrity: session order and on-demand policy come only from
+# the activation manifest. The reconciler writes the per-user roster.
+[[ ! -e $INIT/session-services ]] || fail "copied session roster still exists"
+while IFS=$'\t' read -r _id scope activation _systemd runit _disable; do
+	[[ $scope == user && $activation == session && $runit != - ]] || continue
+	[[ -d $INIT/user/$runit ]] || fail "session activation names a missing runit service: $runit"
+done < "$SERVICE_MANIFEST"
 for svc in "$INIT"/user/*/; do
-	is_login_service "$svc" && continue
-	name=$(basename "$svc")
-	grep -qxF "$name" "$roster" || grep -qF "$name" "$roster" \
-		|| fail "user service $name is neither in the roster nor documented as on-demand there"
+	name=${svc%/}
+	name=${name##*/}
+	awk -F '\t' -v name="$name" '
+		$2 == "user" && ($3 == "session" || $3 == "session-core" || $3 == "on-demand") && $5 == name { found = 1 }
+		END { exit !found }
+	' "$SERVICE_MANIFEST" || fail "user service has no session policy: $name"
 done
 
 # --- 5. parity: each translation carries its unit's observable contract.

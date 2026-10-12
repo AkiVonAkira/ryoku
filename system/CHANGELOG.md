@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Service activation now comes from one manifest.** Arch, Fedora, and Void
+  package hooks reconcile the same system service policy, while doctor
+  reconciles each user's session roster without reviving services they disabled.
+  A new systemd unit and runit service become active on update after one
+  `system/services/manifest.tsv` row.
+
 - **System package actions now work on Fedora.** The package helpers and
   Ryostore route installs, removals, availability checks, and native advice
   through the DNF host seam instead of assuming pacman. The Fedora installer

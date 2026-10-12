@@ -136,6 +136,10 @@ type Config struct {
 	SystemServiceDir  string
 	SystemBootDir     string
 	SystemLiveDir     string
+	ServiceManifest   string
+	SystemdSystemDir  string
+	SystemdUserDir    string
+	ServiceStateDir   string
 	TurnstileEnvDir   string
 	RuntimeDir        string
 	PackageTable      string
@@ -192,6 +196,18 @@ func New(cfg Config) *App {
 	}
 	if cfg.SystemLiveDir == "" {
 		cfg.SystemLiveDir = "/var/service"
+	}
+	if cfg.ServiceManifest == "" {
+		cfg.ServiceManifest = "/usr/share/ryoku/services.tsv"
+	}
+	if cfg.SystemdSystemDir == "" {
+		cfg.SystemdSystemDir = "/usr/lib/systemd/system"
+	}
+	if cfg.SystemdUserDir == "" {
+		cfg.SystemdUserDir = "/usr/lib/systemd/user"
+	}
+	if cfg.ServiceStateDir == "" {
+		cfg.ServiceStateDir = "/var/lib/ryoku/service-manifest"
 	}
 	if cfg.PackageTable == "" {
 		cfg.PackageTable = "/usr/share/ryoku/packages/void.tsv"
