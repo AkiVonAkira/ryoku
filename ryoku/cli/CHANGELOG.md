@@ -207,7 +207,9 @@
   `SUDO_USER` supplies the home, XDG paths, identity, runtime directory and
   session bus. Repair mode refuses a whole-command sudo so user files cannot be
   created under `/root` or with root ownership; each system repair requests its
-  own privilege (`internal/doctor/user_context.go`).
+  own privilege. Repair hints now point back to the normal-user command, while
+  protected boot checks still recommend the read-only sudo form
+  (`internal/doctor/`).
 - **Updates reset only user services that are actually failed.** Unloaded or
   inactive idle, clamshell, wallpaper and cutover-guard units are left alone,
   so `systemctl` no longer logs misleading `Unit ... not loaded` failures

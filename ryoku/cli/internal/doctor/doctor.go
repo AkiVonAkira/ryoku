@@ -799,7 +799,7 @@ func reconcileSnapper(checkOnly bool) recResult {
 	case snapperWarnInconsistent:
 		remedy := i18n.T("see https://wiki.archlinux.org/title/Snapper")
 		if st.manager == host.XBPS {
-			remedy = i18n.T("run `sudo ryoku doctor`; use `ryoku-host pkg advice <package>` for a missing snapshot package")
+			remedy = i18n.T("run `ryoku doctor`; use `ryoku-host pkg advice <package>` for a missing snapshot package")
 		}
 		return warnRes("%s", strings.Join(problems, "; ")).withFix(remedy)
 	}

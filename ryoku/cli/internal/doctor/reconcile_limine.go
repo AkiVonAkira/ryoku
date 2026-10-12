@@ -308,7 +308,7 @@ func migrateLimineLayout(st limineLayoutState) recResult {
 			if !hasRyokuBootEntry(efibootmgrOutput()) {
 				if err := registerRyokuBootEntry(); err != nil {
 					return warnRes(i18n.T("boot menu migrated (%s), but could not register a boot entry for %s (%v); left the current entry in place so the machine still boots"), strings.Join(done, "; "), limineToolEFI, err).
-						withFix(i18n.T("install limine-mkinitcpio-hook, then sudo ryoku doctor"))
+						withFix(i18n.T("install limine-mkinitcpio-hook, then ryoku doctor"))
 				}
 			}
 		}
@@ -825,7 +825,7 @@ func reconcileLimineUKITree(checkOnly bool) recResult {
 	if hookMissing {
 		if err := sys.Run("ryoku-pkg-aur-add", "limine-mkinitcpio-hook"); err != nil {
 			return failRes(i18n.T("could not install limine-mkinitcpio-hook: %v"), err).
-				withFix(i18n.T("ryoku-pkg-aur-add limine-mkinitcpio-hook, then sudo ryoku doctor"))
+				withFix(i18n.T("ryoku-pkg-aur-add limine-mkinitcpio-hook, then ryoku doctor"))
 		}
 		done = append(done, i18n.T("installed limine-mkinitcpio-hook"))
 	}
@@ -834,7 +834,7 @@ func reconcileLimineUKITree(checkOnly bool) recResult {
 	if !limineHasUKITree(readFileSafe(limineESPConf)) && sys.Has("limine-update") {
 		if err := sys.Sudo("limine-update"); err != nil {
 			return failRes(i18n.T("limine-update could not build the UKI boot tree: %v"), err).
-				withFix(i18n.T("sudo limine-update, then sudo ryoku doctor"))
+				withFix(i18n.T("sudo limine-update, then ryoku doctor"))
 		}
 		done = append(done, i18n.T("rebuilt the boot menu with limine-update"))
 	}

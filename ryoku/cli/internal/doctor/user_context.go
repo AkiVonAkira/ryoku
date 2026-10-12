@@ -1,11 +1,14 @@
 package doctor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
+
+	i18n "ryoku-i18n"
 )
 
 var (
@@ -22,7 +25,7 @@ func configureDoctorUser(readOnly bool) error {
 	}
 	name := os.Getenv("SUDO_USER")
 	if name == "" || name == "root" {
-		return fmt.Errorf("run ryoku doctor from the desktop user account, not a root shell")
+		return errors.New(i18n.T("run `ryoku doctor` from the desktop user account, not a root shell; it asks for sudo when a system repair needs it"))
 	}
 	account, err := doctorLookupUser(name)
 	if err != nil {
@@ -32,7 +35,7 @@ func configureDoctorUser(readOnly bool) error {
 		return fmt.Errorf("sudo user %q has no usable home or uid", name)
 	}
 	if !readOnly {
-		return fmt.Errorf("run ryoku doctor without sudo so user repairs stay owned by %s; it asks for sudo when a system repair needs it", name)
+		return errors.New(fmt.Sprintf(i18n.T("run `ryoku doctor` without sudo so user repairs stay owned by %s; it asks for sudo when a system repair needs it"), name))
 	}
 
 	rootHome := os.Getenv("HOME")

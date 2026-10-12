@@ -430,7 +430,7 @@ func reconcileLimineKernelImages(checkOnly bool) recResult {
 	}
 	if len(problems) > 0 {
 		return warnRes("%s", strings.Join(append(done, problems...), "; ")).
-			withFix(i18n.T("check the ESP and rerun sudo ryoku doctor"))
+			withFix(i18n.T("check the ESP and rerun ryoku doctor"))
 	}
 	return fixedRes("%s", strings.Join(done, "; "))
 }

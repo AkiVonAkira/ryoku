@@ -69,3 +69,18 @@ func TestConfigureDoctorUserRefusesRootOwnedRepairs(t *testing.T) {
 		t.Fatalf("repairing sudo doctor error = %v, want run-without-sudo guidance", err)
 	}
 }
+
+func TestConfigureDoctorUserRefusesRootShell(t *testing.T) {
+	oldEUID := doctorEffectiveUID
+	doctorEffectiveUID = func() int { return 0 }
+	t.Cleanup(func() {
+		doctorEffectiveUID = oldEUID
+	})
+	t.Setenv("SUDO_USER", "")
+
+	err := configureDoctorUser(false)
+	if err == nil || !strings.Contains(err.Error(), "desktop user account") ||
+		!strings.Contains(err.Error(), "asks for sudo") {
+		t.Fatalf("root-shell doctor error = %v, want normal-user guidance", err)
+	}
+}
