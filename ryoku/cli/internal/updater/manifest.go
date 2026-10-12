@@ -387,8 +387,9 @@ func packageSet(explicit bool) (map[string]bool, error) {
 			command = host.DNFCommand()
 			args = []string{"repoquery", "-y", "--userinstalled", "--queryformat", "%{name}\\n"}
 		} else {
+			// Provides count: the manifest names virtual packages like ppd-service.
 			command = "rpm"
-			args = []string{"-qa", "--qf", "%{NAME}\\n"}
+			args = []string{"-qa", "--qf", "%{NAME}\\n[%{PROVIDENAME}\\n]"}
 		}
 	default:
 		if explicit {
@@ -406,6 +407,9 @@ func packageSet(explicit bool) (map[string]bool, error) {
 			continue
 		}
 		name := fields[len(fields)-1]
+		if manager == host.DNF {
+			name = strings.TrimSpace(line) // provides may contain spaces
+		}
 		if manager == host.XBPS {
 			if match := xbpsPkgverPattern.FindStringSubmatch(name); len(match) == 3 {
 				name = match[1]
