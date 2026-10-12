@@ -6,6 +6,12 @@
 - The built-in in-session clockwork lockscreen follows the global 12/24-hour preference, including AM/PM.
 
 ### Fixed
+- **A failed Wayland desktop login returns to the sign-in screen instead of
+  leaving a black display.** The SDDM session wrapper now supervises the chosen
+  desktop, preserves its stdout in the session log, and reports compositor
+  failures with SDDM's session-error status so the greeter starts again. It also
+  warns when an NVIDIA update is waiting for a restart before launching the
+  desktop.
 - **A 2D-only VM no longer opens to an empty grey desktop.** The SDDM session
   wrapper detects a KMS card with no render node and selects Mesa's llvmpipe GBM
   path before starting the chosen compositor. Guests with virgl, vmwgfx, or

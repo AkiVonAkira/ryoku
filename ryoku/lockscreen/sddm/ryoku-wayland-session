@@ -34,12 +34,31 @@ needs_software_renderer() {
   return 0
 }
 
+warn_nvidia_driver_mismatch() {
+  local version_path="${RYOKU_NVIDIA_VERSION_PATH:-/sys/module/nvidia/version}"
+  local modinfo_command="${RYOKU_MODINFO_COMMAND:-modinfo}"
+  local loaded installed
+
+  [[ -r $version_path ]] || return 0
+  read -r loaded <"$version_path" || return 0
+  [[ -n $loaded ]] || return 0
+  installed="$("$modinfo_command" -F version nvidia 2>/dev/null)" || return 0
+  installed=${installed%%$'\n'*}
+  [[ -n $installed && $installed != "$loaded" ]] || return 0
+
+  logger -t ryoku-session -p user.warning -- \
+    "graphics driver was updated from $loaded to $installed; the computer must restart to finish the update" ||
+    true
+}
+
 if needs_software_renderer; then
   export LIBGL_ALWAYS_SOFTWARE=1
   export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
   export GALLIUM_DRIVER=llvmpipe
   export WLR_RENDERER_ALLOW_SOFTWARE=1
 fi
+
+warn_nvidia_driver_mismatch
 
 deadline="${RYOKU_SESSION_SETTLE_DEADLINE:-8}"
 start=$SECONDS
@@ -53,13 +72,48 @@ done
 # to publish that before the compositor enumerates cards.
 (( waited )) && sleep 0.3
 
-# Hand off to SDDM's own Wayland session script (its env setup, then exec the
-# chosen session), falling back to the session command directly if a distro
-# ships that script elsewhere.
-# RYOKU_WAYLAND_SESSION_DEFAULT is a test seam; in production this is SDDM's own
-# default [Wayland] SessionCommand.
+# SDDM discards a Wayland session's stdout but sends stderr to the configured
+# session log. Keep compositor diagnostics together there.
 default="${RYOKU_WAYLAND_SESSION_DEFAULT:-/usr/share/sddm/scripts/wayland-session}"
+child_pid=""
+forward_signal() {
+  local signal=$1
+  [[ -n $child_pid ]] && kill "-$signal" "$child_pid" 2>/dev/null || true
+}
+trap 'forward_signal TERM' TERM
+trap 'forward_signal INT' INT
+trap 'forward_signal HUP' HUP
+
 if [[ -x $default ]]; then
-  exec "$default" "$@"
+  "$default" "$@" >&2 &
+else
+  "$@" >&2 &
 fi
-exec "$@"
+child_pid=$!
+
+while :; do
+  wait "$child_pid"
+  status=$?
+  kill -0 "$child_pid" 2>/dev/null && continue
+  break
+done
+trap - TERM INT HUP
+
+(( status == 0 )) && exit 0
+
+printf -v session_command '%q ' "$@"
+session_command=${session_command% }
+[[ -n $session_command ]] || session_command="<empty>"
+if (( status > 128 )); then
+  outcome="signal $((status - 128)) (status $status)"
+else
+  outcome="status $status"
+fi
+logger -t ryoku-session -p user.err -- \
+  "session command $session_command exited with $outcome; returning to the login screen" ||
+  true
+
+# SDDM 0.21 treats 1 as an authentication error and leaves the stopped greeter
+# alone. Its session-error status is 2, which tears the display down and starts
+# a fresh greeter.
+exit 2
