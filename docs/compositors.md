@@ -94,30 +94,38 @@ with nothing behind it.
 Shared by all three:
 
     animations  focusHistory  keyboardLayoutSwitch  monitorConfig  nightLight
-    paletteBorder  sessionExit  touchpadToggle  windowFloat  windowRules
-    windowWorkspaceMap  workspaces  workspaceMoveToOutput
+    outputPower  paletteBorder  sessionExit  touchpadToggle  windowFloat
+    windowRules  windowWorkspaceMap  workspaces  workspaceMoveToOutput
 
 Shared by Hyprland and niri:
 
-    layerRules  outputPower
+    layerRules
 
 Shared by Hyprland and wayfire:
 
-    windowGeometry
+    outputHdr  outputMirror  specialWorkspace  windowGeometry
 
 Hyprland only:
 
     configReload  cursorSet  focusGrab  globalShortcuts  liveConfigEval
-    outputHdr  outputMirror  persistentScreenCapture  plugins  screenShader
-    specialWorkspace  submap  tiledLayout
+    persistentScreenCapture  plugins  screenShader  submap  tiledLayout
 
 niri only:
 
     columnFill  keyboardGrabSharesPointer  nativeOverview  overviewBackdrop
     overviewState
 
-Wayfire claims no capability of its own: its set is the shared rows plus the
-one it shares with Hyprland.
+wayfire only:
+
+    deckLayout  systemLidEdgeSource
+
+Two of wayfire's claims are live rather than fixed: `specialWorkspace` holds only
+while the wsets plugin answers over IPC (it backs the scratchpad), and
+`deckLayout` only when the depthdeck plugin its variant package ships is
+installed, so a box without either never shows a control the compositor cannot
+load. `systemLidEdgeSource` is not a second lid policy: it tells the neutral
+clamshell owner that this compositor exposes no switch callback, so the owner
+watches the lid itself.
 
 The absences are each compositor's design, not gaps to fill later. The ones
 that change what a user sees:
@@ -147,9 +155,16 @@ that change what a user sees:
 - **`submap`**, **`specialWorkspace`**, **`screenShader`**, **`plugins`** and
   **`cursorSet`** have no niri equivalent, so the binds and settings that need
   them are reported by `apply` rather than silently dropped.
-- **`outputPower`** and **`layerRules`** are absent on wayfire: the
-  display-power and layer-rule settings stay hidden there, and
-  `apply --preview` lists them under what this compositor cannot do.
+- **`layerRules`** is absent on wayfire: its window-rules plugin matches views
+  only, so the layer-rule settings stay hidden there and `apply --preview`
+  lists them under what this compositor cannot do.
+- **`nativeOverview`** is absent on wayfire too: its expo plugin has no IPC to
+  open, close or report it, so `Super+Tab` opens the shell's own overview, as
+  on Hyprland.
+- wayfire's `outputPower` goes through the wlroots output-power protocol
+  (`wlopm`), so a single named output can be blanked; its HDR claim is the
+  compositor's on/off switch, with wide gamut and SDR brightness reported as
+  losses.
 
 `nightLight` is the one shared capability the desktop drives through named
 actions rather than a settings row:
@@ -218,20 +233,26 @@ cannot be sits behind the seam like everything else. Four owners, no overlap:
 |**`hypridle`**|the idle timers only -- dim, lock, screen-off, suspend. A suspend timer calls `ryoku-shell suspend`; hypridle never talks to login1 itself.|
 |**`ryoku-clamshell`**|lid ownership for the active graphical session: a `handle-lid-switch` inhibitor, the docked AC-plus-external decision, and routing every non-docked close through `ryoku-shell suspend`. It drops ownership when that session becomes inactive, reacquires it when active, and recovers across login1 restarts.|
 
-The lid's panel handoff is the one compositor-shaped piece: Hyprland binds the
+The lid's panel handoff is the one compositor-shaped piece. Hyprland binds the
 lid switch to `ryoku-clamshell lid close|open` from
 `ryoku/hyprland/modules/lid.lua`; niri sends both native `lid-close` and
 `lid-open` switch events to the helper and retains its native output topology.
-wayfire routes none of it: it exposes no switch event and binds no lid key, so
-a close there reaches no owner and neither the policy nor the panel handoff
-runs; that gap is known until wayfire grows a switch path.
+Wayfire 0.11 creates switch devices and emits a private core switch signal, but
+its command plugin has no switch binding, ipc-rules publishes no switch event,
+and core does not change output state in response to the signal. Its provider
+therefore declares `systemLidEdgeSource` in its caps. Only for a provider
+making that declaration, `ryoku-clamshell` polls the live ACPI lid state, with
+UPower as the fallback, and sends ordered edges through the same `lid` path.
+The panel handoff still reaches the compositor only through the neutral
+`output.enable` action.
+
 Only the active Ryoku session inhibits logind, so without a live owner logind's
-safe fallback suspends on lid close. ACPI supplies live physical state when
-available; UPower seeds an already-closed startup otherwise, but its
-asynchronous value cannot veto a compositor edge. An open edge cancels a close
-still waiting on dock or power state. No provider gains a capability for this:
-a compositor that serves
-`WlSessionLock` and switch events needs nothing further.
+safe fallback suspends on lid close. A provider-delivered edge remains
+authoritative when UPower is lagging; the system watcher uses UPower only when
+ACPI cannot report the physical state. An open edge cancels a close still
+waiting on dock or power state. Providers that already deliver switch events
+omit `systemLidEdgeSource` and never start the watcher, so they cannot receive a
+duplicate system edge.
 
 The logind drop-in that backs the sessionless lid fallback and the delay budget
 is delivered by both lanes: the package ships it and a checkout deploy seeds
