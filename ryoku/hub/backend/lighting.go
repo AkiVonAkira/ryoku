@@ -666,10 +666,10 @@ func lightingSaveToDevice(key string) error {
 			return fmt.Errorf("%s does not offer saving %s to the device", d.Name, m.Name)
 		}
 		tuned := tuneMode(m, s, accentColor())
-		if err := o.SetMode(d.Index, idx, tuned); err != nil {
+		if err := o.SetMode(d, idx, tuned); err != nil {
 			return err
 		}
-		if err := o.SaveMode(d.Index, idx, tuned); err != nil {
+		if err := o.SaveMode(d, idx, tuned); err != nil {
 			return err
 		}
 		rep = liveReport(st, afterWrite(o, live))
@@ -766,7 +766,7 @@ func restoreDevice(o *orgbConn, live []orgbDevice, key string, s *lightingSettin
 	if o == nil {
 		return fmt.Errorf("OpenRGB is not running")
 	}
-	return o.SetMode(d.Index, idx, m)
+	return o.SetMode(d, idx, m)
 }
 
 func anyManaged(st lightingState) bool {
@@ -849,7 +849,7 @@ func applyOne(o *orgbConn, live []orgbDevice, key string, s *lightingSettings, a
 		if m.has(modeHasBrightness) {
 			m.Bri = m.BriMax // the effect scales the colour itself
 		}
-		if err := o.SetMode(d.Index, idx, m); err != nil {
+		if err := o.SetMode(d, idx, m); err != nil {
 			return err
 		}
 		if s.Effect != "solid" {
@@ -863,14 +863,14 @@ func applyOne(o *orgbConn, live []orgbDevice, key string, s *lightingSettings, a
 		if s.Brightness >= 0 {
 			bri = float64(s.Brightness) / 100
 		}
-		return o.SetLEDs(d.Index, fxFrame("solid", make([]float64, d.LEDCount), 0, 0, bri, base))
+		return o.SetLEDs(d, fxFrame("solid", make([]float64, d.LEDCount), 0, 0, bri, base))
 	}
 	idx, m, ok := resolveMode(d, s.Mode)
 	if !ok {
 		return fmt.Errorf("%s reports no modes", d.Name)
 	}
 	tuned := tuneMode(m, s, accent)
-	if err := o.SetMode(d.Index, idx, tuned); err != nil {
+	if err := o.SetMode(d, idx, tuned); err != nil {
 		return err
 	}
 	if !m.has(modeHasPerLEDColor) {
@@ -932,7 +932,7 @@ func paintLEDs(o *orgbConn, d orgbDevice, s *lightingSettings, accent string) er
 					c = v
 				}
 			}
-			if err := o.SetZoneLEDs(d.Index, i, repeat(c, int(z.LEDs))); err != nil {
+			if err := o.SetZoneLEDs(d, i, repeat(c, int(z.LEDs))); err != nil {
 				return err
 			}
 		}
@@ -941,7 +941,7 @@ func paintLEDs(o *orgbConn, d orgbDevice, s *lightingSettings, accent string) er
 	if d.LEDCount == 0 {
 		return nil
 	}
-	return o.SetLEDs(d.Index, repeat(base[0], d.LEDCount))
+	return o.SetLEDs(d, repeat(base[0], d.LEDCount))
 }
 
 func repeat(c uint32, n int) []uint32 {
