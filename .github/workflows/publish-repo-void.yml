@@ -362,7 +362,7 @@ jobs:
               --exclude 'x86_64-repodata' --exclude 'release.json' -P
             rclone copy "$source" "$destination" \
               --filter '+ x86_64-repodata' --filter '- *' -P
-            rclone sync "$source" "$destination" --exclude 'release.json' -P
+            rclone sync "$source" "$destination" --exclude 'release.json' --exclude 'status.json' -P
             rclone copyto "$source/release.json" "$destination/release.json" -P
           }
           publish "$src" "Ryoku:$R2_BUCKET/$PREFIX/x86_64/"

@@ -472,7 +472,7 @@ jobs:
               --exclude 'ryoku.db*' --exclude 'ryoku.files*' --exclude 'release.json' -P
             rclone copy "$src" "$remote" \
               --filter '+ ryoku.db*' --filter '+ ryoku.files*' --filter '- *' -P
-            rclone sync "$src" "$remote" --exclude 'release.json' -P
+            rclone sync "$src" "$remote" --exclude 'release.json' --exclude 'status.json' -P
             rclone copyto "$src/release.json" "${remote%/}/release.json" -P
           }
           src="$GITHUB_WORKSPACE/release/repo/out/x86_64"
