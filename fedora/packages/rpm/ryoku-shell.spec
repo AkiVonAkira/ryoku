@@ -35,6 +35,7 @@ Requires:       wl-clipboard
 Requires:       zenity
 Requires:       ppd-service
 Requires:       NetworkManager
+Requires:       NetworkManager-wifi
 Requires:       curl
 Requires:       libnotify
 Requires:       inotify-tools
