@@ -213,6 +213,10 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Scrolling layouts switch workspaces without exposing hidden columns.** The
+  generated Hyprland animation override replaces workspace translation with a
+  fade while scrolling is active, keeps each preset's timing and curve, and
+  restores the preset style for other layouts (`wm/hyprland/config_settings.go`).
 - **Power profile controls work with Fedora's default provider.** The Hub,
   Nomarchy, game mode, and `ryoku-power` send profile reads and writes through
   the shell daemon's provider-neutral D-Bus client, so tuned-ppd works alongside

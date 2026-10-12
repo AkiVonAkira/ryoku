@@ -32,6 +32,10 @@ func genLua(o Overrides, follow bool) string {
 		b.WriteString(anim)
 		b.WriteString("\n")
 	}
+	if layoutAnim := genLayoutWorkspaceAnimation(o); layoutAnim != "" {
+		b.WriteString(layoutAnim)
+		b.WriteString("\n")
+	}
 	if g := genGesture(o); g != "" {
 		b.WriteString(g)
 		b.WriteString("\n")
@@ -749,6 +753,30 @@ func genAnimBlock(o Overrides) string {
 	return b.String()
 }
 
+// Hyprland's scrolling layout exposes off-screen columns when a workspace
+// translates. Keep the active preset's timing and curve when the Hub supplied
+// them, but replace the unsafe movement with a fade. This is emitted after the
+// per-leaf controls so scrolling cannot accidentally re-enable the artifact.
+func genLayoutWorkspaceAnimation(o Overrides) string {
+	if o.Appearance.Layout != "scrolling" {
+		return ""
+	}
+	item := AnimItem{
+		Leaf:    "workspaces",
+		Enabled: true,
+		Speed:   3.5,
+		Bezier:  "easeOutQuint",
+	}
+	for _, candidate := range o.Anim.Items {
+		if candidate.Leaf == "workspaces" {
+			item = candidate
+			break
+		}
+	}
+	item.Style = "fade"
+	return genAnimItem(item)
+}
+
 // genGesture: the workspace-swipe touchpad gesture when enabled.
 func genGesture(o Overrides) string {
 	if !o.Input.WorkspaceSwipe {
@@ -854,6 +882,6 @@ func genAnimatedBorder(o Overrides, follow, full bool) string {
 func liveLua(o Overrides) string {
 	follow := borderFollowsPalette(o)
 	return fullConfigLua(o, follow) + genMotion(o, true) + genAnimatedBorder(o, follow, true) +
-		genAnimBlock(o) + genGesture(o) + genPluginConfig(o) +
+		genAnimBlock(o) + genLayoutWorkspaceAnimation(o) + genGesture(o) + genPluginConfig(o) +
 		fmt.Sprintf("hl.exec_cmd(%s)\n", luaStr(fmt.Sprintf("hyprctl setcursor %s %d", o.Cursor.Theme, o.Cursor.Size)))
 }
