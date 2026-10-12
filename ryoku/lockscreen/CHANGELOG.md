@@ -6,6 +6,10 @@
 - The built-in in-session clockwork lockscreen follows the global 12/24-hour preference, including AM/PM.
 
 ### Fixed
+- **A 2D-only VM no longer opens to an empty grey desktop.** The SDDM session
+  wrapper detects a KMS card with no render node and selects Mesa's llvmpipe GBM
+  path before starting the chosen compositor. Guests with virgl, vmwgfx, or
+  another working render node keep hardware acceleration.
 - **The login screen opens on the GPU that owns a connected display.** The
   greeter now selects one DRM card for both Weston and its mode probe, preferring
   a render-capable card with the connected laptop panel. This keeps a T2
