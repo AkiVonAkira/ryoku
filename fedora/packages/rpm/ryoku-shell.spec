@@ -37,6 +37,7 @@ Requires:       ppd-service
 Requires:       NetworkManager
 Requires:       curl
 Requires:       libnotify
+Requires:       inotify-tools
 
 %description
 ryoku-shell, built from the shared Ryoku source and package payload recipe.

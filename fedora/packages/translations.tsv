@@ -80,6 +80,7 @@ hyprsunset	hyprsunset	hyprland	Provided by a restricted COPR.
 imagemagick	ImageMagick	desktop	
 imgborders	imgborders	hyprland	Ryoku-owned RPM.
 inetutils	telnet	optional	
+inotify-tools	inotify-tools	desktop	
 intel-media-driver	libva-intel-media-driver	hardware:intel	
 intel-ucode	microcode_ctl	hardware:intel	
 inter-font	rsms-inter-fonts	desktop	
