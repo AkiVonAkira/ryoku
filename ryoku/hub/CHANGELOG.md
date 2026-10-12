@@ -61,6 +61,8 @@
 - **Battery alert controls stay off battery-less machines.** The Machine page
   hides the Battery card on desktops and virtual machines unless the hardware
   exposes a battery or battery tuning controls.
+- **Desktop has a Deck frost slider.** Its full 0 to 100 percent range writes
+  the validated shell setting, and zero turns the effect off.
 - **Interface scale is editable in Global.** The whole shell reads the one
   `fontScale` value that scales every surface and popout, but no Hub control
   reached it: a hand-set value silently reverted to the factory 1.3 on a stale

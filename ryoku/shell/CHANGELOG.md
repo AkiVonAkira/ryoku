@@ -593,6 +593,16 @@
   longer send their own low-battery notification beside the shell-wide alert.
   Shima keeps its warning sounds and automatic suspend, while its retired
   per-style warning thresholds are removed.
+- **Deck frost stays light while the desktop moves.** The haze is a fragment
+  shader now, so moving or focusing a window updates uniforms instead of
+  rebuilding and uploading a full-screen Canvas texture. Video wallpapers and
+  inline visualizers keep the haze but skip the full-output blur pass, and the
+  focus ring subtracts the output origin before drawing on a second monitor.
+  Windows without trustworthy positions use a whole-surface haze. The
+  `deckFrost` setting is validated from 0 to 1, and zero fully disables the
+  effect even with a deep window stack
+  (`quickshell/shell/modules/desktop/DeckFrost.qml`,
+  `quickshell/shell/modules/desktop/deck-frost.frag`, `ipc/settings.go`).
 - **Screen recording works on machines without a hardware video encoder.**
   The codec check refused every GPU that could not encode H.264, AV1, VP9 or
   VP8, and any machine where GPU Screen Recorder's probe failed, so Intel
