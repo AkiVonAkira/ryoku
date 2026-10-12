@@ -12,12 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"ryoku-i18n"
-	"ryoku-i18n/catalog"
-	"ryoku-wm"
-
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"ryoku-i18n"
+	"ryoku-i18n/catalog"
+	installerplan "ryoku-installerplan"
 )
 
 const minTermW, minTermH = 80, 24
@@ -105,55 +104,51 @@ func (m model) waitEv() tea.Cmd {
 	return func() tea.Msg { return <-ch }
 }
 
-func buildItems(f *facts, p *plan, compositorChoices ...[]string) []planItem {
+func buildItems(f *facts, p *plan, editionPlans ...editionCompositorPlan) []planItem {
 	// labels stay English here: groupPlanItems matches them against planGroups
 	// to insert section headers, so they are compared, not just shown. viewPlan
 	// translates them at the render site. Details are display-only -> wrapped.
-	zenDetail := i18n.T("Focused Firefox-based browsing; requires the AUR step.")
-	if f.distro != nil && f.distro.id == "fedora" {
-		zenDetail = i18n.T("Not packaged on Fedora; choosing it leaves browser installation unchanged.")
+	edition := sourceEditionChoices("Arch")
+	if len(editionPlans) > 0 {
+		edition = editionPlans[0]
 	}
-	availableCompositors := wm.Providers()
-	if len(compositorChoices) > 0 && len(compositorChoices[0]) > 0 {
-		availableCompositors = compositorChoices[0]
-	}
-	compositorOptions := make([]choiceOption, 0, len(availableCompositors))
-	for _, provider := range availableCompositors {
-		label := compositorLabel(provider)
-		detail := i18n.Tf("Installs the %s Ryoku desktop variant.", label)
-		if provider == wm.ProviderWayfire {
-			label = i18n.Tf("%s (experimental)", label)
-			detail = i18n.T("Installs the experimental Wayfire Ryoku desktop variant.")
+	options := func(kind string) []choiceOption {
+		available := edition.choices.Choices(kind)
+		out := make([]choiceOption, 0, len(available))
+		for _, item := range available {
+			if !item.Available {
+				continue
+			}
+			choice := item.Choice
+			label := i18n.T(choice.Label)
+			if choice.Experimental {
+				label = i18n.Tf("%s (experimental)", label)
+			}
+			recommended := choice.ID == installerplan.FreshDefault(kind)
+			if kind == installerplan.Compositor {
+				recommended = len(out) == 0
+			}
+			out = append(out, choiceOption{
+				key: choice.ID, label: label, detail: i18n.T(choice.ShellDetail), recommended: recommended,
+			})
 		}
-		compositorOptions = append(compositorOptions, choiceOption{
-			key: provider, label: label,
-			detail:      detail,
-			recommended: provider == availableCompositors[0],
-		})
+		return out
 	}
 	var it = []planItem{
 		{
 			label:   i18n.T("Compositor"),
 			pick:    &p.compositor,
-			options: compositorOptions,
+			options: options(installerplan.Compositor),
 		},
 		{
-			label: i18n.T("Browser"),
-			pick:  &p.browser,
-			options: []choiceOption{
-				{key: "firefox", label: i18n.T("Firefox"), detail: i18n.T("Private and compatible, from the official repository."), recommended: true},
-				{key: "chromium", label: i18n.T("Chromium"), detail: i18n.T("Open-source Chromium from the official repository.")},
-				{key: "zen", label: i18n.T("Zen"), detail: zenDetail},
-			},
+			label:   i18n.T("Browser"),
+			pick:    &p.browser,
+			options: options(installerplan.Browser),
 		},
 		{
-			label: i18n.T("Login shell"),
-			pick:  &p.shell,
-			options: []choiceOption{
-				{key: "fish", label: i18n.T("Fish"), detail: i18n.T("Friendly defaults and autosuggestions."), recommended: true},
-				{key: "zsh", label: i18n.T("Zsh"), detail: i18n.T("Oh My Zsh with history and syntax highlighting.")},
-				{key: "bash", label: i18n.T("Bash"), detail: i18n.T("Familiar Bash with Blesh editing and Ryoku's prompt.")},
-			},
+			label:   i18n.T("Login shell"),
+			pick:    &p.shell,
+			options: options(installerplan.LoginShell),
 		},
 	}
 	if f.prevRun != nil {
@@ -338,7 +333,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case scanMsg:
 		m.f = msg.f
-		m.p = defaultPlan(m.f, m.editionCompositors.available)
+		m.p = defaultPlanForEdition(m.f, m.editionCompositors)
 		if m.compositor != "" {
 			m.p.compositor = m.compositor
 		}
@@ -346,7 +341,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.f.distro != nil && m.f.distro.id == "fedora" {
 			m.p.aur = false
 		}
-		m.items = groupPlanItems(buildItems(m.f, m.p, m.editionCompositors.available))
+		m.items = groupPlanItems(buildItems(m.f, m.p, m.editionCompositors))
 		m.sel = firstToggle(m.items)
 		if needsManjaroAck(m.f) {
 			m.state = "ack"
@@ -386,13 +381,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyPressMsg:
-		return m.onKey(msg.String())
+		return m.onKey(msg)
 	}
 	return m, nil
 }
 
-func (m model) onKey(k string) (tea.Model, tea.Cmd) {
-	if k == "ctrl+c" {
+func (m model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	key := msg.Key()
+	activeMods := key.Mod &^ (tea.ModCapsLock | tea.ModNumLock | tea.ModScrollLock)
+	plain := activeMods == 0
+	textInput := activeMods == 0 || activeMods == tea.ModShift
+	if activeMods == tea.ModCtrl && key.Code == 'c' {
 		// quitting mid-install abandons a live root pacman transaction; make
 		// that a deliberate double-press, not a slip.
 		if m.state == "install" && !m.intAsk {
@@ -406,83 +405,81 @@ func (m model) onKey(k string) (tea.Model, tea.Cmd) {
 	}
 	switch m.state {
 	case "ack":
-		switch k {
-		case "esc":
+		switch {
+		case plain && key.Code == tea.KeyEscape:
 			return m, tea.Quit
-		case "enter":
+		case plain && key.Code == tea.KeyEnter:
 			if strings.EqualFold(strings.TrimSpace(m.ackInput), "manjaro") {
 				m.state = "plan"
 			}
-		case "backspace":
+		case plain && key.Code == tea.KeyBackspace:
 			if len(m.ackInput) > 0 {
 				m.ackInput = m.ackInput[:len(m.ackInput)-1]
 			}
-		default:
-			if len(k) == 1 && len(m.ackInput) < 16 {
-				m.ackInput += k
-			}
+		case textInput && len(key.Text) == 1 && len(m.ackInput) < 16:
+			m.ackInput += key.Text
 		}
 		return m, nil
 	case "plan":
 		if m.confirm {
-			switch k {
-			case "y", "Y", "enter":
+			switch {
+			case plain && key.Code == tea.KeyEnter || (textInput && strings.EqualFold(key.Text, "y")):
 				m.confirm = false
 				return m, m.startInstall()
-			case "n", "N", "esc":
+			case plain && key.Code == tea.KeyEscape || (textInput && strings.EqualFold(key.Text, "n")):
 				m.confirm = false
 			}
 			return m, nil
 		}
-		switch k {
-		case "q":
+		switch {
+		case plain && key.Code == 'q':
 			return m, tea.Quit
-		case "j", "down":
+		case plain && (key.Code == 'j' || key.Code == tea.KeyDown):
 			for i := m.sel + 1; i < len(m.items); i++ {
 				if selectablePlanItem(m.items[i]) {
 					m.sel = i
 					break
 				}
 			}
-		case "k", "up":
+		case plain && (key.Code == 'k' || key.Code == tea.KeyUp):
 			for i := m.sel - 1; i >= 0; i-- {
 				if selectablePlanItem(m.items[i]) {
 					m.sel = i
 					break
 				}
 			}
-		case "h", "left":
+		case plain && (key.Code == 'h' || key.Code == tea.KeyLeft):
 			cyclePlanChoice(m.items[m.sel], -1)
 			m.syncPlanConstraints()
-		case "l", "right":
+		case plain && (key.Code == 'l' || key.Code == tea.KeyRight):
 			cyclePlanChoice(m.items[m.sel], 1)
 			m.syncPlanConstraints()
-		case " ", "space":
+		case plain && key.Code == tea.KeySpace:
 			if len(m.items) > 0 && m.items[m.sel].on != nil && !m.items[m.sel].locked {
 				*m.items[m.sel].on = !*m.items[m.sel].on
 				m.p.azertyExclusive(m.items[m.sel].on)
 			}
-		case "enter":
+		case plain && key.Code == tea.KeyEnter:
 			m.confirm = true
 		}
 	case "done":
-		switch k {
-		case "r":
+		switch {
+		case plain && key.Code == 'r':
 			m.exitReboot = true
 			return m, tea.Quit
-		case "q", "enter":
+		case plain && (key.Code == 'q' || key.Code == tea.KeyEnter):
 			return m, tea.Quit
 		}
 	case "failed":
-		switch k {
-		case "r":
+		switch {
+		case plain && key.Code == 'r':
 			if m.failCount >= maxStepRetries {
 				return m, nil
 			}
 			m.events = m.eng.runFrom(m.failIdx)
 			m.state = "install"
 			return m, tea.Batch(m.tickCmd(), m.waitEv())
-		case "q":
+		case plain && key.Code == 'q':
 			return m, tea.Quit
 		}
 	}
@@ -727,18 +724,31 @@ func bulletRow(label, value string, labelW int) string {
 	return fg(cSub, padTo(gBullet, 3)) + labeledRow(label, value, labelW)
 }
 
-func voidEditionNotice(f *facts) []string {
+func unavailableChoiceNotices(plan editionCompositorPlan, kind string) []string {
+	var notices []string
+	for _, availability := range plan.choices.Choices(kind) {
+		if !availability.Available {
+			notices = append(notices, i18n.Tf("%s unavailable: %s", availability.Choice.Label, availability.Reason))
+		}
+	}
+	return notices
+}
+
+func voidEditionNotice(f *facts, plan editionCompositorPlan) []string {
 	if f == nil || f.distro == nil || f.distro.id != "void" {
 		return nil
 	}
 	notice := []string{
 		i18n.T("Ryoku on Void (experimental edition)"),
-		i18n.T("niri only: Hyprland needs GCC 15; Void ships GCC 14."),
+		i18n.Tf("Compositors: %s.", strings.Join(plan.choices.AvailableIDs(installerplan.Compositor), ", ")),
 	}
+	notice = append(notice, unavailableChoiceNotices(plan, installerplan.Compositor)...)
+	notice = append(notice, unavailableChoiceNotices(plan, installerplan.Browser)...)
+	notice = append(notice, unavailableChoiceNotices(plan, installerplan.LoginShell)...)
 	if f.btrfsRoot {
 		notice = append(notice, i18n.T("Update the base system with ryoku update --system so it is snapshotted; XBPS has no update hooks."))
 	}
-	return append(notice, i18n.T("Unavailable: Zen Browser, LocalSend, Voxtype and asusctl."))
+	return notice
 }
 
 func editionNotice(f *facts, compositors editionCompositorPlan) []string {
@@ -746,16 +756,18 @@ func editionNotice(f *facts, compositors editionCompositorPlan) []string {
 		return nil
 	}
 	if f.distro.id == "void" {
-		return voidEditionNotice(f)
+		return voidEditionNotice(f, compositors)
 	}
 	if f.distro.id != "fedora" {
 		return nil
 	}
 	notice := []string{
 		i18n.T("Ryoku on Fedora (experimental edition)"),
-		i18n.Tf("Compositors: %s.", strings.Join(compositors.available, ", ")),
+		i18n.Tf("Compositors: %s.", strings.Join(compositors.choices.AvailableIDs(installerplan.Compositor), ", ")),
 	}
-	return append(notice, compositors.omitted...)
+	notice = append(notice, unavailableChoiceNotices(compositors, installerplan.Compositor)...)
+	notice = append(notice, unavailableChoiceNotices(compositors, installerplan.Browser)...)
+	return append(notice, unavailableChoiceNotices(compositors, installerplan.LoginShell)...)
 }
 
 func (m model) viewPlan() string {
@@ -767,7 +779,7 @@ func (m model) viewPlan() string {
 	}
 	machine := truncW(i18n.Tf("%s / %s / %s", f.hostname, f.distroName, f.gpuSummary()), iw)
 	safety := i18n.Tf("login: %s / configs backed up / snapshot rollback: %s", dm, i18n.T("unavailable"))
-	if f.btrfsRoot {
+	if f.btrfsRoot && (f.distro == nil || f.distro.id != "fedora") {
 		safety = i18n.Tf("login: %s / configs backed up / snapshot rollback: %s", dm, i18n.T("ready"))
 	}
 
@@ -1022,7 +1034,7 @@ func runHeadless(dry bool, ref, payload, compositor, browser, shell string, edit
 		fmt.Println(i18n.T("run without --yes to read the warning, or set RYOKU_ALLOW_MANJARO=1 to accept the risk here."))
 		return 1
 	}
-	p := defaultPlan(f, editionCompositors.available)
+	p := defaultPlanForEdition(f, editionCompositors)
 	if compositor != "" {
 		p.compositor = compositor
 	}
@@ -1124,19 +1136,11 @@ func main() {
 	ref := flag.String("ref", envOr("RYOKU_SHELL_REF", "main"), i18n.T("ryoku-arch git ref for the payload"))
 	payload := flag.String("payload", os.Getenv("RYOKU_SHELL_PAYLOAD"), i18n.T("use a local ryoku-arch checkout as the payload"))
 	compositor := flag.String("compositor", "", i18n.T("window manager to install (default: first available)"))
-	browser := flag.String("browser", envOr("RYOKU_BROWSER", "firefox"), i18n.T("browser to install: firefox, chromium or zen"))
-	shell := flag.String("shell", os.Getenv("RYOKU_LOGIN_SHELL"), i18n.T("login shell: fish, zsh or bash"))
+	browser := flag.String("browser", envOr("RYOKU_BROWSER", installerplan.FreshDefault(installerplan.Browser)), i18n.T("browser to install"))
+	shell := flag.String("shell", os.Getenv("RYOKU_LOGIN_SHELL"), i18n.T("login shell"))
 	flag.Parse()
 
 	initGlyphs()
-	if err := validateBrowser(*browser); err != nil {
-		die(err.Error())
-	}
-	if *shell != "" {
-		if err := validateLoginShell(*shell); err != nil {
-			die(err.Error())
-		}
-	}
 
 	if os.Geteuid() == 0 {
 		die(i18n.T("run as your normal user, not root; sudo is used where needed"))
@@ -1179,7 +1183,10 @@ func main() {
 	if err != nil {
 		die(err.Error())
 	}
-	comp := chooseCompositor(*compositor, editionCompositors.available)
+	if err := validateEditionFlags(*browser, *shell, editionCompositors); err != nil {
+		die(err.Error())
+	}
+	comp := chooseCompositor(*compositor, editionCompositors)
 	if !*dry {
 		primeSudo()
 	}
@@ -1209,19 +1216,20 @@ func needsManjaroAck(f *facts) bool {
 	return f.distroID == "manjaro" && os.Getenv("RYOKU_ALLOW_MANJARO") != "1"
 }
 
-// chooseCompositor validates a --compositor pick against the edition variants,
-// returning "" for the default (the first). An unknown name dies with the list.
-func chooseCompositor(choice string, available []string) string {
+// chooseCompositor validates a --compositor pick against the shared definition
+// and the edition's package table, returning "" for the table's first choice.
+func chooseCompositor(choice string, edition editionCompositorPlan) string {
 	if choice == "" {
 		return ""
 	}
-	for _, compositor := range available {
-		if compositor == choice {
-			return choice
-		}
+	if _, ok := installerplan.ChoiceByID(installerplan.Compositor, choice); !ok {
+		die(i18n.Tf("unknown compositor %q; choose one of: %s", choice,
+			strings.Join(installerplan.IDs(installerplan.Compositor), ", ")))
 	}
-	die(i18n.Tf("unknown compositor %q; choose one of: %s", choice, strings.Join(available, ", ")))
-	return ""
+	if err := validateEditionChoice(installerplan.Compositor, choice, edition); err != nil {
+		die(err.Error())
+	}
+	return choice
 }
 
 func envOr(k, def string) string {

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	installerplan "ryoku-installerplan"
 )
 
 func TestFedoraRepositoryChannelsAndOverride(t *testing.T) {
@@ -334,6 +336,16 @@ func TestFedoraReleaseGateReportsNetworkFailure(t *testing.T) {
 
 func TestFedoraCompositorsComeFromEditionTable(t *testing.T) {
 	table := []byte("arch\tfedora\tlanes\tnotes\n" +
+		"chromium\tchromium\tdesktop\tFedora package.\n" +
+		"firefox\tfirefox\tdesktop\tFedora package.\n" +
+		"zen-browser-bin\t-\textra\tNo Fedora package provides this Arch package.\n" +
+		"fish\tfish\tdesktop\tFedora package.\n" +
+		"zsh\tzsh\tdesktop\tFedora package.\n" +
+		"zsh-autosuggestions\tzsh-autosuggestions\tdesktop\tFedora package.\n" +
+		"zsh-history-substring-search\tzsh-history-substring-search\tdesktop\tFedora package.\n" +
+		"zsh-syntax-highlighting\tzsh-syntax-highlighting\tdesktop\tFedora package.\n" +
+		"ryoku-oh-my-zsh\tryoku-oh-my-zsh\tdesktop\tFedora package.\n" +
+		"blesh\tblesh\tdesktop\tFedora package.\n" +
 		"ryoku-desktop-hyprland\tryoku-desktop-hyprland\thyprland\tRyoku-owned RPM.\n" +
 		"ryoku-desktop-niri\tryoku-desktop-niri\tdesktop\tRyoku-owned RPM.\n" +
 		"ryoku-desktop-wayfire\t-\tdesktop\tFedora ships Wayfire 0.10.1; Ryoku requires 0.11.\n")
@@ -341,10 +353,13 @@ func TestFedoraCompositorsComeFromEditionTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(plan.available, ","); got != "hyprland,niri" {
+	if got := strings.Join(plan.choices.AvailableIDs(installerplan.Compositor), ","); got != "hyprland,niri" {
 		t.Fatalf("Fedora compositors = %q, want hyprland,niri", got)
 	}
-	if got := strings.Join(plan.omitted, "\n"); !strings.Contains(got, "Wayfire unavailable") || !strings.Contains(got, "requires 0.11") {
+	if got := strings.Join(plan.choices.AvailableIDs(installerplan.Browser), ","); got != "firefox,chromium" {
+		t.Fatalf("Fedora browsers = %q, want firefox,chromium", got)
+	}
+	if got := strings.Join(unavailableChoiceNotices(plan, installerplan.Compositor), "\n"); !strings.Contains(got, "Wayfire unavailable") || !strings.Contains(got, "requires 0.11") {
 		t.Fatalf("Wayfire omission was not explained: %s", got)
 	}
 }

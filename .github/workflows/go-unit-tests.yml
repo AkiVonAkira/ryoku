@@ -20,6 +20,7 @@ on:
       - 'ryoku/shell/ipc/**'
       - 'ryoku/wm/**'
       - 'ryoku-shell-installer/**'
+      - 'installation/installerplan/**'
       - 'ryoku/apps/ryostore/backend/**'
       - 'ryoku/apps/ryovm/remote/**'
       - 'ryoku/hub/backend/**'
@@ -34,6 +35,7 @@ on:
       - 'ryoku/shell/ipc/**'
       - 'ryoku/wm/**'
       - 'ryoku-shell-installer/**'
+      - 'installation/installerplan/**'
       - 'ryoku/apps/ryostore/backend/**'
       - 'ryoku/hub/backend/**'
       - 'ryoku/rashin/backend/**'
@@ -102,6 +104,28 @@ jobs:
       - name: Build, vet, and test
         shell: bash
         working-directory: ryoku/wm
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./...
+
+  installerplan:
+    name: installer choices (ryoku-installerplan)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: installation/installerplan/go.mod
+
+      # One manifest feeds the ISO TUI, the shell installer and both ISO
+      # backends; a break here changes what every installer offers.
+      - name: Build, vet, and test
+        shell: bash
+        working-directory: installation/installerplan
         run: |
           go build ./...
           go vet ./...

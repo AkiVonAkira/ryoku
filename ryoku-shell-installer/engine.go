@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"ryoku-i18n"
+	installerplan "ryoku-installerplan"
 	wm "ryoku-wm"
 )
 
@@ -179,29 +180,32 @@ var bootChainSkip = map[string]bool{
 // pulled; no AUR build is needed.
 var aurPkgs = []string{"bibata-cursor-theme-bin", "localsend-bin", "voxtype-bin"}
 
-var browserPackage = map[string]string{
-	"firefox":  "firefox",
-	"chromium": "chromium",
-	"zen":      "zen-browser-bin",
-}
+var browserChoices = installerplan.IDs(installerplan.Browser)
+var loginShellChoices = installerplan.IDs(installerplan.LoginShell)
 
-var loginShellPath = map[string]string{
-	"fish": "/usr/bin/fish",
-	"zsh":  "/usr/bin/zsh",
-	"bash": "/usr/bin/bash",
-}
+var browserPackage = func() map[string]string {
+	packages := make(map[string]string, len(browserChoices))
+	for _, choice := range installerplan.Choices(installerplan.Browser) {
+		packages[choice.ID] = choice.Packages[0]
+	}
+	return packages
+}()
 
-var shellStackPackages = map[string][]string{
-	"fish": {"fish"},
-	"zsh": {
-		"zsh",
-		"zsh-autosuggestions",
-		"zsh-history-substring-search",
-		"zsh-syntax-highlighting",
-		"ryoku-oh-my-zsh",
-	},
-	"bash": {"blesh"},
-}
+var loginShellPath = func() map[string]string {
+	paths := make(map[string]string, len(loginShellChoices))
+	for _, choice := range installerplan.Choices(installerplan.LoginShell) {
+		paths[choice.ID] = choice.Executable
+	}
+	return paths
+}()
+
+var shellStackPackages = func() map[string][]string {
+	packages := make(map[string][]string, len(loginShellChoices))
+	for _, choice := range installerplan.Choices(installerplan.LoginShell) {
+		packages[choice.ID] = append([]string(nil), choice.Packages...)
+	}
+	return packages
+}()
 
 // system/packages/dev.packages; ryoku recovery builds from source and needs go.
 var devPkgs = []string{"go", "nodejs", "npm", "python", "python-pip", "python-pipx", "mise"}
@@ -232,17 +236,13 @@ type plan struct {
 }
 
 func defaultPlan(f *facts, compositorChoices ...[]string) *plan {
-	shell := "fish"
-	if _, ok := loginShellPath[filepath.Base(f.userShell)]; ok {
-		shell = filepath.Base(f.userShell)
-	}
-	availableCompositors := wm.Providers()
+	availableShells := installerplan.IDs(installerplan.LoginShell)
+	shell := installerplan.ExistingLoginShell(f.userShell, availableShells)
+	availableCompositors := installerplan.IDs(installerplan.Compositor)
 	if len(compositorChoices) > 0 && len(compositorChoices[0]) > 0 {
 		availableCompositors = compositorChoices[0]
-	} else if f.distro != nil && f.distro.id == "void" {
-		availableCompositors = []string{wm.ProviderNiri}
 	}
-	compositor := availableCompositors[0]
+	compositor := installerplan.FreshSelection(installerplan.Compositor, availableCompositors)
 	nvidia := f.hasNvidia && !(f.secureBoot && !f.sbctlSigned)
 	aur := true
 	if f.distro != nil && f.distro.id == "fedora" {
@@ -264,25 +264,28 @@ func defaultPlan(f *facts, compositorChoices ...[]string) *plan {
 		greeter:    !f.kdeSddmConf,
 		resume:     f.prevRun != nil,
 		compositor: compositor,
-		browser:    "firefox",
+		browser:    installerplan.FreshDefault(installerplan.Browser),
 		shell:      shell,
 		// the AZERTY overrides are opt-in only; a salvaged layout already
 		// covers anyone who had one configured.
 	}
 }
 
-var browserChoices = []string{"firefox", "chromium", "zen"}
-var loginShellChoices = []string{"fish", "zsh", "bash"}
+func defaultPlanForEdition(f *facts, edition editionCompositorPlan) *plan {
+	p := defaultPlan(f, edition.choices.AvailableIDs(installerplan.Compositor))
+	p.shell = installerplan.ExistingLoginShell(f.userShell, edition.choices.AvailableIDs(installerplan.LoginShell))
+	return p
+}
 
 func validateBrowser(choice string) error {
-	if _, ok := browserPackage[choice]; !ok {
+	if _, ok := installerplan.ChoiceByID(installerplan.Browser, choice); !ok {
 		return fmt.Errorf(i18n.T("unknown browser %q; choose one of: %s"), choice, strings.Join(browserChoices, ", "))
 	}
 	return nil
 }
 
 func validateLoginShell(choice string) error {
-	if _, ok := loginShellPath[choice]; !ok {
+	if _, ok := installerplan.ChoiceByID(installerplan.LoginShell, choice); !ok {
 		return fmt.Errorf(i18n.T("unknown shell %q; choose one of: %s"), choice, strings.Join(loginShellChoices, ", "))
 	}
 	return nil
@@ -303,23 +306,12 @@ func applyPlanChoices(p *plan, browser, shell string) {
 func choiceDropPackages(p *plan) []string {
 	browser, shell := p.browser, p.shell
 	if browser == "" {
-		browser = "firefox"
+		browser = installerplan.FreshDefault(installerplan.Browser)
 	}
 	if shell == "" {
-		shell = "fish"
+		shell = installerplan.FreshDefault(installerplan.LoginShell)
 	}
-	var drop []string
-	for _, candidate := range browserChoices {
-		if candidate != browser {
-			drop = append(drop, browserPackage[candidate])
-		}
-	}
-	for _, candidate := range loginShellChoices {
-		if candidate != shell {
-			drop = append(drop, shellStackPackages[candidate]...)
-		}
-	}
-	return drop
+	return installerplan.DropPackages(browser, shell)
 }
 
 func filterChoicePackages(pkgs []string, p *plan) []string {
@@ -1592,7 +1584,7 @@ func (e *engine) readEditionPackages(edition string) ([]string, error) {
 	if edition == "void" {
 		args = append(args, "--session")
 	}
-	for _, provider := range wm.Providers() {
+	for _, provider := range installerplan.IDs(installerplan.Compositor) {
 		if provider != p.compositor {
 			args = append(args, "--drop", "ryoku-desktop-"+provider)
 		}

@@ -125,6 +125,7 @@ stage_ryoku_repo() {
 [[ -f $TUI_DIR/go.mod ]]         || die "installer TUI not found at $TUI_DIR"
 [[ -f $BACKEND_DIR/ryoku-install ]] || die "backend not found at $BACKEND_DIR/ryoku-install"
 [[ -d $BACKEND_DIR/lib ]]        || die "backend lib not found at $BACKEND_DIR/lib"
+[[ -f $REPO_ROOT/installation/installerplan/choices.tsv ]] || die "installer choice manifest not found"
 
 # 1. fresh profile copy. profile components only, never build dirs.
 log "Staging profile -> $PROFILE_STAGE"
@@ -178,6 +179,9 @@ install -m0644 "$REPO_ROOT/ryoku/i18n/langs.json" "$AIROOTFS/usr/share/ryoku/i18
 # 4. bake the repo payload at /usr/share/ryoku (RYOKU_REPO).
 log "Baking repo payload -> /usr/share/ryoku"
 stage_repo "$REPO_ROOT" "$AIROOTFS/usr/share/ryoku"
+install -d "$AIROOTFS/usr/share/ryoku/installation/installerplan"
+install -m0644 "$REPO_ROOT/installation/installerplan/choices.tsv" \
+  "$AIROOTFS/usr/share/ryoku/installation/installerplan/choices.tsv"
 
 # provenance stamp. records the exact commit + version baked into this payload
 # so the target's deploy step can flag drift from the live [ryoku] repo. keep

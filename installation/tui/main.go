@@ -25,7 +25,7 @@ import (
 
 	"ryoku-i18n"
 	"ryoku-i18n/catalog"
-	wm "ryoku-wm"
+	installerplan "ryoku-installerplan"
 )
 
 // The failure screen renders this as a scannable QR code so the user can reach
@@ -519,10 +519,20 @@ func steps() []step {
 	return stepsForVariant(sysVariant())
 }
 
+func unavailableChoiceNotices(plan installerplan.EditionPlan, kind string) []string {
+	var notices []string
+	for _, availability := range plan.Choices(kind) {
+		if !availability.Available {
+			notices = append(notices, i18n.Tf("%s is unavailable: %s", availability.Choice.Label, availability.Reason))
+		}
+	}
+	return notices
+}
+
 func stepsForVariant(variant string) []step {
 	browserDesc := []string{i18n.T("Ryoku ships three browsers; pick the one you want."), i18n.T("It becomes the default and the launcher's browser role.")}
-	if isVoidVariant(variant) {
-		browserDesc[0] = i18n.T("Ryoku ships Firefox and Chromium on Void; pick the one you want.")
+	if len(browsersForVariant(variant)) != len(browsers()) {
+		browserDesc[0] = i18n.Tf("Ryoku ships %d browsers on this edition; pick the one you want.", len(browsersForVariant(variant)))
 	}
 	all := []step{
 		{key: "keyboard", title: i18n.T("Keyboard layout"), kind: kSelect, items: keymaps(),
@@ -568,17 +578,20 @@ func stepsForVariant(variant string) []step {
 		all = all[1:]
 	}
 	if isVoidVariant(variant) {
+		edition := installerChoicesForVariant(variant)
+		availableCompositors := edition.AvailableIDs(installerplan.Compositor)
+		notice := []string{
+			i18n.T("This Void edition is experimental."),
+			i18n.Tf("Available window managers: %s.", strings.Join(availableCompositors, ", ")),
+			i18n.T("Use ryoku update --system for base-system updates."),
+			i18n.T("XBPS has no update hooks; this keeps updates snapshotted."),
+		}
+		for _, kind := range []string{installerplan.Compositor, installerplan.Browser, installerplan.LoginShell} {
+			notice = append(notice, unavailableChoiceNotices(edition, kind)...)
+		}
 		all = append([]step{{
 			key: "void-notice", title: i18n.T("Ryoku on Void"), kind: kNotice,
-			desc: []string{
-				i18n.T("This Void edition is experimental."),
-				i18n.T("This edition runs niri only."),
-				i18n.T("Hyprland needs GCC 15; Void ships GCC 14."),
-				i18n.T("Use ryoku update --system for base-system updates."),
-				i18n.T("XBPS has no update hooks; this keeps updates snapshotted."),
-				i18n.T("Zen Browser, LocalSend and Voxtype are AUR-only."),
-				i18n.T("asusctl and adw-gtk-theme are unavailable."),
-			},
+			desc: notice,
 		}}, all...)
 	}
 	return all
@@ -730,24 +743,25 @@ func gpuModes() []item {
 	}
 }
 
-// compositors lists the window managers with a shipped variant package, in
-// wm.Providers order. The step auto-skips while the list has one entry.
+// compositors lists the window managers in shared manifest order.
 func compositors() []item {
-	return []item{
-		{wm.ProviderHyprland, "Hyprland", i18n.T("dynamic tiling, the Ryoku default")},
-		{wm.ProviderNiri, "niri", i18n.T("scrollable tiling")},
-		{wm.ProviderWayfire, "Wayfire", i18n.T("experimental floating windows and depth deck")},
-	}
+	return choiceItems(installerplan.Compositor, installerplan.ResolveSource("Arch"), true)
 }
 
 func compositorsForVariant(variant string) []item {
-	if !isVoidVariant(variant) {
-		return compositors()
+	edition := installerChoicesForVariant(variant)
+	var items []item
+	for _, availability := range edition.Choices(installerplan.Compositor) {
+		if !availability.Available && !availability.Choice.ShowUnavailableISO {
+			continue
+		}
+		hint := i18n.T(availability.Choice.TUIHint)
+		if !availability.Available {
+			hint = i18n.Tf("Unavailable on %s · %s", edition.Edition, availability.Reason)
+		}
+		items = append(items, item{availability.Choice.ID, i18n.T(availability.Choice.Label), hint})
 	}
-	return []item{
-		{wm.ProviderHyprland, "Hyprland", i18n.T("Unavailable on Void Linux · Hyprland is not packaged")},
-		{wm.ProviderNiri, "niri", i18n.T("scrollable tiling")},
-	}
+	return items
 }
 
 // compositorLabel is the display name for a compositor key (Review/rail cells).
@@ -994,12 +1008,10 @@ func newModel() model {
 		m.diskHint = diskHint()
 	}
 	// Defaults must flow even when a choice step is skipped programmatically.
-	m.picks["compositor"] = wm.Providers()[0]
-	if isVoidVariant(variant) {
-		m.picks["compositor"] = wm.ProviderNiri
-	}
-	m.picks["browser"] = "firefox"
-	m.picks["login-shell"] = "fish"
+	edition := installerChoicesForVariant(variant)
+	m.picks["compositor"] = installerplan.FreshSelection(installerplan.Compositor, edition.AvailableIDs(installerplan.Compositor))
+	m.picks["browser"] = installerplan.FreshDefault(installerplan.Browser)
+	m.picks["login-shell"] = installerplan.FreshDefault(installerplan.LoginShell)
 	m.netOnline = netOnline()
 	m.loadStep()
 	return m
@@ -1026,8 +1038,13 @@ func (m *model) loadStep() {
 			dl := sysDiskLayout(m.diskDev)
 			items, disabled = m.diskStrategyChoices(dl)
 		}
-		if s.key == "compositor" && isVoidVariant(m.variant) {
-			disabled = map[string]bool{wm.ProviderHyprland: true}
+		if s.key == "compositor" {
+			disabled = map[string]bool{}
+			for _, availability := range installerChoicesForVariant(m.variant).Choices(installerplan.Compositor) {
+				if !availability.Available {
+					disabled[availability.Choice.ID] = true
+				}
+			}
 		}
 		if s.key == "locale" {
 			// keep the keyboard's own country's locales in front so the intended
@@ -1036,9 +1053,9 @@ func (m *model) loadStep() {
 		}
 		m.pick = newPicker(items, s.numbered)
 		m.pick.disabled = disabled
-		if s.key == "compositor" && isVoidVariant(m.variant) {
+		if s.key == "compositor" {
 			for pos, idx := range m.pick.matches {
-				if m.pick.items[idx].key == wm.ProviderNiri {
+				if !m.pick.disabled[m.pick.items[idx].key] {
 					m.pick.cursor = pos
 					break
 				}

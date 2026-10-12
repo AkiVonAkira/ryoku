@@ -23,6 +23,8 @@ RYOKU_TARGET_CHROOT=chroot
 
 # shellcheck source=installation/backend/lib/common.sh
 source "$SHARED_LIB_DIR/common.sh"
+# shellcheck source=installation/backend/lib/choices.sh
+source "$SHARED_LIB_DIR/choices.sh"
 # shellcheck source=installation/backend/lib/preflight.sh
 source "$SHARED_LIB_DIR/preflight.sh"
 # shellcheck source=installation/backend/lib/disk.sh
@@ -85,8 +87,8 @@ fi
 : "${RYOKU_COMPOSITOR:=}"
 : "${RYOKU_COMPOSITOR_CONFIG_DIR:=}"
 : "${RYOKU_COMPOSITOR_GPU_PIN:=}"
-: "${RYOKU_BROWSER:=firefox}"
-: "${RYOKU_LOGIN_SHELL:=fish}"
+: "${RYOKU_BROWSER:=}"
+: "${RYOKU_LOGIN_SHELL:=}"
 : "${RYOKU_DROP_PACKAGES:=}"
 : "${RYOKU_REBOOT:=}"
 : "${RYOKU_DRYRUN:=}"
@@ -103,26 +105,7 @@ RYOKU_REQUIRE_UEFI=0
 if [[ $RYOKU_FIRMWARE_MODE == bios ]]; then RYOKU_BIOS_BOOT_MIB=1; else RYOKU_BIOS_BOOT_MIB=0; fi
 export RYOKU_REPO RYOKU_DROP_PACKAGES RYOKU_BROWSER RYOKU_LOGIN_SHELL
 export RYOKU_PACKAGE_CACHE_DIR RYOKU_CHROOT_CMD RYOKU_REQUIRE_UEFI RYOKU_BIOS_BOOT_MIB
-
-case $RYOKU_BROWSER in
-  firefox) browser_drops=(chromium zen-browser-bin) ;;
-  chromium) browser_drops=(firefox zen-browser-bin) ;;
-  zen) browser_drops=(firefox chromium) ;;
-  *) die 'RYOKU_BROWSER=%s is not one of firefox, chromium, or zen' "$RYOKU_BROWSER" ;;
-esac
-case $RYOKU_LOGIN_SHELL in
-  fish) shell_drops=(zsh zsh-autosuggestions zsh-history-substring-search zsh-syntax-highlighting ryoku-oh-my-zsh blesh) ;;
-  zsh) shell_drops=(fish blesh) ;;
-  bash) shell_drops=(fish zsh zsh-autosuggestions zsh-history-substring-search zsh-syntax-highlighting ryoku-oh-my-zsh) ;;
-  *) die 'RYOKU_LOGIN_SHELL=%s is not one of fish, zsh, or bash' "$RYOKU_LOGIN_SHELL" ;;
-esac
-append_drop() {
-  local package=$1
-  [[ ",${RYOKU_DROP_PACKAGES}," == *,"$package",* ]] \
-    || RYOKU_DROP_PACKAGES="${RYOKU_DROP_PACKAGES:+$RYOKU_DROP_PACKAGES,}$package"
-}
-for package in "${browser_drops[@]}" "${shell_drops[@]}"; do append_drop "$package"; done
-export RYOKU_DROP_PACKAGES
+ryoku_choice_apply_fresh Void "$RYOKU_REPO/void/packages/translations.tsv"
 
 [[ -n $RYOKU_DISK ]] || die "RYOKU_DISK is required"
 [[ -n $RYOKU_PASSWORD_HASH ]] || die "RYOKU_PASSWORD_HASH is required"

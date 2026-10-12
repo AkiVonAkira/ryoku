@@ -49,8 +49,8 @@ func TestVariantMarkerRoutesWizard(t *testing.T) {
 	if selected != wm.ProviderNiri {
 		t.Fatalf("Void compositor default = %q, want %q", selected, wm.ProviderNiri)
 	}
-	if !strings.Contains(compositor.items[0].hint, "not packaged") {
-		t.Fatalf("disabled compositor has no reason: %q", compositor.items[0].hint)
+	if !strings.Contains(compositor.items[0].hint, "GCC 15") {
+		t.Fatalf("disabled compositor has no package-table reason: %q", compositor.items[0].hint)
 	}
 }
 
@@ -79,10 +79,9 @@ func TestVoidNoticeFollowsWelcome(t *testing.T) {
 	text := strings.Join(notice.desc, "\n")
 	for _, want := range []string{
 		"This Void edition is experimental.",
+		"Available window managers: niri.",
 		"Use ryoku update --system for base-system updates.",
 		"XBPS has no update hooks; this keeps updates snapshotted.",
-		"Zen Browser, LocalSend and Voxtype are AUR-only.",
-		"asusctl and adw-gtk-theme are unavailable.",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("Void notice text does not contain %q: %v", want, notice.desc)
@@ -95,7 +94,7 @@ func TestVoidNoticeFollowsWelcome(t *testing.T) {
 	}
 	m := model{variant: variantVoid, flow: voidFlow, w: 112, h: 42, state: "wizard", enterPos: 1}
 	rendered := strings.ToLower(stripSGR(m.viewWizard()))
-	for _, want := range []string{"experimental", "niri", "ryoku update --system", "snapshotted", "xbps has no update hooks", "aur-only"} {
+	for _, want := range []string{"experimental", "niri", "ryoku update --system", "snapshotted", "xbps has no update hooks"} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("Void notice is missing %q:\n%s", want, rendered)
 		}

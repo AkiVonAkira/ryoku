@@ -1,17 +1,20 @@
-// apps.go holds the installer's browser, login-shell, and app choice tables:
-// what Ryoku ships, what a user may pick or skip, and why. The required rows
-// are not opinion: each names a desktop feature (a ryoku-app role or the stash
-// menu) that breaks without the package. The same feature-to-package contract
-// is gated by tests/shell-tool-availability.sh. Tools that are hard depends of
-// ryoku-desktop (grim, cava, matugen, mpv, the portals) never appear here at
-// all: removing them would break a Ryoku surface the user never touched, so
-// the desktop owns them, not the installer's picker.
+// apps.go adapts the shared installer choices to picker rows and owns the
+// optional app table. Required app rows name a desktop feature (a ryoku-app
+// role or the stash menu) that breaks without the package. The same
+// feature-to-package contract is gated by tests/shell-tool-availability.sh.
+// Tools that are hard dependencies of ryoku-desktop never appear here:
+// removing them would break a surface the user never touched, so the desktop
+// owns them rather than the installer's picker.
 package main
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"ryoku-i18n"
+	installerplan "ryoku-installerplan"
 )
 
 // flowIndex finds the wizard index of a step by key; the flow shifts when
@@ -25,22 +28,54 @@ func flowIndex(flow []step, key string) int {
 	return -1
 }
 
-// browsers returns the three browsers Ryoku ships. The installer picks exactly
-// one; the browser step offers these and nothing else.
-func browsers() []item {
-	return []item{
-		{"firefox", "Firefox", i18n.T("Recommended · official repo · the Gecko engine")},
-		{"chromium", "Chromium", i18n.T("official repo · fast and familiar")},
-		{"zen", "Zen", i18n.T("vertical tabs · AUR build")},
+func installerChoicesForVariant(variant string) installerplan.EditionPlan {
+	if !isVoidVariant(variant) {
+		return installerplan.ResolveSource(variant)
 	}
+	var paths []string
+	if root := os.Getenv("RYOKU_REPO"); root != "" {
+		paths = append(paths, filepath.Join(root, "void/packages/translations.tsv"))
+	}
+	paths = append(paths,
+		"/usr/share/ryoku/void/packages/translations.tsv",
+		filepath.Join("..", "..", "void", "packages", "translations.tsv"),
+	)
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		plan, err := installerplan.ResolveEdition(data)
+		if err != nil {
+			panic(err)
+		}
+		return plan
+	}
+	panic(fmt.Sprintf("Void package table not found in %s", strings.Join(paths, ", ")))
+}
+
+func choiceItems(kind string, plan installerplan.EditionPlan, availableOnly bool) []item {
+	var items []item
+	for _, availability := range plan.Choices(kind) {
+		if availableOnly && !availability.Available {
+			continue
+		}
+		choice := availability.Choice
+		hint := i18n.T(choice.TUIHint)
+		if !availability.Available {
+			hint = i18n.Tf("Unavailable on %s · %s", plan.Edition, availability.Reason)
+		}
+		items = append(items, item{choice.ID, i18n.T(choice.Label), hint})
+	}
+	return items
+}
+
+func browsers() []item {
+	return choiceItems(installerplan.Browser, installerplan.ResolveSource("Arch"), true)
 }
 
 func browsersForVariant(variant string) []item {
-	all := browsers()
-	if isVoidVariant(variant) {
-		return all[:2]
-	}
-	return all
+	return choiceItems(installerplan.Browser, installerChoicesForVariant(variant), true)
 }
 
 // browserLabel is the display name for a browser key, for Review and the rail.
@@ -53,23 +88,13 @@ func browserLabel(key string) string {
 	return key
 }
 
-// browserPackages is every browser name the package sets carry, in picker
-// order, so the handoff can add the two that lost to the backend's drop list.
-func browserPackages() []string { return []string{"firefox", "chromium", "zen-browser-bin"} }
-
-// loginShells returns the three account shells in the order shown by the
-// installer. Every shell keeps the shared terminal tools; only its own editing
-// stack is installed.
+// loginShells returns the account shells in shared manifest order.
 func loginShells() []item {
-	return []item{
-		{"fish", "Fish", i18n.T("Recommended · autosuggestions, abbreviations")},
-		{"zsh", "Zsh", i18n.T("Oh My Zsh with Ryoku's plugins")},
-		{"bash", "Bash", i18n.T("the classic shell · ble.sh editing")},
-	}
+	return choiceItems(installerplan.LoginShell, installerplan.ResolveSource("Arch"), true)
 }
 
-func loginShellsForVariant(_ string) []item {
-	return loginShells()
+func loginShellsForVariant(variant string) []item {
+	return choiceItems(installerplan.LoginShell, installerChoicesForVariant(variant), true)
 }
 
 // loginShellLabel is the display name for a shell key, for Review and the rail.
@@ -80,19 +105,6 @@ func loginShellLabel(key string) string {
 		}
 	}
 	return key
-}
-
-// loginShellDropPackages returns the stacks not owned by the selected shell.
-// Bash itself is part of the base system and is never dropped.
-func loginShellDropPackages(key string) []string {
-	switch key {
-	case "zsh":
-		return []string{"fish", "blesh"}
-	case "bash":
-		return []string{"fish", "zsh", "zsh-autosuggestions", "zsh-history-substring-search", "zsh-syntax-highlighting", "ryoku-oh-my-zsh"}
-	default:
-		return []string{"zsh", "zsh-autosuggestions", "zsh-history-substring-search", "zsh-syntax-highlighting", "ryoku-oh-my-zsh", "blesh"}
-	}
 }
 
 // appRow is one keep/remove decision: a named app or tool group, the packages

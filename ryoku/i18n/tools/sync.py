@@ -269,6 +269,21 @@ def extract_keys():
                     s = _unescape(body).strip()
                     if _copy(s):
                         keys.add(s)
+    # the installers' browser/shell/compositor choices are data, translated by
+    # variable at render, so pull their display columns from the one manifest.
+    choices = os.path.join(REPO, "installation", "installerplan", "choices.tsv")
+    if os.path.isfile(choices):
+        with open(choices, encoding="utf-8", errors="ignore") as fh:
+            rows = [line.rstrip("\n").split("\t") for line in fh if line.strip()]
+        header = rows[0] if rows else []
+        wanted = [header.index(c) for c in ("label", "tui_hint", "shell_detail") if c in header]
+        for row in rows[1:]:
+            if not row or row[0] != "choice":
+                continue
+            for i in wanted:
+                s = row[i].strip() if i < len(row) else ""
+                if s and s != "-" and _copy(s):
+                    keys.add(s)
     # a last pass over everything, whatever wrapped it: a string with no ASCII
     # letter is a number, a glyph or a symbol, and asking a translator for one
     # invites localized digits in a numeric readout.

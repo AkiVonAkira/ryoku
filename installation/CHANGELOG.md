@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Fixed
+- **Installer product choices no longer drift between editions or entry
+  points.** Browser, login-shell and compositor order, labels, defaults,
+  package stacks and fresh/existing shell policies now come from one shared
+  manifest. Void and Fedora availability and refusal reasons come directly
+  from their package translation tables.
 - **The Void installer now accepts legacy BIOS whole-disk installs.** Its
   hardware card explains the destructive whole-disk requirement, the strategy
   picker leaves alongside visible but disabled because it needs UEFI and GPT,

@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
+	installerplan "ryoku-installerplan"
 )
 
 func packageSet(pkgs []string) map[string]bool {
@@ -13,6 +16,31 @@ func packageSet(pkgs []string) map[string]bool {
 		set[pkg] = true
 	}
 	return set
+}
+
+func unavailableZenTable(t *testing.T, edition string) ([]byte, string) {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", edition, "packages", "translations.tsv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(data), "\n")
+	reason := "Fixture " + edition + " Zen package is unavailable."
+	found := false
+	for i, line := range lines {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 4 || fields[0] != "zen-browser-bin" {
+			continue
+		}
+		fields[1] = "-"
+		fields[3] = reason
+		lines[i] = strings.Join(fields, "\t")
+		found = true
+	}
+	if !found {
+		t.Fatal("zen-browser-bin row not found")
+	}
+	return []byte(strings.Join(lines, "\n")), reason
 }
 
 func TestChoicePackageFiltering(t *testing.T) {
@@ -120,6 +148,80 @@ func TestChoiceValidationAndEnvironmentDefaults(t *testing.T) {
 	}
 }
 
+func TestEditionFlagsRejectUnavailableZen(t *testing.T) {
+	for _, edition := range []string{"fedora", "void"} {
+		t.Run(edition, func(t *testing.T) {
+			data, reason := unavailableZenTable(t, edition)
+			plan, err := parseEditionCompositors(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = validateEditionFlags("zen", "fish", plan)
+			if err == nil {
+				t.Fatal("--browser zen was accepted")
+			}
+			message := err.Error()
+			if !strings.Contains(strings.ToLower(message), edition) ||
+				!strings.Contains(message, "\"zen\"") ||
+				!strings.Contains(message, reason) {
+				t.Fatalf("unavailable browser error = %q", message)
+			}
+		})
+	}
+}
+
+func TestShellFrontendMatchesSharedEditionPlan(t *testing.T) {
+	for _, edition := range []string{"arch", "void", "fedora"} {
+		t.Run(edition, func(t *testing.T) {
+			var plan editionCompositorPlan
+			if edition == "arch" {
+				plan = sourceEditionChoices("Arch")
+			} else {
+				data, err := os.ReadFile(filepath.Join("..", edition, "packages", "translations.tsv"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				plan, err = parseEditionCompositors(data)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			p := defaultPlanForEdition(&facts{userShell: "/usr/bin/zsh"}, plan)
+			if p.browser != installerplan.FreshDefault(installerplan.Browser) || p.shell != "zsh" {
+				t.Fatalf("defaults = browser %q, shell %q", p.browser, p.shell)
+			}
+			items := buildItems(&facts{}, p, plan)
+			wantByLabel := map[string]string{
+				"Compositor":  strings.Join(plan.choices.AvailableIDs(installerplan.Compositor), ","),
+				"Browser":     strings.Join(plan.choices.AvailableIDs(installerplan.Browser), ","),
+				"Login shell": strings.Join(plan.choices.AvailableIDs(installerplan.LoginShell), ","),
+			}
+			for _, row := range items {
+				want, ok := wantByLabel[row.label]
+				if !ok {
+					continue
+				}
+				var got []string
+				for _, option := range row.options {
+					got = append(got, option.key)
+				}
+				if strings.Join(got, ",") != want {
+					t.Errorf("%s choices = %q, want %q", row.label, strings.Join(got, ","), want)
+				}
+				delete(wantByLabel, row.label)
+			}
+			if len(wantByLabel) != 0 {
+				t.Fatalf("missing choice rows: %v", wantByLabel)
+			}
+			gotDrops := strings.Join(choiceDropPackages(p), ",")
+			wantDrops := strings.Join(installerplan.DropPackages(p.browser, p.shell), ",")
+			if gotDrops != wantDrops {
+				t.Fatalf("choice drops = %q, want %q", gotDrops, wantDrops)
+			}
+		})
+	}
+}
+
 func TestZenForcesAURAndAddsItsPackage(t *testing.T) {
 	p := &plan{browser: "firefox", shell: "fish", aur: false}
 	applyPlanChoices(p, "zen", "")
@@ -142,7 +244,7 @@ func TestZenForcesAURAndAddsItsPackage(t *testing.T) {
 		t.Fatal("Zen must lock the AUR toggle on")
 	}
 	m := model{state: "plan", p: p, items: items, sel: aur}
-	next, _ := m.onKey("space")
+	next, _ := m.onKey(tea.KeyPressMsg(tea.Key{Code: tea.KeySpace, Text: " "}))
 	if !next.(model).p.aur {
 		t.Fatal("the locked AUR row must ignore the toggle key")
 	}

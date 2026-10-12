@@ -1,10 +1,15 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	uv "github.com/charmbracelet/ultraviolet"
+	installerplan "ryoku-installerplan"
 )
 
 func TestGroupPlanItems(t *testing.T) {
@@ -39,6 +44,116 @@ func TestGroupPlanItems(t *testing.T) {
 	short := groupPlanItems(items[:6])
 	if len(short) != 6 {
 		t.Fatalf("short plans stay flat, got %d rows", len(short))
+	}
+}
+
+func decodePlanKey(t *testing.T, sequence string) tea.KeyPressMsg {
+	t.Helper()
+	var decoder uv.EventDecoder
+	n, event := decoder.Decode([]byte(sequence))
+	if n != len(sequence) {
+		t.Fatalf("decoded %d of %d bytes in %q", n, len(sequence), sequence)
+	}
+	key, ok := event.(uv.KeyPressEvent)
+	if !ok {
+		t.Fatalf("%q decoded as %T, want a key press", sequence, event)
+	}
+	return tea.KeyPressMsg(key)
+}
+
+func planModelForKeys() model {
+	f := &facts{distro: archLinux, kbLayout: "us"}
+	p := &plan{compositor: "hyprland", browser: "firefox", shell: "fish"}
+	items := groupPlanItems(buildItems(f, p))
+	return model{state: "plan", f: f, p: p, items: items, sel: firstToggle(items)}
+}
+
+func TestPlanArrowEncodingsVisitEveryRow(t *testing.T) {
+	for name, arrows := range map[string]struct {
+		down string
+		up   string
+	}{
+		"normal cursor":      {down: "\x1b[B", up: "\x1b[A"},
+		"application cursor": {down: "\x1bOB", up: "\x1bOA"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := planModelForKeys()
+			var selectable []int
+			for i, item := range m.items {
+				if selectablePlanItem(item) {
+					selectable = append(selectable, i)
+				}
+			}
+			if m.sel != selectable[0] {
+				t.Fatalf("initial focus = %d, want %d", m.sel, selectable[0])
+			}
+			for _, want := range selectable[1:] {
+				next, _ := m.Update(decodePlanKey(t, arrows.down))
+				m = next.(model)
+				if m.sel != want {
+					t.Fatalf("down focus = %d, want %d", m.sel, want)
+				}
+				if m.confirm {
+					t.Fatal("an arrow key opened the install confirmation")
+				}
+			}
+			for i := len(selectable) - 2; i >= 0; i-- {
+				next, _ := m.Update(decodePlanKey(t, arrows.up))
+				m = next.(model)
+				if m.sel != selectable[i] {
+					t.Fatalf("up focus = %d, want %d", m.sel, selectable[i])
+				}
+			}
+		})
+	}
+}
+
+func TestPlanArrowEncodingsChangeFocusedChoice(t *testing.T) {
+	for name, arrows := range map[string]struct {
+		right string
+		left  string
+	}{
+		"normal cursor":      {right: "\x1b[C", left: "\x1b[D"},
+		"application cursor": {right: "\x1bOC", left: "\x1bOD"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := planModelForKeys()
+			next, _ := m.Update(decodePlanKey(t, "\x1b[B"))
+			m = next.(model)
+			if m.items[m.sel].label != "Browser" {
+				t.Fatalf("focused row = %q, want Browser", m.items[m.sel].label)
+			}
+			next, _ = m.Update(decodePlanKey(t, arrows.right))
+			m = next.(model)
+			if m.p.browser != "chromium" {
+				t.Fatalf("right selected %q, want chromium", m.p.browser)
+			}
+			next, _ = m.Update(decodePlanKey(t, arrows.left))
+			m = next.(model)
+			if m.p.browser != "firefox" {
+				t.Fatalf("left selected %q, want firefox", m.p.browser)
+			}
+		})
+	}
+}
+
+func TestPlanKittyArrowIgnoresLockState(t *testing.T) {
+	m := planModelForKeys()
+	next, _ := m.Update(decodePlanKey(t, "\x1b[57353;193u"))
+	m = next.(model)
+	if m.items[m.sel].label != "Browser" {
+		t.Fatalf("Kitty down arrow focused %q, want Browser", m.items[m.sel].label)
+	}
+	if m.confirm {
+		t.Fatal("Kitty arrow opened the install confirmation")
+	}
+}
+
+func TestPlanIgnoresEnterTextThatIsNotTheEnterKey(t *testing.T) {
+	m := planModelForKeys()
+	next, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: 'e', Text: "enter"}))
+	if next.(model).confirm {
+		t.Fatal("text named enter must not open the install confirmation")
 	}
 }
 
@@ -100,7 +215,15 @@ func TestCleanTermLine(t *testing.T) {
 }
 
 func TestVoidPlanShowsEditionNotice(t *testing.T) {
-	render := func(d *distro, btrfs bool) string {
+	data, err := os.ReadFile("../void/packages/translations.tsv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	voidEdition, err := parseEditionCompositors(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	render := func(d *distro, btrfs bool, edition editionCompositorPlan) string {
 		f := &facts{
 			distro:     d,
 			distroName: d.name,
@@ -109,21 +232,40 @@ func TestVoidPlanShowsEditionNotice(t *testing.T) {
 			online:     true,
 			btrfsRoot:  btrfs,
 		}
-		p := defaultPlan(f)
+		p := defaultPlanForEdition(f, edition)
 		return model{
 			w: 100, h: 40,
 			f: f, p: p,
-			items: groupPlanItems(buildItems(f, p)),
+			items:              groupPlanItems(buildItems(f, p, edition)),
+			editionCompositors: edition,
 		}.viewPlan()
 	}
 
 	const updateNotice = "Update the base system with ryoku update --system so it is snapshotted; XBPS has no update hooks."
-	notice := voidEditionNotice(&facts{distro: voidLinux, btrfsRoot: true})
-	if !strings.Contains(strings.Join(notice, "\n"), updateNotice) {
+	notice := voidEditionNotice(&facts{distro: voidLinux, btrfsRoot: true}, voidEdition)
+	noticeText := strings.Join(notice, "\n")
+	if !strings.Contains(noticeText, updateNotice) {
 		t.Fatalf("Void notice text does not contain %q: %v", updateNotice, notice)
 	}
-	voidPlan := render(voidLinux, true)
-	for _, want := range []string{"niri only", "Unavailable: Zen Browser", "snapshot rollback: ready", "ryoku update --system", "snapshotted"} {
+	for _, want := range []string{
+		"Hyprland unavailable: Ryoku's Hyprland needs GCC 15 and Void still ships GCC 14.",
+		"Wayfire unavailable: Void ships Wayfire 0.11, but the Ryoku provider and depthdeck variant are not packaged or VM-verified.",
+		"Zen unavailable: Zen ships only as an upstream binary build; Ryoku does not mirror a browser it cannot keep current",
+	} {
+		if !strings.Contains(noticeText, want) {
+			t.Errorf("Void notice missing table reason %q", want)
+		}
+	}
+	voidPlan := render(voidLinux, true, voidEdition)
+	for _, want := range []string{
+		"Compositors: niri.",
+		"Hyprland unavailable:",
+		"Wayfire unavailable:",
+		"Zen unavailable:",
+		"snapshot rollback: ready",
+		"ryoku update --system",
+		"snapshotted",
+	} {
 		if !strings.Contains(voidPlan, want) {
 			t.Errorf("Void btrfs plan missing %q", want)
 		}
@@ -131,33 +273,42 @@ func TestVoidPlanShowsEditionNotice(t *testing.T) {
 	if got := strings.Count(voidPlan, "Ryoku on Void"); got != 1 {
 		t.Errorf("Void plan notice count = %d, want 1", got)
 	}
-	nonBtrfsPlan := render(voidLinux, false)
+	nonBtrfsPlan := render(voidLinux, false, voidEdition)
 	if strings.Contains(nonBtrfsPlan, "Update the base system with ryoku update --system") || !strings.Contains(nonBtrfsPlan, "snapshot rollback: unavailable") {
 		t.Fatalf("Void non-btrfs plan has the wrong snapshot guidance:\n%s", nonBtrfsPlan)
 	}
 	if strings.Contains(voidPlan, "No snapshots or rollback are available.") {
 		t.Fatal("Void plan still says snapshots are unavailable")
 	}
-	archPlan := render(archLinux, true)
+	archPlan := render(archLinux, true, sourceEditionChoices("Arch"))
 	if strings.Contains(archPlan, "Ryoku on Void") || !strings.Contains(archPlan, "snapshot rollback: ready") {
 		t.Fatal("Arch plan changed while routing the Void edition notice")
 	}
 }
 
 func TestExperimentalEditionAndWayfireLabels(t *testing.T) {
-	voidNotice := strings.Join(editionNotice(&facts{distro: voidLinux}, editionCompositorPlan{}), "\n")
+	loadEdition := func(name string) editionCompositorPlan {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join("..", name, "packages", "translations.tsv"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		edition, err := parseEditionCompositors(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return edition
+	}
+	voidNotice := strings.Join(editionNotice(&facts{distro: voidLinux}, loadEdition("void")), "\n")
 	if got := strings.Count(voidNotice, "experimental edition"); got != 1 {
 		t.Fatalf("Void experimental label count = %d, want 1", got)
 	}
-	fedoraNotice := strings.Join(editionNotice(
-		&facts{distro: fedoraLinux},
-		editionCompositorPlan{available: []string{"hyprland", "niri"}},
-	), "\n")
+	fedoraNotice := strings.Join(editionNotice(&facts{distro: fedoraLinux}, loadEdition("fedora")), "\n")
 	if got := strings.Count(fedoraNotice, "experimental edition"); got != 1 {
 		t.Fatalf("Fedora experimental label count = %d, want 1", got)
 	}
 
-	items := buildItems(&facts{}, &plan{}, []string{"hyprland", "niri", "wayfire"})
+	items := buildItems(&facts{}, &plan{}, sourceEditionChoices("Arch"))
 	for _, item := range items {
 		if item.label != "Compositor" {
 			continue
@@ -172,6 +323,97 @@ func TestExperimentalEditionAndWayfireLabels(t *testing.T) {
 		}
 	}
 	t.Fatal("Wayfire compositor option missing")
+}
+
+func TestEditionBrowserChoicesFollowPackageTables(t *testing.T) {
+	browserKeys := func(items []planItem) []string {
+		for _, item := range items {
+			if item.label != "Browser" {
+				continue
+			}
+			keys := make([]string, 0, len(item.options))
+			for _, option := range item.options {
+				keys = append(keys, option.key)
+			}
+			return keys
+		}
+		return nil
+	}
+	loadUnavailableZenFixture := func(edition string) editionCompositorPlan {
+		t.Helper()
+		data, _ := unavailableZenTable(t, edition)
+		plan, err := parseEditionCompositors(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return plan
+	}
+
+	p := &plan{compositor: "hyprland", browser: "firefox", shell: "fish"}
+	for name, test := range map[string]struct {
+		facts   *facts
+		edition editionCompositorPlan
+		want    string
+	}{
+		"Fedora fixture": {
+			facts:   &facts{distro: fedoraLinux},
+			edition: loadUnavailableZenFixture("fedora"),
+			want:    "firefox,chromium",
+		},
+		"Void fixture": {
+			facts:   &facts{distro: voidLinux},
+			edition: loadUnavailableZenFixture("void"),
+			want:    "firefox,chromium",
+		},
+		"Arch": {
+			facts: &facts{distro: archLinux},
+			want:  "firefox,chromium,zen",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var items []planItem
+			if len(test.edition.choices.AvailableIDs(installerplan.Compositor)) == 0 {
+				items = buildItems(test.facts, p)
+			} else {
+				items = buildItems(test.facts, p, test.edition)
+			}
+			if got := strings.Join(browserKeys(items), ","); got != test.want {
+				t.Fatalf("browser choices = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestFedoraPlanNeverClaimsSnapshotRollback(t *testing.T) {
+	f := &facts{
+		distro:     fedoraLinux,
+		distroName: "Fedora Linux 44",
+		hostname:   "fedora",
+		currentDM:  "gdm.service",
+		btrfsRoot:  true,
+		online:     true,
+	}
+	data, err := os.ReadFile("../fedora/packages/translations.tsv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	edition, err := parseEditionCompositors(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := defaultPlan(f, edition.choices.AvailableIDs(installerplan.Compositor))
+	view := model{
+		w: 100, h: 40,
+		f: f, p: p,
+		items:              groupPlanItems(buildItems(f, p, edition)),
+		editionCompositors: edition,
+	}.viewPlan()
+	if !strings.Contains(view, "snapshot rollback: unavailable") {
+		t.Fatalf("Fedora plan did not report snapshot rollback unavailable:\n%s", view)
+	}
+	if strings.Contains(view, "snapshot rollback: ready") {
+		t.Fatalf("Fedora plan falsely reported snapshot rollback ready:\n%s", view)
+	}
 }
 
 func TestFedoraPlanKeepsNouveauAndSkipsAUR(t *testing.T) {

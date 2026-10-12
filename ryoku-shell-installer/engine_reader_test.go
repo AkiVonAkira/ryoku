@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	wm "ryoku-wm"
+	installerplan "ryoku-installerplan"
 )
 
 // pacman progress repaints end in \r, not \n; they must surface live as
@@ -382,9 +382,18 @@ esac
 	}
 }
 
-func TestVoidDefaultsToPackagedProvider(t *testing.T) {
-	p := defaultPlan(&facts{distro: voidLinux})
-	if p.compositor != wm.ProviderNiri {
-		t.Fatalf("Void provider = %q", p.compositor)
+func TestVoidDefaultsToFirstPackagedProvider(t *testing.T) {
+	data, err := os.ReadFile("../void/packages/translations.tsv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	edition, err := parseEditionCompositors(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	available := edition.choices.AvailableIDs(installerplan.Compositor)
+	p := defaultPlan(&facts{distro: voidLinux}, available)
+	if p.compositor != available[0] || p.compositor != "niri" {
+		t.Fatalf("Void provider = %q, available = %v", p.compositor, available)
 	}
 }

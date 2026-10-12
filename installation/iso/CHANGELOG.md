@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Fixed
+- **Both ISO staging paths carry the shared installer-choice manifest.** The
+  prebuilt TUI and Bash backend now resolve the same browser, login-shell and
+  compositor policy inside Arch, CachyOS and Void live images.
 - **Dvorak, Colemak and other keyboard variants carry into the installer.** The
   graphical installer switched its keyboard to the base layout only, so picking
   Dvorak captured the disk passphrase on QWERTY while the boot unlock prompt

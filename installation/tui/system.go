@@ -22,6 +22,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"ryoku-i18n"
+	installerplan "ryoku-installerplan"
 	wm "ryoku-wm"
 )
 
@@ -1188,20 +1189,10 @@ func (m model) installEnv() []string {
 	// in Apps & tools, the two browsers that lost, and the two unchosen shell
 	// stacks. The backend filters this list from every package source and records
 	// it in the provisioning ledger.
-	br := def(m.picks["browser"], "firefox")
-	brPkg := br
-	if br == "zen" {
-		brPkg = "zen-browser-bin"
-	}
-	sh := def(m.picks["login-shell"], "fish")
-	var drop []string
-	drop = append(drop, deselectedPkgsForVariant(m.variant, m.selectedApps())...)
-	for _, pkg := range browserPackages() {
-		if pkg != brPkg {
-			drop = append(drop, pkg)
-		}
-	}
-	drop = append(drop, loginShellDropPackages(sh)...)
+	br := def(m.picks["browser"], installerplan.FreshDefault(installerplan.Browser))
+	sh := def(m.picks["login-shell"], installerplan.FreshDefault(installerplan.LoginShell))
+	drop := deselectedPkgsForVariant(m.variant, m.selectedApps())
+	drop = append(drop, installerplan.DropPackages(br, sh)...)
 	env = append(env, "RYOKU_BROWSER="+br, "RYOKU_LOGIN_SHELL="+sh)
 	if len(drop) > 0 {
 		env = append(env, "RYOKU_DROP_PACKAGES="+strings.Join(drop, ","))

@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- **Direct backend calls enforce edition package availability.** Both ISO
+  backends read the shared installer manifest through one resolver, compute the
+  same browser and login-shell drops, and reject an unavailable browser, shell
+  or compositor before disk work with the package-table reason.
 - **Arch and Void install plans now have one first-boot parity check.**
   `tests/install-edition-parity.sh` runs both niri backends with the same
   answers and compares their neutral materialize, keyboard, wallpaper,

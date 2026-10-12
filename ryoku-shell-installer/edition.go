@@ -1,92 +1,94 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"ryoku-i18n"
-	"ryoku-wm"
+	installerplan "ryoku-installerplan"
 )
 
 type editionCompositorPlan struct {
-	available []string
-	omitted   []string
+	edition string
+	choices installerplan.EditionPlan
 }
 
 func compositorLabel(name string) string {
-	if name == "" {
-		return ""
+	if choice, ok := installerplan.ChoiceByID(installerplan.Compositor, name); ok {
+		return choice.Label
 	}
-	return strings.ToUpper(name[:1]) + name[1:]
+	return name
+}
+
+func editionPlanFromChoices(choices installerplan.EditionPlan) editionCompositorPlan {
+	return editionCompositorPlan{
+		edition: choices.Edition,
+		choices: choices,
+	}
 }
 
 func parseEditionCompositors(data []byte) (editionCompositorPlan, error) {
-	rows := map[string][]string{}
-	edition := ""
-	header := false
-	for lineNo, line := range strings.Split(string(data), "\n") {
-		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
-			continue
-		}
-		fields := strings.Split(line, "\t")
-		if !header {
-			header = true
-			if len(fields) != 4 || fields[0] != "arch" || fields[2] != "lanes" || fields[3] != "notes" {
-				return editionCompositorPlan{}, fmt.Errorf(i18n.T("package table line %d has an invalid header"), lineNo+1)
-			}
-			edition = fields[1]
-			continue
-		}
-		if len(fields) != 4 {
-			return editionCompositorPlan{}, fmt.Errorf(i18n.T("package table line %d must have four tab-separated columns"), lineNo+1)
-		}
-		rows[fields[0]] = fields
+	choices, err := installerplan.ResolveEdition(data)
+	if err != nil {
+		return editionCompositorPlan{}, err
 	}
-	if !header {
-		return editionCompositorPlan{}, errors.New(i18n.T("package table has no header"))
-	}
+	return editionPlanFromChoices(choices), nil
+}
 
-	var plan editionCompositorPlan
-	for _, provider := range wm.Providers() {
-		packageName := "ryoku-desktop-" + provider
-		row, ok := rows[packageName]
-		if ok && row[1] != "-" {
-			plan.available = append(plan.available, provider)
-			continue
-		}
-		reason := i18n.Tf("%s is not listed in the %s edition table.", packageName, edition)
-		if ok && row[3] != "" {
-			reason = row[3]
-		}
-		plan.omitted = append(plan.omitted, i18n.Tf("%s unavailable: %s", compositorLabel(provider), reason))
+func sourceEditionChoices(name string) editionCompositorPlan {
+	return editionPlanFromChoices(installerplan.ResolveSource(name))
+}
+
+func validateEditionChoice(kind, id string, plan editionCompositorPlan) error {
+	availability, ok := plan.choices.Lookup(kind, id)
+	if !ok {
+		return nil
 	}
-	if len(plan.available) == 0 {
-		return editionCompositorPlan{}, fmt.Errorf(i18n.T("the %s edition table publishes no compositor variants"), edition)
+	if availability.Available {
+		return nil
 	}
-	return plan, nil
+	return fmt.Errorf(i18n.T("%s choice %q is unavailable on %s: %s"),
+		availability.Choice.Label, id, plan.edition, availability.Reason)
+}
+
+func validateEditionFlags(browser, shell string, plan editionCompositorPlan) error {
+	if err := validateBrowser(browser); err != nil {
+		return err
+	}
+	if err := validateEditionChoice(installerplan.Browser, browser, plan); err != nil {
+		return err
+	}
+	if shell == "" {
+		return nil
+	}
+	if err := validateLoginShell(shell); err != nil {
+		return err
+	}
+	return validateEditionChoice(installerplan.LoginShell, shell, plan)
 }
 
 func loadEditionCompositors(client httpDoer, d *distro, ref, payload string) (editionCompositorPlan, error) {
-	if d == nil || d.id != "fedora" && d.id != "void" {
-		return editionCompositorPlan{available: wm.Providers()}, nil
+	if d == nil {
+		return sourceEditionChoices("Arch"), nil
+	}
+	if d.id != "fedora" && d.id != "void" {
+		return sourceEditionChoices(d.name), nil
 	}
 	if payload != "" {
 		path := filepath.Join(payload, d.id, "packages", "translations.tsv")
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return editionCompositorPlan{}, fmt.Errorf(i18n.T("read %s compositor choices: %w"), d.name, err)
+			return editionCompositorPlan{}, fmt.Errorf(i18n.T("read %s installer choices: %w"), d.name, err)
 		}
 		return parseEditionCompositors(data)
 	}
 	url := "https://raw.githubusercontent.com/ryoku-dev/ryoku/" + ref + "/" + d.id + "/packages/translations.tsv"
 	resp, err := httpStatusOK(client, http.MethodGet, url)
 	if err != nil {
-		return editionCompositorPlan{}, fmt.Errorf(i18n.T("read %s compositor choices from %s: %w"), d.name, url, err)
+		return editionCompositorPlan{}, fmt.Errorf(i18n.T("read %s installer choices from %s: %w"), d.name, url, err)
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))

@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- `choices`: **browser, login-shell and compositor policy is resolved once.**
+  Both ISO backends read the shared manifest and edition translation table
+  through this helper, including defaults, package drops and unavailable-choice
+  errors.
 - `pacstrap`/`aur`/`offline`: **every package-set reader filters installer
   removals.** `ryoku_drop_pkg`/`ryoku_drop_from` drop the deselected apps,
   losing browsers, and losing login-shell stacks from the assembled pacstrap

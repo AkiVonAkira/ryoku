@@ -89,7 +89,7 @@ log "Staging Void installer backend"
 install -d "$ROOTFS/usr/local/lib/ryoku/backend/lib" "$ROOTFS/usr/local/lib/ryoku/backend/shared"
 install -m0755 "$BACKEND_DIR/ryoku-install" "$ROOTFS/usr/local/lib/ryoku/backend/ryoku-install"
 cp -a "$BACKEND_DIR/lib"/. "$ROOTFS/usr/local/lib/ryoku/backend/lib/"
-for library in common i18n preflight disk resize luks filesystem snapshots network deploy; do
+for library in common i18n choices preflight disk resize luks filesystem snapshots network deploy; do
 	install -m0644 "$SHARED_BACKEND/$library.sh" \
 		"$ROOTFS/usr/local/lib/ryoku/backend/shared/$library.sh"
 done
@@ -101,6 +101,9 @@ install -m0755 "$REPO_ROOT/installation/iso/airootfs/usr/local/bin/ryoku-install
 
 log "Baking repository payload"
 stage_repo "$ROOTFS/usr/share/ryoku"
+install -d "$ROOTFS/usr/share/ryoku/installation/installerplan"
+install -m0644 "$REPO_ROOT/installation/installerplan/choices.tsv" \
+	"$ROOTFS/usr/share/ryoku/installation/installerplan/choices.tsv"
 cat > "$ROOTFS/usr/share/ryoku/.payload" <<EOF
 commit=$PAYLOAD_COMMIT
 date=$PAYLOAD_DATE

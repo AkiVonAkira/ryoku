@@ -58,6 +58,16 @@
   steps, so a stuck stable install can be finished on unstable.
 
 ### Fixed
+- **Arrow keys move through every plan row in GNOME Terminal and Ptyxis.** The
+  plan now reads key codes instead of the key's text form, so VTE's cursor
+  encodings walk every choice and toggle, and only a real Enter installs.
+  Fedora and Void offer only browsers their package tables can install, and
+  Fedora's plan never claims snapshot rollback.
+- **Unavailable edition choices fail before installation.** Browser,
+  login-shell and compositor flags now use the same manifest and package-table
+  availability as the interactive plan. Fedora and Void reject Zen with the
+  edition's package-table reason instead of accepting an un-installable plan;
+  `--yes` and existing-shell defaults pass through the same gate.
 - **Carried monitor layouts no longer leave a laptop panel dark without a
   live alternative.** GNOME, KDE, Hyprland, niri and sway output settings keep
   an internal panel disabled only when another enabled connector is currently
