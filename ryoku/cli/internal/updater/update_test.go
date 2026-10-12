@@ -193,6 +193,23 @@ func TestPackagedStatusUpToDateOfflineEmptyRecent(t *testing.T) {
 	}
 }
 
+func TestFilteredDNSUpdateError(t *testing.T) {
+	oldCheck := updaterFilteredRyokuDNS
+	t.Cleanup(func() { updaterFilteredRyokuDNS = oldCheck })
+
+	updaterFilteredRyokuDNS = func(repository string) bool {
+		return repository == "https://repo.ryoku.dev/stable/$arch"
+	}
+	err := filteredDNSUpdateError("https://repo.ryoku.dev/stable/$arch")
+	if err == nil || !strings.Contains(err.Error(), "DNS for ryoku.dev is being filtered") ||
+		!strings.Contains(err.Error(), "docs/updates.md#filtered-dns") {
+		t.Fatalf("filtered DNS error = %v", err)
+	}
+	if err := filteredDNSUpdateError("https://mirror.example.org/ryoku/$arch"); err != nil {
+		t.Fatalf("custom mirror error = %v", err)
+	}
+}
+
 // The Ryoku lane must never be a sysupgrade: the kernel and the base come from
 // the distribution the box was installed from, on the user's schedule. It must
 // also --overwrite the Ryoku system paths the ISO installer and deploy.sh seed

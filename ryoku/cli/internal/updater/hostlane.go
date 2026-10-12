@@ -65,6 +65,15 @@ func packagedRepoURL() string {
 	return url
 }
 
+var updaterFilteredRyokuDNS = host.FilteredRyokuDNS
+
+func filteredDNSUpdateError(repository string) error {
+	if updaterFilteredRyokuDNS(repository) {
+		return fmt.Errorf("%s", host.FilteredDNSAdvice)
+	}
+	return nil
+}
+
 func channelRepoURL(channel string) string {
 	return host.RepoURLFor(updatePackageManager(), channel)
 }

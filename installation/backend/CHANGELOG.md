@@ -61,6 +61,10 @@
   naming `RYOKU_ESP_MODE=dedicated` as the way around it (`lib/bootloader.sh`).
 
 ### Fixed
+- **Filtered Ryoku DNS now fails before the disk is touched.** The mirror
+  preflight recognizes private, loopback, and known sinkhole answers for
+  `ryoku.dev`, explains that the network is filtering DNS, and links the
+  recovery steps instead of surfacing an unexplained TLS failure.
 - **Void `auto` timezone now behaves like Arch.** Online installs geolocate the
   timezone through the shared installer resolver; offline installs skip the
   network wait and use UTC. Both editions validate the zone before linking

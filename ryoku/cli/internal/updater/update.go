@@ -211,6 +211,10 @@ func Update(args []string) (err error) {
 		// repo ahead of our vendored copy, a split package whose pinned dep a
 		// forced downgrade would break).
 		if err := sys.Sudo(refreshDBArgs(false)[1:]...); err != nil {
+			if filteredErr := filteredDNSUpdateError(packagedRepoURL()); filteredErr != nil {
+				progress.fail(filteredErr)
+				return filteredErr
+			}
 			progress.logf(i18n.T("Could not refresh the package databases: %v"), err)
 		}
 		s, held, err := installedRyokuSet(false)

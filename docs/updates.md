@@ -175,6 +175,37 @@ package; Fedora carries it inside `ryoku-rashin`. A dev box whose Prowl binary
 is not managed by the native package manager runs `prowl update` instead. Both
 refreshes are best effort and never fail the desktop update.
 
+### Filtered DNS
+
+The Ryoku mirror has no geographic restriction. If `repo.ryoku.dev` resolves to
+a private or loopback address, the network's DNS path is filtering the domain;
+the resulting pacman or installer TLS error is not a mirror outage.
+
+Prefer a VPN or an encrypted resolver. On a system where systemd-resolved owns
+DNS, configure a DNS-over-TLS provider that is reachable from the current
+network, for example:
+
+```ini
+# /etc/systemd/resolved.conf.d/encrypted-dns.conf
+[Resolve]
+DNS=1.1.1.1#cloudflare-dns.com
+FallbackDNS=9.9.9.9#dns.quad9.net
+DNSOverTLS=yes
+```
+
+Restart `systemd-resolved`, then verify the answer:
+
+```bash
+sudo systemctl restart systemd-resolved
+getent hosts repo.ryoku.dev
+```
+
+The result must be a public address. If encrypted DNS is also blocked, connect
+through a VPN. As a last resort, resolve the host on a trusted connection and
+temporarily pin that public address for `repo.ryoku.dev` in `/etc/hosts`.
+Cloudflare addresses rotate, so remove the pin afterward and prefer encrypted
+DNS for a lasting fix.
+
 ### The boot guard
 
 A packaged update that moves the box to another tagged release arms a boot

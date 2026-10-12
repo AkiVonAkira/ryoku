@@ -1335,11 +1335,21 @@ func dnfRepoRefreshAdvice() string {
 	return fmt.Sprintf("sudo %s makecache -y --refresh --repo=ryoku", host.DNFCommand())
 }
 
+var doctorFilteredRyokuDNS = host.FilteredRyokuDNS
+
+func filteredDNSDoctorResult(repository string) (recResult, bool) {
+	if !doctorFilteredRyokuDNS(repository) {
+		return recResult{}, false
+	}
+	return failRes("%s", host.FilteredDNSAdvice), true
+}
+
 func reconcileFedoraRyokuSyncDB(checkOnly bool) recResult {
 	if !doctorPackageInstalled("ryoku-desktop") {
 		return okRes(i18n.T("not a packaged install (desktop runs from a checkout)"))
 	}
-	if _, err := host.Default().RepoURL(); err != nil {
+	repository, err := host.Default().RepoURL()
+	if err != nil {
 		return okRes(i18n.T("Ryoku RPM repository absent; nothing to verify"))
 	}
 	out, err := checkDNFRepoMetadata()
@@ -1350,11 +1360,17 @@ func reconcileFedoraRyokuSyncDB(checkOnly bool) recResult {
 	if detail == "" {
 		detail = err.Error()
 	}
+	if result, filtered := filteredDNSDoctorResult(repository); filtered {
+		return result
+	}
 	if checkOnly {
 		return wouldRes(i18n.T("the Ryoku RPM repository metadata does not load: %s"), detail).
 			withFix(dnfRepoRefreshAdvice())
 	}
 	if err := refreshDNFRepoMetadata(); err != nil {
+		if result, filtered := filteredDNSDoctorResult(repository); filtered {
+			return result
+		}
 		return failRes(i18n.T("could not refresh the Ryoku RPM repository metadata: %v"), err).
 			withFix(dnfRepoRefreshAdvice())
 	}
@@ -1409,6 +1425,9 @@ func reconcileRyokuSyncDB(checkOnly bool) recResult {
 		return okRes(i18n.T("the [ryoku] sync db loads and verifies"))
 	}
 	if !strings.Contains(out, "invalid or corrupted database") && !strings.Contains(out, "signature") {
+		if result, filtered := filteredDNSDoctorResult(sys.RyokuServer()); filtered {
+			return result
+		}
 		// another failure (offline, transient); not the stale-signature wedge.
 		return okRes(i18n.T("the [ryoku] sync db is present; no signature wedge"))
 	}
@@ -1431,12 +1450,16 @@ func reconcileVoidRyokuSyncDB(checkOnly bool) recResult {
 		return okRes(i18n.T("not a packaged install (desktop runs from a checkout)"))
 	}
 	app := host.Default()
-	if _, err := app.RepoURL(); err != nil {
+	repository, err := app.RepoURL()
+	if err != nil {
 		return okRes(i18n.T("Ryoku XBPS repository absent; the channel check owns its repair"))
 	}
 	if _, err := app.RepoPackages(); err == nil {
 		return okRes(i18n.T("the Ryoku XBPS repository index loads and verifies"))
 	} else if !strings.Contains(strings.ToLower(err.Error()), "signature") {
+		if result, filtered := filteredDNSDoctorResult(repository); filtered {
+			return result
+		}
 		return noteRes(i18n.T("the Ryoku XBPS repository index could not be checked: %v"), err)
 	}
 	if checkOnly {

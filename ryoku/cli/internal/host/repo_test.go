@@ -1,12 +1,46 @@
 package host
 
 import (
+	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestFilteredRyokuDNS(t *testing.T) {
+	oldLookup := lookupRepoIPs
+	t.Cleanup(func() { lookupRepoIPs = oldLookup })
+
+	lookupRepoIPs = func(host string) ([]net.IP, error) {
+		if host != "repo.ryoku.dev" {
+			t.Fatalf("lookup host = %q", host)
+		}
+		return []net.IP{net.ParseIP("10.10.34.35")}, nil
+	}
+	if !FilteredRyokuDNS("https://repo.ryoku.dev/stable/$arch") {
+		t.Fatal("private sinkhole address was not classified as filtered DNS")
+	}
+	if FilteredRyokuDNS("https://mirror.example.org/ryoku/$arch") {
+		t.Fatal("a custom mirror must not probe ryoku.dev")
+	}
+
+	lookupRepoIPs = func(string) ([]net.IP, error) {
+		return []net.IP{net.ParseIP("104.21.19.117")}, nil
+	}
+	if FilteredRyokuDNS("https://repo.ryoku.dev/stable/$arch") {
+		t.Fatal("public address was classified as filtered DNS")
+	}
+
+	lookupRepoIPs = func(string) ([]net.IP, error) {
+		return nil, errors.New("resolver unavailable")
+	}
+	if FilteredRyokuDNS("https://repo.ryoku.dev/stable/$arch") {
+		t.Fatal("resolver failure was classified as filtered DNS")
+	}
+}
 
 func TestRepoChannelAndSetChannelPacman(t *testing.T) {
 	dir := t.TempDir()

@@ -148,6 +148,10 @@
   `internal/sys/release.go`, `internal/updater/release.go`).
 
 ### Fixed
+- **Repository failures now identify filtered Ryoku DNS.** Update and doctor
+  recognize private, loopback, and known sinkhole answers for `ryoku.dev` and
+  point to the encrypted-DNS recovery steps instead of leaving a package-manager
+  or TLS error unexplained.
 - **Public source, recovery, issue, and plugin links use the canonical
   `ryoku-dev/ryoku` repository.** Existing source checkouts whose origin still
   uses the retired `ryoku-arch` name remain valid.
