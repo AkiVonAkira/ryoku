@@ -1,7 +1,8 @@
-// Count only protocol-joined application toplevels. Provider residue can be
-// broader during startup or after a plugin reload, and a cosmetic desktop haze
-// must fail open rather than cover the wallpaper because layer surfaces leaked
-// into that residue.
+// Provider window rows are already restricted to application toplevels. The
+// foreign-toplevel handle is enrichment only: it can briefly be absent when a
+// title changes because provider and protocol updates arrive independently.
+// Presence must follow the provider row through that join gap or the wallpaper
+// frost flashes off while the application window is still mapped.
 function countOnActiveWorkspace(windows, workspaces, outputName) {
     var active = [];
     var output = String(outputName || "");
@@ -21,10 +22,11 @@ function countOnActiveWorkspace(windows, workspaces, outputName) {
     var windowCount = windows ? windows.length : 0;
     for (var j = 0; j < windowCount; j++) {
         var window = windows[j];
-        if (!window || !window.toplevel || window.toplevel.minimized === true)
+        if (!window || active.indexOf(window.workspace) === -1)
             continue;
-        if (active.indexOf(window.workspace) !== -1)
-            count++;
+        if (window.toplevel && window.toplevel.minimized === true)
+            continue;
+        count++;
     }
     return count;
 }

@@ -614,6 +614,10 @@
   leaving the desktop transparent (`quickshell/inir/services/CompositorService.qml`,
   `quickshell/shell/modules/wallpaper/Backdrop.qml`,
   `quickshell/shell/modules/wallpaper/skwd/edge-transition.frag`).
+- **Wallpaper frost no longer blinks when a window changes its title.** Window
+  presence now follows the compositor's application-window row while its
+  foreign-toplevel metadata catches up, so the shared desktop treatment stays
+  steady across Wayfire, Hyprland and niri.
 - **Fullscreen shell reactions now follow the neutral window-manager state.**
   Fullscreen windows hide the dock and widget canvas, silence banners, apply
   game mode and OSD rules, and enable auto-DND under every supported compositor.

@@ -28,16 +28,26 @@ eq(countOnActiveWorkspace(live, workspaces, "DP-1"), 1,
 eq(countOnActiveWorkspace(live, workspaces, "HDMI-A-1"), 0,
     "an output with no active workspace has no deck frost");
 
-const leakedLayers = [
-    { workspace: "1", appId: "ryoku-widgets", title: "layer-shell", toplevel: null },
-    { workspace: "1", appId: "ryoku-frame", title: "layer-shell" },
-    { workspace: "1", appId: "qs-dock", title: "layer-shell", toplevel: null },
-    { workspace: "1", appId: "kitty", title: "terminal", toplevel: toplevel(false) }
+const joinLag = [
+    { workspace: "1", appId: "kitty", title: "new title", toplevel: null },
+    { workspace: "2", appId: "firefox", title: "other workspace" }
 ];
-eq(countOnActiveWorkspace(leakedLayers, workspaces, "eDP-1"), 1,
-    "layer-shell residue cannot deepen the haze over the wallpaper");
-eq(countOnActiveWorkspace(leakedLayers.slice(0, 3), workspaces, "eDP-1"), 0,
-    "a desktop containing only shell surfaces stays clear");
+eq(countOnActiveWorkspace(joinLag, workspaces, "eDP-1"), 1,
+    "a provider window stays present while its protocol handle catches up");
+const switchedWorkspaces = [
+    { id: "1", output: "eDP-1", is_active: false },
+    { id: "2", output: "eDP-1", is_active: true }
+];
+eq(countOnActiveWorkspace(joinLag, switchedWorkspaces, "eDP-1"), 1,
+    "a workspace switch immediately follows the newly active workspace");
+eq(countOnActiveWorkspace([], workspaces, "eDP-1"), 0,
+    "the frost clears when the provider removes the last window");
+
+const minimized = [
+    { workspace: "1", appId: "kitty", title: "terminal", toplevel: toplevel(true) }
+];
+eq(countOnActiveWorkspace(minimized, workspaces, "eDP-1"), 0,
+    "a joined minimized window leaves the wallpaper clear");
 eq(countOnActiveWorkspace(undefined, workspaces, "eDP-1"), 0,
     "missing window state fails open");
 eq(countOnActiveWorkspace(live, undefined, "eDP-1"), 0,
