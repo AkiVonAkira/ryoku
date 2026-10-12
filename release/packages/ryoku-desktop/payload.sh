@@ -71,7 +71,7 @@ EOF
   # CMakeLists.txt and builds to a /usr/bin/<name> binary. Either way
   # its bin/ helpers, .desktop and icon are installed. Dropping in an app dir
   # ships it; see ryoku/apps/README.md for the contract a new one has to meet.
-  local appdir appname icon gomod helperdir helper b d has_qs has_cmake
+  local appdir appname icon gomod helperdir helper b d has_qs has_cmake app_build
   for appdir in "$_repo"/ryoku/apps/*/; do
     has_qs=0; [ -d "${appdir}quickshell" ] && has_qs=1
     has_cmake=0; [ -f "${appdir}CMakeLists.txt" ] && has_cmake=1
@@ -87,9 +87,13 @@ EOF
       if [[ -n ${RYOKU_PREBUILT_DIR:-} ]]; then
         install -Dm755 "$RYOKU_PREBUILT_DIR/$appname" "$pkgdir/usr/bin/$appname"
       else
-        cmake -S "$appdir" -B "${appdir}build" -G Ninja -DCMAKE_BUILD_TYPE=Release
-        cmake --build "${appdir}build"
-        install -Dm755 "${appdir}build/$appname" "$pkgdir/usr/bin/$appname"
+        # The build tree lives in the package's scratch, never in the
+        # checkout: a build/ beside the sources is gitignored but still on
+        # disk, and the delivery gate reads the disk.
+        app_build="${RYOKU_BUILD_DIR:?set RYOKU_BUILD_DIR to a scratch directory}/$appname-build"
+        cmake -S "$appdir" -B "$app_build" -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build "$app_build"
+        install -Dm755 "$app_build/$appname" "$pkgdir/usr/bin/$appname"
       fi
     fi
     if [ -d "${appdir}bin" ]; then
@@ -106,8 +110,10 @@ EOF
       if [[ -n ${RYOKU_PREBUILT_DIR:-} ]]; then
         install -Dm755 "$RYOKU_PREBUILT_DIR/$helper" "$pkgdir/usr/bin/$helper"
       else
-        ( cd "$helperdir" && go build -o "$helper" . )
-        install -Dm755 "$helperdir/$helper" "$pkgdir/usr/bin/$helper"
+        app_build="${RYOKU_BUILD_DIR:?set RYOKU_BUILD_DIR to a scratch directory}/app-helpers"
+        install -d "$app_build"
+        ( cd "$helperdir" && go build -o "$app_build/$helper" . )
+        install -Dm755 "$app_build/$helper" "$pkgdir/usr/bin/$helper"
       fi
     done
     for d in "${appdir}"*.desktop; do
