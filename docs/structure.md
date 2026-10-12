@@ -119,10 +119,11 @@ truth for the live desktop.
 - `hub/` Ryoku Settings, the central control-center GUI (`Super + ,`): `backend/`
   (`ryoku-hub`, the Go data plane that reads the keybind legend from the live
   Hyprland config, generates the `settings.lua` overlay (in `user_edits`) from JSON, and
-  persists hub state as TOML; it also speaks the OpenRGB SDK, so the Lighting tab
-  drives keyboards and mice per device) and `quickshell/` (the native Qt6/QML app,
+  persists hub state as TOML; it also speaks the OpenRGB SDK (protocol 5 and 6),
+  so the wallpaper picker's Lighting settings drive keyboards and mice per
+  device) and `quickshell/` (the native Qt6/QML app,
   a `FloatingWindow` with a grouped nav rail and global fuzzy search, with live
-  editors for displays, appearance, device lighting, lockscreen, animations,
+  editors for displays, lockscreen, animations,
   input, keybinds, window and layer
   rules, autostart, environment, the shell, and the desktop widgets). The product is "Ryoku Settings"; the binary and
   config keep the internal `hub` name. Deployed to `~/.config/quickshell/hub`;
