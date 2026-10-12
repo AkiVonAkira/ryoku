@@ -12,8 +12,8 @@ hostmakedepends="cargo-auditable clang curl nasm patchelf pkg-config tar xz"
 makedepends="Vulkan-Headers alsa-lib-devel libdav1d-devel libdrm-devel
  pulseaudio-devel libva-devel libyuv-devel shaderc vulkan-loader-devel
  wayland-devel zlib-devel"
-depends="alsa-lib libdav1d libdrm libgcc libglvnd libpulseaudio libva
- libxkbcommon libyuv shaderc vulkan-loader wayland zlib"
+depends="alsa-lib libdav1d libdrm libgcc libglvnd libpulseaudio pulseaudio-utils
+ libva libxkbcommon libyuv shaderc vulkan-loader wayland zlib"
 short_desc="Wallpaper Engine renderer backend for Ryogami"
 maintainer="Ryoku <releases@ryoku.dev>"
 license="GPL-3.0-or-later"

@@ -60,6 +60,7 @@ Requires:       slurp
 Requires:       cava
 Requires:       python3
 Requires:       pipewire
+Requires:       pulseaudio-utils
 Requires:       jq
 Requires:       ImageMagick
 Requires:       ffmpeg-free

@@ -46,6 +46,7 @@ Requires:       libstdc++
 Requires:       libdrm
 Requires:       libglvnd
 Requires:       pulseaudio-libs
+Requires:       pulseaudio-utils
 Requires:       libva
 Requires:       libxkbcommon
 Requires:       libyuv

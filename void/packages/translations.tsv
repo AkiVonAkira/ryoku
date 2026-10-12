@@ -99,7 +99,7 @@ libgcc	libgcc	desktop
 libglvnd	libglvnd	desktop	
 libisoburn	xorriso	optional	
 libnotify	libnotify	desktop	
-libpulse	libpulseaudio	desktop	
+libpulse	libpulseaudio pulseaudio-utils	desktop	
 libqalculate	libqalculate	desktop	
 librsvg	librsvg	desktop	
 libusb	libusb	optional	

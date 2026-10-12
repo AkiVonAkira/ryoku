@@ -44,6 +44,7 @@ depends="
  cava
  python3
  pipewire
+ pulseaudio-utils
  jq
  ImageMagick
  matugen
