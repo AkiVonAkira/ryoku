@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.UPower
 import Ryoku.Ui
 import Ryoku.Ui.Singletons
 
@@ -1017,6 +1018,7 @@ done
                 // ── BATTERY ──
                 SettingCard {
                     width: gfxCol.colWidth
+                    visible: pg.batteryTune.length > 0 || UPower.displayDevice.isLaptopBattery
                     title: I18n.tr("BATTERY")
 
                     BatteryAlertsSettings {

@@ -58,6 +58,9 @@
   Hermes's model, and connecting an agent now says it routes that agent's models
   through Prowl (`quickshell/pages/RashinPage.qml`).
 ### Fixed
+- **Battery alert controls stay off battery-less machines.** The Machine page
+  hides the Battery card on desktops and virtual machines unless the hardware
+  exposes a battery or battery tuning controls.
 - **Interface scale is editable in Global.** The whole shell reads the one
   `fontScale` value that scales every surface and popout, but no Hub control
   reached it: a hand-set value silently reverted to the factory 1.3 on a stale

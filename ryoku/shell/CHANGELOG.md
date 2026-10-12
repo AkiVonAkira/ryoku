@@ -589,6 +589,10 @@
 - **Shima and Stage clocks now follow the global 12/24-hour setting.**
   Weather forecasts and sun times, calendar events, Pixel clocks, previews and
   scheduled-anime times no longer keep their own fixed hour cycle.
+- **Battery warnings fire once under every bar style.** Shima and Nomarchy no
+  longer send their own low-battery notification beside the shell-wide alert.
+  Shima keeps its warning sounds and automatic suspend, while its retired
+  per-style warning thresholds are removed.
 - **Screen recording works on machines without a hardware video encoder.**
   The codec check refused every GPU that could not encode H.264, AV1, VP9 or
   VP8, and any machine where GPU Screen Recorder's probe failed, so Intel

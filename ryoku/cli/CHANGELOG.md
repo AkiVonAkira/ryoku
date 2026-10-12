@@ -152,6 +152,9 @@
   recognize private, loopback, and known sinkhole answers for `ryoku.dev` and
   point to the encrypted-DNS recovery steps instead of leaving a package-manager
   or TLS error unexplained.
+- **Doctor removes Shima's retired battery warning thresholds.** Updates drop
+  the old `inir.battery.low` and `inir.battery.critical` keys without changing
+  suspend, charge-limit, or unrelated shell settings.
 - **Public source, recovery, issue, and plugin links use the canonical
   `ryoku-dev/ryoku` repository.** Existing source checkouts whose origin still
   uses the retired `ryoku-arch` name remain valid.
