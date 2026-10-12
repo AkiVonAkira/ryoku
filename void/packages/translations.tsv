@@ -119,7 +119,7 @@ looking-glass	-	optional	No Void repository package.
 lua	lua	optional	
 mangohud	MangoHud	desktop	
 matugen	matugen	desktop	
-mesa	mesa-dri	desktop	
+mesa	mesa-dri mesa-vaapi	desktop	
 mise	mise	dev	
 mkinitcpio	dracut	system	
 mpv	mpv	desktop	
