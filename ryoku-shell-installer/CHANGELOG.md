@@ -58,6 +58,10 @@
   steps, so a stuck stable install can be finished on unstable.
 
 ### Fixed
+- **SDDM opens the compositor selected during installation.** When the plan
+  switches the display manager, the installer records the chosen Wayland
+  session in SDDM's state without dropping its remembered user or other
+  settings. The original state is included in the generated restore script.
 - **Arrow keys move through every plan row in GNOME Terminal and Ptyxis.** The
   plan now reads key codes instead of the key's text form, so VTE's cursor
   encodings walk every choice and toggle, and only a real Enter installs.

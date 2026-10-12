@@ -660,6 +660,148 @@ func (e *engine) sudoWrite(path, content string) error {
 	return nil
 }
 
+const sddmStatePath = "/var/lib/sddm/state.conf"
+
+func compositorWaylandSessionPath(compositor string) string {
+	return filepath.Join("/usr/share/wayland-sessions", compositor+".desktop")
+}
+
+func updateSDDMLastSession(content, session string) string {
+	lines := strings.Split(content, "\n")
+	out := make([]string, 0, len(lines)+2)
+	inLast := false
+	foundLast := false
+	wroteSession := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+			if inLast && !wroteSession {
+				out = append(out, "Session="+session)
+				wroteSession = true
+			}
+			inLast = strings.EqualFold(strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(trimmed, "["), "]")), "Last")
+			foundLast = foundLast || inLast
+		}
+		if inLast {
+			key, _, hasValue := strings.Cut(trimmed, "=")
+			if hasValue && strings.EqualFold(strings.TrimSpace(key), "Session") {
+				if !wroteSession {
+					out = append(out, "Session="+session)
+					wroteSession = true
+				}
+				continue
+			}
+		}
+		out = append(out, line)
+	}
+	if foundLast {
+		if !wroteSession {
+			out = append(out, "Session="+session)
+		}
+	} else {
+		for len(out) > 0 && out[len(out)-1] == "" {
+			out = out[:len(out)-1]
+		}
+		if len(out) > 0 {
+			out = append(out, "")
+		}
+		out = append(out, "[Last]", "Session="+session)
+	}
+	return strings.Join(out, "\n") + "\n"
+}
+
+func sudoPathExists(path string) (bool, error) {
+	err := exec.Command("sudo", "-n", "sh", "-c", `test -e "$1" || exit 3`, "sh", path).Run()
+	if err == nil {
+		return true, nil
+	}
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.ExitCode() == 3 {
+		return false, nil
+	}
+	return false, err
+}
+
+func sudoReadFile(path string) ([]byte, error) {
+	return exec.Command("sudo", "-n", "cat", path).Output()
+}
+
+func (e *engine) configureSDDMLastSessionAt(statePath, sessionPath string) error {
+	if !e.p.switchDM {
+		return nil
+	}
+	if e.dry {
+		e.say(i18n.Tf("DRYRUN: set SDDM's remembered session to %s", sessionPath))
+		return nil
+	}
+	if e.backupDir == "" {
+		return errors.New(i18n.T("cannot preserve SDDM state without an install backup directory"))
+	}
+	backup := filepath.Join(e.backupDir, "sddm-state.conf")
+	absent := filepath.Join(e.backupDir, "sddm-state.absent")
+	_, backupErr := os.Stat(backup)
+	_, absentErr := os.Stat(absent)
+	if errors.Is(backupErr, os.ErrNotExist) && errors.Is(absentErr, os.ErrNotExist) {
+		exists, err := sudoPathExists(statePath)
+		if err != nil {
+			return fmt.Errorf(i18n.T("inspect SDDM state: %w"), err)
+		}
+		if exists {
+			if err := e.sudo("cp", "-a", statePath, backup); err != nil {
+				return err
+			}
+		} else if err := os.WriteFile(absent, nil, 0o600); err != nil {
+			return err
+		}
+	} else if backupErr != nil && !errors.Is(backupErr, os.ErrNotExist) {
+		return backupErr
+	} else if absentErr != nil && !errors.Is(absentErr, os.ErrNotExist) {
+		return absentErr
+	}
+
+	var current []byte
+	exists, err := sudoPathExists(statePath)
+	if err != nil {
+		return fmt.Errorf(i18n.T("inspect SDDM state: %w"), err)
+	}
+	if exists {
+		current, err = sudoReadFile(statePath)
+		if err != nil {
+			return fmt.Errorf(i18n.T("read SDDM state: %w"), err)
+		}
+	}
+	tmp, err := os.CreateTemp(e.backupDir, "sddm-state-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := tmp.WriteString(updateSDDMLastSession(string(current), sessionPath)); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := e.sudo("install", "-Dm600", "-o", "sddm", "-g", "sddm", tmpPath, statePath); err != nil {
+		return err
+	}
+	if _, err := os.Stat(absent); err == nil {
+		e.recordRestore("sudo rm -f " + fmt.Sprintf("%q", statePath))
+	} else {
+		e.recordRestore(`sudo install -Dm600 -o sddm -g sddm "$DIR/sddm-state.conf" ` + fmt.Sprintf("%q", statePath))
+	}
+	return nil
+}
+
+func (e *engine) configureSDDMLastSession() error {
+	return e.configureSDDMLastSessionAt(sddmStatePath, compositorWaylandSessionPath(e.p.compositor))
+}
+
 func (e *engine) configureSDDMMainTheme(enabled bool) error {
 	const path = "/etc/sddm.conf"
 	original, err := os.ReadFile(path)
@@ -1994,6 +2136,9 @@ func stepSession(e *engine) error {
 		if err := e.cmd("", nil, "bash", filepath.Join(e.payload, "ryoku/lockscreen/sddm/setup")); err != nil {
 			return err
 		}
+		if err := e.configureSDDMLastSession(); err != nil {
+			return err
+		}
 	} else {
 		e.say(i18n.T("keeping your current display manager; select the Hyprland session at login"))
 	}
@@ -2660,7 +2805,7 @@ func stepVerify(e *engine) error {
 	cdir := wm.ConfigDir(e.p.compositor)
 	_, err = os.Stat(filepath.Join(e.f.homeDir, ".config", cdir))
 	check(err == nil, i18n.Tf("%s config materialized in ~/.config/%s", e.p.compositor, cdir))
-	_, err = os.Stat(filepath.Join("/usr/share/wayland-sessions", e.p.compositor+".desktop"))
+	_, err = os.Stat(compositorWaylandSessionPath(e.p.compositor))
 	check(err == nil, i18n.Tf("%s wayland session registered", e.p.compositor))
 	// caps, not state: this runs before the new session is up, and caps answers
 	// without a live compositor (state would falsely fail here).
