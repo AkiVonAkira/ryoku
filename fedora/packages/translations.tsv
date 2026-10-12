@@ -4,7 +4,7 @@ adwaita-icon-theme	adwaita-icon-theme	desktop
 alsa-lib	alsa-lib	desktop	
 alsa-utils	alsa-utils	desktop	
 amd-ucode	amd-ucode-firmware	hardware:amd	
-apple_cursor	-	extra	No Fedora package provides this Arch package.
+apple_cursor	apple_cursor	extra	Ryoku-owned RPM.
 asusctl	asusctl	optional	Ryoku-owned RPM.
 base	-	system	Fedora has no Arch base metapackage; the existing host supplies the base system.
 base-devel	gcc gcc-c++ make cmake meson ninja-build pkgconf-pkg-config git	system	
@@ -18,7 +18,7 @@ brightnessctl	brightnessctl	desktop
 broadcom-bt-firmware	broadcom-bt-firmware	desktop	Ryoku-owned RPM.
 btop	btop	desktop	
 btrfs-progs	btrfs-progs	system	
-catppuccin-cursors-mocha	-	extra	No Fedora package provides this Arch package.
+catppuccin-cursors-mocha	catppuccin-cursors-mocha	extra	Ryoku-owned RPM.
 cava	cava	desktop	
 chromium	chromium	desktop	
 cliphist	cliphist	desktop	
@@ -114,7 +114,7 @@ limine-snapper-sync	-	system	Fedora snapshots are not supported in this release.
 linux	kernel	system	
 linux-firmware	linux-firmware	system	
 linux-headers	kernel-devel kernel-headers	desktop	
-localsend-bin	-	extra	No Fedora package provides this Arch package.
+localsend-bin	localsend-bin	extra	Ryoku-owned RPM.
 looking-glass	-	optional	No Fedora package provides this Arch package.
 lua	lua	optional	
 mangohud	mangohud	desktop	
@@ -135,7 +135,7 @@ noto-fonts	google-noto-sans-fonts google-noto-serif-fonts google-noto-sans-mono-
 noto-fonts-cjk	google-noto-sans-cjk-fonts	desktop	
 noto-fonts-emoji	google-noto-emoji-fonts	desktop	
 npm	nodejs24-npm	dev	
-nvibrant-bin	-	extra	No Fedora package provides this Arch package.
+nvibrant-bin	nvibrant	extra	Ryoku-owned RPM.
 nvidia-utils	-	hardware:nvidia	Fedora NVIDIA drivers require RPM Fusion and hardware-specific selection.
 openrgb	openrgb	desktop	
 otf-space-grotesk	ryoku-extras	desktop	Bundled by the Ryoku extras RPM.
@@ -146,7 +146,7 @@ pam-u2f	pam-u2f	desktop
 papirus-icon-theme	papirus-icon-theme	desktop	
 pavucontrol	pavucontrol	optional	
 pciutils	pciutils	desktop	
-phinger-cursors	-	extra	No Fedora package provides this Arch package.
+phinger-cursors	phinger-cursors	extra	Ryoku-owned RPM.
 picocom	picocom	optional	
 pipewire	pipewire	desktop	
 pipewire-alsa	pipewire-alsa	desktop	
@@ -217,7 +217,7 @@ tesseract	tesseract	desktop
 tesseract-data-eng	tesseract-langpack-eng	desktop	
 tigervnc	tigervnc	optional	
 ttf-firacode-nerd	ttf-firacode-nerd	desktop	Ryoku-owned RPM.
-ttf-fraunces-variable	-	extra	No Fedora package provides this Arch package.
+ttf-fraunces-variable	ttf-fraunces-variable	extra	Ryoku-owned RPM.
 ttf-hack-nerd	ttf-hack-nerd	desktop	Ryoku-owned RPM.
 ttf-jetbrains-mono-nerd	ryoku-extras	desktop	Bundled by the Ryoku extras RPM.
 ttf-maple-mono-nf	ttf-maple-mono-nf	desktop	Ryoku-owned RPM.
@@ -229,7 +229,7 @@ upower	upower	desktop
 uv	uv	desktop	
 vimix-cursors	vimix-cursors	desktop	Ryoku-owned RPM.
 virglrenderer	virglrenderer	desktop	
-voxtype-bin	-	extra	No Fedora package provides this Arch package.
+voxtype-bin	voxtype	extra	Ryoku-owned RPM.
 vulkan-icd-loader	vulkan-loader	desktop	
 vulkan-intel	mesa-vulkan-drivers	hardware:intel	
 vulkan-radeon	mesa-vulkan-drivers	hardware:amd	
@@ -261,7 +261,7 @@ yay-bin	-	extra	AUR helpers do not apply to Fedora.
 yazi	yazi	desktop	Provided by a restricted COPR.
 yt-dlp	yt-dlp	desktop	
 zbar	zbar	desktop	
-zen-browser-bin	-	extra	No Fedora package provides this Arch package.
+zen-browser-bin	-	extra	Zen ships only as an upstream binary build; Ryoku does not mirror a browser it cannot keep current
 zenity	zenity	desktop	
 zlib	zlib-ng-compat	desktop	
 zoxide	zoxide	desktop	

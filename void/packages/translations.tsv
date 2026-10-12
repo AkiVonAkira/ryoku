@@ -1,10 +1,10 @@
 arch	void	lanes	notes
-adw-gtk-theme	-	desktop	No Void repository package.
+adw-gtk-theme	adw-gtk-theme	desktop	repo=ryoku
 adwaita-icon-theme	adwaita-icon-theme	desktop	
 alsa-lib	alsa-lib	desktop	
 alsa-utils	alsa-utils	desktop	
 amd-ucode	linux-firmware-amd	hardware:amd	
-apple_cursor	-	extra	No Void repository package.
+apple_cursor	apple_cursor	extra	repo=ryoku
 asusctl	-	optional	No faithful runit shutdown integration is available.
 base	base-system	system	
 base-devel	base-devel	system	
@@ -18,7 +18,7 @@ brightnessctl	brightnessctl	desktop
 broadcom-bt-firmware	broadcom-bt-firmware	desktop	
 btop	btop	desktop	
 btrfs-progs	btrfs-progs	system	
-catppuccin-cursors-mocha	-	extra	No Void repository package.
+catppuccin-cursors-mocha	catppuccin-cursors-mocha	extra	repo=ryoku
 cava	cava	desktop	
 chromium	chromium	desktop	
 cliphist	cliphist	desktop	
@@ -114,7 +114,7 @@ limine-snapper-sync	limine-snapper-sync	system	repo=ryoku
 linux	linux	system	
 linux-firmware	linux-firmware	system	
 linux-headers	linux-headers	desktop	
-localsend-bin	-	extra	Only published in the AUR, not packaged for Void.
+localsend-bin	localsend-bin	extra	repo=ryoku
 looking-glass	-	optional	No Void repository package.
 lua	lua	optional	
 mangohud	MangoHud	desktop	
@@ -135,7 +135,7 @@ noto-fonts	noto-fonts-ttf	desktop
 noto-fonts-cjk	noto-fonts-cjk	desktop	
 noto-fonts-emoji	noto-fonts-emoji	desktop	
 npm	-	dev	Included in Void nodejs.
-nvibrant-bin	-	extra	No Void repository package.
+nvibrant-bin	nvibrant	extra	repo=ryoku
 nvidia-utils	-	hardware:nvidia	Deferred: Void's nvidia drives Turing and newer only and blacklists nouveau; NVIDIA GPUs stay on nouveau until the driver step picks a branch per GPU.
 openrgb	openrgb	desktop	
 otf-space-grotesk	otf-space-grotesk	desktop	repo=ryoku
@@ -146,7 +146,7 @@ pam-u2f	pam-u2f	desktop
 papirus-icon-theme	papirus-icon-theme	desktop	
 pavucontrol	pavucontrol	optional	
 pciutils	pciutils	desktop	
-phinger-cursors	-	extra	No Void repository package.
+phinger-cursors	phinger-cursors	extra	repo=ryoku
 picocom	picocom	optional	
 pipewire	pipewire	desktop	
 pipewire-alsa	alsa-pipewire	desktop	
@@ -162,7 +162,7 @@ python	python3	desktop,dev
 python-pip	python3-pip	dev	
 python-pipx	python3-pipx	dev	
 qemu-desktop	qemu	desktop	
-qmk_hid	-	optional	No Void repository package.
+qmk_hid	qmk_hid	optional	repo=ryoku
 qrencode	qrencode	desktop	
 qt5-wayland	qt5-wayland	desktop	
 qt6-5compat	qt6-qt5compat	desktop	
@@ -174,7 +174,7 @@ qt6-multimedia-ffmpeg	-	desktop	Included in Void qt6-multimedia.
 qt6-svg	qt6-svg	desktop	
 qt6-wayland	qt6-wayland	desktop	
 qt6ct	qt6ct	desktop	
-quickemu	-	optional	No Void repository package.
+quickemu	quickemu	optional	repo=ryoku
 quickshell	quickshell	desktop	
 ripgrep	ripgrep	desktop	
 rtkit	rtkit	desktop	
@@ -188,7 +188,7 @@ ryoku-desktop	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-desktop-compositor	-	desktop	Virtual dependency provided by a compositor meta-package.
 ryoku-desktop-hyprland	-	hyprland	Ryoku's Hyprland needs GCC 15 and Void still ships GCC 14.
 ryoku-desktop-niri	@repo	desktop	Ryoku-owned package built from the checkout.
-ryoku-desktop-wayfire	-	wayfire	Void ships Wayfire 0.10; Ryoku requires 0.11.
+ryoku-desktop-wayfire	-	wayfire	Void ships Wayfire 0.11, but the Ryoku provider and depthdeck variant are not packaged or VM-verified.
 ryoku-hub	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-hypr-plugins	-	hyprland	Hyprland is not packaged on Void.
 ryoku-keyring	ryoku-keyring	desktop	repo=ryoku
@@ -217,7 +217,7 @@ tesseract	tesseract-ocr	desktop
 tesseract-data-eng	tesseract-ocr-eng	desktop	
 tigervnc	tigervnc	optional	
 ttf-firacode-nerd	ttf-firacode-nerd	desktop	repo=ryoku
-ttf-fraunces-variable	-	extra	No Void repository package and not in the pinned source-asset set.
+ttf-fraunces-variable	ttf-fraunces-variable	extra	repo=ryoku
 ttf-hack-nerd	ttf-hack-nerd	desktop	repo=ryoku
 ttf-jetbrains-mono-nerd	ttf-jetbrains-mono-nerd	desktop	repo=ryoku
 ttf-maple-mono-nf	ttf-maple-mono-nf	desktop	repo=ryoku
@@ -229,13 +229,13 @@ upower	upower	desktop
 uv	uv	desktop	
 vimix-cursors	vimix-cursors	desktop	repo=ryoku
 virglrenderer	virglrenderer	desktop	
-voxtype-bin	-	extra	Only published in the AUR, not packaged for Void.
+voxtype-bin	voxtype	extra	repo=ryoku
 vulkan-icd-loader	vulkan-loader	desktop	
 vulkan-intel	mesa-vulkan-intel	hardware:intel	
 vulkan-radeon	mesa-vulkan-radeon	hardware:amd	
 vulkan-swrast	mesa-vulkan-lavapipe	hardware:vm	
 waifu2x-ncnn-vulkan	waifu2x-ncnn-vulkan	desktop	repo=ryoku
-wayfire	-	wayfire	Void ships Wayfire 0.10; Ryoku requires 0.11.
+wayfire	-	wayfire	Void ships Wayfire 0.11, but the Ryoku provider and depthdeck variant are not packaged or VM-verified.
 wayland	wayland	desktop	
 webkit2gtk-4.1	libwebkit2gtk41	desktop	
 weston	weston	desktop	
@@ -261,7 +261,7 @@ yay-bin	-	extra	AUR helpers do not apply to XBPS.
 yazi	yazi	desktop	
 yt-dlp	yt-dlp	desktop	
 zbar	zbar	desktop	
-zen-browser-bin	-	extra	Only published in the AUR, not packaged for Void.
+zen-browser-bin	-	extra	Zen ships only as an upstream binary build; Ryoku does not mirror a browser it cannot keep current
 zenity	zenity	desktop	
 zlib	zlib	desktop	
 zoxide	zoxide	desktop	

@@ -17,8 +17,8 @@ maintaining a second desktop list.
 The main lanes are `desktop`, `dev`, `system`, `extra`, `optional`, and the four
 `hardware:*` lanes. The recorded `hyprland` lane is unavailable: Ryoku needs
 Hyprland 0.55+ and GCC 15, while Void ships GCC 14. The table also records
-unavailable packages such as Zen Browser, LocalSend, Voxtype, asusctl, and
-Ryotunes.
+unavailable packages such as asusctl, SteamCMD, Looking Glass, and
+pam-fprint-grosshack, with the reason each one cannot enter the Ryoku repo.
 
 The NVIDIA hardware lane leaves driver selection to
 `system/hardware/drivers/nvidia.sh`. It picks Void's `nvidia`, `nvidia580`, or
