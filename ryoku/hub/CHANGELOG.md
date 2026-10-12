@@ -26,6 +26,13 @@
   below warning (`quickshell/pages/BatteryAlertsSettings.qml`).
 
 ### Changed
+- **Compositor switching recognises complete checkout deployments.** A desktop
+  with a working provider, config and greeter session remains switchable when
+  its variant package is not published for the host; published targets that are
+  not deployed still install through `ryoku wm use`. Session cards now grey out
+  commands or environment variables with a reason instead of editing settings
+  the running provider cannot apply (`backend/wm.go`,
+  `quickshell/Compositor*.qml`, `quickshell/pages/SessionPage.qml`).
 - **Fedora settings use the host's real capabilities.** Updates run through
   DNF, package-backed controls use the host seam, AUR actions stay unavailable,
   and the Updates page hides snapshot rollback with the Fedora GRUB reason
