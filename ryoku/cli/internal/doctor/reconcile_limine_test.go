@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"ryoku-cli/internal/host"
 	"testing"
 )
 
@@ -14,12 +16,15 @@ import (
 func stubLimineBootGates(t *testing.T) {
 	t.Helper()
 	oldManaged := limineManagedBoot
-	limineManagedBoot = func() bool { return true }
 	oldInstalled := doctorPackageInstalled
+	oldManager := doctorPackageManager
+	limineManagedBoot = func() bool { return true }
 	doctorPackageInstalled = func(string) bool { return true }
+	doctorPackageManager = func() (host.PackageManager, error) { return host.Pacman, nil }
 	t.Cleanup(func() {
 		limineManagedBoot = oldManaged
 		doctorPackageInstalled = oldInstalled
+		doctorPackageManager = oldManager
 	})
 }
 
@@ -105,14 +110,15 @@ func TestGatherLimineLayoutStateDistinguishesEACCESFromENOENT(t *testing.T) {
 	dir := t.TempDir()
 	stubLimineBootGates(t)
 
-	origESP, origShadow, origTool, origLegacy, origPkg := limineESPConf, limineShadow, limineToolEFI, limineLegacyEFI, liminePkgInstalled
+	origESP, origShadow, origTool, origLegacy, origPkg, origProbe := limineESPConf, limineShadow, limineToolEFI, limineLegacyEFI, liminePkgInstalled, liminePathProbe
 	t.Cleanup(func() {
-		limineESPConf, limineShadow, limineToolEFI, limineLegacyEFI, liminePkgInstalled = origESP, origShadow, origTool, origLegacy, origPkg
+		limineESPConf, limineShadow, limineToolEFI, limineLegacyEFI, liminePkgInstalled, liminePathProbe = origESP, origShadow, origTool, origLegacy, origPkg, origProbe
 	})
 	liminePkgInstalled = func(string) bool { return true }
 	limineShadow = filepath.Join(dir, "shadow_missing.conf")
 	limineToolEFI = filepath.Join(dir, "tool_missing.efi")
 	limineLegacyEFI = filepath.Join(dir, "legacy_missing.efi")
+	liminePathProbe = func(string) (bool, error) { return false, nil }
 
 	// Case A: Missing file (ENOENT)
 	limineESPConf = filepath.Join(dir, "missing.conf")
@@ -172,6 +178,35 @@ func TestGatherLimineLayoutStateDistinguishesEACCESFromENOENT(t *testing.T) {
 	if !stReadable.espConfExists || !stReadable.espConfReadable || stReadable.espConf == "" {
 		t.Errorf("readable config: got exists=%v, readable=%v, content=%q; want true, true, non-empty",
 			stReadable.espConfExists, stReadable.espConfReadable, stReadable.espConf)
+	}
+}
+
+func TestGatherLimineLayoutStateUsesEditionEFIPath(t *testing.T) {
+	dir := t.TempDir()
+	stubLimineBootGates(t)
+	doctorPackageManager = func() (host.PackageManager, error) { return host.XBPS, nil }
+
+	oldESP, oldShadow, oldProbe := limineESPConf, limineShadow, liminePathProbe
+	t.Cleanup(func() {
+		limineESPConf, limineShadow, liminePathProbe = oldESP, oldShadow, oldProbe
+	})
+	limineESPConf = filepath.Join(dir, "missing.conf")
+	limineShadow = filepath.Join(dir, "missing-shadow.conf")
+	probed := map[string]bool{}
+	liminePathProbe = func(path string) (bool, error) {
+		probed[path] = true
+		return false, nil
+	}
+
+	gatherLimineLayoutState()
+	if !probed[limineLegacyEFI] {
+		t.Errorf("legacy EFI path was not probed: %v", probed)
+	}
+	if !probed["/boot/EFI/ryoku/BOOTX64.EFI"] {
+		t.Errorf("Void EFI path was not probed: %v", probed)
+	}
+	if probed[limineToolEFI] {
+		t.Errorf("Arch EFI path was probed on Void: %v", probed)
 	}
 }
 

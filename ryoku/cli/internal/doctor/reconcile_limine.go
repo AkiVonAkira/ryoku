@@ -199,8 +199,6 @@ func (s *limineLayoutState) recordInspectionError(err error) {
 func gatherLimineLayoutState() limineLayoutState {
 	s := limineLayoutState{
 		limineInstalled: liminePkgInstalled("limine"),
-		legacyEFIExists: sys.Exists(limineLegacyEFI),
-		toolEFIExists:   sys.Exists(limineEFIPath()),
 		installerTool:   sys.Has("limine-install"),
 	}
 	var err error
@@ -214,7 +212,7 @@ func gatherLimineLayoutState() limineLayoutState {
 	} else {
 		s.legacyEFIExists = exists
 	}
-	if exists, probeErr := liminePathProbe(limineToolEFI); probeErr != nil {
+	if exists, probeErr := liminePathProbe(limineEFIPath()); probeErr != nil {
 		s.toolEFIInaccessible = true
 		s.recordInspectionError(probeErr)
 	} else {

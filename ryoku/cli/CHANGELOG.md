@@ -212,6 +212,11 @@
   inactive idle, clamshell, wallpaper and cutover-guard units are left alone,
   so `systemctl` no longer logs misleading `Unit ... not loaded` failures
   (`internal/updater/update.go`, `internal/host/service.go`).
+- **Doctor scopes incomplete kernel metadata to the affected boot entry.**
+  Module-only leftovers without a `pkgbase` or `vmlinuz` are ignored, while a
+  partly installed kernel protects only its own Limine entry and no longer
+  prevents repair of unrelated stale entries. Limine discovery also checks the
+  EFI location for the active Ryoku edition (`internal/doctor/`).
 - **Existing installs use their console layout at the disk unlock prompt.** The
   doctor adds the `ryoku-console-keys` initramfs hook right after `udev` in
   `/etc/mkinitcpio.conf.d/ryoku.conf` once ryoku-desktop ships it, and rebuilds
