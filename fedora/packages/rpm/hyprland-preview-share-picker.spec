@@ -29,6 +29,9 @@ Requires:       hyprland%{?_isa} = %{hyprland_evr}
 Requires:       libgcc
 Requires:       libstdc++
 Requires:       libwayland-client
+Requires:       libwayland-cursor
+Requires:       libwayland-egl
+Requires:       libwayland-server
 Requires:       slurp
 Requires:       xdg-desktop-portal-hyprland
 

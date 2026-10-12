@@ -29,6 +29,10 @@
   compares paths, modes, and hashes; only declared init, boot, and
   package-manager adapters may differ. The Hyprland package now uses a shared
   `payload.sh` like every other monorepo package.
+- **Fedora RPM dependencies are a delivery gate.** `tests/fedora-packages.sh`
+  checks every spec's Requires against its Arch package's translated
+  dependencies, mirroring the Void check. It found and fixed missing runtime
+  libraries in dualsensectl, prowl, skwd-paper, and the Hyprland share picker.
 - **The R2 bucket keeps the last ten of everything.** A scheduled Cloudflare
   Worker (`r2-retention/`) keeps ten stable releases and ten unstable builds
   per edition and Fedora release, plus ten ISOs for each image-producing

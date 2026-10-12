@@ -1,6 +1,6 @@
 Name:           dualsensectl
 Version:        0.7
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Control Sony DualSense controller features
 License:        GPL-2.0-only
 URL:            https://github.com/nowrep/dualsensectl
@@ -12,6 +12,9 @@ BuildRequires:  meson
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(hidapi-hidraw)
 BuildRequires:  pkgconfig(libudev)
+Requires:       dbus-libs
+Requires:       hidapi
+Requires:       libusb1
 
 %description
 dualsensectl controls player LEDs, the lightbar, battery reporting, microphone

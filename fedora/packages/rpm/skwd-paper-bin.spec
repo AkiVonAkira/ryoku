@@ -4,7 +4,7 @@
 
 Name:           skwd-paper-bin
 Version:        1.0.0_beta.23
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Wallpaper Engine renderer backend for Ryogami
 License:        GPL-3.0-or-later
 URL:            https://github.com/liixini/skwd-paper
@@ -39,6 +39,23 @@ BuildRequires:  vulkan-loader-devel
 BuildRequires:  wayland-devel
 BuildRequires:  xz
 BuildRequires:  zlib-ng-compat-devel
+Requires:       alsa-lib
+Requires:       dav1d
+Requires:       libgcc
+Requires:       libstdc++
+Requires:       libdrm
+Requires:       libglvnd
+Requires:       pulseaudio-libs
+Requires:       libva
+Requires:       libxkbcommon
+Requires:       libyuv
+Requires:       glslc
+Requires:       vulkan-loader
+Requires:       libwayland-client
+Requires:       libwayland-cursor
+Requires:       libwayland-egl
+Requires:       libwayland-server
+Requires:       zlib-ng-compat
 Provides:       skwd-paper = %{version}-%{release}
 Conflicts:      skwd-paper
 

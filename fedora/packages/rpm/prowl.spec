@@ -3,7 +3,7 @@
 
 Name:           prowl
 Version:        0.17.2
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Prowl model gateway and code intelligence for Ryoku Rashin
 License:        MIT
 URL:            https://github.com/neur0map/prowl
@@ -17,6 +17,7 @@ BuildRequires:  glibc-devel
 BuildRequires:  sqlite-devel
 Requires:       glibc
 Requires:       libgcc
+Requires:       libstdc++
 Conflicts:      prowl-agent
 Obsoletes:      prowl-agent < 1:0
 

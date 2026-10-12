@@ -4,7 +4,6 @@ adwaita-icon-theme	adwaita-icon-theme	desktop
 alsa-lib	alsa-lib	desktop	
 alsa-utils	alsa-utils	desktop	
 amd-ucode	amd-ucode-firmware	hardware:amd	
-ananicy-cpp	-	system	CachyOS-only package.
 apple_cursor	-	extra	No Fedora package provides this Arch package.
 asusctl	asusctl	optional	Ryoku-owned RPM.
 base	-	system	Fedora has no Arch base metapackage; the existing host supplies the base system.
@@ -19,12 +18,6 @@ brightnessctl	brightnessctl	desktop
 broadcom-bt-firmware	broadcom-bt-firmware	desktop	Ryoku-owned RPM.
 btop	btop	desktop	
 btrfs-progs	btrfs-progs	system	
-cachyos-ananicy-rules	-	system	CachyOS-only package.
-cachyos-keyring	-	system	CachyOS-only package.
-cachyos-mirrorlist	-	system	CachyOS-only package.
-cachyos-settings	-	system	CachyOS-only package.
-cachyos-v3-mirrorlist	-	system	CachyOS-only package.
-cachyos-v4-mirrorlist	-	system	CachyOS-only package.
 catppuccin-cursors-mocha	-	extra	No Fedora package provides this Arch package.
 cava	cava	desktop	
 chromium	chromium	desktop	
@@ -32,10 +25,10 @@ cliphist	cliphist	desktop
 cryptsetup	cryptsetup	system	
 curl	curl	desktop	
 dav1d	dav1d	desktop	
+dbus	dbus-libs	optional	
 ddcutil	ddcutil	desktop	
 desktop-file-utils	desktop-file-utils	desktop	
 dkms	dkms	desktop	
-dnsmasq	dnsmasq	optional	
 docker	moby-engine	desktop	
 dosfstools	dosfstools	system	
 dualsensectl	dualsensectl	optional	Ryoku-owned RPM.
@@ -74,6 +67,7 @@ gtk3	gtk3	desktop
 gtk4	gtk4	hyprland	
 gtk4-layer-shell	gtk4-layer-shell	hyprland	
 gum	gum	desktop	
+hidapi	hidapi	optional	
 hypr-dynamic-cursors	hypr-dynamic-cursors	hyprland	Ryoku-owned RPM.
 hyprglass	hyprglass	hyprland	Ryoku-owned RPM.
 hyprgrass	hyprgrass	hyprland	Ryoku-owned RPM.
@@ -107,7 +101,8 @@ libisoburn	libisoburn	optional
 libnotify	libnotify	desktop	
 libpulse	pulseaudio-libs	desktop	
 libqalculate	libqalculate	desktop	
-librsvg	librsvg2	desktop	
+librsvg	librsvg2-tools	desktop	
+libusb	libusb1	optional	
 libva	libva	desktop	
 libvirt	libvirt	optional	
 libxcb	libxcb	desktop	
@@ -117,13 +112,10 @@ limine	-	system	Fedora boots Ryoku through GRUB, not Limine.
 limine-mkinitcpio-hook	-	system	Fedora uses GRUB and dracut, not mkinitcpio hooks.
 limine-snapper-sync	-	system	Fedora snapshots are not supported in this release.
 linux	kernel	system	
-linux-cachyos	-	system	CachyOS-only package.
-linux-cachyos-headers	-	system	CachyOS-only package.
 linux-firmware	linux-firmware	system	
 linux-headers	kernel-devel kernel-headers	desktop	
 localsend-bin	-	extra	No Fedora package provides this Arch package.
 looking-glass	-	optional	No Fedora package provides this Arch package.
-looking-glass-module-dkms	-	optional	No Fedora package provides this Arch package.
 lua	lua	optional	
 mangohud	mangohud	desktop	
 matugen	ryoku-extras	desktop	Bundled by the Ryoku extras RPM.
@@ -165,7 +157,6 @@ playerctl	playerctl	desktop
 plymouth	plymouth	system	
 polkit	polkit	desktop	
 power-profiles-daemon	ppd-service	desktop	
-proton-cachyos-slr	-	system	CachyOS-only package.
 prowl	prowl	desktop	Ryoku-owned RPM.
 python	python3	desktop,dev	
 python-pip	python3-pip	dev	
@@ -207,7 +198,6 @@ ryoku-palette-bridge	ryoku-palette-bridge	desktop	Ryoku-owned RPM.
 ryoku-rashin	ryoku-rashin	desktop	Ryoku-owned RPM.
 ryoku-shell	ryoku-shell	desktop	Ryoku-owned RPM.
 ryotunes	ryotunes	optional	Ryoku-owned RPM.
-scx-scheds	-	system	CachyOS-only package.
 sddm	sddm	desktop	
 shaderc	glslc	desktop	
 skwd-paper-bin	skwd-paper-bin	desktop	Ryoku-owned RPM.
