@@ -29,16 +29,17 @@ func flowIndex(flow []step, key string) int {
 }
 
 func installerChoicesForVariant(variant string) installerplan.EditionPlan {
-	if !isVoidVariant(variant) {
+	if !hasEditionTable(variant) {
 		return installerplan.ResolveSource(variant)
 	}
+	table := filepath.Join(variant, "packages", "translations.tsv")
 	var paths []string
 	if root := os.Getenv("RYOKU_REPO"); root != "" {
-		paths = append(paths, filepath.Join(root, "void/packages/translations.tsv"))
+		paths = append(paths, filepath.Join(root, table))
 	}
 	paths = append(paths,
-		"/usr/share/ryoku/void/packages/translations.tsv",
-		filepath.Join("..", "..", "void", "packages", "translations.tsv"),
+		filepath.Join("/usr/share/ryoku", table),
+		filepath.Join("..", "..", table),
 	)
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
@@ -51,7 +52,7 @@ func installerChoicesForVariant(variant string) installerplan.EditionPlan {
 		}
 		return plan
 	}
-	panic(fmt.Sprintf("Void package table not found in %s", strings.Join(paths, ", ")))
+	panic(fmt.Sprintf("%s package table not found in %s", variant, strings.Join(paths, ", ")))
 }
 
 func choiceItems(kind string, plan installerplan.EditionPlan, availableOnly bool) []item {
@@ -184,17 +185,39 @@ func appRows() []appRow {
 	}
 }
 
+// unshippedApps are rows an edition never delivers, so the picker must not
+// offer them. Void installs the table's desktop and dev lanes, Fedora only its
+// desktop lane, and neither has the AUR rows. The doctor's shipped apps
+// (pavucontrol) stay offered: the first `ryoku doctor` installs them unless the
+// user dropped them here, which seeds its ledger.
+var unshippedApps = map[string][]string{
+	variantVoid:   {"localsend", "voxtype"},
+	variantFedora: {"localsend", "voxtype", "go", "node", "pytools", "mise"},
+}
+
 func appRowsForVariant(variant string) []appRow {
 	all := appRows()
-	if !isVoidVariant(variant) {
+	hidden := map[string]bool{}
+	for _, id := range unshippedApps[variant] {
+		hidden[id] = true
+	}
+	if len(hidden) == 0 {
 		return all
 	}
-	out := make([]appRow, 0, len(all)-2)
+	out := make([]appRow, 0, len(all))
+	orphaned := ""
 	for _, row := range all {
-		switch row.ID {
-		case "localsend", "voxtype":
+		if hidden[row.ID] {
+			// A hidden row that opened its group hands the header to the next shown row.
+			if row.Group != "" {
+				orphaned = row.Group
+			}
 			continue
 		}
+		if row.Group == "" {
+			row.Group = orphaned
+		}
+		orphaned = ""
 		out = append(out, row)
 	}
 	return out

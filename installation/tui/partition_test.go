@@ -382,6 +382,16 @@ func TestWholeBlankEnvOmitsToken(t *testing.T) {
 	}
 }
 
+// A retry after a failed whole-disk run on a disk that was blank at Review must
+// be allowed to wipe what that run left; without it the backend refuses the
+// partitions it just created.
+func TestWholeBlankRetryArmsWipe(t *testing.T) {
+	m := model{picks: map[string]string{"disk": "whole"}, retried: true}
+	if !envHas(m.installEnv(), "RYOKU_WIPE_CONFIRMED=1") {
+		t.Fatalf("a blank-disk retry must arm RYOKU_WIPE_CONFIRMED=1: %v", m.installEnv())
+	}
+}
+
 // A first alongside run on a clean disk has no leftovers, so it must not arm the
 // destructive reclaim.
 func TestAlongsideFirstRunOmitsReclaim(t *testing.T) {
