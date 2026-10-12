@@ -17,6 +17,10 @@
   headless one exits at once.
 
 ### Fixed
+- `gpu/ryoku-gpu`: **display-only DRM cards are no longer treated as render
+  GPUs.** Ranking now requires a `device/drm/renderD*` node, so KMS-only
+  devices such as the Touch Bar's `appletbdrm` never enter `AQ_DRM_DEVICES`.
+  Covered by `tests/gpu-pin-policy.sh`.
 - `power/ryoku-power-cutover`: **the session bind no longer strips the live X
   display.** Xwayland starts lazily with the first X client, so the compositor
   child whose environment the bind snapshots often predates it: the file then
