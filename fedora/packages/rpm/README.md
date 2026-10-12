@@ -41,6 +41,30 @@ An upstream spec keeps its checked-in Version and Release. Add it with:
 Preparation downloads each URL and stops on a missing, extra, malformed, or
 mismatched checksum. Other URL schemes are rejected.
 
+### Refreshing pinned upstream releases
+
+`system/packages/upstream-pins.tsv` is the inventory for Fedora and Void
+upstream pins. It records the release source, artifact patterns, and every file
+that carries each pin. `.github/workflows/refresh-pins.yml` checks it weekly,
+updates all editions of a package together, verifies both package trees, and
+pushes the `bot/refresh-pins` branch with a pull request against `unstable-dev`
+(or a link to open one in the run summary, since Actions may not open PRs here).
+Major-version updates remain listed but require `allow_major=yes` in the
+manifest before the bot will write them.
+
+For a manual refresh, run:
+
+```sh
+bin/ryoku-refresh-pins --check
+bin/ryoku-refresh-pins --write
+bash tests/fedora-packages.sh
+bash tests/void-packages.sh
+```
+
+`--check` exits with status 3 when a refresh or pin-drift repair is available.
+Network and parse failures use status 1 and name the failing package. Package
+builds run after the resulting change lands on `unstable-dev`.
+
 For Go or Cargo dependencies, add `%global ryoku_vendor go` or
 `%global ryoku_vendor cargo`, plus an optional
 `%global ryoku_vendor_dir path/inside/Source0`. Declare

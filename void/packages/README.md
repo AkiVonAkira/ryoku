@@ -30,6 +30,28 @@ system/packages/resolve --table void/packages/translations.tsv --lane desktop --
 system/packages/resolve --table void/packages/translations.tsv --lane desktop --lane hardware:amd --drop chromium
 ```
 
+## Refreshing pinned upstream releases
+
+Templates with fixed upstream checksums are inventoried in
+`system/packages/upstream-pins.tsv` together with their Fedora counterparts.
+The weekly `.github/workflows/refresh-pins.yml` job updates shared pins
+atomically, resets `revision` to 1, checks both package trees, and pushes the
+`bot/refresh-pins` branch with a pull request against `unstable-dev` (or a link
+to open one in the run summary). It does not cross a major version unless that
+manifest row has `allow_major=yes`.
+
+The manual fallback uses the same path:
+
+```sh
+bin/ryoku-refresh-pins --check
+bin/ryoku-refresh-pins --write
+bash tests/fedora-packages.sh
+bash tests/void-packages.sh
+```
+
+`--check` returns status 3 when updates exist and status 1 for a network or
+parse failure. Package builds run after the change lands on `unstable-dev`.
+
 ## Build the repository
 
 Use the official Void glibc container:
