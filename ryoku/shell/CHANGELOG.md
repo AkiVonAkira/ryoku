@@ -586,6 +586,9 @@
   before it pairs or connects, trusts a new bond before connecting, and retries
   the first post-pair connection once. The shell, every bar style, Nomarchy and
   the Hub use the same sequence (#373).
+- **Shima and Stage clocks now follow the global 12/24-hour setting.**
+  Weather forecasts and sun times, calendar events, Pixel clocks, previews and
+  scheduled-anime times no longer keep their own fixed hour cycle.
 - **Screen recording works on machines without a hardware video encoder.**
   The codec check refused every GPU that could not encode H.264, AV1, VP9 or
   VP8, and any machine where GPU Screen Recorder's probe failed, so Intel

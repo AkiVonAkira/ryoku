@@ -77,6 +77,8 @@ Item {
                     root.equal(TimeFormat.withHourCycle("h:mm ap"), "h:mm ap");
                     root.equal(TimeFormat.withHourCycle("'HH AP'"), "'HH AP'");
                     root.equal(TimeFormat.format(root.evening, true), "11:05:09 PM");
+                    root.equal(TimeFormat.digits(root.midnight), "1205");
+                    root.equal(TimeFormat.digits(root.noon), "1205");
                     root.write24(true);
                     root.phase = 2;
                 } else if (root.phase === 2 && TimeFormat.is24h) {
@@ -85,6 +87,8 @@ Item {
                     root.equal(TimeFormat.withHourCycle("hh.mm ap"), "HH.mm");
                     root.equal(TimeFormat.withHourCycle("'at' h:mm AP"), "'at' H:mm");
                     root.equal(TimeFormat.format(root.evening, true), "23:05:09");
+                    root.equal(TimeFormat.digits(root.midnight), "0005");
+                    root.equal(TimeFormat.digits(root.evening), "2305");
                     root.write24(false);
                     root.phase = 3;
                 } else if (root.phase === 3 && !TimeFormat.is24h) {
