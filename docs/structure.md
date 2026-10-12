@@ -323,6 +323,9 @@ are supported; Atomic and other rpm-ostree systems are refused.
   supported Fedora release, then publishes moving stable and testing heads,
   frozen releases and unstable builds, and their ledgers below
   `stable/fedora/<N>/`.
+- `iso/` builds an experimental console live ISO with kiwi-ng in a container:
+  `build.sh` stages the shared live session, the TUI, and the Fedora backend
+  into the `kiwi/` image description. It is not published.
 
 Fedora is installed through the shell installer, not an ISO. It leaves NVIDIA
 on nouveau, keeps GRUB, and does not provide Ryoku snapshots or a snapshot boot

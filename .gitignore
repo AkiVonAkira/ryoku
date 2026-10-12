@@ -1,6 +1,8 @@
 # Build outputs
 /installation/iso/work/
 /installation/iso/out/
+/fedora/iso/work/
+/fedora/iso/out/
 /installation/iso/staging/
 /installation/tests/cache/
 /installation/tui/ryoku-tui
