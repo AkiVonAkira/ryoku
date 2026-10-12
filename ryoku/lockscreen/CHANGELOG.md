@@ -6,6 +6,11 @@
 - The built-in in-session clockwork lockscreen follows the global 12/24-hour preference, including AM/PM.
 
 ### Fixed
+- **The login screen opens on the GPU that owns a connected display.** The
+  greeter now selects one DRM card for both Weston and its mode probe, preferring
+  a render-capable card with the connected laptop panel. This keeps a T2
+  MacBook's display-only Touch Bar card and an inactive apple-gmux GPU from
+  taking the login screen. KMS-only virtual cards still work through Pixman.
 - **A lock client cannot spill into the next login.** Its crash-recovery wrapper
   now stops when the login1 session that started it has ended, so a reused
   Wayland socket cannot let an old lock take over a new session.
