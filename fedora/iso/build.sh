@@ -15,8 +15,6 @@ DESCRIPTION=$STAGE_DIR/description
 ROOTFS=$DESCRIPTION/root
 CONTAINER_ENGINE=${RYOKU_CONTAINER_ENGINE:-docker}
 CONTAINER_IMAGE=${RYOKU_FEDORA_ISO_IMAGE:-registry.fedoraproject.org/fedora:44}
-# The frozen Fedora 44 release repository keeps this version installable; updates moves on.
-KIWI_VERSION=${RYOKU_FEDORA_KIWI_VERSION:-10.3.0}
 REPO_BASE=${RYOKU_FEDORA_ISO_REPO_BASE:-https://repo.ryoku.dev/stable/fedora/44}
 KEY_URL=${RYOKU_FEDORA_ISO_KEY_URL:-https://repo.ryoku.dev/stable/ryoku-release-key.pub.asc}
 KEY_FINGERPRINT=EB6D3C0F55A7B3CABA6B2838847B274F025DD6E3
@@ -117,7 +115,7 @@ log "Staging Fedora installer backend"
 install -d "$ROOTFS/usr/local/lib/ryoku/backend/lib" "$ROOTFS/usr/local/lib/ryoku/backend/shared"
 install -m0755 "$BACKEND_DIR/ryoku-install" "$ROOTFS/usr/local/lib/ryoku/backend/ryoku-install"
 cp -a "$BACKEND_DIR/lib"/. "$ROOTFS/usr/local/lib/ryoku/backend/lib/"
-for library in common i18n choices preflight disk resize luks filesystem snapshots network deploy; do
+for library in common i18n choices preflight disk resize luks filesystem snapshots network deploy lanes dracut drivers chroot; do
 	install -m0644 "$SHARED_BACKEND/$library.sh" \
 		"$ROOTFS/usr/local/lib/ryoku/backend/shared/$library.sh"
 done
@@ -160,7 +158,6 @@ run=("$CONTAINER_ENGINE" run --rm --platform linux/amd64 --privileged
 	-v "$STAGE_DIR:/stage"
 	-w /work
 	-e "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH"
-	-e "RYOKU_KIWI_VERSION=$KIWI_VERSION"
 	-e "RYOKU_REPO=$RYOKU_REPO"
 	-e "RYOKU_KEY_URL=$KEY_URL"
 	-e "RYOKU_KEY_FINGERPRINT=$KEY_FINGERPRINT"
@@ -177,11 +174,9 @@ restore_owner() {
 trap restore_owner EXIT
 
 dnf -y -q install \
-	"kiwi-cli-$RYOKU_KIWI_VERSION" \
-	"kiwi-systemdeps-iso-media-$RYOKU_KIWI_VERSION" \
-	"kiwi-systemdeps-filesystems-$RYOKU_KIWI_VERSION" \
-	"kiwi-systemdeps-bootloaders-$RYOKU_KIWI_VERSION" \
-	distribution-gpg-keys gnupg2 >/dev/null
+	kiwi-cli kiwi-systemdeps-iso-media kiwi-systemdeps-filesystems \
+	kiwi-systemdeps-bootloaders distribution-gpg-keys gnupg2 >/dev/null
+rpm -q kiwi-cli
 
 rm -rf /work/key /work/kiwi-target /work/tmp
 install -d -m0700 /work/key /work/key/gnupg
@@ -191,6 +186,10 @@ primary=$(GNUPGHOME=/work/key/gnupg gpg --batch --with-colons --fingerprint \
 	| awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; want = 0 }')
 [[ $primary == "$RYOKU_KEY_FINGERPRINT" ]] \
 	|| { printf 'fedora ISO build: release key must be exactly %s\n' "$RYOKU_KEY_FINGERPRINT" >&2; exit 1; }
+# The backend trusts this exported copy for the installed system's Ryoku repository.
+install -d /stage/description/root/etc/pki/rpm-gpg
+GNUPGHOME=/work/key/gnupg gpg --batch --armor --export "$RYOKU_KEY_FINGERPRINT" \
+	> /stage/description/root/etc/pki/rpm-gpg/RPM-GPG-KEY-ryoku
 
 # kiwi copies SELinux-labelled files through its temp dir; the container's
 # overlay /var/tmp cannot store those labels, the mounted /work can.
@@ -208,7 +207,7 @@ rm -rf /work/kiwi-target /work/key /work/tmp
 INNER
 )
 
-log "Building the live ISO with kiwi-ng $KIWI_VERSION in $CONTAINER_IMAGE"
+log "Building the live ISO with kiwi-ng in $CONTAINER_IMAGE"
 "${run[@]}" bash -euo pipefail -c "$inner"
 
 [[ -s $OUT_DIR/$ISO_NAME ]] || die "ISO build did not produce $OUT_DIR/$ISO_NAME"

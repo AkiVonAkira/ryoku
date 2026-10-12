@@ -39,19 +39,6 @@ void_seed_keys() {
   ((${#keys[@]})) || die "no XBPS trust keys were available for the offline repository"
 }
 
-void_chroot_mounts_on() {
-  run mkdir -p /mnt/dev /mnt/proc /mnt/sys /mnt/run
-  if [[ -n ${RYOKU_DRYRUN:-} ]]; then
-    printf 'DRYRUN: bind /dev /proc /sys /run into /mnt and mark them rslave\n'
-    return 0
-  fi
-  local tree
-  for tree in dev proc sys run; do
-    mountpoint -q "/mnt/$tree" || mount --rbind "/$tree" "/mnt/$tree"
-    mount --make-rslave "/mnt/$tree"
-  done
-}
-
 void_chroot() {
   run chroot /mnt "$@"
 }

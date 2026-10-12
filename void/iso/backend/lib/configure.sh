@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 
 void_configure() {
-  void_chroot_mounts_on
   void_cfg_locale
   void_cfg_keymap
   void_cfg_timezone
   void_cfg_hostname
   void_cfg_user
   void_cfg_sudo
-  void_cfg_crypttab
+  ryoku_dracut_crypttab
 }
 
 void_cfg_locale() {
@@ -78,18 +77,4 @@ void_cfg_sudo() {
 %wheel ALL=(ALL:ALL) ALL
 EOF
   run chmod 0440 /mnt/etc/sudoers.d/10-wheel
-}
-
-void_cfg_crypttab() {
-  [[ ${RYOKU_ENCRYPT:-} == 1 ]] || return 0
-  local uuid
-  uuid=$(dev_uuid "$LUKS_PART") || die 'crypttab: could not read the LUKS UUID of %s' "$LUKS_PART"
-  write_file /mnt/etc/crypttab <<EOF
-root UUID=$uuid none luks
-EOF
-  run mkdir -p /mnt/etc/dracut.conf.d
-  write_file /mnt/etc/dracut.conf.d/20-ryoku-crypt.conf <<'EOF'
-add_dracutmodules+=" crypt "
-hostonly_cmdline="yes"
-EOF
 }

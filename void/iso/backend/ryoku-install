@@ -41,6 +41,10 @@ source "$SHARED_LIB_DIR/snapshots.sh"
 source "$SHARED_LIB_DIR/network.sh"
 # shellcheck source=installation/backend/lib/deploy.sh
 source "$SHARED_LIB_DIR/deploy.sh"
+# shellcheck source=installation/backend/lib/lanes.sh
+source "$SHARED_LIB_DIR/lanes.sh"
+# shellcheck source=installation/backend/lib/dracut.sh
+source "$SHARED_LIB_DIR/dracut.sh"
 source "$BACKEND_DIR/lib/common.sh"
 source "$BACKEND_DIR/lib/base.sh"
 source "$BACKEND_DIR/lib/configure.sh"
@@ -151,7 +155,7 @@ main() {
   void_base_install
 
   step configure
-  void_chroot_mounts_on
+  ryoku_target_api_mounts rbind
   void_desktop_install
   void_configure
   void_deploy_user

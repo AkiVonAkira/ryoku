@@ -43,6 +43,8 @@ on:
       - 'tests/install-edition-parity.sh'
       - 'tests/install-void-dryrun-matrix.sh'
       - 'void/iso/backend/**'
+      - 'tests/install-fedora-dryrun-matrix.sh'
+      - 'fedora/iso/backend/**'
       - 'tests/install-offline.sh'
       - 'tests/install-hooks.sh'
       - 'tests/release-offline-builds.sh'
@@ -96,6 +98,8 @@ on:
       - 'tests/install-edition-parity.sh'
       - 'tests/install-void-dryrun-matrix.sh'
       - 'void/iso/backend/**'
+      - 'tests/install-fedora-dryrun-matrix.sh'
+      - 'fedora/iso/backend/**'
       - 'tests/install-offline.sh'
       - 'tests/install-hooks.sh'
       - 'tests/release-offline-builds.sh'
@@ -165,9 +169,13 @@ jobs:
         shell: bash
         run: bash tests/install-dryrun-matrix.sh
 
-      - name: Arch and Void installs reach the same first boot
+      - name: Arch, Void and Fedora installs reach the same first boot
         shell: bash
         run: bash tests/install-edition-parity.sh
+
+      - name: Fedora installer dry-run matrix
+        shell: bash
+        run: bash tests/install-fedora-dryrun-matrix.sh
 
       - name: Offline install path (no network, baked repo, refusals before the wipe)
         shell: bash

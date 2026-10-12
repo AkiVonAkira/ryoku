@@ -3,9 +3,9 @@
 void_desktop_install() {
   local -a args=(--lane desktop --lane dev)
   local lane
-  while IFS= read -r lane; do args+=(--lane "$lane"); done < <(void_profile_lanes)
+  while IFS= read -r lane; do args+=(--lane "$lane"); done < <(ryoku_profile_lanes)
   local -a drop_args=()
-  mapfile -t drop_args < <(void_resolver_drop_args)
+  mapfile -t drop_args < <(ryoku_resolver_drop_args)
   args+=("${drop_args[@]}")
 
   local -a packages=()
