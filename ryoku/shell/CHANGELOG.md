@@ -598,6 +598,13 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **Ryogami's Workshop tab finds your Wallpaper Engine scenes.** On the first
+  run after an install the tab said "No Wallpaper Engine scenes yet" until
+  ryogami restarted, because the picker never refreshed it after the first scan.
+  Wallpaper Engine installed on a second Steam library or under Flatpak Steam is
+  now found through `libraryfolders.vdf`, and scenes render with that install's
+  assets, which also makes the WE assets directory setting do something
+  (`ryogami/daemon/steam_libraries.go`, `ryogami/picker/src/core/library.cpp`).
 - **Bluetooth devices stay connected after pairing.** Ryoku now stops discovery
   before it pairs or connects, trusts a new bond before connecting, and retries
   the first post-pair connection once. The shell, every bar style, Nomarchy and

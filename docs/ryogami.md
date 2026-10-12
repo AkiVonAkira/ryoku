@@ -66,6 +66,13 @@ the drawer's Apply button or Enter instead of searching on every change.
 Workshop downloads go through the Steam client. Ryoku does not ship the
 Steamworks helper, because it would mean redistributing Valve's library.
 
+Ryogami looks for Wallpaper Engine in every library Steam lists in
+`libraryfolders.vdf`, so an install on a second drive or under Flatpak Steam
+shows its Workshop scenes, and scenes render with that install's `assets`
+folder. **Workshop directory** and **WE assets directory** in Settings > Sources
+override both. Scenes already on disk show up in the Workshop tab as soon as
+the first scan after a fresh install finishes.
+
 Searching never holds up the picker. The daemon answers slow requests
 (provider and Workshop searches, semantic queries, colour previews) on their own
 workers, a newer search from the same picker cancels the older one, a search
