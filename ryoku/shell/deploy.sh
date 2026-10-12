@@ -696,6 +696,10 @@ if command -v sudo >/dev/null 2>&1; then
   fi
   _priv_install "$here/../lockscreen/sddm/ryoku-greeter" \
     /usr/share/ryoku/lockscreen/ryoku-greeter 755
+  # SDDM's [Wayland] SessionCommand: without it a checkout box keeps the
+  # package's older wrapper and logs in with its startup and failure rules.
+  _priv_install "$here/../lockscreen/sddm/ryoku-wayland-session" \
+    /usr/share/ryoku/lockscreen/ryoku-wayland-session 755
   _priv_install "$netdir/ryoku-dns" /usr/bin/ryoku-dns 755
   _priv_install "$netdir/50-ryoku-dns.rules" /usr/share/polkit-1/rules.d/50-ryoku-dns.rules 644
   _priv_install "$netdir/ryoku-wifi-powersave" /usr/bin/ryoku-wifi-powersave 755
