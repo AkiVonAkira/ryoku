@@ -420,11 +420,12 @@ redeploy the configs without the native package step.
 ## Channels
 
 `main` is the stable channel users run; packages and the editions' available
-ISOs are published on tagged releases. `unstable-dev` is the maintainer preview,
-and every push publishes the testing package channels. A release promotes
-`unstable-dev` to
-`main`. See [`docs/development.md`](docs/development.md) for the deploy, test,
-and commit loop.
+ISOs are published on tagged releases. `unstable-dev` is the maintainer preview:
+every push runs the Testing gate, after which `ryoku track unstable` boxes
+build the checked commit from source, and the publishers rebuild the testing
+package channels. A release promotes `unstable-dev` to `main`. See
+[`docs/development.md`](docs/development.md) for the deploy, test, and commit
+loop.
 
 ## Credits and license
 

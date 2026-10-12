@@ -19,6 +19,9 @@ Edit the repo, deploy, test on the running system.
   per process, so a rebuilt `.qsb` needs the surface's process restarted; a QML
   hot-reload keeps serving the old one and the change looks like it did nothing.
 
+After displayed copy changes, regenerate translations by dispatching the
+`i18n` workflow by hand. Translation does not run on each push.
+
 ## Verify before committing
 
 - Lua: `luac -p <file>` parses every changed Lua file.
@@ -84,13 +87,14 @@ Edit the repo, deploy, test on the running system.
 
 Two branches, two jobs. Work goes to one; a release moves the other.
 
-- **`unstable-dev` is where work lands.** Every push publishes the signed
-  testing package repositories for every packaged edition, so a tester on
-  `ryoku track unstable` gets it on the next `ryoku update`. Push with
-  `git push origin unstable-dev`; after the push the version bot adds a
-  `[skip ci]` bump commit,
+- **`unstable-dev` is where work lands.** A push reaches source testers after
+  the **Testing gate** passes, normally in about six minutes. The package
+  publishers follow and feed the signed frozen testing builds used for pins and
+  rollback. Agents and maintainers wait for the Testing gate, not for Publish,
+  before telling testers the source lane is ready. Push with `git push origin
+  unstable-dev`; after the push the version bot adds a `[skip ci]` bump commit,
   so `git fetch origin && git rebase origin/unstable-dev` before the next push.
-  Batch small commits: each push is a publish cycle.
+  Batch small commits: each push starts a gate and package publish cycle.
 - **`main` is the stable channel users run, and nothing is pushed to it.** It
   advances only when a release is cut, by fast-forwarding to a commit
   `unstable-dev` already carries (`docs/updates.md`, "Publishing: releases and
@@ -115,11 +119,11 @@ Two branches, two jobs. Work goes to one; a release moves the other.
 
 Where a change lives decides whether, and how, it reaches an installed machine.
 
-- **Desktop config and binaries (`ryoku/`)** reach users through `ryoku update`:
-  config is re-laid by `ryoku materialize` (override-safe), and binaries come
-  from the edition's signed native repository. They reach every testing package
-  channel on each push to `unstable-dev` and stable when a release is tagged
-  (`docs/updates.md`, "Publishing: releases and channels").
+- **Desktop config and binaries (`ryoku/`)** reach source testers after the
+  Testing gate passes on an `unstable-dev` push. The edition publishers then
+  put the same change into signed native testing repositories and frozen builds.
+  Stable receives it when a release is tagged (`docs/updates.md`, "Publishing:
+  releases and channels").
 - **Push, or work on a branch that is not the channel.** `ryoku update` on a
   checkout reconciles the branch it is ON onto `origin/<channel>`: a clean
   fast-forward when it can, and a `git reset --hard` when the branch has diverged
@@ -164,6 +168,18 @@ every supported install has run it, so the set stays small instead of piling up.
 - User-level package managers install without root, into `~/.local/bin` (`npm`,
   `pip --user`, `go install`, `cargo install`, `pipx`, `mise`). Do not
   reintroduce root-global installs or assume `sudo`.
+
+### Caches in CI
+
+Publishers cache only ccache, Go's build and module caches, and native
+package-manager downloads. Ccache keys compiled objects from the preprocessed
+source, compiler, and flags, so a source, header, compiler, or flag change
+rebuilds the object. The Go caches are content-addressed. Pacman verifies cached
+packages by signature, xbps-src verifies cached distfiles by checksum, and DNF
+verifies its cached packages and metadata. Build outputs and repositories are
+never cached. Prebuilt vendored packages are never reused across runs because
+plugins are locked to the ABI of the compositor and libraries they build
+against.
 
 When an Arch package is added, give Void and Fedora a native build or a row in
 their `translations.tsv`. A `-` mapping must say why the edition cannot ship
@@ -255,6 +271,19 @@ ledgers. Stable Release dispatches it on the release tag. Fedora has no ISO
 workflow. See `fedora/packages/rpm/README.md` for the spec, checksum, vendoring,
 fetch-hook, and local-build details. The release-day order and verification
 endpoints are in `docs/updates.md`, "Release-day checklist".
+
+### Test ISOs from `unstable-dev`
+
+Build an unpublished Arch test ISO from the testing package repository without
+moving an ISO pointer:
+
+```sh
+gh workflow run build-iso.yml --ref unstable-dev -f publish=false -f repo_url=https://repo.ryoku.dev/stable/channels/testing/x86_64
+```
+
+The signed image, manifest, scan results, and sidecars land in the Actions run's
+`ryoku-iso` workflow artifact. With `publish=false`, nothing is uploaded to the
+public bucket and no release ledger or latest pointer moves.
 
 The R2 retention Worker lives in `release/r2-retention/`. Run its focused tests
 with `node --test release/r2-retention/test/*.test.js`, then deploy from that

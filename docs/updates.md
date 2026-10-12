@@ -140,6 +140,14 @@ run and a post-snapshot closes it. On hosts without that capability, the
 snapshot step emits one warning and is skipped; no snapper command or snapshot
 helper offer runs.
 
+Before a packaged run creates a snapshot or changes packages, it reads the
+channel's `status.json`. A build still marked `building` refuses the run and
+prints the Actions run URL. `ryoku update --wait` polls until that build
+finishes, while `ryoku update --force` proceeds without waiting. If the last
+build failed, update warns you and takes the previous good build, because a
+failed publisher never moved the repository. The Hub reads the same state and
+holds its Update button while the channel is building.
+
 The channel follows (git fast-forward, or the host's signed package repository),
 then stage2 runs through the just-installed binary. Package hooks first adopt
 every live Ryoku session; on the hook's first release, stage2 invokes the same
@@ -385,7 +393,9 @@ The package repositories and ISOs live in the `ryoku-iso` bucket below
 | Directory | Purpose | Written when |
 |---|---|---|
 | `x86_64/` | moving stable head | a release tag is published |
-| `channels/testing/x86_64/` | moving unstable head | every push to `unstable-dev` |
+| `channels/testing/x86_64/` | moving packaged testing head | every push to `unstable-dev` |
+| `x86_64/status.json`, `channels/testing/x86_64/status.json` | state of the publisher moving that channel | when its build starts, publishes, or fails |
+| `channels/testing/checked.json` | source-lane Testing gate state and last passing commit, shared by every edition | on every push to `unstable-dev` |
 | `releases/<tag>/x86_64/` | frozen stable release | the tag is published |
 | `releases/index.json` | stable release ledger, newest first, with each release's ISO per variant | after each stable publish or ledger rebuild |
 | `channels/testing/builds/<build>/x86_64/` | frozen tested unstable build | every successful `unstable-dev` publish |
@@ -411,6 +421,16 @@ The pacman repository also publishes `manifest.json`, which lists every package
 by lane (base, dev, hardware, AUR, first-party, compositor, provisioned).
 `build-repo.sh` generates both files; they are never hand-edited.
 
+`status.json` is the channel publisher's live marker. Its state is `building`,
+`published`, or `failed`, and it names the commit, release, run URL, start, and
+finish. Each edition writes it with `bin/ryoku-channel-status`; terminal states
+keep the matching start time.
+
+The source lane follows `channels/testing/checked.json`, written by
+`bin/ryoku-checked-pointer`. Its state is `checking`, `passed`, or `failed`.
+Every write carries the most recent passing commit, so a running or failed gate
+cannot move a tester past the last commit that passed all required checks.
+
 A release is a tag: `main` advances only by fast-forward from `unstable-dev`
 (`RYOKU_RELEASE_PUSH=1 git push origin unstable-dev:main`; the `pre-push` hook
 refuses every other push to `main`, see `docs/development.md`, "Branches and
@@ -424,8 +444,9 @@ The pacman publisher then dispatches the plain Arch and CachyOS ISOs; the Void
 publisher dispatches the Void ISO from its frozen repository. Fedora has no ISO.
 Arch itself keeps rolling between releases; only the Ryoku set is frozen.
 
-**Work on `unstable-dev` reaches testing on every push, and stable only when a
-release is tagged.**
+**Work on `unstable-dev` reaches source testers when the Testing gate passes,
+and stable only when a release is tagged.** The packaged testing repository is
+also rebuilt on every push, after its own build and install checks.
 
 On a packaged box the channel is the native repository selection: the `Server`
 line in pacman.conf on Arch/CachyOS,
@@ -433,24 +454,29 @@ line in pacman.conf on Arch/CachyOS,
 Void, or the `baseurl` in `/etc/yum.repos.d/ryoku.repo` on Fedora. There is no
 second channel state to drift from it:
 
-- `ryoku track unstable` turns any box into a **testing box**: it follows the
-  `testing` moving head, rebuilt on every push to `unstable-dev`, so a tester
-  gets each push as signed packages through `ryoku update`. The publish also
-  freezes the tested repository and rebuilds the testing ledger.
-  `ryoku track stable` returns it to **stable** (named releases). `unstable` is
-  the user-facing name of the `testing` repository path.
-- `ryoku track stable | unstable | <version>` switches the repository and runs
-  an update that moves the Ryoku set to what the channel or frozen target
-  serves, down as well as up. `<version>` may be a release tag or unstable build
-  name and pins the box until it is tracked away. Pacman uses repo-qualified
-  targets; XBPS force-refreshes its repository and uses `-f` when moving to an
-  older frozen target; DNF installs the exact RPM versions served by the
-  selected repository.
-- `ryoku rollback --to <version>` makes the same frozen-target move in one
-  native package transaction while the Arch, CachyOS, Void, or Fedora base
-  stays current. A box following unstable, or pinned to one of its builds, sees
-  the retained unstable builds in `ryoku rollback`. `ryoku track unstable`
-  follows the moving testing head again.
+- `ryoku track unstable` turns a box into a **source testing box**. It checks
+  out `unstable-dev` from `https://github.com/ryoku-dev/ryoku.git` under
+  `~/ryoku-arch`; `bin/ryoku-track` installs the host toolchain, and
+  `ryoku/shell/deploy.sh` builds and deploys the checkout. Updates fast-forward
+  only to the last commit the Testing gate passed. A bot-authored
+  `release: bump unstable to ...` commit on top does not hold the source lane.
+  `ryoku update --wait` polls a running gate, while `ryoku update --force`
+  deploys the current tip without waiting. `testing` remains a quiet synonym
+  for `unstable`.
+- `ryoku track stable` returns the box to signed stable packages. `ryoku track
+  stable --source` follows `main` from a checkout. `ryoku track <version>`
+  selects a frozen packaged release or unstable build and pins the box until it
+  is tracked away. Pacman uses repo-qualified targets; XBPS force-refreshes its
+  repository and uses `-f` when moving to an older frozen target; DNF installs
+  the exact RPM versions served by the selected repository.
+- The packaged testing channel still publishes every `unstable-dev` push and
+  freezes the successful repository. Those builds remain available to `ryoku
+  track <build>` and `ryoku rollback`, even though `ryoku track unstable` now
+  selects the source lane.
+- `ryoku rollback --to <version>` makes a frozen-target move in one native
+  package transaction while the Arch, CachyOS, Void, or Fedora base stays
+  current. A box pinned to an unstable build sees the retained unstable builds
+  in `ryoku rollback`.
 - `ryoku status` reports `release` (this box) and `channelRelease` (what the
   channel serves); `ryoku version` prints the release tag.
 - The doctor names the channel it finds and warns, without touching it, when
@@ -651,9 +677,13 @@ island (when the channel serves the next line) and the Hub's Updates page.
   `ryoku-shell` bound to the dead compositor; `start` then does nothing and the
   login lands on bare Hyprland. The autostart reloads units, clears a start
   limit, and `restart`s the shell and wallpaper daemons every session.
-- **A change reaches stable only when a release is tagged**, and testing on
-  every `unstable-dev` push. Keep the gap small; the delivery check reports it
-  on every push.
+- **Nothing reaches a channel while a required check is red.** Every publisher
+  runs `bin/ryoku-ci-gate` before it uploads. New checks are required by
+  default; the checks that do not gate delivery are the documented advisory set
+  in that script.
+- **A change reaches stable only when a release is tagged.** A source tester
+  advances after the Testing gate passes; the packaged testing build follows
+  its publisher on each `unstable-dev` push.
 - **Displayed English must be wrapped where it is displayed, or it never
   translates.** `I18n.tr("...")` in QML, a Hub schema `label`/`desc`, `i18n.T`
   in Go, `log 'fmt %s'` in the installer's shell. The `i18n` workflow extracts
@@ -665,6 +695,12 @@ island (when the channel serves the next line) and the Hub's Updates page.
 
 ## Checks
 
+- `.github/workflows/testing-gate.yml` runs on every `unstable-dev` push and
+  records `checking`, `passed`, or `failed` in
+  `channels/testing/checked.json`.
+- `bin/ryoku-ci-gate` waits for every required GitHub check on a commit and is
+  shared by the Testing gate and all three package publishers. Its advisory
+  workflow set is the single list of checks that do not block delivery.
 - `bin/ryoku-dev-verify-delivery` flags orphan configs (hard fail) and reports
   the publish lag. It runs in `pre-commit`, `post-commit`, and the Delivery check
   workflow.
