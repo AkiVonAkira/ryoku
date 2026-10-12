@@ -3,6 +3,19 @@
 ## Unreleased
 
 ### Added
+- **The Testing gate moves the source lane only after its checks pass.**
+  `.github/workflows/testing-gate.yml` records the current check and last
+  passing commit in `channels/testing/checked.json` on every `unstable-dev`
+  push.
+- **Every package publisher has one required-checks gate.**
+  `bin/ryoku-ci-gate` waits for every non-advisory GitHub check before Arch,
+  Void, or Fedora uploads a channel.
+- **Channel builds publish machine-readable state.** Each edition writes
+  `status.json` as `building`, `published`, or `failed`, with the commit,
+  release, timestamps, and Actions run.
+- **Test ISOs can build directly from `unstable-dev`.** The ISO workflows accept
+  `publish=false`, which keeps the signed image and its checks in the workflow
+  artifact without moving a public pointer or ledger.
 - **Fedora releases publish signed RPM repositories.** Every release listed in
   `fedora/releases` gets its own stable and testing heads, frozen releases and
   unstable builds, and package-only ledgers below `stable/fedora/<N>/`. CI
@@ -176,6 +189,13 @@
   ensures `ryogami` instead of `awww` when it puts the wallpaper daemon back.
 
 ### Changed
+- **Translations run on demand.** The i18n workflow is dispatched by hand after
+  copy changes and has a 40-minute job cap, so a provider outage cannot hold CI
+  for hours.
+- **Publishers reuse only verified build inputs.** Arch, Void, and Fedora cache
+  ccache, Go build data, and their native package-manager downloads. Build
+  outputs, assembled repositories, and ABI-locked vendored packages are always
+  rebuilt for the run.
 - **Ryotunes follows the package lane for each edition.** Arch and CachyOS keep
   the independently released prebuilt package from ryoku-dev/ryotunes. `ryoku
   update` verifies its checksum and pacman metadata, installs only a newer

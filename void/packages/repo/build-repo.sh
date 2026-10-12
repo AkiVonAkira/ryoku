@@ -220,6 +220,7 @@ done
 	printf '%s\n' 'XBPS_BUILD_ENVIRONMENT=ryoku-repository' 'XBPS_CHROOT_CMD=uchroot'
 	# Reuse exact package versions already present in the persistent hostdir.
 	printf '%s\n' 'XBPS_PRESERVE_PKGS=yes'
+	printf '%s\n' 'XBPS_CCACHE=yes'
 	printf 'XBPS_HOSTDIR=%q\n' "$HOSTDIR"
 	printf 'export RYOKU_RELEASE=%q\n' "$RYOKU_RELEASE"
 	printf 'export RYOKU_CHANNEL=%q\n' "$RYOKU_CHANNEL"

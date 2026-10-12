@@ -21,6 +21,7 @@ on:
 permissions:
   contents: read
   actions: write
+  checks: read
 
 concurrency:
   group: publish-repo-fedora-${{ github.ref }}
@@ -121,25 +122,48 @@ jobs:
           echo "::notice::Publishing Fedora releases: ${releases[*]}"
 
   build:
-    name: "Build signed RPM repo (Fedora ${{ matrix.fedora }})"
+    name: "Build signed RPM repo (Fedora ${{ matrix.release }})"
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
-        fedora: ${{ fromJSON(needs.prepare.outputs.releases) }}
+        release: ${{ fromJSON(needs.prepare.outputs.releases) }}
     container:
-      image: fedora:${{ matrix.fedora }}
+      image: fedora:${{ matrix.release }}
     steps:
       - name: Install checkout tools
-        run: dnf install -y git tar gzip curl rclone
+        run: dnf install -y git tar gzip curl rclone jq
 
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: false
           fetch-depth: 0
+
+      - name: Mark the channel build as running
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CHANNEL: ${{ needs.prepare.outputs.channel }}
+          RELEASE: ${{ needs.prepare.outputs.release }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./bin/ryoku-r2-config
+          base="Ryoku:$R2_BUCKET/fedora/${{ matrix.release }}"
+          if [[ $CHANNEL == stable ]]; then
+            channel_dir="$base/x86_64"
+          else
+            channel_dir="$base/channels/testing/x86_64"
+          fi
+          ./bin/ryoku-channel-status "$channel_dir" building "$GITHUB_SHA" \
+            --channel "$CHANNEL" \
+            --release "$RELEASE" \
+            --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
       - name: Snapshot the published package set
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -151,16 +175,16 @@ jobs:
         run: |
           set -euo pipefail
           ./bin/ryoku-r2-config
-          mirror="$RUNNER_TEMP/fedora-${{ matrix.fedora }}-published"
+          mirror="$RUNNER_TEMP/fedora-${{ matrix.release }}-published"
           mkdir -p "$mirror"
           if [[ $CHANNEL == stable ]]; then
-            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.fedora }}/x86_64/" "$mirror/" \
+            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.release }}/x86_64/" "$mirror/" \
               --filter '- *-debuginfo-*.rpm' \
               --filter '- *-debugsource-*.rpm' \
               --filter '+ *.rpm' \
               --filter '+ upstream-inputs.tsv' \
               --filter '- *' || true
-            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.fedora }}/channels/testing/x86_64/" "$mirror/" \
+            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.release }}/channels/testing/x86_64/" "$mirror/" \
               --filter '- *-debuginfo-*.rpm' \
               --filter '- *-debugsource-*.rpm' \
               --filter '+ *.rpm' \
@@ -168,7 +192,7 @@ jobs:
               --filter '- *' \
               --ignore-existing || true
           else
-            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.fedora }}/channels/testing/x86_64/" "$mirror/" \
+            rclone copy "Ryoku:$R2_BUCKET/fedora/${{ matrix.release }}/channels/testing/x86_64/" "$mirror/" \
               --filter '- *-debuginfo-*.rpm' \
               --filter '- *-debugsource-*.rpm' \
               --filter '+ *.rpm' \
@@ -177,11 +201,49 @@ jobs:
           fi
           echo "RYOKU_RPM_MIRROR=$mirror" >> "$GITHUB_ENV"
 
+      - name: Configure build caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "CCACHE_DIR=$GITHUB_WORKSPACE/.ccache-${{ matrix.release }}"
+            echo "CCACHE_MAXSIZE=1G"
+            echo "GOCACHE=$GITHUB_WORKSPACE/.gocache-${{ matrix.release }}"
+            echo "GOMODCACHE=$GITHUB_WORKSPACE/.gomod-${{ matrix.release }}"
+          } >> "$GITHUB_ENV"
+          echo "/usr/lib64/ccache" >> "$GITHUB_PATH"
+          mkdir -p \
+            "$GITHUB_WORKSPACE/.ccache-${{ matrix.release }}" \
+            "$GITHUB_WORKSPACE/.gocache-${{ matrix.release }}" \
+            "$GITHUB_WORKSPACE/.gomod-${{ matrix.release }}"
+
+      # ccache keys on preprocessed source, compiler, and flags, and Go keys on
+      # content, so restored bytes cannot change the inputs. The package cache is
+      # not kept: dnf fetches the build dependencies in two minutes and the
+      # repository's cache allowance is better spent on the compiler caches.
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache-${{ matrix.release }}
+          key: fedora${{ matrix.release }}-ccache-${{ github.sha }}
+          restore-keys: |
+            fedora${{ matrix.release }}-ccache-
+
+      - name: Restore Go caches
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .gocache-${{ matrix.release }}
+            .gomod-${{ matrix.release }}
+          key: fedora${{ matrix.release }}-go-${{ github.sha }}
+          restore-keys: |
+            fedora${{ matrix.release }}-go-
 
       - name: Install build dependencies from the RPM specs
         shell: bash
         run: |
           set -euo pipefail
+          dnf install -y ccache
           dnf install -y dnf-plugins-core dnf5-plugins rpm-build rpm-sign createrepo_c gnupg2
           build_coprs=fedora/packages/build-coprs.tsv
           if [[ -f $build_coprs ]]; then
@@ -234,7 +296,7 @@ jobs:
             exit 1
           fi
 
-          srpms="$RUNNER_TEMP/fedora-${{ matrix.fedora }}-srpms"
+          srpms="$RUNNER_TEMP/fedora-${{ matrix.release }}-srpms"
           out="$GITHUB_WORKSPACE/fedora/packages/rpm/out"
           RYOKU_SRPM_OUT="$srpms" \
             fedora/packages/rpm/prepare-srpms.sh
@@ -249,30 +311,46 @@ jobs:
           gpg --batch --armor --export "$RYOKU_RPM_FINGERPRINT" > "$stage/RPM-GPG-KEY-ryoku"
           tar -C "$stage" -cf fedora/packages/rpm/fedora-repo.tar .
 
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache-${{ matrix.release }}
+          key: fedora${{ matrix.release }}-ccache-${{ github.sha }}
+
+      - name: Save Go caches
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .gocache-${{ matrix.release }}
+            .gomod-${{ matrix.release }}
+          key: fedora${{ matrix.release }}-go-${{ github.sha }}
+
       - name: Upload built repository
         uses: actions/upload-artifact@v4
         with:
-          name: fedora-${{ matrix.fedora }}-repo-${{ github.run_id }}
+          name: fedora-${{ matrix.release }}-repo-${{ github.run_id }}
           path: fedora/packages/rpm/fedora-repo.tar
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
 
   container-install:
-    name: "Install packaged desktops (Fedora ${{ matrix.fedora }}, ${{ matrix.profile }})"
+    name: "Install packaged desktops (Fedora ${{ matrix.release }}, ${{ matrix.profile }})"
     needs: [prepare, build]
     runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
-        fedora: ${{ fromJSON(needs.prepare.outputs.releases) }}
+        release: ${{ fromJSON(needs.prepare.outputs.releases) }}
         profile:
           - plain
           - tuned-ppd
           - power-profiles-daemon
     container:
-      image: fedora:${{ matrix.fedora }}
+      image: fedora:${{ matrix.release }}
     steps:
       - name: Install checkout and gate tools
         run: dnf install -y git gnupg2 tar
@@ -285,7 +363,7 @@ jobs:
       - name: Download built repository
         uses: actions/download-artifact@v4
         with:
-          name: fedora-${{ matrix.fedora }}-repo-${{ github.run_id }}
+          name: fedora-${{ matrix.release }}-repo-${{ github.run_id }}
           path: fedora/packages/rpm
 
       - name: Install both desktops from the signed repository
@@ -382,15 +460,39 @@ jobs:
             exit 1
           }
 
+
+  gate:
+    name: Required checks passed
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Wait for required checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./bin/ryoku-ci-gate "$GITHUB_SHA" --timeout-min 25
+
   publish:
-    name: "Publish RPM repo (Fedora ${{ matrix.fedora }})"
-    needs: [prepare, build, container-install]
+    name: "Publish RPM repo (Fedora ${{ matrix.release }})"
+    needs: [prepare, build, container-install, gate]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        fedora: ${{ fromJSON(needs.prepare.outputs.releases) }}
+        release: ${{ fromJSON(needs.prepare.outputs.releases) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -400,7 +502,7 @@ jobs:
       - name: Download tested repository
         uses: actions/download-artifact@v4
         with:
-          name: fedora-${{ matrix.fedora }}-repo-${{ github.run_id }}
+          name: fedora-${{ matrix.release }}-repo-${{ github.run_id }}
           path: fedora/packages/rpm
 
       - name: Install publish tools
@@ -441,7 +543,7 @@ jobs:
           [[ -s $src/repodata/repomd.xml ]] || { echo '::error::Tested repository has no repomd.xml'; exit 1; }
           [[ -s $src/repodata/repomd.xml.asc ]] || { echo '::error::Tested repository has no repomd.xml signature'; exit 1; }
 
-          base="$REMOTE/fedora/${{ matrix.fedora }}"
+          base="$REMOTE/fedora/${{ matrix.release }}"
           if [[ $CHANNEL == stable ]]; then
             frozen="$base/releases/$RELEASE/x86_64"
             head="$base/x86_64"
@@ -449,7 +551,7 @@ jobs:
             if [[ $FORCE_RELEASE != true ]]; then
               existing=$(rclone lsf "$frozen/" 2>/dev/null || true)
               if [[ -n $existing ]]; then
-                echo "::error::fedora/${{ matrix.fedora }}/releases/$RELEASE already exists; re-run with force_release to overwrite"
+                echo "::error::fedora/${{ matrix.release }}/releases/$RELEASE already exists; re-run with force_release to overwrite"
                 exit 1
               fi
             fi
@@ -472,17 +574,101 @@ jobs:
 
           publish "$src" "$frozen"
           publish "$src" "$head"
-          ledger=$(./bin/ryoku-release-ledger "$REMOTE" "fedora/${{ matrix.fedora }}" "$ledger_channel")
+          ledger=$(./bin/ryoku-release-ledger "$REMOTE" "fedora/${{ matrix.release }}" "$ledger_channel")
           jq -e --arg release "$RELEASE" '.latest == $release' <<< "$ledger" >/dev/null || {
-            echo "::error::Fedora ${{ matrix.fedora }} $ledger_channel ledger does not list $RELEASE as latest"
+            echo "::error::Fedora ${{ matrix.release }} $ledger_channel ledger does not list $RELEASE as latest"
             exit 1
           }
           rclone copyto fedora/releases "$REMOTE/fedora/releases" -P
-          echo "::notice::Published Fedora ${{ matrix.fedora }} $CHANNEL release $RELEASE"
+          echo "::notice::Published Fedora ${{ matrix.release }} $CHANNEL release $RELEASE"
+
+      - name: Mark the channel build as published
+        env:
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CHANNEL: ${{ needs.prepare.outputs.channel }}
+          RELEASE: ${{ needs.prepare.outputs.release }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="Ryoku:$R2_BUCKET/fedora/${{ matrix.release }}"
+          if [[ $CHANNEL == stable ]]; then
+            channel_dir="$base/x86_64"
+          else
+            channel_dir="$base/channels/testing/x86_64"
+          fi
+          ./bin/ryoku-channel-status "$channel_dir" published "$GITHUB_SHA" \
+            --channel "$CHANNEL" \
+            --release "$RELEASE" \
+            --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+  mark-failed:
+    name: Mark failed Fedora channel builds
+    needs: [prepare, build, container-install, gate, publish]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install status tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone jq
+
+      - name: Mark every Fedora release as failed
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CHANNEL: ${{ needs.prepare.outputs.channel }}
+          RELEASE: ${{ needs.prepare.outputs.release }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          channel=$CHANNEL
+          release_name=$RELEASE
+          if [[ -z $channel || -z $release_name ]]; then
+            case "$GITHUB_REF" in
+              refs/tags/v*)
+                channel=stable
+                release_name=${GITHUB_REF#refs/tags/}
+                ;;
+              refs/heads/unstable-dev)
+                channel=testing
+                release_name=$(./bin/ryoku-release-version \
+                  --channel unstable-dev \
+                  --build-number "$GITHUB_RUN_NUMBER" \
+                  --sha "$GITHUB_SHA")
+                ;;
+              *)
+                echo "::error::Cannot resolve the failed Fedora channel for $GITHUB_REF"
+                exit 1
+                ;;
+            esac
+          fi
+          ./bin/ryoku-r2-config
+          while IFS= read -r fedora_release || [[ -n $fedora_release ]]; do
+            [[ -n $fedora_release && $fedora_release != \#* ]] || continue
+            base="Ryoku:$R2_BUCKET/fedora/$fedora_release"
+            if [[ $channel == stable ]]; then
+              channel_dir="$base/x86_64"
+            else
+              channel_dir="$base/channels/testing/x86_64"
+            fi
+            ./bin/ryoku-channel-status "$channel_dir" failed "$GITHUB_SHA" \
+              --channel "$channel" \
+              --release "$release_name" \
+              --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          done < fedora/releases
 
   notify-failure:
     name: Announce a failed Fedora publish
-    needs: [prepare, build, container-install, publish]
+    needs: [prepare, build, container-install, gate, publish]
     if: ${{ failure() && github.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

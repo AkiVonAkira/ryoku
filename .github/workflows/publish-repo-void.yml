@@ -16,7 +16,11 @@ on:
 
 permissions:
   contents: read
-  actions: write
+  actions: read
+  checks: read
+
+env:
+  RYOKU_XBPS_WORK: ${{ github.workspace }}/.cache/void-xbps
 concurrency:
   group: publish-repo-void-${{ github.ref_type == 'tag' && 'stable' || 'testing' }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
@@ -85,8 +89,27 @@ jobs:
 
       - name: Install repository tools
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y rclone
+          sudo apt-get install -y rclone jq
+
+      - name: Configure bucket and mark channel building
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CHANNEL: ${{ steps.channel.outputs.channel }}
+          RELEASE: ${{ steps.channel.outputs.release }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./bin/ryoku-r2-config
+          channel_dir=void/channels/testing/x86_64
+          [[ $CHANNEL == stable ]] && channel_dir=void/x86_64
+          ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$channel_dir" building "$GITHUB_SHA" \
+            --channel "$CHANNEL" --release "$RELEASE" \
+            --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
       - name: Verify the production signing key
         id: signing
@@ -132,7 +155,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./bin/ryoku-r2-config
           if [[ $CHANNEL == stable && ${FORCE:-false} != true ]]; then
             existing=$(rclone lsf "Ryoku:$R2_BUCKET/$PREFIX/x86_64/" 2>/dev/null || true)
             if [[ -n $existing ]]; then
@@ -156,6 +178,22 @@ jobs:
           fi
           echo "RYOKU_XBPS_MIRROR=$mirror" >> "$GITHUB_ENV"
 
+      - name: Restore Void compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.RYOKU_XBPS_WORK }}/hostdir/ccache
+          key: void-ccache-${{ github.sha }}
+          restore-keys: |
+            void-ccache-
+
+      - name: Restore Void source cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.RYOKU_XBPS_WORK }}/hostdir/sources
+          key: void-sources-${{ hashFiles('void/packages/srcpkgs/**') }}
+          restore-keys: |
+            void-sources-
+
       - name: Free build storage
         run: |
           sudo rm -rf /opt/hostedtoolcache /usr/share/dotnet /opt/ghc \
@@ -167,7 +205,6 @@ jobs:
         env:
           RYOKU_XBPS_KEY: ${{ steps.signing.outputs.key }}
           RYOKU_XBPS_PRODUCTION: '1'
-          RYOKU_XBPS_WORK: ${{ runner.temp }}/ryoku-xbps-work
           RYOKU_XBPS_OUT: ${{ github.workspace }}/void/packages/repo/out
           RYOKU_RELEASE: ${{ steps.channel.outputs.release }}
           RYOKU_CHANNEL: ${{ steps.channel.outputs.channel }}
@@ -176,6 +213,29 @@ jobs:
           set -euo pipefail
           trap 'rm -f "$RYOKU_XBPS_KEY"' EXIT
           void/packages/repo/container-runner.sh
+      - name: Restore Void cache ownership
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RYOKU_XBPS_WORK/hostdir/ccache" "$RYOKU_XBPS_WORK/hostdir/sources"
+          sudo chown -R "$(id -u):$(id -g)" \
+            "$RYOKU_XBPS_WORK/hostdir/ccache" "$RYOKU_XBPS_WORK/hostdir/sources"
+
+      - name: Save Void compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.RYOKU_XBPS_WORK }}/hostdir/ccache
+          key: void-ccache-${{ github.sha }}
+
+      - name: Save Void source cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.RYOKU_XBPS_WORK }}/hostdir/sources
+          key: void-sources-${{ hashFiles('void/packages/srcpkgs/**') }}
+
 
       - name: Pack repository artifact
         shell: bash
@@ -195,6 +255,24 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+
+  gate:
+    name: Required checks passed
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Wait for required checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./bin/ryoku-ci-gate "$GITHUB_SHA" --timeout-min 25
 
   container-install:
     name: Install the packaged niri desktop
@@ -230,7 +308,11 @@ jobs:
 
   publish:
     name: Publish signed XBPS repository
-    needs: [build, container-install]
+    needs: [build, gate, container-install]
+    permissions:
+      contents: read
+      actions: write
+      checks: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -398,10 +480,66 @@ jobs:
             -f release_stage="$stage" \
             -f repo_url="https://repo.ryoku.dev/stable/void/releases/$RELEASE/x86_64"
           echo "::notice::Dispatched build-iso-void.yml on $RELEASE"
+      - name: Mark channel published
+        env:
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CHANNEL: ${{ needs.build.outputs.channel }}
+          RELEASE: ${{ needs.build.outputs.release }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          channel_dir=void/channels/testing/x86_64
+          [[ $CHANNEL == stable ]] && channel_dir=void/x86_64
+          ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$channel_dir" published "$GITHUB_SHA" \
+            --channel "$CHANNEL" --release "$RELEASE" \
+            --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+  mark-failed:
+    name: Mark failed Void channel build
+    needs: [build, gate, container-install, publish]
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install status tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y rclone jq
+      - name: Mark channel failed
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./bin/ryoku-r2-config
+          case "$GITHUB_REF" in
+            refs/tags/v*)
+              channel=stable
+              release=${GITHUB_REF#refs/tags/}
+              channel_dir=void/x86_64
+              ;;
+            *)
+              channel=testing
+              release=$(./bin/ryoku-release-version --channel unstable-dev --build-number "$GITHUB_RUN_NUMBER" --sha "$GITHUB_SHA")
+              channel_dir=void/channels/testing/x86_64
+              ;;
+          esac
+          ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$channel_dir" failed "$GITHUB_SHA" \
+            --channel "$channel" --release "$release" \
+            --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
 
   notify-failure:
     name: Announce a failed Void publish
-    needs: [build, container-install, publish]
+    needs: [build, gate, container-install, publish]
     if: ${{ failure() && github.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
