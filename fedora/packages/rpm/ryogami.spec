@@ -24,6 +24,8 @@ BuildRequires:  wayland-protocols-devel
 BuildRequires:  ffmpeg-free-devel
 Requires:       quickshell >= 0.3.0
 Requires:       ffmpeg-free
+# ffmpeg-free can otherwise resolve libopenh264 to Fedora's no-codec stub.
+Requires:       openh264
 Requires:       ImageMagick
 Requires:       qt6-qtmultimedia
 Requires:       qt6-qtimageformats
