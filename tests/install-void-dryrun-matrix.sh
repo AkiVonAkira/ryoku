@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo=${RYOKU_PATH:-$(cd "$(dirname "$0")/.." && pwd)}
-backend=$repo/void/iso/backend/ryoku-install
+here=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=tests/install-dryrun-harness.sh
+source "$here/install-dryrun-harness.sh"
+repo=$INSTALL_DRYRUN_ROOT
+backend=$(install_dryrun_backend_path void)
 builder=$repo/void/iso/build.sh
 
 fail() {
@@ -66,7 +69,7 @@ run_case() {
   if [[ $encrypt == yes ]]; then
     envs+=(RYOKU_ENCRYPT=1 RYOKU_LUKS_PASSPHRASE=secret)
   fi
-  env "${envs[@]}" "$backend" >"$out"
+  install_dryrun_run void "$out" "${envs[@]}"
 
   mapfile -t stages < <(grep '^@@RYOKU_STEP ' "$out" | awk '{print $2}')
   [[ ${stages[*]} == 'partition filesystems mount pacstrap configure bootloader' ]] \
@@ -190,18 +193,13 @@ run_case alongside-shared alongside vm no uefi shared
 run_case alongside-dedicated alongside amd-nvidia yes uefi dedicated
 
 bios_alongside_out=$tmp/alongside-bios-refused.out
-if env \
-  RYOKU_DRYRUN=1 \
-  RYOKU_DISK=/dev/vda \
-  RYOKU_PASSWORD_HASH=x \
+if install_dryrun_run void "$bios_alongside_out" \
   RYOKU_DISK_STRATEGY=alongside \
   RYOKU_PROFILE=vm \
-  RYOKU_REPO="$repo" \
   RYOKU_COMPOSITOR=niri \
   RYOKU_COMPOSITOR_CONFIG_DIR=niri \
   RYOKU_FIRMWARE_MODE=bios \
-  RYOKU_ESP_MODE=shared \
-  "$backend" >"$bios_alongside_out" 2>&1; then
+  RYOKU_ESP_MODE=shared; then
   fail 'legacy BIOS accepted an alongside install'
 fi
 grep -q 'legacy BIOS supports whole-disk installation only' "$bios_alongside_out" \

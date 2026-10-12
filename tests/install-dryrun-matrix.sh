@@ -5,7 +5,11 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-root="$here/.."
+# shellcheck source=tests/install-dryrun-harness.sh
+source "$here/install-dryrun-harness.sh"
+root=$INSTALL_DRYRUN_ROOT
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
 # The installer refuses to run without a compositor choice and the config dir
@@ -19,13 +23,13 @@ canonical="partition filesystems mount pacstrap configure bootloader"
 
 # run_backend <strategy> <encrypt> <swap> [esp-mode] [variant]
 run_backend() {
+  local output=$tmp/arch.out
   rc=0
-  out="$(RYOKU_DRYRUN=1 RYOKU_REPO="$root" \
-    RYOKU_DISK=/dev/vda RYOKU_PASSWORD_HASH='$6$fake$hash' \
+  install_dryrun_run arch "$output" \
     RYOKU_DISK_STRATEGY="$1" RYOKU_ENCRYPT="$2" RYOKU_SWAP_GIB="$3" \
     RYOKU_ESP_MODE="${4:-auto}" RYOKU_VARIANT="${5:-plain}" \
-    RYOKU_LUKS_PASSPHRASE=passphrase \
-    bash "$root/installation/backend/ryoku-install" 2>&1)" || rc=$?
+    RYOKU_LUKS_PASSPHRASE=passphrase || rc=$?
+  out=$(<"$output")
 }
 
 for strategy in whole alongside; do

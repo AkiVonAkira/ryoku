@@ -42,12 +42,9 @@ EOF
 }
 
 void_cfg_timezone() {
-  local timezone=$RYOKU_TIMEZONE
-  [[ $timezone != auto ]] || timezone=UTC
-  if [[ -z ${RYOKU_DRYRUN:-} && ! -e /mnt/usr/share/zoneinfo/$timezone ]]; then
-    log 'warn: timezone %s is unavailable; using UTC' "$timezone"
-    timezone=UTC
-  fi
+  local timezone
+  ryoku_resolve_timezone "$RYOKU_TIMEZONE"
+  timezone=$RYOKU_RESOLVED_TIMEZONE
   log 'timezone: %s' "$timezone"
   run ln -sfn "/usr/share/zoneinfo/$timezone" /mnt/etc/localtime
   void_chroot hwclock --systohc || true

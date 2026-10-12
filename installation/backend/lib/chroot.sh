@@ -67,32 +67,9 @@ EOF
 }
 
 ryoku_cfg_timezone() {
-  local tz=$RYOKU_TIMEZONE
-  if [[ $tz == auto ]]; then
-    if [[ ${RYOKU_ONLINE:-1} != 1 ]]; then
-      # offline install: IP geolocation can't resolve, so skip the curl (which
-      # would only time out) and use UTC. saves ~20s on every offline install.
-      log "timezone: offline install, using UTC (auto needs network to geolocate)"
-      tz=UTC
-    elif [[ -n ${RYOKU_DRYRUN:-} ]]; then
-      printf 'DRYRUN: curl -fsSL https://ipinfo.io/timezone\n'
-      tz='<auto-timezone>'
-    else
-      # configure runs with the network up, so geolocation still resolves
-      # even when the installer's timezone screen ran before Wi-Fi joined.
-      # two providers for resilience; first known zone wins.
-      local url
-      for url in "https://ipinfo.io/timezone" "http://ip-api.com/line?fields=timezone"; do
-        tz=$(curl -fsSL --max-time 10 "$url" 2>/dev/null | tr -d '[:space:]') || tz=""
-        if [[ -n $tz && -e /mnt/usr/share/zoneinfo/$tz ]]; then break; fi
-        tz=""
-      done
-    fi
-  fi
-  if [[ -z ${RYOKU_DRYRUN:-} && ( -z $tz || ! -e /mnt/usr/share/zoneinfo/$tz ) ]]; then
-    log 'warn: timezone '\''%s'\'' is empty or unknown; falling back to UTC' "${tz:-empty}"
-    tz=UTC
-  fi
+  local tz
+  ryoku_resolve_timezone "$RYOKU_TIMEZONE"
+  tz=$RYOKU_RESOLVED_TIMEZONE
   log 'timezone: %s' "$tz"
   run ln -sf "/usr/share/zoneinfo/$tz" /mnt/etc/localtime
   run arch-chroot /mnt hwclock --systohc

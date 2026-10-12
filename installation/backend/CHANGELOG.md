@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- **Arch and Void install plans now have one first-boot parity check.**
+  `tests/install-edition-parity.sh` runs both niri backends with the same
+  answers and compares their neutral materialize, keyboard, wallpaper,
+  lockscreen, intro, account, XDG-directory, and timezone contract. The two
+  existing dry-run matrices use the same backend runner.
 - **Void installs now include the snapshot safety net.** Snapshot-enabled
   installs create and mount `@snapshots`, configure snapper and Limine, and
   enable the runit cleanup and boot-menu sync services. Declining snapshots
@@ -52,6 +57,10 @@
   naming `RYOKU_ESP_MODE=dedicated` as the way around it (`lib/bootloader.sh`).
 
 ### Fixed
+- **Void `auto` timezone now behaves like Arch.** Online installs geolocate the
+  timezone through the shared installer resolver; offline installs skip the
+  network wait and use UTC. Both editions validate the zone before linking
+  `/etc/localtime`.
 - **Offline Void installs no longer probe unreachable package mirrors.** The
   target masks every packaged XBPS repository configuration while installing
   from the ISO repository, then removes exactly those recorded masks before
