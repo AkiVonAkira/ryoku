@@ -34,9 +34,9 @@ func TestSchemaRowsResolveAgainstStore(t *testing.T) {
 	seen := map[string]bool{}
 	for _, raw := range rows {
 		var row struct {
-			Key, Label, Desc, Ctl, Src, Page, Tab, Group string
-			Opts                                         []string
-			OptLabels                                    map[string]string
+			Key, Label, Desc, Ctl, Src, Page, Tab, Group, Caps string
+			Opts                                               []string
+			OptLabels                                          map[string]string
 		}
 		if err := json.Unmarshal(raw, &row); err != nil {
 			t.Fatalf("row does not decode: %v", err)
@@ -56,6 +56,9 @@ func TestSchemaRowsResolveAgainstStore(t *testing.T) {
 		if row.Page == "" || row.Src != "desktop.json" {
 			t.Errorf("row %q must name its page and read desktop.json, got page=%q src=%q",
 				row.Key, row.Page, row.Src)
+		}
+		if strings.HasPrefix(row.Key, "wm.wayfire.depthdeck.") && row.Caps != "deckLayout" {
+			t.Errorf("depthdeck row %q must be gated by deckLayout, got %q", row.Key, row.Caps)
 		}
 
 		switch row.Ctl {

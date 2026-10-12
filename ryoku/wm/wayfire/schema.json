@@ -7,6 +7,7 @@
     "desc": "Layer, dim and scatter the windows behind the focused one",
     "ctl": "sw",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "page": "windowmanager"
   },
   {
@@ -17,6 +18,7 @@
     "desc": "Scale of the focused window when it is already maximised",
     "ctl": "slid",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 0.5,
     "hi": 1,
     "unit": "%",
@@ -31,6 +33,7 @@
     "desc": "Size of the closest layer behind the focus",
     "ctl": "slid",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 0.1,
     "hi": 1,
     "unit": "%",
@@ -45,6 +48,7 @@
     "desc": "Transparency of the closest layer behind the focus",
     "ctl": "slid",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 0,
     "hi": 1,
     "unit": "%",
@@ -59,6 +63,7 @@
     "desc": "Size of the layer behind the first",
     "ctl": "slid",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 0.1,
     "hi": 1,
     "unit": "%",
@@ -73,6 +78,7 @@
     "desc": "Transparency of the layer behind the first",
     "ctl": "slid",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 0,
     "hi": 1,
     "unit": "%",
@@ -87,6 +93,7 @@
     "desc": "How many layers back the deck reaches",
     "ctl": "step",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 1,
     "hi": 16,
     "page": "windowmanager"
@@ -99,6 +106,7 @@
     "desc": "Fan background windows aside so each keeps a peek strip",
     "ctl": "sw",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "page": "windowmanager"
   },
   {
@@ -109,6 +117,7 @@
     "desc": "Fan towards the screen edges; off scatters around the focused window",
     "ctl": "sw",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "page": "windowmanager"
   },
   {
@@ -119,6 +128,7 @@
     "desc": "Give the cards a fresh scatter each time the deck is rebuilt",
     "ctl": "sw",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "page": "windowmanager"
   },
   {
@@ -129,6 +139,7 @@
     "desc": "Least width of a covered card left visible",
     "ctl": "slid",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 0,
     "hi": 200,
     "unit": "px",
@@ -142,6 +153,7 @@
     "desc": "Most width of a covered card left visible",
     "ctl": "slid",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 0,
     "hi": 400,
     "unit": "px",
@@ -155,6 +167,7 @@
     "desc": "How long deck changes glide",
     "ctl": "step",
     "src": "desktop.json",
+    "caps": "deckLayout",
     "lo": 0,
     "hi": 2000,
     "unit": "ms",

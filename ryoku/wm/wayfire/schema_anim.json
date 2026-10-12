@@ -103,5 +103,59 @@
       "easeOutElastic": "Elastic"
     },
     "page": "animations"
+  },
+  {
+    "tab": "Window style",
+    "group": "OPEN",
+    "key": "wm.wayfire.animation.openStyle",
+    "label": "Opening effect",
+    "desc": "Effect used when a window appears",
+    "ctl": "chips",
+    "src": "desktop.json",
+    "opts": ["none", "fade", "zoom", "fire", "zap", "spin"],
+    "optLabels": {
+      "none": "None",
+      "fade": "Fade",
+      "zoom": "Zoom",
+      "fire": "Fire",
+      "zap": "Zap",
+      "spin": "Spin"
+    },
+    "page": "animations"
+  },
+  {
+    "tab": "Window style",
+    "group": "CLOSE",
+    "key": "wm.wayfire.animation.closeStyle",
+    "label": "Closing effect",
+    "desc": "Effect used when a window disappears",
+    "ctl": "chips",
+    "src": "desktop.json",
+    "opts": ["none", "fade", "zoom", "fire", "zap", "spin"],
+    "optLabels": {
+      "none": "None",
+      "fade": "Fade",
+      "zoom": "Zoom",
+      "fire": "Fire",
+      "zap": "Zap",
+      "spin": "Spin"
+    },
+    "page": "animations"
+  },
+  {
+    "tab": "Window style",
+    "group": "MINIMIZE",
+    "key": "wm.wayfire.animation.minimizeStyle",
+    "label": "Minimize effect",
+    "desc": "Effect used when a window is minimized",
+    "ctl": "chips",
+    "src": "desktop.json",
+    "opts": ["none", "zoom", "squeezimize"],
+    "optLabels": {
+      "none": "None",
+      "zoom": "Zoom",
+      "squeezimize": "Squeeze"
+    },
+    "page": "animations"
   }
 ]

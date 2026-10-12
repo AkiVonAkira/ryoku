@@ -48,7 +48,7 @@ func renderRule(class, title, action, value string) (string, string) {
 	case "maximize":
 		return "on created if " + cond + " then maximize", ""
 	case "pin":
-		return "on created if " + cond + " then set sticky true", ""
+		return "on created if " + cond + " then sticky", ""
 	case "opacity":
 		v, ok := ruleOpacity(value)
 		if !ok {
@@ -61,10 +61,14 @@ func renderRule(class, title, action, value string) (string, string) {
 		if len(coords) != 2 {
 			return "", fmt.Sprintf("wayfire workspace rules need grid coordinates \"x y\", not the value %q.", value)
 		}
-		for _, c := range coords {
+		for i, c := range coords {
 			n, err := strconv.Atoi(c)
-			if err != nil || n < 0 {
-				return "", fmt.Sprintf("wayfire workspace rules need grid coordinates \"x y\", not the value %q.", value)
+			limit := 5
+			if i == 1 {
+				limit = 2
+			}
+			if err != nil || n < 0 || n >= limit {
+				return "", fmt.Sprintf("wayfire workspace rules need coordinates inside the 5x2 grid, not the value %q.", value)
 			}
 		}
 		return "on created if " + cond + " then assign_workspace " + v, ""
@@ -132,10 +136,16 @@ func overrideLost(a AppOverride) []string {
 }
 
 // genWindowRules renders the neutral rules and per-app overrides into the
-// window-rules section. Rows with no wayfire spelling are left to apply's
-// unhonored walk, which names them; this only lays down the rows that landed.
+// window-rules section. Wayfire has no focus-change event, so activeOpacity is
+// the one baseline alpha assigned when each toplevel opens; inactiveOpacity
+// remains an explicit reported loss. User and per-app rules follow the baseline
+// so their more specific alpha value wins.
 func genWindowRules(s wayfireStore) iniDoc {
 	var d iniDoc
+	if a := s.Appearance.ActiveOpacity; a >= 0 && a < 1 {
+		d.set("window-rules", "ryoku_active_opacity",
+			"on created if type is \"toplevel\" then set alpha "+strconv.FormatFloat(a, 'f', -1, 64))
+	}
 	for i, r := range s.WindowRules {
 		if rule, ok := wayfireRule(r); ok {
 			d.set("window-rules", fmt.Sprintf("ryoku_rule_%d", i), rule)

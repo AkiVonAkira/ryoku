@@ -104,6 +104,7 @@ func compose(s wayfireStore) ([]byte, error) {
 	merged := mergeIni(layers...)
 	adjustPlugins(&merged, s)
 	applyBinds(&merged, s)
+	applyLaunchEnvironment(&merged, s)
 	mark := wm.GeneratedConfigBaselineMarker(wm.ProviderWayfire, base)
 	body := renderIni(merged)
 	out := make([]byte, 0, len(mark)+1+len(body))
@@ -120,6 +121,15 @@ func renderStoreIni(s wayfireStore) iniDoc {
 	var d iniDoc
 
 	a := s.Appearance
+	// Wayfire numbers workspaces row-major. A 5x2 grid gives the neutral
+	// catalogue and workspace pills all ten slots without a compositor-only
+	// presentation path.
+	d.set("core", "vwidth", "5")
+	d.set("core", "vheight", "2")
+	d.set("simple-tile", "tile_by_default", "all")
+	d.set("simple-tile", "inner_gap_size", strconv.Itoa(a.GapsIn))
+	d.set("simple-tile", "outer_horiz_gap_size", strconv.Itoa(a.GapsOut))
+	d.set("simple-tile", "outer_vert_gap_size", strconv.Itoa(a.GapsOut))
 	d.set("decoration", "border_size", strconv.Itoa(a.BorderSize))
 	active, inactive := a.ActiveBorder, a.InactiveBorder
 	if a.BorderFollowsPalette {
@@ -142,6 +152,8 @@ func renderStoreIni(s wayfireStore) iniDoc {
 	d.set("input", "kb_numlock_default_state", boolText(in.NumlockByDefault))
 	d.set("input", "mouse_cursor_speed", numText(in.Sensitivity))
 	d.set("input", "mouse_accel_profile", accelText(in.AccelProfile))
+	d.set("input", "touchpad_cursor_speed", numText(in.Sensitivity))
+	d.set("input", "touchpad_accel_profile", accelText(in.AccelProfile))
 	d.set("input", "left_handed_mode", boolText(in.LeftHanded))
 	d.set("input", "mouse_natural_scroll", boolText(in.MouseNaturalScroll))
 	d.set("input", "mouse_scroll_speed", numText(in.MouseScrollFactor))
@@ -174,6 +186,9 @@ func renderStoreIni(s wayfireStore) iniDoc {
 	d.set("vswitch", "duration", animText(anim.WorkspaceSwitch))
 	d.set("animate", "duration", animText(anim.Window))
 	d.set("grid", "duration", animText(anim.Snap))
+	d.set("animate", "open_animation", windowAnimStyle(anim.OpenStyle, false))
+	d.set("animate", "close_animation", windowAnimStyle(anim.CloseStyle, false))
+	d.set("animate", "minimize_animation", windowAnimStyle(anim.MinimizeStyle, true))
 
 	dd := s.Wayfire.Depthdeck
 	d.set("depthdeck", "enabled", boolText(dd.Enabled))
@@ -219,6 +234,74 @@ func adjustPlugins(d *iniDoc, s wayfireStore) {
 	d.set("core", "plugins", strings.Join(keep, " "))
 }
 
+// applyLaunchEnvironment gives every process Wayfire starts the neutral session
+// environment. An `export` in one autostart shell cannot mutate the compositor,
+// so the effective variables prefix each autostart and command-plugin launch.
+// App roles join the same prefix as BROWSER and TERMINAL, matching the sibling
+// providers' environment blocks.
+func applyLaunchEnvironment(d *iniDoc, s wayfireStore) {
+	parts := make([]string, 0, len(s.Env)+2)
+	for _, e := range s.Env {
+		if validEnvName(e.Key) && !strings.ContainsRune(e.Value, 0) {
+			parts = append(parts, shellWord(e.Key+"="+e.Value))
+		}
+	}
+	for _, role := range []struct {
+		key  string
+		name string
+	}{
+		{key: "browser", name: "BROWSER"},
+		{key: "terminal", name: "TERMINAL"},
+	} {
+		if value := strings.TrimSpace(s.Apps[role.key]); value != "" && !strings.ContainsRune(value, 0) {
+			parts = append(parts, shellWord(role.name+"="+value))
+		}
+	}
+	if len(parts) == 0 {
+		return
+	}
+	prefix := "env " + strings.Join(parts, " ") + " "
+	for i := range d.sections {
+		section := &d.sections[i]
+		if section.name != "autostart" && section.name != "command" {
+			continue
+		}
+		for j := range section.keys {
+			key := &section.keys[j]
+			if section.name == "autostart" && key.name == "autostart_wf_shell" {
+				continue
+			}
+			if section.name == "command" && !strings.HasPrefix(key.name, "command_") {
+				continue
+			}
+			if strings.TrimSpace(key.value) != "" {
+				key.value = prefix + key.value
+			}
+		}
+	}
+}
+
+func validEnvName(name string) bool {
+	if name == "" || !isEnvStart(name[0]) {
+		return false
+	}
+	for i := 1; i < len(name); i++ {
+		c := name[i]
+		if !isEnvStart(c) && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func isEnvStart(c byte) bool {
+	return c == '_' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
+}
+
+func shellWord(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
+}
+
 // iniColor normalises a stored colour to wayfire's eight-digit #rrggbbAA
 // spelling, the form the set-config-options act already pushes and the config
 // parser accepts. An unusable colour falls back to a neutral dark, so one bad
@@ -246,6 +329,21 @@ func animText(k AnimKind) string {
 	return strconv.Itoa(ms) + "ms " + curve
 }
 
+func windowAnimStyle(style string, minimize bool) string {
+	if minimize {
+		switch style {
+		case "none", "zoom", "squeezimize":
+			return style
+		}
+		return "squeezimize"
+	}
+	switch style {
+	case "none", "fade", "zoom", "fire", "zap", "spin":
+		return style
+	}
+	return "zoom"
+}
+
 // boolText, numText, accelText and clickText spell the neutral scalars the way
 // wayfire's options parse them: lower-case booleans, bare decimals, and the
 // accel and click profiles whose empty neutral value means "the libinput
@@ -263,7 +361,7 @@ func numText(f float64) string {
 
 func accelText(p string) string {
 	switch p {
-	case "flat", "adaptive":
+	case "none", "flat", "adaptive":
 		return p
 	}
 	return "default"
@@ -273,7 +371,7 @@ func clickText(clickfinger bool) string {
 	if clickfinger {
 		return "clickfinger"
 	}
-	return "buttonareas"
+	return "button-areas"
 }
 
 // unhonored names every setting the store carries that wayfire cannot express.
@@ -299,31 +397,31 @@ func unhonored(storePath string) []wm.Unhonored {
 }
 
 // desktopHandled are the desktop.* keys this provider either emits or reports at
-// a finer grain; a top-level key outside this set is reported whole. env, apps
-// and windows have no wayfire spelling, so they stay out and get a reason of
-// their own below. The rebind tables are honoured: resolveBinds folds them into
-// the emission, so they leave this list with the old reason.
+// a finer grain. Env and app roles prefix every Wayfire launch, while windows
+// remains a whole top-level loss. The rebind tables are honoured by resolveBinds.
 var desktopHandled = map[string]bool{
 	"appearance": true, "input": true, "cursor": true,
 	"windowRules": true, "appOverrides": true, "autostart": true,
 	"keybinds": true, "keybindRebinds": true, "unbinds": true,
+	"env": true, "apps": true,
 }
 
 var appearanceEmitted = map[string]bool{
-	"borderSize": true, "activeBorder": true, "inactiveBorder": true,
-	"borderFollowsPalette": true, "animations": true, "blurEnabled": true,
+	"gapsIn": true, "gapsOut": true, "borderSize": true, "activeOpacity": true,
+	"activeBorder": true, "inactiveBorder": true, "borderFollowsPalette": true,
+	"animations": true, "blurEnabled": true,
 }
 
 func appearanceReason(leaf string) string {
 	switch {
-	case leaf == "gapsIn" || leaf == "gapsOut":
-		return "wayfire windows float; there are no gaps between them."
 	case leaf == "rounding" || leaf == "roundingPower":
-		return "wayfire's decorations are square; there is no corner radius."
+		return "Wayfire's decoration plugin has no corner-radius option."
+	case leaf == "inactiveOpacity":
+		return "Wayfire can set one opacity when a window opens, but cannot change it when focus moves."
 	case strings.HasSuffix(leaf, "Opacity") || leaf == "fullscreenOpacity":
-		return "wayfire has no window opacity."
+		return "Wayfire has no matching dynamic window-opacity state."
 	case strings.HasPrefix(leaf, "shadow"):
-		return "wayfire has no window shadows."
+		return "Wayfire's decoration plugin has no window-shadow options."
 	case strings.HasPrefix(leaf, "glow"):
 		return "wayfire has no glow."
 	case strings.HasPrefix(leaf, "dim"):
@@ -331,7 +429,7 @@ func appearanceReason(leaf string) string {
 	case strings.HasPrefix(leaf, "blur"):
 		return "wayfire's blur is tuned by method and iterations in the shipped config, not by size and passes."
 	case leaf == "layout":
-		return "wayfire has no tiling layout; windows float and snap."
+		return "Wayfire uses simple-tile for every window and cannot select Hyprland's dwindle, master or scrolling algorithms."
 	case leaf == "windowStyle":
 		return "wayfire has no window-open style presets; set the window-open animation on the Animations page instead."
 	case leaf == "wobblyWindows":
@@ -355,9 +453,9 @@ var inputEmitted = map[string]bool{
 func inputReason(leaf string) string {
 	switch leaf {
 	case "followMouse":
-		return "wayfire has no focus-follows-mouse mode."
+		return "Wayfire core supports click-to-focus, but has no focus-follows-pointer mode."
 	case "middleClickPaste":
-		return "wayfire has no middle-click-paste switch."
+		return "Wayfire has no primary-selection switch."
 	case "swipeInvert", "swipeCreateNew", "swipeDistance":
 		return "wayfire's workspace swipe has no inversion, create-new or distance setting."
 	}
@@ -369,7 +467,7 @@ var cursorEmitted = map[string]bool{
 }
 
 func cursorReason(leaf string) string {
-	return "wayfire never hides the cursor, so there is no timeout or keypress hide."
+	return "Wayfire input exposes cursor theme and size, but no inactivity timeout or keypress-hide option."
 }
 
 // unhonoredLeaves reports each present leaf of a desktop.* object that wayfire
@@ -472,10 +570,9 @@ func unhonoredAppOverrides(raw json.RawMessage) []wm.Unhonored {
 	return out
 }
 
-// unhonoredDesktopMisc reports a top-level desktop.* key with no handler, each
-// with the wayfire-specific why: env and apps ride the session rather than the
-// config, windows has no runtime corrector here, and the rebind tables would
-// have to rewrite the seed files' own bindings.
+// unhonoredDesktopMisc reports a top-level desktop.* key with no handler.
+// Environment and app roles are handled by applyLaunchEnvironment; windows has
+// no runtime corrector in Wayfire.
 func unhonoredDesktopMisc(desktop map[string]json.RawMessage) []wm.Unhonored {
 	keys := make([]string, 0)
 	for k := range desktop {
@@ -492,11 +589,8 @@ func unhonoredDesktopMisc(desktop map[string]json.RawMessage) []wm.Unhonored {
 }
 
 func desktopMiscReason(key string) string {
-	switch key {
-	case "env", "apps":
-		return "wayfire takes its environment from the session, not from the store."
-	case "windows":
-		return "wayfire lets apps open themselves maximised; there is no tame-on-open."
+	if key == "windows" {
+		return "Wayfire has no tame-on-open: unmaximizing a created view would also remove simple-tile's default tile."
 	}
 	return "wayfire has no setting for this."
 }

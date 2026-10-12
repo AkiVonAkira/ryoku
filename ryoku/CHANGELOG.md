@@ -227,6 +227,15 @@
   back; and the width preset joins the existing window controls. Display state
   includes connector identity and modes, mirroring and HDR, while screen-off,
   wake and per-monitor power use Wayfire's output-power protocol.
+- **Wayfire desktop settings now reach the compositor.** The provider applies
+  the ten-workspace tiled grid, inner and outer gaps, baseline window opacity,
+  complete keyboard, pointer and touchpad values, app roles, session
+  environment and Wayfire's window animation styles. Motion defaults to 250 ms
+  and global blur is opt-in instead of taxing every render pass. Unsupported
+  focus opacity, rounding, shadows, cursor hiding and maximize correction stay
+  visible as explicit switch losses (`wm/wayfire/apply.go`,
+  `wm/wayfire/config_store.go`, `wm/wayfire/config_rules.go`,
+  `wm/wayfire/schema_anim.json`).
 - **Wayfire no longer counts the shell's own panels as windows.** The
   provider reported every layer-shell surface (bar, dock, backdrop) as an open
   window, so the dock saw itself on the workspace and rebuilt several times a

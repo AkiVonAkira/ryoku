@@ -114,13 +114,20 @@ func TestComposeLastWins(t *testing.T) {
 	got := string(mustCompose(t, loadStore(store)))
 	want := wm.GeneratedConfigBaselineMarker(wm.ProviderWayfire, []byte(baseline)) + "\n" + generatedHeader + `
 [core]
-vwidth = 3
+vwidth = 5
 plugins = animate blur grid
+vheight = 2
 
 [decoration]
 border_size = 1
 active_color = \#112233FF
 inactive_color = \#445566FF
+
+[simple-tile]
+tile_by_default = all
+inner_gap_size = 12
+outer_horiz_gap_size = 18
+outer_vert_gap_size = 18
 
 [input]
 xkb_layout = us
@@ -129,6 +136,8 @@ xkb_options =
 kb_numlock_default_state = false
 mouse_cursor_speed = 0
 mouse_accel_profile = default
+touchpad_cursor_speed = 0
+touchpad_accel_profile = default
 left_handed_mode = false
 mouse_natural_scroll = false
 mouse_scroll_speed = 1
@@ -136,7 +145,7 @@ natural_scroll = true
 touchpad_scroll_speed = 1
 tap_to_click = true
 tap_and_drag = true
-click_method = buttonareas
+click_method = button-areas
 middle_emulation = false
 disable_touchpad_while_typing = true
 kb_repeat_rate = 25
@@ -150,7 +159,7 @@ enable_horizontal = false
 fingers = 3
 
 [vswitch]
-duration = 300ms circle
+duration = 250ms circle
 binding_1 = <super> KEY_1 | <super> KEY_KP1
 binding_2 = <super> KEY_2 | <super> KEY_KP2
 binding_3 = <super> KEY_3 | <super> KEY_KP3
@@ -160,6 +169,7 @@ binding_6 = <super> KEY_6 | <super> KEY_KP6
 binding_7 = <super> KEY_7 | <super> KEY_KP7
 binding_8 = <super> KEY_8 | <super> KEY_KP8
 binding_9 = <super> KEY_9 | <super> KEY_KP9
+binding_10 = <super> KEY_0 | <super> KEY_KP0
 with_win_1 = <super> <alt> KEY_1 | <super> <alt> KEY_KP1
 with_win_2 = <super> <alt> KEY_2 | <super> <alt> KEY_KP2
 with_win_3 = <super> <alt> KEY_3 | <super> <alt> KEY_KP3
@@ -169,6 +179,7 @@ with_win_6 = <super> <alt> KEY_6 | <super> <alt> KEY_KP6
 with_win_7 = <super> <alt> KEY_7 | <super> <alt> KEY_KP7
 with_win_8 = <super> <alt> KEY_8 | <super> <alt> KEY_KP8
 with_win_9 = <super> <alt> KEY_9 | <super> <alt> KEY_KP9
+with_win_10 = <super> <alt> KEY_0 | <super> <alt> KEY_KP0
 send_win_1 = <super> <shift> KEY_1 | <super> <shift> KEY_KP1
 send_win_2 = <super> <shift> KEY_2 | <super> <shift> KEY_KP2
 send_win_3 = <super> <shift> KEY_3 | <super> <shift> KEY_KP3
@@ -178,12 +189,16 @@ send_win_6 = <super> <shift> KEY_6 | <super> <shift> KEY_KP6
 send_win_7 = <super> <shift> KEY_7 | <super> <shift> KEY_KP7
 send_win_8 = <super> <shift> KEY_8 | <super> <shift> KEY_KP8
 send_win_9 = <super> <shift> KEY_9 | <super> <shift> KEY_KP9
+send_win_10 = <super> <shift> KEY_0 | <super> <shift> KEY_KP0
 
 [animate]
-duration = 400ms circle
+duration = 250ms circle
+open_animation = zoom
+close_animation = zoom
+minimize_animation = squeezimize
 
 [grid]
-duration = 300ms circle
+duration = 250ms circle
 
 [depthdeck]
 enabled = true
@@ -205,6 +220,8 @@ command_window_close = jq -e '(.barStyle // "qsbar") == "iris" and .inir.closeCo
 binding_window_close = <super> KEY_Q | <alt> KEY_F4
 command_window_float = ryoku-wm-wayfire act window.float focused
 binding_window_float = <super> KEY_A
+command_window_preset_width = ryoku-wm-wayfire act window.presetWidth
+binding_window_preset_width = <super> KEY_R
 command_window_preset_height = ryoku-wm-wayfire act window.presetHeight
 binding_window_preset_height = <super> <shift> KEY_R
 command_column_center = ryoku-wm-wayfire act window.center
@@ -247,6 +264,10 @@ command_workspace_move_window_prev = ryoku-wm-wayfire act window.moveToWorkspace
 binding_workspace_move_window_prev = <super> <shift> KEY_PAGEUP
 command_workspace_move_window_next = ryoku-wm-wayfire act window.moveToWorkspaceBy 1
 binding_workspace_move_window_next = <super> <shift> KEY_PAGEDOWN
+command_workspace_hide_window = ryoku-wm-wayfire act window.hide focused
+binding_workspace_hide_window = <super> KEY_H
+command_workspace_scratchpad = ryoku-wm-wayfire act workspace.toggleSpecial scratchpad
+binding_workspace_scratchpad = <super> <alt> KEY_H
 command_workspace_overview = ryoku-shell overview
 binding_workspace_overview = <super> KEY_TAB
 command_workspace_overview_desktops = ryoku-shell overview
@@ -324,10 +345,10 @@ binding_shell_settings = <super> KEY_COMMA
 command_shell_screenshot = env QML_IMPORT_PATH="$HOME/.local/lib/qt6/qml" QML2_IMPORT_PATH="$HOME/.local/lib/qt6/qml" flock -n -o /tmp/ryoshot.lock qs -c ryoshot
 binding_shell_screenshot = <super> <shift> KEY_S
 command_shell_screenshot_print = env QML_IMPORT_PATH="$HOME/.local/lib/qt6/qml" QML2_IMPORT_PATH="$HOME/.local/lib/qt6/qml" flock -n -o /tmp/ryoshot.lock qs -c ryoshot
-binding_shell_screenshot_print = KEY_SYSRQ
+binding_shell_screenshot_print = KEY_PRINT
 command_shell_screenshot_monitor = env QML_IMPORT_PATH="$HOME/.local/lib/qt6/qml" QML2_IMPORT_PATH="$HOME/.local/lib/qt6/qml" flock -n -o /tmp/ryoshot.lock env RYOSHOT_MODE=monitor qs -c ryoshot
-binding_shell_screenshot_monitor = <shift> KEY_SYSRQ
-command_shell_color_picker = hyprpicker -a
+binding_shell_screenshot_monitor = <shift> KEY_PRINT
+command_shell_color_picker = ryoku-cmd-color-picker
 binding_shell_color_picker = <super> <shift> KEY_C
 command_shell_restart_audio = ryoku-restart-audio
 binding_shell_restart_audio = <super> <shift> KEY_A
@@ -336,23 +357,23 @@ repeatable_binding_media_volume_up = KEY_VOLUMEUP
 command_media_volume_down = ryoku-volume down
 repeatable_binding_media_volume_down = KEY_VOLUMEDOWN
 command_media_mute = wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-binding_media_mute = KEY_MUTE
+always_binding_media_mute = KEY_MUTE
 command_media_play = playerctl play-pause
-binding_media_play = KEY_PLAY
+always_binding_media_play = KEY_PLAYPAUSE
 command_media_next = playerctl next
-binding_media_next = KEY_NEXTSONG
+always_binding_media_next = KEY_NEXTSONG
 command_media_prev = playerctl previous
-binding_media_prev = KEY_PREVSONG
+always_binding_media_prev = KEY_PREVSONG
 command_hardware_brightness_up = ryoku-cmd-brightness +5
 repeatable_binding_hardware_brightness_up = KEY_BRIGHTNESSUP
 command_hardware_brightness_down = ryoku-cmd-brightness -5
 repeatable_binding_hardware_brightness_down = KEY_BRIGHTNESSDOWN
 command_hardware_touchpad_toggle = ryoku-wm-wayfire act input.touchpad toggle
-binding_hardware_touchpad_toggle = KEY_TOUCHPADTOGGLE
+always_binding_hardware_touchpad_toggle = KEY_TOUCHPADTOGGLE
 command_hardware_touchpad_on = ryoku-wm-wayfire act input.touchpad on
-binding_hardware_touchpad_on = KEY_TOUCHPADON
+always_binding_hardware_touchpad_on = KEY_TOUCHPADON
 command_hardware_touchpad_off = ryoku-wm-wayfire act input.touchpad off
-binding_hardware_touchpad_off = KEY_TOUCHPADOFF
+always_binding_hardware_touchpad_off = KEY_TOUCHPADOFF
 
 [wm-actions]
 toggle_fullscreen = <super> KEY_F
@@ -360,7 +381,10 @@ toggle_sticky = <super> <shift> KEY_P
 toggle_maximize = <super> KEY_D
 
 [fast-switcher]
-activate_forward = <alt> KEY_TAB
+activate = <alt> KEY_TAB
+
+[shortcuts-inhibit]
+break_grab = <super> <shift> KEY_ESC
 
 [move]
 activate = <super> BTN_LEFT
@@ -375,7 +399,7 @@ activate = <super> BTN_RIGHT
 
 func TestComposeReadsBaselineFromConfigBaseAndMarksIt(t *testing.T) {
 	wayfireHome(t)
-	baseline := []byte("[core]\nvwidth = 7\nplugins = animate\n")
+	baseline := []byte("[core]\nplugins = animate\n\n[ryoku-probe]\nsource = config-base\n")
 	withDefaults(t, string(baseline))
 
 	body := mustCompose(t, defaultStore())
@@ -383,8 +407,8 @@ func TestComposeReadsBaselineFromConfigBaseAndMarksIt(t *testing.T) {
 	if !bytes.HasPrefix(body, []byte(mark+"\n")) {
 		t.Fatalf("composed file starts with %q, want baseline mark %q", body[:min(len(body), len(mark)+1)], mark)
 	}
-	if !bytes.Contains(body, []byte("vwidth = 7")) {
-		t.Fatalf("compose did not read the baseline under RYOKU_CONFIG_BASE:\n%s", body)
+	if !bytes.Contains(body, []byte("[ryoku-probe]\nsource = config-base")) {
+		t.Fatalf("compose did not preserve the baseline probe under RYOKU_CONFIG_BASE:\n%s", body)
 	}
 }
 
@@ -456,8 +480,15 @@ func TestUnhonoredNamesLosses(t *testing.T) {
 	wayfireHome(t)
 	store := writeStore(t, `{
 	  "desktop": {
-	    "appearance": {"gapsIn": 16, "rounding": 8, "blurSize": 12, "borderSize": 4},
+	    "appearance": {
+	      "gapsIn": 16, "gapsOut": 20, "activeOpacity": 0.9,
+	      "inactiveOpacity": 0.8, "rounding": 8, "blurSize": 12,
+	      "shadowEnabled": true, "shadowColor": "#000000",
+	      "shadowOffsetX": 1, "shadowOffsetY": 5, "shadowRange": 45,
+	      "shadowSpread": 2, "borderSize": 4
+	    },
 	    "input": {"followMouse": 1, "middleClickPaste": false, "swipeDistance": 300, "kbLayout": "us"},
+	    "cursor": {"theme": "Adwaita", "size": 32, "hideOnKeyPress": true, "inactiveTimeout": 5},
 	    "env": [{"key": "FOO", "value": "bar"}],
 	    "windows": {"tameMaximizeOnOpen": true},
 	    "apps": {"terminal": "alacritty"},
@@ -471,25 +502,35 @@ func TestUnhonoredNamesLosses(t *testing.T) {
 	for _, u := range unhonored(store) {
 		got[u.Key] = u.Reason
 	}
-	for key, want := range map[string]string{
-		"desktop.appearance.gapsIn":   "wayfire windows float; there are no gaps between them.",
-		"desktop.appearance.rounding": "wayfire's decorations are square; there is no corner radius.",
-		"desktop.input.followMouse":   "wayfire has no focus-follows-mouse mode.",
-		"desktop.env":                 "wayfire takes its environment from the session, not from the store.",
-		"desktop.windows":             "wayfire lets apps open themselves maximised; there is no tame-on-open.",
-		"desktop.apps":                "wayfire takes its environment from the session, not from the store.",
-		"wm.niri":                     "These Niri-only settings have no wayfire equivalent. They stay in the store and return if you switch back.",
+	for key, contains := range map[string]string{
+		"desktop.appearance.inactiveOpacity": "cannot change it when focus moves",
+		"desktop.appearance.rounding":        "no corner-radius option",
+		"desktop.appearance.shadowColor":     "no window-shadow options",
+		"desktop.appearance.shadowEnabled":   "no window-shadow options",
+		"desktop.appearance.shadowOffsetX":   "no window-shadow options",
+		"desktop.appearance.shadowOffsetY":   "no window-shadow options",
+		"desktop.appearance.shadowRange":     "no window-shadow options",
+		"desktop.appearance.shadowSpread":    "no window-shadow options",
+		"desktop.input.followMouse":          "no focus-follows-pointer mode",
+		"desktop.input.middleClickPaste":     "no primary-selection switch",
+		"desktop.cursor.hideOnKeyPress":      "no inactivity timeout or keypress-hide option",
+		"desktop.cursor.inactiveTimeout":     "no inactivity timeout or keypress-hide option",
+		"desktop.windows":                    "no tame-on-open",
+		"wm.niri":                            "These Niri-only settings have no wayfire equivalent",
 	} {
-		if got[key] != want {
-			t.Errorf("%s = %q, want %q", key, got[key], want)
+		if !strings.Contains(got[key], contains) {
+			t.Errorf("%s = %q, want it to contain %q", key, got[key], contains)
 		}
 	}
-	if _, ok := got["desktop.appearance.borderSize"]; ok {
-		t.Error("an emitted leaf must not be reported")
-	}
-	for _, key := range []string{"desktop.keybindRebinds", "desktop.unbinds"} {
+	for _, key := range []string{
+		"desktop.appearance.gapsIn", "desktop.appearance.gapsOut",
+		"desktop.appearance.activeOpacity", "desktop.appearance.borderSize",
+		"desktop.input.kbLayout", "desktop.cursor.theme", "desktop.cursor.size",
+		"desktop.env", "desktop.apps",
+		"desktop.keybindRebinds", "desktop.unbinds",
+	} {
 		if _, ok := got[key]; ok {
-			t.Errorf("the rebind tables are honoured by resolveBinds; %s must stay quiet", key)
+			t.Errorf("an emitted leaf must not be reported: %s", key)
 		}
 	}
 	for key := range got {
@@ -498,7 +539,6 @@ func TestUnhonoredNamesLosses(t *testing.T) {
 		}
 	}
 	if _, ok := got["desktop.input.swipeInvert"]; ok {
-		// swipeDistance is reported; swipeInvert was not set, so it stays quiet.
 		t.Error("an unset leaf must not be reported")
 	}
 	if got["desktop.input.swipeDistance"] == "" {
@@ -553,6 +593,38 @@ func TestPluginsAdjustedByStore(t *testing.T) {
 	}
 }
 
+func TestPerformanceDefaultsDisableBlurAndUseFastMotion(t *testing.T) {
+	s := defaultStore()
+	if s.Appearance.BlurEnabled {
+		t.Fatal("Wayfire blur must be opt-in")
+	}
+	for name, anim := range map[string]AnimKind{
+		"workspace": s.Wayfire.Animation.WorkspaceSwitch,
+		"window":    s.Wayfire.Animation.Window,
+		"snap":      s.Wayfire.Animation.Snap,
+	} {
+		if anim.DurationMs != 250 {
+			t.Errorf("%s default duration = %dms, want 250ms", name, anim.DurationMs)
+		}
+	}
+	d := parseIni([]byte("[core]\nplugins = animate blur grid simple-tile\n"))
+	adjustPlugins(&d, s)
+	plugins, _ := d.get("core", "plugins")
+	if strings.Contains(plugins, "blur") || !strings.Contains(plugins, "animate") {
+		t.Errorf("default plugins = %q, want animate without blur", plugins)
+	}
+	rendered := renderStoreIni(s)
+	for section, want := range map[string]string{
+		"vswitch": "250ms circle",
+		"animate": "250ms circle",
+		"grid":    "250ms circle",
+	} {
+		if got, _ := rendered.get(section, "duration"); got != want {
+			t.Errorf("%s duration = %q, want %q", section, got, want)
+		}
+	}
+}
+
 func TestDefaultsCarryWayfireNamespace(t *testing.T) {
 	var buf bytes.Buffer
 	prev := stdout
@@ -585,11 +657,10 @@ func TestDefaultsCarryWayfireNamespace(t *testing.T) {
 	if err := json.Unmarshal(top["desktop"], &desktop); err != nil {
 		t.Fatalf("decode desktop: %v", err)
 	}
-	if _, ok := desktop["appearance"]; !ok {
-		t.Errorf("defaults must carry the neutral appearance baseline")
-	}
-	if _, ok := desktop["env"]; ok {
-		t.Error("wayfire does not model env; the defaults must not offer it")
+	for _, key := range []string{"appearance", "input", "cursor", "env", "apps"} {
+		if _, ok := desktop[key]; !ok {
+			t.Errorf("defaults must carry neutral desktop.%s", key)
+		}
 	}
 }
 
@@ -603,7 +674,7 @@ func TestWindowRuleRendering(t *testing.T) {
 		{WindowRule{Class: "kitty", Action: "maximize"},
 			`on created if app_id is "kitty" then maximize`},
 		{WindowRule{Title: "Player", Action: "pin"},
-			`on created if title is "Player" then set sticky true`},
+			`on created if title is "Player" then sticky`},
 		{WindowRule{Class: "mpv", Action: "opacity", Value: "0.9"},
 			`on created if app_id is "mpv" then set alpha 0.9`},
 		{WindowRule{Class: "mail", Action: "workspace", Value: "2 0"},
@@ -621,6 +692,8 @@ func TestWindowRuleRendering(t *testing.T) {
 		{Class: "x", Action: "opacity", Value: "2"},
 		{Class: "x", Action: "workspace", Value: "next"},
 		{Class: "x", Action: "workspace", Value: "3"},
+		{Class: "x", Action: "workspace", Value: "5 0"},
+		{Class: "x", Action: "workspace", Value: "0 2"},
 		{Action: "maximize"},
 	}
 	for _, r := range lost {
@@ -710,30 +783,96 @@ func TestStoreSectionsEmitted(t *testing.T) {
 	withDefaults(t, "")
 	store := writeStore(t, `{
 	  "desktop": {
-	    "appearance": {"borderFollowsPalette": false, "animations": true, "blurEnabled": true},
-	    "input": {"kbLayout": "br", "sensitivity": 0.4, "accelProfile": "flat",
-	              "clickfinger": true, "workspaceSwipe": true, "swipeFingers": 4},
+	    "appearance": {
+	      "gapsIn": 14, "gapsOut": 21, "activeOpacity": 0.86,
+	      "borderFollowsPalette": false, "animations": true, "blurEnabled": true
+	    },
+	    "input": {
+	      "kbLayout": "br", "kbVariant": "nodeadkeys", "kbOptions": "ctrl:nocaps",
+	      "repeatRate": 31, "repeatDelay": 275,
+	      "sensitivity": 0.4, "accelProfile": "flat", "leftHanded": true,
+	      "mouseNaturalScroll": true, "mouseScrollFactor": 1.5,
+	      "naturalScroll": false, "touchScrollFactor": 1.25,
+	      "tapToClick": false, "tapAndDrag": false, "clickfinger": true,
+	      "middleEmulation": true, "disableWhileTyping": false,
+	      "workspaceSwipe": true, "swipeFingers": 4
+	    },
 	    "cursor": {"theme": "Adwaita", "size": 32},
+	    "env": [
+	      {"key": "QT_SCALE_FACTOR", "value": "1.25"},
+	      {"key": "QUOTE", "value": "a'b"},
+	      {"key": "BAD-NAME", "value": "ignored"}
+	    ],
+	    "apps": {"browser": "zen-browser", "terminal": "kitty"},
 	    "autostart": [{"command": "nm-applet"}]
 	  },
-	  "wm": {"wayfire": {"depthdeck": {"maximizedFrontScale": 0.95, "animationMs": 250}}}
+	  "wm": {"wayfire": {
+	    "animation": {"openStyle": "fire", "closeStyle": "spin", "minimizeStyle": "zoom"},
+	    "depthdeck": {"maximizedFrontScale": 0.95, "animationMs": 250}
+	  }}
 	}`)
 	body := string(mustCompose(t, loadStore(store)))
 	for _, want := range []string{
+		"vwidth = 5",
+		"vheight = 2",
+		"tile_by_default = all",
+		"inner_gap_size = 14",
+		"outer_horiz_gap_size = 21",
+		"outer_vert_gap_size = 21",
 		"xkb_layout = br",
+		"xkb_variant = nodeadkeys",
+		"xkb_options = ctrl:nocaps",
+		"kb_repeat_rate = 31",
+		"kb_repeat_delay = 275",
 		"mouse_cursor_speed = 0.4",
 		"mouse_accel_profile = flat",
+		"touchpad_cursor_speed = 0.4",
+		"touchpad_accel_profile = flat",
+		"left_handed_mode = true",
+		"mouse_natural_scroll = true",
+		"mouse_scroll_speed = 1.5",
+		"natural_scroll = false",
+		"touchpad_scroll_speed = 1.25",
+		"tap_to_click = false",
+		"tap_and_drag = false",
+		"middle_emulation = true",
+		"disable_touchpad_while_typing = false",
 		"click_method = clickfinger",
 		"enable_vertical = true",
 		"fingers = 4",
 		"cursor_theme = Adwaita",
 		"cursor_size = 32",
-		"ryoku_00 = nm-applet",
+		`ryoku_00 = env 'QT_SCALE_FACTOR=1.25' 'QUOTE=a'"'"'b' 'BROWSER=zen-browser' 'TERMINAL=kitty' nm-applet`,
+		`command_app_terminal = env 'QT_SCALE_FACTOR=1.25' 'QUOTE=a'"'"'b' 'BROWSER=zen-browser' 'TERMINAL=kitty' ryoku-app terminal`,
+		`ryoku_active_opacity = on created if type is "toplevel" then set alpha 0.86`,
+		"open_animation = fire",
+		"close_animation = spin",
+		"minimize_animation = zoom",
 		"maximized_front_scale = 0.95",
 		"animation_ms = 250",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("composed file misses %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "BAD-NAME") {
+		t.Errorf("an invalid environment name reached the generated commands:\n%s", body)
+	}
+}
+
+func TestWindowAnimStyleRejectsUnknownValues(t *testing.T) {
+	for _, tc := range []struct {
+		style    string
+		minimize bool
+		want     string
+	}{
+		{style: "fire", want: "fire"},
+		{style: "squeezimize", minimize: true, want: "squeezimize"},
+		{style: "bogus", want: "zoom"},
+		{style: "fire", minimize: true, want: "squeezimize"},
+	} {
+		if got := windowAnimStyle(tc.style, tc.minimize); got != tc.want {
+			t.Errorf("windowAnimStyle(%q, %t) = %q, want %q", tc.style, tc.minimize, got, tc.want)
 		}
 	}
 }

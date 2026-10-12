@@ -19,23 +19,28 @@ import (
 // and the seed files in one pass. A leaf left out of the structs below would
 // never reach that file.
 
-// Appearance: the frame and effect leaves wayfire's own sections cover. Gaps,
-// rounding, opacities, shadows, glow, dimming and the blur tuning have no
-// wayfire key (blur itself is a plugin presence, carried below as BlurEnabled),
-// so they are absent here and reported unhonored when the store carries them.
+// Appearance: the frame, opacity, tiling-gap and effect leaves Wayfire's own
+// sections cover. simple-tile supplies the same default tiled desktop and inner
+// and outer gap intent as the sibling providers. Window-rules can set one
+// baseline opacity when a view is created, but Wayfire has no focus event to
+// maintain a distinct inactive opacity. Rounding, shadows, glow, dimming and
+// blur tuning have no matching key and are reported unhonored.
 type Appearance struct {
-	BorderSize           int    `json:"borderSize"`
-	ActiveBorder         string `json:"activeBorder"`
-	InactiveBorder       string `json:"inactiveBorder"`
-	BorderFollowsPalette bool   `json:"borderFollowsPalette"`
-	Animations           bool   `json:"animations"`
-	BlurEnabled          bool   `json:"blurEnabled"`
+	GapsIn               int     `json:"gapsIn"`
+	GapsOut              int     `json:"gapsOut"`
+	BorderSize           int     `json:"borderSize"`
+	ActiveOpacity        float64 `json:"activeOpacity"`
+	ActiveBorder         string  `json:"activeBorder"`
+	InactiveBorder       string  `json:"inactiveBorder"`
+	BorderFollowsPalette bool    `json:"borderFollowsPalette"`
+	Animations           bool    `json:"animations"`
+	BlurEnabled          bool    `json:"blurEnabled"`
 }
 
-// Input: the keyboard, pointer and touchpad leaves wayfire's input and vswipe
-// sections cover. FollowMouse and MiddleClickPaste are absent: wayfire has no
-// focus-follows-mouse mode and no middle-click-paste switch, so apply reports
-// them unhonored instead of pretending.
+// Input: the keyboard, pointer and touchpad leaves Wayfire's input and vswipe
+// sections cover. FollowMouse and MiddleClickPaste are absent: core exposes
+// click-to-focus but no focus-follows-pointer mode, and Wayfire has no primary
+// selection switch.
 type Input struct {
 	KbLayout           string  `json:"kbLayout"`
 	KbVariant          string  `json:"kbVariant"`
@@ -59,12 +64,17 @@ type Input struct {
 	SwipeFingers       int     `json:"swipeFingers"`
 }
 
-// Cursor: wayfire takes the cursor theme and size from the input section and
-// has no hide timeout or keypress hide, so those two neutral leaves are
-// reported unhonored.
+// Cursor: Wayfire takes the cursor theme and size from the input section. Its
+// input metadata has no inactivity timeout or keypress-hide option, so those
+// two neutral leaves are reported unhonored.
 type Cursor struct {
 	Theme string `json:"theme"`
 	Size  int    `json:"size"`
+}
+
+type EnvVar struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // WindowRule = one user rule: optional app-id/title match plus one action.
@@ -141,26 +151,31 @@ type Wayfire struct {
 	Depthdeck Depthdeck   `json:"depthdeck"`
 }
 
-// WayfireAnim is the per-kind animation tree. The kinds are wayfire's own
-// duration options, so a Hub row named wm.wayfire.animation.<kind>.<field>
-// reaches the right section.
+// WayfireAnim is the compositor's animation tree. The duration kinds map to
+// their plugin options, while the three style fields are the exact values the
+// animate plugin accepts for opening, closing and minimizing windows.
 type WayfireAnim struct {
 	WorkspaceSwitch AnimKind `json:"workspaceSwitch"`
 	Window          AnimKind `json:"window"`
 	Snap            AnimKind `json:"snap"`
+	OpenStyle       string   `json:"openStyle"`
+	CloseStyle      string   `json:"closeStyle"`
+	MinimizeStyle   string   `json:"minimizeStyle"`
 }
 
 // wayfireStore is the typed store the composer consumes. Wayfire stays out of
 // the flat desktop marshalling (json:"-") because splitStore routes it under
 // wm.wayfire.
 type wayfireStore struct {
-	Appearance   Appearance    `json:"appearance"`
-	Input        Input         `json:"input"`
-	Cursor       Cursor        `json:"cursor"`
-	WindowRules  []WindowRule  `json:"windowRules"`
-	AppOverrides []AppOverride `json:"appOverrides"`
-	Autostart    []Autostart   `json:"autostart"`
-	Keybinds     []Keybind     `json:"keybinds"`
+	Appearance   Appearance        `json:"appearance"`
+	Input        Input             `json:"input"`
+	Cursor       Cursor            `json:"cursor"`
+	Env          []EnvVar          `json:"env"`
+	Apps         map[string]string `json:"apps"`
+	WindowRules  []WindowRule      `json:"windowRules"`
+	AppOverrides []AppOverride     `json:"appOverrides"`
+	Autostart    []Autostart       `json:"autostart"`
+	Keybinds     []Keybind         `json:"keybinds"`
 	// KeybindRebinds moves a shipped chord and Unbinds drops one, both keyed on
 	// the catalogue's own default; resolveBinds folds them into the emission.
 	KeybindRebinds map[string]string `json:"keybindRebinds,omitempty"`
@@ -177,15 +192,16 @@ type neutralStore struct {
 }
 
 // defaultStore is the baseline the Hub overlays user values on and the values
-// apply writes when the store is silent. The frame, input and depthdeck numbers
-// are the desktop's shipped look: the same border and palette behaviour as the
-// sibling providers, wayfire's own repeat rate, and the depthdeck card tuning
-// from the plugin's own defaults.
+// apply writes when the store is silent. The frame, gaps and input numbers
+// match Ryoku's tiled desktop intent; Wayfire's simple-tile uses the gap values
+// while its own repeat rate and depthdeck card tuning retain their native
+// spelling.
 func defaultStore() wayfireStore {
 	return wayfireStore{
 		Appearance: Appearance{
-			BorderSize: 4, ActiveBorder: "#e0563b", InactiveBorder: "#313a4d",
-			BorderFollowsPalette: true, Animations: true, BlurEnabled: true,
+			GapsIn: 12, GapsOut: 18, BorderSize: 4, ActiveOpacity: 1,
+			ActiveBorder: "#e0563b", InactiveBorder: "#313a4d",
+			BorderFollowsPalette: true, Animations: true, BlurEnabled: false,
 		},
 		Input: Input{
 			KbLayout: "us", NumlockByDefault: false,
@@ -202,11 +218,16 @@ func defaultStore() wayfireStore {
 		AppOverrides: []AppOverride{},
 		Autostart:    []Autostart{},
 		Keybinds:     []Keybind{},
+		Env:          []EnvVar{},
+		Apps:         map[string]string{},
 		Wayfire: Wayfire{
 			Animation: WayfireAnim{
-				WorkspaceSwitch: AnimKind{DurationMs: 300, Curve: "circle"},
-				Window:          AnimKind{DurationMs: 400, Curve: "circle"},
-				Snap:            AnimKind{DurationMs: 300, Curve: "circle"},
+				WorkspaceSwitch: AnimKind{DurationMs: 250, Curve: "circle"},
+				Window:          AnimKind{DurationMs: 250, Curve: "circle"},
+				Snap:            AnimKind{DurationMs: 250, Curve: "circle"},
+				OpenStyle:       "zoom",
+				CloseStyle:      "zoom",
+				MinimizeStyle:   "squeezimize",
 			},
 			Depthdeck: Depthdeck{
 				Enabled: true, Scatter: true, CardEdgeScatter: true,
