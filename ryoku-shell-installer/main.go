@@ -864,7 +864,9 @@ func (m model) viewPlan() string {
 	if len(rest) > end-start {
 		b.WriteString(fg(cDim, i18n.Tf("   showing %d-%d of %d plan rows", start+1, end, len(rest))) + "\n")
 	}
-	if !f.online {
+	if f.filteredDNS {
+		b.WriteString(fg(cText, gWarn+" "+i18n.T("DNS for ryoku.dev is being filtered on this network; see https://github.com/Ryoku-dev/ryoku/blob/main/docs/updates.md#filtered-dns")) + "\n")
+	} else if !f.online {
 		b.WriteString(fg(cText, gWarn+" "+i18n.T("repo.ryoku.dev is unreachable; installation needs network")) + "\n")
 	}
 	if len(notice) > 0 {

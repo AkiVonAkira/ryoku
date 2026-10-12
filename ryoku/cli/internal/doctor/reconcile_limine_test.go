@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"ryoku-cli/internal/host"
 	"testing"
 )
 
@@ -14,12 +16,18 @@ import (
 func stubLimineBootGates(t *testing.T) {
 	t.Helper()
 	oldManaged := limineManagedBoot
-	limineManagedBoot = func() bool { return true }
 	oldInstalled := doctorPackageInstalled
+	oldLimine := liminePkgInstalled
+	oldManager := doctorPackageManager
+	limineManagedBoot = func() bool { return true }
 	doctorPackageInstalled = func(string) bool { return true }
+	liminePkgInstalled = func(string) bool { return true }
+	doctorPackageManager = func() (host.PackageManager, error) { return host.Pacman, nil }
 	t.Cleanup(func() {
 		limineManagedBoot = oldManaged
 		doctorPackageInstalled = oldInstalled
+		liminePkgInstalled = oldLimine
+		doctorPackageManager = oldManager
 	})
 }
 
@@ -105,14 +113,15 @@ func TestGatherLimineLayoutStateDistinguishesEACCESFromENOENT(t *testing.T) {
 	dir := t.TempDir()
 	stubLimineBootGates(t)
 
-	origESP, origShadow, origTool, origLegacy, origPkg := limineESPConf, limineShadow, limineToolEFI, limineLegacyEFI, liminePkgInstalled
+	origESP, origShadow, origTool, origLegacy, origPkg, origProbe := limineESPConf, limineShadow, limineToolEFI, limineLegacyEFI, liminePkgInstalled, liminePathProbe
 	t.Cleanup(func() {
-		limineESPConf, limineShadow, limineToolEFI, limineLegacyEFI, liminePkgInstalled = origESP, origShadow, origTool, origLegacy, origPkg
+		limineESPConf, limineShadow, limineToolEFI, limineLegacyEFI, liminePkgInstalled, liminePathProbe = origESP, origShadow, origTool, origLegacy, origPkg, origProbe
 	})
 	liminePkgInstalled = func(string) bool { return true }
 	limineShadow = filepath.Join(dir, "shadow_missing.conf")
 	limineToolEFI = filepath.Join(dir, "tool_missing.efi")
 	limineLegacyEFI = filepath.Join(dir, "legacy_missing.efi")
+	liminePathProbe = func(string) (bool, error) { return false, nil }
 
 	// Case A: Missing file (ENOENT)
 	limineESPConf = filepath.Join(dir, "missing.conf")
@@ -148,8 +157,11 @@ func TestGatherLimineLayoutStateDistinguishesEACCESFromENOENT(t *testing.T) {
 		}
 
 		res := reconcileLimineLayout(true)
-		if res.status != recWarn {
-			t.Errorf("reconcileLimineLayout on unreadable config: got status %d, want recWarn (%d)", res.status, recWarn)
+		if res.status != recNote {
+			t.Errorf("reconcileLimineLayout on permission-denied config: got status %d, want recNote (%d)", res.status, recNote)
+		}
+		if warns, fails := printFindings([]finding{{name: "limine boot menu layout", res: res}}, false); warns != 0 || fails != 0 {
+			t.Errorf("permission-only layout inspection counted as health issue: warns=%d fails=%d", warns, fails)
 		}
 		if !strings.Contains(res.detail, "cannot read the limine config under /boot") {
 			t.Errorf("unexpected detail: %s", res.detail)
@@ -172,6 +184,35 @@ func TestGatherLimineLayoutStateDistinguishesEACCESFromENOENT(t *testing.T) {
 	}
 }
 
+func TestGatherLimineLayoutStateUsesEditionEFIPath(t *testing.T) {
+	dir := t.TempDir()
+	stubLimineBootGates(t)
+	doctorPackageManager = func() (host.PackageManager, error) { return host.XBPS, nil }
+
+	oldESP, oldShadow, oldProbe := limineESPConf, limineShadow, liminePathProbe
+	t.Cleanup(func() {
+		limineESPConf, limineShadow, liminePathProbe = oldESP, oldShadow, oldProbe
+	})
+	limineESPConf = filepath.Join(dir, "missing.conf")
+	limineShadow = filepath.Join(dir, "missing-shadow.conf")
+	probed := map[string]bool{}
+	liminePathProbe = func(path string) (bool, error) {
+		probed[path] = true
+		return false, nil
+	}
+
+	gatherLimineLayoutState()
+	if !probed[limineLegacyEFI] {
+		t.Errorf("legacy EFI path was not probed: %v", probed)
+	}
+	if !probed["/boot/EFI/ryoku/BOOTX64.EFI"] {
+		t.Errorf("Void EFI path was not probed: %v", probed)
+	}
+	if probed[limineToolEFI] {
+		t.Errorf("Arch EFI path was probed on Void: %v", probed)
+	}
+}
+
 // TestReconcileLimineBootEntryPermissions verifies that reconcileLimineBootEntry
 // distinguishes permission-denied EFI binary from a genuinely missing one.
 func TestReconcileLimineBootEntryPermissions(t *testing.T) {
@@ -191,7 +232,7 @@ func TestReconcileLimineBootEntryPermissions(t *testing.T) {
 		t.Errorf("missing EFI binary: got %+v, want recOK (not limine-managed)", resMissing)
 	}
 
-	// Permission denied: warns instead of falsely reporting not a limine boot
+	// Permission denied: reports an advisory note instead of a health issue.
 	if os.Geteuid() == 0 {
 		t.Log("skipping permission-denied EFI binary test when running as root (root bypasses DAC permissions)")
 	} else {
@@ -210,8 +251,11 @@ func TestReconcileLimineBootEntryPermissions(t *testing.T) {
 
 		limineToolEFI = efiFile
 		resDenied := reconcileLimineBootEntry(true)
-		if resDenied.status != recWarn {
-			t.Errorf("permission-denied EFI binary: got status %d, want recWarn (%d)", resDenied.status, recWarn)
+		if resDenied.status != recNote {
+			t.Errorf("permission-denied EFI binary: got status %d, want recNote (%d)", resDenied.status, recNote)
+		}
+		if warns, fails := printFindings([]finding{{name: "limine boot entry", res: resDenied}}, false); warns != 0 || fails != 0 {
+			t.Errorf("permission-only EFI inspection counted as health issue: warns=%d fails=%d", warns, fails)
 		}
 		if !strings.Contains(resDenied.detail, "cannot inspect") {
 			t.Errorf("unexpected detail: %s", resDenied.detail)

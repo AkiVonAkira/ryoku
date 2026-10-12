@@ -195,8 +195,9 @@ connect](#only-24-ghz-networks-appear-or-5-ghz-will-not-connect).
 
 ## ASUS Aura keyboard lighting
 
-**Symptom.** Appearance > Lighting shows only an OpenRGB motherboard or N-KEY
-controller, and wallpaper palette changes do not recolour the built-in keyboard.
+**Symptom.** The wallpaper picker's Settings > Lighting shows only an OpenRGB
+motherboard or N-KEY controller, and wallpaper palette changes do not recolour
+the built-in keyboard.
 
 **Cause.** OpenRGB can identify the laptop's USB controller without exposing the
 firmware-backed lighting interface consistently across keyboard generations.
@@ -204,9 +205,9 @@ firmware-backed lighting interface consistently across keyboard generations.
 
 **What the installer does.** The live environment detects the ASUS laptop family
 or its `asus-nb-wmi` keyboard device, then installs the signed `asusctl` package
-only on a match. Its udev rule starts `asusd`; Ryoku Settings prefers the native
-Aura keyboard while keeping OpenRGB for other RGB hardware. Offline installs
-carry the same package.
+only on a match. Its udev rule starts `asusd`; Ryoku's lighting control prefers
+the native Aura keyboard while keeping OpenRGB for other RGB hardware. Offline
+installs carry the same package.
 
 **What the user must do.** Usually nothing. An existing TLP installation
 conflicts with `asusctl`, so conversion leaves TLP in place and `ryoku doctor`

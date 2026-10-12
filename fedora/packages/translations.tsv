@@ -100,7 +100,7 @@ libgcc	libgcc	desktop
 libglvnd	libglvnd	desktop	
 libisoburn	libisoburn	optional	
 libnotify	libnotify	desktop	
-libpulse	pulseaudio-libs pulseaudio-utils	desktop	Arch libpulse also ships pactl.
+libpulse	pulseaudio-libs pulseaudio-utils	desktop	
 libqalculate	libqalculate	desktop	
 librsvg	librsvg2-tools	desktop	
 libusb	libusb1	optional	

@@ -214,6 +214,29 @@ func TestCleanTermLine(t *testing.T) {
 	}
 }
 
+func TestPlanExplainsFilteredDNS(t *testing.T) {
+	f := &facts{distro: archLinux, filteredDNS: true}
+	p := defaultPlan(f)
+	got := model{
+		w:     180,
+		h:     40,
+		f:     f,
+		p:     p,
+		items: groupPlanItems(buildItems(f, p)),
+	}.viewPlan()
+	for _, want := range []string{
+		"DNS for ryoku.dev is being filtered on this network",
+		"docs/updates.md#filtered-dns",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("plan warning misses %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "repo.ryoku.dev is unreachable") {
+		t.Fatalf("filtered DNS fell back to generic unreachable warning:\n%s", got)
+	}
+}
+
 func TestVoidPlanShowsEditionNotice(t *testing.T) {
 	data, err := os.ReadFile("../void/packages/translations.tsv")
 	if err != nil {
@@ -434,19 +457,19 @@ func TestFedoraPlanKeepsNouveauAndSkipsAUR(t *testing.T) {
 
 func TestScreensFitMinimumTerminal(t *testing.T) {
 	f := &facts{
-		distroName: "Arch Linux",
-		hostname: "ryoku",
-		currentDM: "sddm",
-		online: true,
-		btrfsRoot: true,
-		hasNvidia: true,
-		otherNet: []string{"iwd.service"},
-		rivalPkgs: []string{"other-shell"},
-		softUnits: []string{"waybar.service"},
+		distroName:  "Arch Linux",
+		hostname:    "ryoku",
+		currentDM:   "sddm",
+		online:      true,
+		btrfsRoot:   true,
+		hasNvidia:   true,
+		otherNet:    []string{"iwd.service"},
+		rivalPkgs:   []string{"other-shell"},
+		softUnits:   []string{"waybar.service"},
 		omarchyRepo: true,
-		monOutputs: []niriOutput{{}},
-		monSource: "saved setup",
-		kbLayout: "us",
+		monOutputs:  []niriOutput{{}},
+		monSource:   "saved setup",
+		kbLayout:    "us",
 	}
 	p := defaultPlan(f)
 	items := groupPlanItems(buildItems(f, p))
@@ -456,8 +479,8 @@ func TestScreensFitMinimumTerminal(t *testing.T) {
 	}
 	e := &engine{
 		f: f, p: p, steps: steps,
-		backupDir: "/home/test/.local/state/ryoku/shell-install/backup-20261006-230000",
-		logPath: "/home/test/.local/state/ryoku/shell-install.log",
+		backupDir:   "/home/test/.local/state/ryoku/shell-install/backup-20261006-230000",
+		logPath:     "/home/test/.local/state/ryoku/shell-install.log",
 		prevBackups: 1,
 	}
 	base := model{

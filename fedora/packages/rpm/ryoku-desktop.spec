@@ -60,6 +60,7 @@ Requires:       slurp
 Requires:       cava
 Requires:       python3
 Requires:       pipewire
+Requires:       pulseaudio-utils
 Requires:       jq
 Requires:       ImageMagick
 Requires:       ffmpeg-free
@@ -173,6 +174,12 @@ RYOKU_HOST_INIT=systemd /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>
 /usr/bin/ryoku-wifi-regdom apply >/dev/null 2>&1 || :
 
 %posttrans
+if [ -x /usr/bin/ryoku-polkit-reload ] &&
+   ! /usr/bin/ryoku-polkit-reload; then
+  logger -t ryoku-polkit \
+    "ryoku-desktop post-transaction authorization-rule reload failed" \
+    >/dev/null 2>&1 || :
+fi
 [ -d /run/systemd/system ] || exit 0
 systemd-detect-virt --quiet --chroot && exit 0
 [ -x /usr/bin/ryoku-power-cutover ] || exit 0

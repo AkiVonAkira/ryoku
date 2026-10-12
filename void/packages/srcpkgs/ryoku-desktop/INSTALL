@@ -54,6 +54,12 @@ case "$ACTION" in
 		;;
 	post)
 		refresh_caches
+		if [ -x /usr/bin/ryoku-polkit-reload ] &&
+		   ! /usr/bin/ryoku-polkit-reload; then
+			logger -t ryoku-polkit \
+				"ryoku-desktop post-transaction authorization-rule reload failed" \
+				>/dev/null 2>&1 || true
+		fi
 		if [ -x /usr/bin/ryoku-host ]; then
 			RYOKU_HOST_INIT=runit /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>&1 || true
 		fi

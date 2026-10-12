@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Authorization rules survive desktop package upgrades.** Arch, Fedora, and
+  Void ask the running polkit daemon for a full rules reload only after their
+  package transaction has finished writing Ryoku's rules, without restarting
+  the daemon or disconnecting the desktop authentication agent.
+
 - **Service activation now comes from one manifest.** Arch, Fedora, and Void
   package hooks reconcile the same system service policy, while doctor
   reconciles each user's session roster without reviving services they disabled.

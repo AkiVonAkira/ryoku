@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import QtQuick
+import Ryoku.Ui.Singletons as RyokuUi
 import Quickshell
 import inir.modules.common
 import inir.services
@@ -367,7 +368,7 @@ Singleton {
         let broadcast = ""
         if (nextEp?.airingAt) {
             const d = new Date(nextEp.airingAt * 1000)
-            broadcast = Qt.formatDateTime(d, "ddd hh:mm") + " (Ep " + nextEp.episode + ")"
+            broadcast = Qt.formatDate(d, "ddd") + " " + RyokuUi.TimeFormat.format(d) + " (Ep " + nextEp.episode + ")"
         }
         
         return {

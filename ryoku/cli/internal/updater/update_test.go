@@ -66,6 +66,34 @@ func TestWantedSnapperHelpers(t *testing.T) {
 	}
 }
 
+func TestResetFailedUserUnitsSkipsUnloadedUnits(t *testing.T) {
+	t.Setenv("RYOKU_HOST_INIT", "systemd")
+	oldService := service
+	var reset []string
+	service = func(args ...string) int {
+		if len(args) >= 3 && args[1] == "is-failed" {
+			switch args[2] {
+			case "ryoku-idle.service":
+				return host.ExitAbsent
+			case "ryoku-clamshell.service":
+				return host.ExitFalse
+			case "failed.service":
+				return host.ExitOK
+			}
+		}
+		if len(args) >= 2 && args[1] == "reset-failed" {
+			reset = append([]string(nil), args[2:]...)
+		}
+		return host.ExitOK
+	}
+	t.Cleanup(func() { service = oldService })
+
+	resetFailedUserUnits("ryoku-idle.service", "ryoku-clamshell.service", "failed.service")
+	if !reflect.DeepEqual(reset, []string{"failed.service"}) {
+		t.Fatalf("reset-failed units = %v, want only the loaded failed unit", reset)
+	}
+}
+
 func TestVoidSnapshotHelperUsesPackageAndServiceSeams(t *testing.T) {
 	t.Setenv("RYOKU_HOST_PKGMGR", "xbps")
 	var calls [][]string
@@ -190,6 +218,23 @@ func TestPackagedStatusUpToDateOfflineEmptyRecent(t *testing.T) {
 	}
 	if len(r.Recent) != 0 {
 		t.Errorf("recent = %d, want 0 on a failed lookup", len(r.Recent))
+	}
+}
+
+func TestFilteredDNSUpdateError(t *testing.T) {
+	oldCheck := updaterFilteredRyokuDNS
+	t.Cleanup(func() { updaterFilteredRyokuDNS = oldCheck })
+
+	updaterFilteredRyokuDNS = func(repository string) bool {
+		return repository == "https://repo.ryoku.dev/stable/$arch"
+	}
+	err := filteredDNSUpdateError("https://repo.ryoku.dev/stable/$arch")
+	if err == nil || !strings.Contains(err.Error(), "DNS for ryoku.dev is being filtered") ||
+		!strings.Contains(err.Error(), "docs/updates.md#filtered-dns") {
+		t.Fatalf("filtered DNS error = %v", err)
+	}
+	if err := filteredDNSUpdateError("https://mirror.example.org/ryoku/$arch"); err != nil {
+		t.Fatalf("custom mirror error = %v", err)
 	}
 }
 

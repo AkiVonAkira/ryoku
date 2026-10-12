@@ -5,7 +5,9 @@ package main
 // dry run and a real run see the same world.
 
 import (
+	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/exec"
 	"os/user"
@@ -19,15 +21,16 @@ import (
 )
 
 type facts struct {
-	distroID   string
-	distroLike string
-	distroName string
-	archX86    bool
-	pacman     bool
-	archLike   bool
-	distro     *distro
-	online     bool
-	btrfsRoot  bool
+	distroID    string
+	distroLike  string
+	distroName  string
+	archX86     bool
+	pacman      bool
+	archLike    bool
+	distro      *distro
+	online      bool
+	filteredDNS bool
+	btrfsRoot   bool
 
 	secureBoot  bool // SecureBoot=1 and SetupMode=0 in efivars
 	sbctlSigned bool // sbctl on PATH with a key store, signing hook likely works
@@ -68,6 +71,30 @@ type facts struct {
 	hyprCfgDirs      []string  // pre-existing ~/.config/{hypr,quickshell,niri}
 	riceFound        []string  // known hyprland rices detected by marker paths
 	prevRun          *runState // interrupted earlier run, offered as a resume
+}
+
+var filteredDNSSinkholeV6 = netip.MustParsePrefix("2001:4188:2:600:10:10:34:0/112")
+
+func dnsAddressFiltered(ip net.IP) bool {
+	address, ok := netip.AddrFromSlice(ip)
+	if !ok {
+		return false
+	}
+	address = address.Unmap()
+	return address.IsPrivate() || address.IsLoopback() || filteredDNSSinkholeV6.Contains(address)
+}
+
+func ryokuDNSFiltered(lookup func(string) ([]net.IP, error)) bool {
+	addresses, err := lookup("repo.ryoku.dev")
+	if err != nil {
+		return false
+	}
+	for _, address := range addresses {
+		if dnsAddressFiltered(address) {
+			return true
+		}
+	}
+	return false
 }
 
 // rival quickshell stacks; ordered meta -> shell -> runtime so pacman removal
@@ -235,10 +262,13 @@ func detect() *facts {
 	f.userShell = os.Getenv("SHELL")
 
 	// repo reachability probe; the install needs the network anyway.
-	client := &http.Client{Timeout: 6 * time.Second}
-	if resp, err := client.Head("https://repo.ryoku.dev/stable/x86_64/ryoku.db"); err == nil {
-		resp.Body.Close()
-		f.online = resp.StatusCode < 500
+	f.filteredDNS = ryokuDNSFiltered(net.LookupIP)
+	if !f.filteredDNS {
+		client := &http.Client{Timeout: 6 * time.Second}
+		if resp, err := client.Head("https://repo.ryoku.dev/stable/x86_64/ryoku.db"); err == nil {
+			resp.Body.Close()
+			f.online = resp.StatusCode < 500
+		}
 	}
 
 	var st syscall.Statfs_t

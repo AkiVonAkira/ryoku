@@ -3,6 +3,22 @@
 ## Unreleased
 
 ### Added
+- **Ryogami's settings gain a Lighting tab.** Settings > Lighting in the
+  wallpaper picker detects RGB keyboards, mice, headsets, RAM, motherboards and
+  laptop keyboards through OpenRGB, `asusd` and `qmk_hid`, and **Follow
+  wallpaper & theme** puts a device on the live Matugen accent, so every new
+  wallpaper or fixed theme recolours it. Every per-device control of the old
+  Hub page is back: device modes and Ryoku-painted effects, fixed and per-zone
+  colours, brightness, speed, direction, Save to device and hand-back. The
+  daemon serves it through `lighting.*` calls that never block the picker and
+  run `ryoku-hub lighting` underneath (`ryogami/daemon/lighting.go`,
+  `ryogami/picker/qml/folio/Lighting*.qml`).
+- **Download browser results carry Apply.** Every card and the preview pane
+  offer Apply beside Save, for still and live wallpapers, YouTube clips and
+  Workshop scenes. Enter applies the focused card, and results saved in an
+  earlier session apply from their library copy. The per-source "Show Apply
+  button" setting only ever controlled manual filter search and now says so
+  (`ryogami/picker/qml/browser/`).
 - **Package actions use DNF on Fedora.** Package search, install, remove,
   updates, stash dependencies, and the Nomarchy compatibility commands now go
   through the host seam instead of assuming pacman. Unsupported AUR-only
@@ -582,6 +598,74 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **Bluetooth devices stay connected after pairing.** Ryoku now stops discovery
+  before it pairs or connects, trusts a new bond before connecting, and retries
+  the first post-pair connection once. The shell, every bar style, Nomarchy and
+  the Hub use the same sequence (#373).
+- **Shima and Stage clocks now follow the global 12/24-hour setting.**
+  Weather forecasts and sun times, calendar events, Pixel clocks, previews and
+  scheduled-anime times no longer keep their own fixed hour cycle.
+- **Battery warnings fire once under every bar style.** Shima and Nomarchy no
+  longer send their own low-battery notification beside the shell-wide alert.
+  Shima keeps its warning sounds and automatic suspend, while its retired
+  per-style warning thresholds are removed.
+- **Deck frost stays light while the desktop moves.** The haze is a fragment
+  shader now, so moving or focusing a window updates uniforms instead of
+  rebuilding and uploading a full-screen Canvas texture. Video wallpapers and
+  inline visualizers keep the haze but skip the full-output blur pass, and the
+  focus ring subtracts the output origin before drawing on a second monitor.
+  Windows without trustworthy positions use a whole-surface haze. The
+  `deckFrost` setting is validated from 0 to 1, and zero fully disables the
+  effect even with a deep window stack
+  (`quickshell/shell/modules/desktop/DeckFrost.qml`,
+  `quickshell/shell/modules/desktop/deck-frost.frag`, `ipc/settings.go`).
+- **Provider searches no longer freeze the wallpaper picker.** The daemon served
+  each picker's requests one at a time and ran network searches inline with a
+  90 second timeout, so a slow Wallhaven or YouTube search held every other
+  click: a 2.4 s YouTube search delayed the status, settings and library calls
+  queued behind it by 2.4 s; they now answer in under 2 ms. Searches, Workshop
+  searches, semantic queries and colour previews run on bounded workers, a newer
+  search cancels the older one from the same picker, searches give up after
+  20 s, stale thumbnail jobs are dropped and download progress is rate-limited
+  (`ryogami/daemon/daemon.go`, `source_*.go`, `workshop_*.go`).
+- **Browsing download sources is smoother.** A focused live wallpaper card no
+  longer streams and software-decodes the full remote clip (the preview pane
+  plays it), filter bursts send one search, a thumbnail arriving updates only
+  its card, the status line floats over the grid instead of pushing it down,
+  loading the next page keeps the scroll position and drops results the source
+  repeats, and the click-away layer that logged an anchoring warning on every
+  open is fixed (`ryogami/picker/qml/browser/`, `src/core/remoteresults.cpp`).
+- **Typing in the wallpaper search filters once per pause, not once per key.**
+  The library refilters 140 ms after typing stops, keeps a running filter
+  animation instead of restarting it, updates the card list incrementally, and
+  a late semantic reply can no longer replace a newer query's results
+  (`chrome/SearchPanel.qml`, `src/core/libraryview.cpp`, `src/scene/`).
+- **Ryogami works with Fedora's ffmpeg.** `ffmpeg-free` has no x264 or x265,
+  so live wallpaper transcodes, animated previews and upscaled videos failed.
+  They fall back to OpenH264, VA-API drivers are found in lib64, an HEVC source
+  the system cannot decode fails with a clear message, the video optimiser says
+  why it is off, and the picker's QML module resolves from `/usr/lib64/qt6/qml`
+  (`ryogami/daemon/codecs.go`, `transcode.go`, `process.go`).
+- **An untouched wallpaper picker stops drawing.** Every stationary pointer
+  event over the picker scheduled a full repaint, so an open picker rendered
+  frames continuously while nothing moved; it now sits idle until something
+  changes. Inline video previews start only for the settled visible card and
+  release their player when a sheet or the search panel covers them
+  (`src/scene/cardfield.cpp`, `src/layouts/handlayout.cpp`,
+  `src/render/previewvideo.cpp`).
+- **The first Super + W after the daemon starts opens the picker.** The daemon
+  launches a hidden picker at start and treated it as ready before it had
+  subscribed, so an open request in that window went to nobody and the user
+  had to press the key twice. Requests now wait for the picker's subscription
+  (`ryogami/daemon/process.go`, `daemon.go`, `qml/RyogamiShell.qml`).
+- **Lists in daemon replies reach the picker as real arrays.** Replies went
+  through QVariant, so nested lists failed `Array.isArray` and code that
+  checked for an array treated them as empty (`src/core/daemon.cpp`).
+- **Wallpaper GPU names an NVIDIA card waiting for a restart.** After an NVIDIA
+  driver update the old kernel module stays loaded until a reboot and Vulkan
+  cannot open the card, so the picked card showed as "Unavailable GPU". The list
+  now reads the card from the kernel driver and says "restart to use it"
+  (`src/core/gpudevices.cpp`, `qml/folio/FolioOptions.qml`).
 - **Screen recording works on machines without a hardware video encoder.**
   The codec check refused every GPU that could not encode H.264, AV1, VP9 or
   VP8, and any machine where GPU Screen Recorder's probe failed, so Intel

@@ -148,6 +148,21 @@
   `internal/sys/release.go`, `internal/updater/release.go`).
 
 ### Fixed
+- **Repository failures now identify filtered Ryoku DNS.** Update and doctor
+  recognize private, loopback, and known sinkhole answers for `ryoku.dev` and
+  point to the encrypted-DNS recovery steps instead of leaving a package-manager
+  or TLS error unexplained.
+- **Doctor removes Shima's retired battery warning thresholds.** Updates drop
+  the old `inir.battery.low` and `inir.battery.critical` keys without changing
+  suspend, charge-limit, or unrelated shell settings.
+- **`ryoku-host transient` on Void replaces a detached job of the same name**
+  instead of orphaning the old process, which left a second OpenRGB server
+  running (`internal/host/transient.go`).
+- **Doctor installs the QMK lighting provider by its real package name.** It
+  asked for `qmk-hid`, which no edition ships; every catalogue calls it
+  `qmk_hid`. Aura and QMK guidance now points to the wallpaper picker's
+  Settings > Lighting (`internal/doctor/reconcile_qmk.go`,
+  `reconcile_asus_aura.go`).
 - **Public source, recovery, issue, and plugin links use the canonical
   `ryoku-dev/ryoku` repository.** Existing source checkouts whose origin still
   uses the retired `ryoku-arch` name remain valid.
@@ -155,6 +170,10 @@
   accepts the live versioned frame-bar schema, preserves every effective rail
   and menu value, and no longer creates the retired nested dock store that the
   following reconciler immediately removes.
+- **Doctor findings are stable and fully translated.** A palette-driven animated
+  border is no longer mistaken for a stale fixed-colour pin on every run.
+  Count-led findings, NVIDIA sleep status, and hybrid-GPU power draw now pass
+  complete sentences through the catalog instead of leaving English fragments.
 - **Doctor skips the AMD action audit under tuned-ppd.** It reads
   power-profiles-daemon's optional action metadata over D-Bus and reports the
   row as not applicable when the active provider does not expose those actions.
@@ -188,14 +207,29 @@
   prefix optional module types with `-`, and those `-auth` and `-session` lines
   now count as login-keyring wiring instead of being misreported as
   `never-ask` (`internal/keyring/pam.go`).
-- **`ryoku doctor` warns when boot state cannot be verified.** Inaccessible
-  boot files, incomplete kernel metadata, and failed free-space measurements
-  now produce warnings instead of misleading success reports. Doctor also
-  avoids pruning boot entries or rebuilding kernel images when the required
-  state cannot be verified (`internal/doctor/reconcile_limine.go`,
-  `internal/doctor/reconcile_boot_space.go`,
-  `internal/doctor/reconcile_limine_images.go`,
-  `internal/doctor/reconcile_limine_entries.go`).
+- **Doctor distinguishes a protected ESP from a broken boot check.** Permission
+  denial under a root-only `/boot` is an advisory note, so a healthy hardened
+  install no longer raises the post-update health warning. Other inspection
+  failures remain warnings, and real boot drift still surfaces. The Limine
+  autoboot check migrates the old numeric fallback to a kernel entry path while
+  preserving `remember_last_entry`, and no longer claims the countdown loops
+  when a remembered entry takes precedence (`internal/doctor/`).
+- **A read-only doctor run through sudo audits the desktop user, not root.**
+  `SUDO_USER` supplies the home, XDG paths, identity, runtime directory and
+  session bus. Repair mode refuses a whole-command sudo so user files cannot be
+  created under `/root` or with root ownership; each system repair requests its
+  own privilege. Repair hints now point back to the normal-user command, while
+  protected boot checks still recommend the read-only sudo form
+  (`internal/doctor/`).
+- **Updates reset only user services that are actually failed.** Unloaded or
+  inactive idle, clamshell, wallpaper and cutover-guard units are left alone,
+  so `systemctl` no longer logs misleading `Unit ... not loaded` failures
+  (`internal/updater/update.go`, `internal/host/service.go`).
+- **Doctor scopes incomplete kernel metadata to the affected boot entry.**
+  Module-only leftovers without a `pkgbase` or `vmlinuz` are ignored, while a
+  partly installed kernel protects only its own Limine entry and no longer
+  prevents repair of unrelated stale entries. Limine discovery also checks the
+  EFI location for the active Ryoku edition (`internal/doctor/`).
 - **Existing installs use their console layout at the disk unlock prompt.** The
   doctor adds the `ryoku-console-keys` initramfs hook right after `udev` in
   `/etc/mkinitcpio.conf.d/ryoku.conf` once ryoku-desktop ships it, and rebuilds

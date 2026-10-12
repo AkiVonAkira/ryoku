@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# ryoku-wayland-session: SDDM's [Wayland] SessionCommand, wrapping the stock
-# session start with a wait for the greeter to release the GPU.
+# ryoku-wayland-session: SDDM's [Wayland] SessionCommand, preparing the DRM
+# handoff and a software renderer fallback before starting the chosen session.
 #
 # On a hybrid-GPU laptop (e.g. AMD iGPU + NVIDIA dGPU) the SDDM greeter runs as
 # weston on one VT; SDDM then starts the user session on the next VT without
@@ -14,6 +14,32 @@
 # Bounded so login never hangs; a plain no-op when no weston is running (a
 # desktop with no hybrid race, or the greeter already gone).
 set -u
+
+# A 2D-only virtual display exposes a KMS card but no render node. Mesa's
+# device-selected GBM path does not fall back to llvmpipe by itself, so the
+# compositor can map a grey output while every accelerated client fails to
+# paint. Force Mesa's GBM renderer only for that exact shape. A VM with 3D
+# acceleration has a renderD* node and keeps virgl/vmwgfx acceleration.
+needs_software_renderer() {
+  local dri="${RYOKU_DRI_DIR:-/dev/dri}" node have_card=0
+  for node in "$dri"/card[0-9]*; do
+    [[ -e $node ]] || continue
+    have_card=1
+    break
+  done
+  (( have_card )) || return 1
+  for node in "$dri"/renderD[0-9]*; do
+    [[ -e $node ]] && return 1
+  done
+  return 0
+}
+
+if needs_software_renderer; then
+  export LIBGL_ALWAYS_SOFTWARE=1
+  export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+  export GALLIUM_DRIVER=llvmpipe
+  export WLR_RENDERER_ALLOW_SOFTWARE=1
+fi
 
 deadline="${RYOKU_SESSION_SETTLE_DEADLINE:-8}"
 start=$SECONDS

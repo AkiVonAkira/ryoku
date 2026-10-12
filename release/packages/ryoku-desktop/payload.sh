@@ -71,7 +71,7 @@ EOF
   # CMakeLists.txt and builds to a /usr/bin/<name> binary. Either way
   # its bin/ helpers, .desktop and icon are installed. Dropping in an app dir
   # ships it; see ryoku/apps/README.md for the contract a new one has to meet.
-  local appdir appname icon gomod helperdir helper b d has_qs has_cmake
+  local appdir appname icon gomod helperdir helper b d has_qs has_cmake app_build
   for appdir in "$_repo"/ryoku/apps/*/; do
     has_qs=0; [ -d "${appdir}quickshell" ] && has_qs=1
     has_cmake=0; [ -f "${appdir}CMakeLists.txt" ] && has_cmake=1
@@ -87,9 +87,13 @@ EOF
       if [[ -n ${RYOKU_PREBUILT_DIR:-} ]]; then
         install -Dm755 "$RYOKU_PREBUILT_DIR/$appname" "$pkgdir/usr/bin/$appname"
       else
-        cmake -S "$appdir" -B "${appdir}build" -G Ninja -DCMAKE_BUILD_TYPE=Release
-        cmake --build "${appdir}build"
-        install -Dm755 "${appdir}build/$appname" "$pkgdir/usr/bin/$appname"
+        # The build tree lives in the package's scratch, never in the
+        # checkout: a build/ beside the sources is gitignored but still on
+        # disk, and the delivery gate reads the disk.
+        app_build="${RYOKU_BUILD_DIR:?set RYOKU_BUILD_DIR to a scratch directory}/$appname-build"
+        cmake -S "$appdir" -B "$app_build" -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build "$app_build"
+        install -Dm755 "$app_build/$appname" "$pkgdir/usr/bin/$appname"
       fi
     fi
     if [ -d "${appdir}bin" ]; then
@@ -106,8 +110,10 @@ EOF
       if [[ -n ${RYOKU_PREBUILT_DIR:-} ]]; then
         install -Dm755 "$RYOKU_PREBUILT_DIR/$helper" "$pkgdir/usr/bin/$helper"
       else
-        ( cd "$helperdir" && go build -o "$helper" . )
-        install -Dm755 "$helperdir/$helper" "$pkgdir/usr/bin/$helper"
+        app_build="${RYOKU_BUILD_DIR:?set RYOKU_BUILD_DIR to a scratch directory}/app-helpers"
+        install -d "$app_build"
+        ( cd "$helperdir" && go build -o "$app_build/$helper" . )
+        install -Dm755 "$app_build/$helper" "$pkgdir/usr/bin/$helper"
       fi
     done
     for d in "${appdir}"*.desktop; do
@@ -504,6 +510,9 @@ EOF
   install -Dm644 "$_repo/system/policy/52-ryoku-timedate.rules" \
     "$pkgdir/usr/share/polkit-1/rules.d/52-ryoku-timedate.rules"
 
+  install -Dm755 "$_repo/system/policy/ryoku-polkit-reload" \
+    "$pkgdir/usr/bin/ryoku-polkit-reload"
+
   # Container runtime: the same one-click grant for ryoku-docker (installed to
   # /usr/bin by the containers glob above), so the stash Cobalt setup wizard can
   # start docker.service and the cobalt container without a password prompt per
@@ -521,6 +530,8 @@ EOF
       "$pkgdir/usr/share/libalpm/hooks/94-ryoku-power-cutover-prepare.hook"
     install -Dm644 "$_repo/system/hardware/power/95-ryoku-power-cutover.hook" \
       "$pkgdir/usr/share/libalpm/hooks/95-ryoku-power-cutover.hook"
+    install -Dm644 "$_repo/system/policy/96-ryoku-polkit-reload.hook" \
+      "$pkgdir/usr/share/libalpm/hooks/96-ryoku-polkit-reload.hook"
   else
     install -Dm644 "$_repo/system/hardware/power/logind-ryoku-lid.conf" \
       "$pkgdir/etc/elogind/logind.conf.d/10-ryoku-lid.conf"

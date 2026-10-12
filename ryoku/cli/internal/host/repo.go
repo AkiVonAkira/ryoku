@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"net"
+	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -25,7 +28,39 @@ const (
 
 var ErrRepoAbsent = errors.New("no Ryoku package repository is configured")
 
-var xbpsPackagePattern = regexp.MustCompile(`^(.+)-([^-]+_[0-9]+)$`)
+const FilteredDNSAdvice = "DNS for ryoku.dev is being filtered on this network; see https://github.com/Ryoku-dev/ryoku/blob/main/docs/updates.md#filtered-dns"
+
+var (
+	xbpsPackagePattern      = regexp.MustCompile(`^(.+)-([^-]+_[0-9]+)$`)
+	lookupRepoIPs           = net.LookupIP
+	filteredDNSSinkholeIPv6 = netip.MustParsePrefix("2001:4188:2:600:10:10:34:0/112")
+)
+
+func FilteredRyokuDNS(repository string) bool {
+	parsed, err := url.Parse(repository)
+	if err != nil {
+		return false
+	}
+	name := strings.TrimSuffix(strings.ToLower(parsed.Hostname()), ".")
+	if name != "ryoku.dev" && !strings.HasSuffix(name, ".ryoku.dev") {
+		return false
+	}
+	addresses, err := lookupRepoIPs(name)
+	if err != nil {
+		return false
+	}
+	for _, ip := range addresses {
+		address, ok := netip.AddrFromSlice(ip)
+		if !ok {
+			continue
+		}
+		address = address.Unmap()
+		if address.IsPrivate() || address.IsLoopback() || filteredDNSSinkholeIPv6.Contains(address) {
+			return true
+		}
+	}
+	return false
+}
 
 func repoBaseFor(manager PackageManager) string {
 	if base := strings.TrimSpace(os.Getenv("RYOKU_RELEASE_BASE")); base != "" {

@@ -213,6 +213,20 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Scrolling layouts switch workspaces without exposing hidden columns.** The
+  generated Hyprland animation override replaces workspace translation with a
+  fade while scrolling is active, keeping the Hub's workspace timing and curve
+  when one is set, and leaves other layouts on their preset's style
+  (`wm/hyprland/config_settings.go`).
+- **Workspace clicks use the workspace the widget selected.** The neutral
+  workspace action resolver now keeps an exact provider id before falling back
+  to a display name, so overlapping ids and names cannot redirect focus or
+  window moves to a different workspace (`ui/Singletons/Wm.qml`).
+- **Wayfire windows stay attached to their workspace everywhere in the
+  desktop.** Window and output frames now carry the same opaque workspace id as
+  the workspace frame, so active-workspace filters, fullscreen checks, widget
+  power saving, and deck frost see the windows on screen
+  (`wm/wayfire/frames.go`, `wm/state.go`, `ui/Singletons/Wm.qml`).
 - **Power profile controls work with Fedora's default provider.** The Hub,
   Nomarchy, game mode, and `ryoku-power` send profile reads and writes through
   the shell daemon's provider-neutral D-Bus client, so tuned-ppd works alongside

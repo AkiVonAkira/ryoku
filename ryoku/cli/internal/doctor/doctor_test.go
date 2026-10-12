@@ -563,6 +563,7 @@ func TestReconcileDisplayModes(t *testing.T) {
 		"if [ \"$1\" = settle ] && [ \"$2\" = --check ]; then exit ${CHK:-0}; fi\n"+
 		"if [ \"$1\" = settle ]; then exit ${SET:-0}; fi\nexit 0\n")
 	t.Setenv("PATH", bin)
+	t.Setenv("RYOKU_WM", "")
 	t.Setenv("XDG_CURRENT_DESKTOP", "hyprland") // a live session for wm.Detect()
 
 	t.Setenv("CHK", "0") // every display at its best available mode
@@ -2141,6 +2142,7 @@ func TestMergeLimineConfHealsAdoptedRoot(t *testing.T) {
 func TestLimineEnsureAutoboot(t *testing.T) {
 	const conf = `timeout: 3
 default_entry: 2
+remember_last_entry: yes
 interface_branding: Ryoku Bootloader
 
 /Ryoku Linux
@@ -2158,6 +2160,9 @@ interface_branding: Ryoku Bootloader
 /Windows
     protocol: efi_chainload
 `
+	if !limineRemembersLastEntry(conf) {
+		t.Fatal("remember_last_entry: yes was not recognized")
+	}
 	if p := limineFirstKernelPath(conf); p != "Ryoku Linux/linux" {
 		t.Fatalf("first kernel path = %q, want Ryoku Linux/linux", p)
 	}
@@ -2173,6 +2178,9 @@ interface_branding: Ryoku Bootloader
 	}
 	if !strings.Contains(got, "remember_last_entry: yes") {
 		t.Errorf("remember_last_entry not enabled:\n%s", got)
+	}
+	if strings.Count(got, "remember_last_entry: yes") != 1 {
+		t.Errorf("existing remember_last_entry was not preserved exactly once:\n%s", got)
 	}
 	if again, changed2 := limineEnsureAutoboot(got); changed2 || again != got {
 		t.Error("limineEnsureAutoboot is not idempotent")

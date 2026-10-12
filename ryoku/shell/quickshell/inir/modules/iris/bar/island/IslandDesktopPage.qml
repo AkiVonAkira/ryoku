@@ -689,10 +689,11 @@ ColumnLayout {
                         Layout.preferredWidth: 1
                         Layout.maximumWidth: Number.POSITIVE_INFINITY
                         spacing: Math.round(3 * IrisStyle.density)
-                        Accessible.name: hour.modelData.label + ", " + hour.modelData.temp
+                        readonly property string timeLabel: Weather.displayTime(hour.modelData.label, hour.modelData.minuteOfDay)
+                        Accessible.name: hour.timeLabel + ", " + hour.modelData.temp
                         IrisText {
                             Layout.alignment: Qt.AlignHCenter
-                            text: hour.index === 0 ? Translation.tr("Now") : String(hour.modelData.label).slice(0, 2)
+                            text: hour.index === 0 ? Translation.tr("Now") : hour.timeLabel
                             color: hour.index === 0 ? IrisStyle.text : IrisStyle.textTertiary
                             font.pixelSize: IrisStyle.typeFootnote
                             font.weight: hour.index === 0 ? Font.DemiBold : Font.Medium

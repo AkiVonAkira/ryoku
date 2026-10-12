@@ -183,7 +183,7 @@ Tools the desktop, the pill, and the capture stack shell out to by name.
 | `hyprpicker` | The color picker |
 | `imagemagick` | Image processing |
 | `waifu2x-ncnn-vulkan` | The GPU AI upscaler behind ryoshot's HD export and ryowalls' Enhance |
-| `openrgb` | Per-device keyboard and mouse lighting, configurable from Settings > Appearance > Lighting |
+| `openrgb` | Per-device keyboard, mouse, RAM and motherboard lighting that follows the wallpaper palette, configurable from the wallpaper picker (Super + W) > Settings > Lighting |
 | `asusctl` | Native built-in Aura keyboard lighting on supported ASUS laptops; selected by hardware rather than installed everywhere |
 | `ddcutil` | External-monitor brightness over DDC/CI (the pill's DISPLAY faders) |
 | `ffmpeg`, `yt-dlp` | Media transcode and download; also the launcher's live-radio play path |

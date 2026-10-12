@@ -1357,9 +1357,9 @@ Item {
 
     // ── Bluetooth subtab ─────────────────────────────────────────────────────
 
-    // adapter toggle, scan with 25s auto-stop, live device list. known devices
-    // use Quickshell's connect/disconnect; unpaired ones run bluetoothctl
-    // pair-trust-connect with a pairing pulse and a transient failure chip.
+    // Adapter toggle, scan with 25s auto-stop, and a live device list. Every
+    // disconnected row uses the shared pair-trust-connect helper so known and
+    // newly discovered devices follow the same BlueZ-safe sequence.
     component BtBody: Item {
         id: bt
 
@@ -1419,8 +1419,9 @@ Item {
             return Math.round(b);
         }
 
-        // row click: disconnect if connected, connect if paired, else run the
-        // bluetoothctl pair-trust-connect flow.
+        // A disconnected device always goes through the same helper. It skips
+        // pairing for an existing bond, but still stops discovery and repairs a
+        // stale bond when BlueZ can no longer bring it up.
         function activateDevice(d) {
             if (!d)
                 return;
@@ -1429,27 +1430,18 @@ Item {
                     d.disconnect();
                 return;
             }
-            if (d.paired) {
-                if (typeof d.connect === "function")
-                    d.connect();
-                return;
-            }
             bt.pairDevice(d);
         }
 
         function pairDevice(d) {
             if (!d || !d.address || pairProc.running)
                 return;
+            scanTimer.stop();
+            if (bt.adapter && bt.adapter.discovering)
+                bt.adapter.discovering = false;
             bt.pairingAddress = d.address;
             bt.failedAddress = "";
-            // The agent is what lets BLE HID devices (gamepads, keyboards)
-            // pair at all: they confirm a passkey, and bluetoothd denies the
-            // bond when no agent can answer (#308). `yes` answers the
-            // confirmation prompt; KeyboardDisplay is the capability that
-            // carries a passkey.
-            pairProc.command = ["sh", "-c",
-                'yes | timeout 30 bluetoothctl --agent KeyboardDisplay pair "$1" && timeout 30 bluetoothctl --agent KeyboardDisplay trust "$1" && timeout 30 bluetoothctl --agent KeyboardDisplay connect "$1"',
-                "sh", d.address];
+            pairProc.command = ["ryoku-bluetooth-link", d.address];
             pairProc.running = true;
         }
 

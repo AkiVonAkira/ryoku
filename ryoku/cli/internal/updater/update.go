@@ -211,6 +211,10 @@ func Update(args []string) (err error) {
 		// repo ahead of our vendored copy, a split package whose pinned dep a
 		// forced downgrade would break).
 		if err := sys.Sudo(refreshDBArgs(false)[1:]...); err != nil {
+			if filteredErr := filteredDNSUpdateError(packagedRepoURL()); filteredErr != nil {
+				progress.fail(filteredErr)
+				return filteredErr
+			}
 			progress.logf(i18n.T("Could not refresh the package databases: %v"), err)
 		}
 		s, held, err := installedRyokuSet(false)
@@ -1112,7 +1116,7 @@ func acquireUpdateSleepGuard(sessionGuardRequired bool) (*updateSleepGuard, erro
 		}
 	} else {
 		if service("--user", "is-active", updateSleepGuardUnit) != host.ExitOK {
-			_ = service("--user", "reset-failed", updateSleepGuardUnit)
+			resetFailedUserUnits(updateSleepGuardUnit)
 			code := host.Default().Transient([]string{
 				"start", updateSleepGuardUnit,
 				"--prop", "Type=exec", "--prop", "TimeoutStopSec=5s", "--",
@@ -1207,13 +1211,28 @@ func hasStatusLine(status, want string) bool {
 	return false
 }
 
+func resetFailedUserUnits(units ...string) {
+	if updateInitSystem() != host.Systemd {
+		return
+	}
+	failed := make([]string, 0, len(units))
+	for _, unit := range units {
+		if service("--user", "is-failed", unit) == host.ExitOK {
+			failed = append(failed, unit)
+		}
+	}
+	if len(failed) > 0 {
+		_ = service(append([]string{"--user", "reset-failed"}, failed...)...)
+	}
+}
+
 // activatePowerPolicy starts both policy owners as session services only after
 // the new shell can serve its secure suspend transaction.
 func activatePowerPolicy() error {
 	if code := service("--user", "daemon-reload"); code != host.ExitOK {
 		return serviceError("reload user services", code)
 	}
-	_ = service("--user", "reset-failed", "ryoku-idle.service", "ryoku-clamshell.service")
+	resetFailedUserUnits("ryoku-idle.service", "ryoku-clamshell.service")
 	if code := service("--user", "restart", "ryoku-idle.service"); code != host.ExitOK {
 		return serviceError("start idle policy service", code)
 	}
@@ -2619,7 +2638,7 @@ func restartWallpaper(forceStart bool) {
 	_ = service("--user", "daemon-reload")
 	verb := "try-restart"
 	if forceStart {
-		_ = service("--user", "reset-failed", "ryogami.service")
+		resetFailedUserUnits("ryogami.service")
 		verb = "restart"
 	}
 	if service("--user", verb, "ryogami.service") == host.ExitOK {

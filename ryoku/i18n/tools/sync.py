@@ -168,7 +168,9 @@ def _copy(s):
     for a translation of it only invites a wrong one."""
     if not s or s in VERBATIM or len(s.strip()) < 2:
         return False
-    if s.startswith(("$", "-", "/", "%")) or "$(" in s or "${" in s:
+    if s.startswith(("$", "-", "/")) or "$(" in s or "${" in s:
+        return False
+    if re.fullmatch(r"%[-+#0-9.*]*[A-Za-z]", s):
         return False
     return any(c.isalpha() and ord(c) < 0x80 for c in s)
 

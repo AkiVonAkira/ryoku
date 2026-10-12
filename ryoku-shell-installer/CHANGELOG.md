@@ -58,6 +58,9 @@
   steps, so a stuck stable install can be finished on unstable.
 
 ### Fixed
+- **The shell installer identifies filtered Ryoku DNS.** A private, loopback,
+  or known sinkhole answer for `repo.ryoku.dev` gets a direct warning and a link
+  to the recovery steps instead of the generic unreachable-repository message.
 - **SDDM opens the compositor selected during installation.** When the plan
   switches the display manager, the installer records the chosen Wayland
   session in SDDM's state without dropping its remembered user or other

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 _hint() {
   cat <<'EOF'
 ==> Run `ryoku materialize` as your user to lay the Ryoku base configs into
@@ -21,6 +22,21 @@ _refresh() {
 _reconcile_services() {
   command -v ryoku-host >/dev/null 2>&1 || return 0
   RYOKU_HOST_INIT=systemd ryoku-host svc reconcile --system >/dev/null 2>&1 || true
+}
+
+# libalpm reads hooks before extraction, so the release that first adds the
+# post-transaction hook must reload once from its scriptlet.
+_reload_polkit_migration() {
+  local helper="${RYOKU_POLKIT_RELOAD_HELPER:-/usr/bin/ryoku-polkit-reload}"
+  local marker="${RYOKU_POLKIT_RELOAD_MARKER:-/var/lib/ryoku/polkit-reload-hook-active}"
+  [ ! -e "$marker" ] || return 0
+  [ -x "$helper" ] || return 0
+  if ! "$helper"; then
+    echo "==> WARNING: could not reload Ryoku authorization rules" >&2
+    return 0
+  fi
+  install -d -m 755 "${marker%/*}"
+  : > "$marker"
 }
 
 # Package installs, upgrades, downgrades, and removal are adopted by paired
@@ -146,6 +162,7 @@ pre_upgrade() {
 }
 post_install() {
   _refresh
+  _reload_polkit_migration
   _reconcile_services
   _bluetooth_tune
   _wifi_regdom
@@ -157,6 +174,7 @@ post_install() {
 
 post_upgrade() {
   _refresh
+  _reload_polkit_migration
   _reconcile_services
   _bluetooth_tune
   _wifi_regdom
@@ -169,5 +187,6 @@ post_upgrade() {
 post_remove() {
   _refresh
   _restore_logind
-  rm -f /var/lib/ryoku/power-cutover-hook-active
+  rm -f /var/lib/ryoku/power-cutover-hook-active \
+    /var/lib/ryoku/polkit-reload-hook-active
 }
