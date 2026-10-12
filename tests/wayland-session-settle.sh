@@ -3,14 +3,15 @@
 # wrapper that prepares graphics before the session compositor starts.
 #
 # Nothing here starts weston or a compositor. A fake pgrep on PATH reports weston
-# "present" for a controlled number of polls, a fake session records its argv and
-# render environment, and RYOKU_DRI_DIR supplies KMS-only and accelerated DRM
-# fixtures.
+# "present" for a controlled number of polls, a fake user manager supplies the
+# session environment, a fake session records its argv and environment, and
+# RYOKU_DRI_DIR / RYOKU_DRM_CLASS_DIR provide graphics fixtures.
 #
 # The load-bearing assertions: the wrapper does NOT hand off while weston is
 # still present, always hands off eventually (login never hangs), passes the
-# session arguments through untouched, and selects llvmpipe only when a DRM card
-# has no render node.
+# session arguments through untouched, imports the shared environment, applies
+# NVIDIA hints only when NVIDIA drives the internal panel, and selects llvmpipe
+# only when a DRM card has no render node.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -38,6 +39,13 @@ cat >"$bin/logger" <<EOF
 printf '%s\n' "\$*" >>"$tmp/logger-log"
 EOF
 chmod +x "$bin/logger"
+
+cat >"$bin/systemctl" <<EOF
+#!/bin/sh
+[ "\$*" = "--user show-environment" ] || exit 1
+cat "$tmp/manager-env"
+EOF
+chmod +x "$bin/systemctl"
 export PATH="$bin:$PATH"
 
 # fake session: records its arguments and environment, and exposes controlled
@@ -50,6 +58,17 @@ printf '%s' "\$*" >"$tmp/session-args"
   printf 'MESA_LOADER_DRIVER_OVERRIDE=%s\n' "\${MESA_LOADER_DRIVER_OVERRIDE:-}"
   printf 'GALLIUM_DRIVER=%s\n' "\${GALLIUM_DRIVER:-}"
   printf 'WLR_RENDERER_ALLOW_SOFTWARE=%s\n' "\${WLR_RENDERER_ALLOW_SOFTWARE:-}"
+  printf 'XCURSOR_THEME=%s\n' "\${XCURSOR_THEME:-}"
+  printf 'QML2_IMPORT_PATH=%s\n' "\${QML2_IMPORT_PATH:-}"
+  printf 'QT_QPA_PLATFORM=%s\n' "\${QT_QPA_PLATFORM:-}"
+  printf 'GDK_BACKEND=%s\n' "\${GDK_BACKEND:-}"
+  printf 'GSK_RENDERER=%s\n' "\${GSK_RENDERER:-}"
+  printf 'LIBVA_DRIVER_NAME=%s\n' "\${LIBVA_DRIVER_NAME:-}"
+  printf 'NVD_BACKEND=%s\n' "\${NVD_BACKEND:-}"
+  printf '__GLX_VENDOR_LIBRARY_NAME=%s\n' "\${__GLX_VENDOR_LIBRARY_NAME:-}"
+  printf '__GL_GSYNC_ALLOWED=%s\n' "\${__GL_GSYNC_ALLOWED:-}"
+  printf '__GL_VRR_ALLOWED=%s\n' "\${__GL_VRR_ALLOWED:-}"
+  printf 'GBM_BACKEND=%s\n' "\${GBM_BACKEND:-}"
 } >"$tmp/session-env"
 : >"$tmp/session-ran"
 [ -z "\${FAKE_SESSION_STDOUT:-}" ] || printf '%s\n' "\$FAKE_SESSION_STDOUT"
@@ -63,6 +82,23 @@ EOF
 chmod +x "$bin/fake-session"
 export RYOKU_WAYLAND_SESSION_DEFAULT="$bin/fake-session"
 export RYOKU_NVIDIA_VERSION_PATH="$tmp/no-nvidia-version"
+cat >"$tmp/manager-env" <<EOF
+PATH=$bin:$PATH
+XCURSOR_THEME=Ryoku-Test-Cursor
+XCURSOR_SIZE=24
+QML_IMPORT_PATH=/tmp/ryoku-qml
+QML2_IMPORT_PATH=/tmp/ryoku-qml
+QT_QPA_PLATFORMTHEME=qt6ct
+GDK_BACKEND=\$'wayland,x11,*'
+QT_QPA_PLATFORM=\$'wayland;xcb'
+QT_AUTO_SCREEN_SCALE_FACTOR=1
+QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+ELECTRON_OZONE_PLATFORM_HINT=auto
+GSK_RENDERER=gl
+RYOKU_POLKIT_AGENT=1
+EDITOR=nvim
+VISUAL=nvim
+EOF
 
 reset() {
   rm -f "$tmp/pgcount" "$tmp/session-ran" "$tmp/session-args" \
@@ -80,6 +116,16 @@ RYOKU_SESSION_SETTLE_DEADLINE=10 "$wrapper" Hyprland --foo
 [[ "$(cat "$tmp/session-args")" == "Hyprland --foo" ]] \
   || fail "session arguments were not passed through: '$(cat "$tmp/session-args")'"
 (( "$(polls)" >= 2 )) || fail "wrapper handed off without waiting for weston (polled $(polls)x)"
+[[ "$(env_value XCURSOR_THEME)" == Ryoku-Test-Cursor ]] \
+  || fail "shared cursor environment did not reach the session"
+[[ "$(env_value QML2_IMPORT_PATH)" == /tmp/ryoku-qml ]] \
+  || fail "shared QML import path did not reach the session"
+[[ "$(env_value QT_QPA_PLATFORM)" == "wayland;xcb" ]] \
+  || fail "Qt backend list was not decoded from the user-manager environment"
+[[ "$(env_value GDK_BACKEND)" == "wayland,x11,*" ]] \
+  || fail "GTK backend list was not decoded from the user-manager environment"
+[[ "$(env_value GSK_RENDERER)" == gl ]] \
+  || fail "GTK renderer did not reach the session"
 
 # ---- no greeter: hand off at once, no wasted polling -------------------------
 reset
@@ -131,6 +177,43 @@ env -u LIBGL_ALWAYS_SOFTWARE -u MESA_LOADER_DRIVER_OVERRIDE \
   RYOKU_DRI_DIR="$dri_empty" "$wrapper" Hyprland
 [[ -z "$(env_value LIBGL_ALWAYS_SOFTWARE)" ]] \
   || fail "a machine with no KMS card was forced onto software GL"
+
+# ---- NVIDIA panel: carry decode/GLX hints, but never force a GBM backend ------
+drm_nvidia="$tmp/drm-nvidia"
+mkdir -p "$drm_nvidia/card1-eDP-1" "$drm_nvidia/card1/device"
+printf 'connected\n' >"$drm_nvidia/card1-eDP-1/status"
+printf '0x10de\n' >"$drm_nvidia/card1/device/vendor"
+printf 'test\n' >"$tmp/nvidia-version"
+reset
+echo 0 >"$tmp/pglimit"
+env -u LIBVA_DRIVER_NAME -u NVD_BACKEND -u __GLX_VENDOR_LIBRARY_NAME \
+  -u __GL_GSYNC_ALLOWED -u __GL_VRR_ALLOWED -u GBM_BACKEND \
+  RYOKU_NVIDIA_VERSION_PATH="$tmp/nvidia-version" \
+  RYOKU_DRM_CLASS_DIR="$drm_nvidia" "$wrapper" wayfire
+[[ "$(env_value LIBVA_DRIVER_NAME)" == nvidia ]] \
+  || fail "NVIDIA-driven panel did not select NVIDIA VA-API"
+[[ "$(env_value NVD_BACKEND)" == direct ]] \
+  || fail "NVIDIA-driven panel did not select the direct NVDEC backend"
+[[ "$(env_value __GLX_VENDOR_LIBRARY_NAME)" == nvidia ]] \
+  || fail "NVIDIA-driven panel did not select NVIDIA GLX"
+[[ "$(env_value __GL_GSYNC_ALLOWED)" == 0 && "$(env_value __GL_VRR_ALLOWED)" == 0 ]] \
+  || fail "NVIDIA session did not disable driver-side G-SYNC/VRR"
+[[ -z "$(env_value GBM_BACKEND)" ]] \
+  || fail "session wrapper forced GBM_BACKEND on Wayfire"
+
+# ---- iGPU panel: do not poison hybrid decoding with NVIDIA-only hints --------
+drm_hybrid="$tmp/drm-hybrid"
+mkdir -p "$drm_hybrid/card0-eDP-1" "$drm_hybrid/card0/device"
+printf 'connected\n' >"$drm_hybrid/card0-eDP-1/status"
+printf '0x1002\n' >"$drm_hybrid/card0/device/vendor"
+reset
+echo 0 >"$tmp/pglimit"
+env -u LIBVA_DRIVER_NAME -u NVD_BACKEND -u __GLX_VENDOR_LIBRARY_NAME \
+  -u __GL_GSYNC_ALLOWED -u __GL_VRR_ALLOWED \
+  RYOKU_NVIDIA_VERSION_PATH="$tmp/nvidia-version" \
+  RYOKU_DRM_CLASS_DIR="$drm_hybrid" "$wrapper" wayfire
+[[ -z "$(env_value LIBVA_DRIVER_NAME)" && -z "$(env_value NVD_BACKEND)" ]] \
+  || fail "AMD-driven hybrid panel inherited NVIDIA decode hints"
 
 # ---- greeter never exits: the deadline caps the wait so login never hangs ----
 reset

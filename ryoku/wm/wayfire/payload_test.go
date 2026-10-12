@@ -45,10 +45,44 @@ func TestShippedBaselineIsHonest(t *testing.T) {
 	// the caps, and the act verbs each need their plugin already loaded.
 	for _, want := range []string{
 		"animate", "autostart", "command", "decoration", "depthdeck",
-		"fast-switcher", "ipc", "ipc-rules", "vswipe", "window-rules", "wm-actions",
+		"fast-switcher", "gtk-shell", "idle", "ipc", "ipc-rules", "session-lock",
+		"shortcuts-inhibit", "simple-tile", "vswipe", "window-rules", "wm-actions",
+		"wsets", "xdg-activation",
 	} {
 		if !loaded[want] {
 			t.Errorf("core.plugins is missing %q", want)
+		}
+	}
+
+	pluginOrder := strings.Fields(plugins)
+	if len(pluginOrder) == 0 || pluginOrder[len(pluginOrder)-1] != "autostart" {
+		t.Errorf("core.plugins = %q; autostart must initialize after every capability provider", plugins)
+	}
+
+	if vwidth, _ := doc.get("core", "vwidth"); vwidth != "5" {
+		t.Errorf("core.vwidth = %q, want 5 for the ten-workspace catalogue", vwidth)
+	}
+	if vheight, _ := doc.get("core", "vheight"); vheight != "2" {
+		t.Errorf("core.vheight = %q, want 2 for the ten-workspace catalogue", vheight)
+	}
+	if xwayland, _ := doc.get("core", "xwayland"); xwayland != "true" {
+		t.Errorf("core.xwayland = %q, want true for the variant's X11 apps", xwayland)
+	}
+	if saver, _ := doc.get("idle", "screensaver_timeout"); saver != "0" {
+		t.Errorf("idle.screensaver_timeout = %q; ryoku-idle owns the timeout", saver)
+	}
+	if dpms, _ := doc.get("idle", "dpms_timeout"); dpms != "-1" {
+		t.Errorf("idle.dpms_timeout = %q; ryoku-idle owns output power", dpms)
+	}
+	if tiled, _ := doc.get("simple-tile", "tile_by_default"); tiled != "all" {
+		t.Errorf("simple-tile.tile_by_default = %q, want all", tiled)
+	}
+	for _, key := range []string{
+		"key_toggle", "key_focus_above", "key_focus_below", "key_focus_left",
+		"key_focus_right", "key_toggle_maximized",
+	} {
+		if got, _ := doc.get("simple-tile", key); got != "none" {
+			t.Errorf("simple-tile.%s = %q; the shared catalogue owns keyboard actions", key, got)
 		}
 	}
 
@@ -83,7 +117,7 @@ func TestShippedBaselineIsHonest(t *testing.T) {
 	for _, want := range []string{
 		"dbus-update-activation-environment --systemd --all",
 		"ryoku-power-cutover session-start-logged",
-		"xdg-desktop-portal-gnome.service",
+		"xdg-desktop-portal-wlr.service",
 	} {
 		if !strings.Contains(session, want) {
 			t.Errorf("autostart.0_session is missing %q", want)

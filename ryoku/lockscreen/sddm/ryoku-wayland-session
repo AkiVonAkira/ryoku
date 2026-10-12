@@ -15,6 +15,61 @@
 # desktop with no hybrid race, or the greeter already gone).
 set -u
 
+# environment.d is loaded by the user manager, not by the compositor process
+# SDDM starts. Pull only Ryoku's shared session contract into this launcher so
+# apps started directly by compositor keybinds see the same Qt, GTK, cursor,
+# QML and PATH values as user services.
+import_session_environment() {
+  local assignment name
+  command -v systemctl >/dev/null 2>&1 || return 0
+  while IFS= read -r assignment; do
+    [[ $assignment == *=* ]] || continue
+    name=${assignment%%=*}
+    case "$name" in
+      XCURSOR_THEME|XCURSOR_SIZE|QML_IMPORT_PATH|QML2_IMPORT_PATH|PATH|\
+      QT_QPA_PLATFORMTHEME|GDK_BACKEND|QT_QPA_PLATFORM|\
+      QT_AUTO_SCREEN_SCALE_FACTOR|QT_WAYLAND_DISABLE_WINDOWDECORATION|\
+      ELECTRON_OZONE_PLATFORM_HINT|GSK_RENDERER|RYOKU_POLKIT_AGENT|\
+      EDITOR|VISUAL)
+        # systemctl emits shell-escaped assignments, including ANSI-C quoted
+        # values for semicolons and wildcard characters.
+        eval "export $assignment"
+        ;;
+    esac
+  done < <(systemctl --user show-environment 2>/dev/null || true)
+}
+
+# Match Hyprland's hardware policy: only force NVIDIA's VA-API and GLX paths
+# when NVIDIA drives the connected internal panel. On an AMD/Intel-driven
+# hybrid laptop Mesa must choose the decoder itself.
+connected_panel_vendor() {
+  local drm="${RYOKU_DRM_CLASS_DIR:-/sys/class/drm}" connector card
+  for connector in "$drm"/card*-eDP-* "$drm"/card*-LVDS-* "$drm"/card*-DSI-*; do
+    [[ -r $connector/status ]] || continue
+    [[ $(<"$connector/status") == connected ]] || continue
+    card=${connector%-*}
+    card=${card%-*}
+    [[ -r $card/device/vendor ]] || continue
+    cat "$card/device/vendor"
+    return 0
+  done
+  return 1
+}
+
+apply_panel_gpu_environment() {
+  local nvidia="${RYOKU_NVIDIA_VERSION_PATH:-/proc/driver/nvidia/version}" vendor=""
+  [[ -r $nvidia ]] || return 0
+  vendor=$(connected_panel_vendor 2>/dev/null || true)
+  case "$vendor" in
+    0x8086|0x1002) return 0 ;;
+  esac
+  export LIBVA_DRIVER_NAME=nvidia
+  export NVD_BACKEND=direct
+  export __GLX_VENDOR_LIBRARY_NAME=nvidia
+  export __GL_GSYNC_ALLOWED=0
+  export __GL_VRR_ALLOWED=0
+}
+
 # A 2D-only virtual display exposes a KMS card but no render node. Mesa's
 # device-selected GBM path does not fall back to llvmpipe by itself, so the
 # compositor can map a grey output while every accelerated client fails to
@@ -50,6 +105,9 @@ warn_nvidia_driver_mismatch() {
     "graphics driver was updated from $loaded to $installed; the computer must restart to finish the update" ||
     true
 }
+
+import_session_environment
+apply_panel_gpu_environment
 
 if needs_software_renderer; then
   export LIBGL_ALWAYS_SOFTWARE=1

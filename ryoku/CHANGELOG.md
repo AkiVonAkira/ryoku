@@ -227,6 +227,17 @@
   back; and the width preset joins the existing window controls. Display state
   includes connector identity and modes, mirroring and HDR, while screen-off,
   wake and per-monitor power use Wayfire's output-power protocol.
+- **Wayfire now carries the complete session contract.** qylock can acquire the
+  compositor's secure session lock; Ryoku's idle timers can lock, suspend and
+  power displays without a competing Wayfire screensaver; launched apps inherit
+  the same cursor, Qt, GTK, QML and PATH environment as user services, including
+  panel-vendor-safe NVIDIA video hints; activation, GTK protocol hints and
+  shortcut inhibition are live; XWayland and the shared ten-workspace tiling
+  model are explicit. Screenshots and screen sharing use the wlroots portal
+  backend instead of the GNOME backend, which depends on Mutter's unavailable
+  screencast service (`wayfire/wayfire.ini`, `wayfire/wayfire-portals.conf`,
+  `lockscreen/sddm/ryoku-wayland-session`,
+  `../release/packages/ryoku-desktop-wayfire/`).
 - **Wayfire desktop settings now reach the compositor.** The provider applies
   the ten-workspace tiled grid, inner and outer gaps, baseline window opacity,
   complete keyboard, pointer and touchpad values, app roles, session
