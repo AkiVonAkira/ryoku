@@ -12,17 +12,15 @@ set -euo pipefail
   exit 2
 }
 
-# Pacman keeps its full-sync transaction so installing against stale databases
-# cannot create a partial upgrade. Other managers install translated catalogue
-# packages through the host seam. `--needed` is pacman spelling; the native
-# host implementations already skip packages that are present.
-manager=$(ryoku-host pkgmgr 2>/dev/null || true)
-if [[ -n $manager && $manager != pacman ]]; then
-  packages=()
-  for arg in "$@"; do
-    [[ $arg == --needed ]] || packages+=("$arg")
-  done
-  ((${#packages[@]})) || exit 0
-  exec sudo ryoku-host pkg install "${packages[@]}"
-fi
-exec sudo pacman -Syu --needed --noconfirm "$@"
+# Every manager installs through the host seam. Pacman asks for its full-sync
+# transaction so installing against stale databases cannot create a partial
+# upgrade. `--needed` is pacman spelling; the host seam already skips packages
+# that are present.
+packages=()
+for arg in "$@"; do
+  [[ $arg == --needed ]] || packages+=("$arg")
+done
+((${#packages[@]})) || exit 0
+upgrade=()
+[[ $(ryoku-host pkgmgr 2>/dev/null || true) == pacman ]] && upgrade=(--upgrade)
+exec sudo ryoku-host pkg install "${upgrade[@]}" "${packages[@]}"
