@@ -23,6 +23,13 @@ for finer detail.
   `mesa` already carries, so AMD GPUs record the screen and decode video in
   hardware instead of on the CPU. Existing Void boxes pick them up on their
   next update.
+- `ryoku-shell` now depends on `inotify-tools` on every edition. Without it
+  the python bar style respawned its settings watcher thousands of times a
+  second.
+- Fedora installs now get `pulseaudio-utils` (`pactl`, used by the doctor's
+  audio route check) and `NetworkManager-wifi`, which Arch's `libpulse` and
+  `networkmanager` already carry, so Fedora Server and minimal spins have wifi
+  in the bar. Existing Fedora boxes pick them up on their next update.
 - The doctor's reverse-PRIME warning (#270, a black panel after login on a
   hybrid-GPU laptop) now also fires when a forced or drifted GPU render pin
   coexists with a stored hybrid or passthrough choice, which previously
