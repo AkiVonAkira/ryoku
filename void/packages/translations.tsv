@@ -243,6 +243,8 @@ wireless-regdb	wireless-regdb	desktop
 wireplumber	wireplumber	desktop	
 wl-clip-persist	wl-clip-persist	desktop	
 wl-clipboard	wl-clipboard	desktop	
+wlopm	-	wayfire	Void ships Wayfire 0.11, but the Ryoku provider and depthdeck variant are not packaged or VM-verified.
+wlr-randr	-	wayfire	Void ships Wayfire 0.11, but the Ryoku provider and depthdeck variant are not packaged or VM-verified.
 wlsunset	wlsunset	desktop	
 wpa_supplicant	wpa_supplicant	desktop	
 wtype	wtype	desktop	
@@ -250,6 +252,7 @@ xcb-util-cursor	xcb-util-cursor	desktop
 xdg-desktop-portal-gnome	xdg-desktop-portal-gnome	desktop	
 xdg-desktop-portal-gtk	xdg-desktop-portal-gtk	desktop	
 xdg-desktop-portal-hyprland	-	hyprland	Hyprland is not packaged on Void.
+xdg-desktop-portal-wlr	-	wayfire	Void ships Wayfire 0.11, but the Ryoku provider and depthdeck variant are not packaged or VM-verified.
 xdg-user-dirs	xdg-user-dirs	desktop	
 xdg-utils	xdg-utils	desktop	
 xorg-xcursorgen	xcursorgen	desktop	
