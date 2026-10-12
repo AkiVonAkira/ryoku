@@ -164,6 +164,10 @@
   `internal/sys/release.go`, `internal/updater/release.go`).
 
 ### Fixed
+- **NVIDIA driver updates now warn before a black-screen login.** Doctor
+  compares the loaded module with the version installed for the running kernel,
+  and a completed update tells the user to restart before logging out when they
+  differ.
 - **Doctor repairs login entries that are missing their Ryoku desktop
   variant.** It installs the coinstallable variant before config materializes,
   so a separately installed compositor receives the shell, wallpaper, and

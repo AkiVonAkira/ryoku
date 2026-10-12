@@ -373,6 +373,9 @@ func reconcilers() []reconciler {
 		{pendingConfigCheckName(), reconcilePacnew},
 		{i18n.T("orphaned packages"), reconcileOrphans},
 	}...)
+	if check, ok := nvidiaRestartCheck(); ok {
+		checks = append(checks, check)
+	}
 	return checks
 }
 

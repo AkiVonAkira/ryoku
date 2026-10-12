@@ -712,10 +712,66 @@ func runFlatpakUpgrade() error {
 		[]string{"flatpak", "update", "--noninteractive", "--assumeyes"})
 }
 
+const nvidiaModuleVersionPath = "/sys/module/nvidia/version"
+
+// NvidiaRestartStatus is the version pair that decides whether newly installed
+// NVIDIA userspace can still talk to the module loaded by the running kernel.
+type NvidiaRestartStatus struct {
+	Present   bool
+	Loaded    string
+	Installed string
+	Pending   bool
+}
+
+// DetectNvidiaRestart keeps the filesystem and command probes injectable for
+// doctor and updater tests. A missing loaded module or a failed modinfo lookup
+// is unknown, never a restart warning.
+func DetectNvidiaRestart(readFile func(string) ([]byte, error), installedVersion func() (string, error)) NvidiaRestartStatus {
+	raw, err := readFile(nvidiaModuleVersionPath)
+	if err != nil {
+		return NvidiaRestartStatus{}
+	}
+	loaded := strings.TrimSpace(string(raw))
+	if loaded == "" {
+		return NvidiaRestartStatus{}
+	}
+	status := NvidiaRestartStatus{Present: true, Loaded: loaded}
+	installed, err := installedVersion()
+	if err != nil {
+		return status
+	}
+	status.Installed = strings.TrimSpace(installed)
+	status.Pending = status.Installed != "" && status.Installed != status.Loaded
+	return status
+}
+
+// InstalledNvidiaModuleVersion asks kmod for the nvidia module installed for
+// the running kernel, which is the module the next login will try to load.
+func InstalledNvidiaModuleVersion() (string, error) {
+	out, err := exec.Command("modinfo", "-F", "version", "nvidia").Output()
+	return string(out), err
+}
+
+var updateNvidiaRestartStatus = func() NvidiaRestartStatus {
+	return DetectNvidiaRestart(os.ReadFile, InstalledNvidiaModuleVersion)
+}
+
+// NvidiaRestartNotice is shared by doctor's warning and the update completion
+// result so both surfaces give the same instruction.
+func NvidiaRestartNotice(status NvidiaRestartStatus) string {
+	if !status.Pending {
+		return ""
+	}
+	return fmt.Sprintf(i18n.T("The graphics driver was updated from %s to %s; restart the computer before logging out, or the next login opens on a black screen."), status.Loaded, status.Installed)
+}
+
 // finishRun publishes the terminal "done" state. A terminal run holds it
 // briefly so a watching Hub catches the completion, then clears it; a
 // Hub-driven run leaves it for the Hub to show until the user dismisses it.
 func finishRun() error {
+	if notice := NvidiaRestartNotice(updateNvidiaRestartStatus()); notice != "" {
+		progress.logf("%s", notice)
+	}
 	progress.finish()
 	if updateUI() == "hub" {
 		return nil
