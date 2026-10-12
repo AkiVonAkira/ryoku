@@ -172,7 +172,11 @@ func (m *managedProcess) refreshIfStale() {
 
 // The daemon spawns quickshell itself and a session does not always export these paths.
 func pickerImportDirs() string {
-	dirs := []string{filepath.Join(home(), ".local", "lib", "qt6", "qml"), "/usr/lib/qt6/qml"}
+	dirs := []string{
+		filepath.Join(home(), ".local", "lib", "qt6", "qml"),
+		"/usr/lib/qt6/qml",
+		"/usr/lib64/qt6/qml",
+	}
 	return strings.Join(dirs, string(os.PathListSeparator))
 }
 

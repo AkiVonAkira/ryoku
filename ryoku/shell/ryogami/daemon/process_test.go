@@ -1,10 +1,25 @@
 package main
 
 import (
+	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestPickerImportDirsCoverSystemLibdirs(t *testing.T) {
+	dirs := strings.Split(pickerImportDirs(), string(os.PathListSeparator))
+	have := make(map[string]bool, len(dirs))
+	for _, dir := range dirs {
+		have[dir] = true
+	}
+	for _, want := range []string{"/usr/lib/qt6/qml", "/usr/lib64/qt6/qml"} {
+		if !have[want] {
+			t.Errorf("picker import dirs %q do not include %q", dirs, want)
+		}
+	}
+}
 
 func TestConcurrentEagerLaunchAndEnsurePreserveOpenRequest(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
