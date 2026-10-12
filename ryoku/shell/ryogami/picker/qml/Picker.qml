@@ -141,6 +141,10 @@ PanelWindow {
             settings: Settings
             mode: pickerState.mode
             active: picker.shown
+            previewAllowed: picker.shown && pickerState.sheet === "" && !pickerState.searchOpen
+                && !pickerState.multipickerOpen && !pickerState.helpOpen
+                && !pickerState.themeBarOpen && !pickerState.riceWorkshopOpen
+                && pickerState.riceShare === ""
             interactive: pickerState.sheet === "" && !pickerState.multipickerOpen
                 && !pickerState.helpOpen && !pickerState.riceWorkshopOpen
                 && pickerState.riceShare === ""
