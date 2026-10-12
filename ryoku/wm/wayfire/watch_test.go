@@ -37,7 +37,7 @@ func stageReplies() map[string]string {
 			"geometry":{"x":-1107,"y":0,"width":934,"height":720},
 			"bbox":{"x":-1107,"y":0,"width":934,"height":720},
 			"output-id":1,"output-name":"HEADLESS-1",
-			"last-focus-timestamp":1241198347800739,"mapped":true,
+			"last-focus-timestamp":1241198347800739,"mapped":true,"role":"toplevel",
 			"tiled-edges":0,"fullscreen":false,"minimized":false,
 			"activated":false,"sticky":false,"wset-index":1}]`,
 		"window-rules/get-focused-output": `{"result":"ok","info":{"id":1,"name":"HEADLESS-1"}}`,
@@ -46,7 +46,7 @@ func stageReplies() map[string]string {
 			"geometry":{"x":-1107,"y":0,"width":934,"height":720},
 			"bbox":{"x":-1107,"y":0,"width":934,"height":720},
 			"output-id":1,"output-name":"HEADLESS-1",
-			"last-focus-timestamp":1241198347800739,"mapped":true,
+			"last-focus-timestamp":1241198347800739,"mapped":true,"role":"toplevel",
 			"tiled-edges":0,"fullscreen":false,"minimized":false,
 			"activated":false,"sticky":false,"wset-index":1}}`,
 		"wayfire/get-keyboard-state":  `{"possible-layouts":["us","br"],"layout":"us"}`,
@@ -105,7 +105,7 @@ func TestViewFocusedClearsOthers(t *testing.T) {
 		{ID: 1, Activated: true, LastFocusTimestamp: 500},
 		{ID: 2, LastFocusTimestamp: 100},
 	}}
-	frame := json.RawMessage(`{"event":"view-focused","view":{"id":2,"activated":true,"last-focus-timestamp":900}}`)
+	frame := json.RawMessage(`{"event":"view-focused","view":{"id":2,"activated":true,"last-focus-timestamp":900,"mapped":true,"role":"toplevel"}}`)
 	emit, got := collect()
 	s.apply("view-focused", frame, emit, allFrames)
 
@@ -166,5 +166,65 @@ func TestRefreshReplacesStage(t *testing.T) {
 	}
 	if len(*got) != 4 {
 		t.Errorf("refresh emitted %d frames, want outputs+workspaces+windows+focus", len(*got))
+	}
+}
+
+// list-views carries the shell's own layer surfaces and unmanaged X11 popups
+// beside real windows. Counting them made the dock see itself as a window and
+// rebuild in a loop, so only mapped toplevels may reach the window frame or the
+// workspace occupancy.
+func TestShellSurfacesAreNotWindows(t *testing.T) {
+	r := stageReplies()
+	r["window-rules/list-views"] = `[
+		{"id":7,"app-id":"kitty","title":"term","role":"toplevel","type":"toplevel","mapped":true,
+		 "bbox":{"x":-1107,"y":0,"width":934,"height":720},"output-name":"HEADLESS-1","output-id":1,"wset-index":1},
+		{"id":20,"app-id":"qs-dock","title":"layer-shell","role":"desktop-environment","type":"panel","layer":"top","mapped":true,
+		 "geometry":{"x":0,"y":0,"width":1280,"height":720},"output-name":"HEADLESS-1","output-id":1,"wset-index":-1},
+		{"id":3,"app-id":"nil","title":"nil","role":"unmanaged","type":"unmanaged","mapped":false,
+		 "output-id":4294967295,"wset-index":-1}]`
+	stubRequest(t, r)
+	s, err := readStage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wins := s.windowFrame()
+	if len(wins) != 1 || wins[0].ID != "7" {
+		t.Fatalf("windows = %+v, want only the kitty toplevel", wins)
+	}
+	total := 0
+	for _, ws := range s.workspaceFrame() {
+		total += ws.Windows
+	}
+	if total != 1 {
+		t.Errorf("workspace occupancy sums to %d, want 1", total)
+	}
+}
+
+func TestShellSurfaceEventsEmitNothing(t *testing.T) {
+	s := &stage{views: []wayfireView{{ID: 7, Mapped: true, Role: "toplevel", Activated: true}}}
+	emit, got := collect()
+	dock := `{"id":2302,"app-id":"qs-dock","title":"layer-shell","role":"desktop-environment","mapped":true}`
+	for _, name := range []string{"view-mapped", "view-geometry-changed", "view-focused", "view-unmapped"} {
+		s.apply(name, json.RawMessage(`{"event":"`+name+`","view":`+dock+`}`), emit, allFrames)
+	}
+	if len(*got) != 0 {
+		t.Errorf("shell surface events emitted %d frames, want none", len(*got))
+	}
+	if len(s.views) != 1 || !s.views[0].Activated {
+		t.Errorf("held windows changed: %+v", s.views)
+	}
+}
+
+func TestChangedOnlyDropsRepeats(t *testing.T) {
+	next, got := collect()
+	emit := changedOnly(next)
+	win := wm.Frame{Kind: wm.FrameWindows, Windows: []wm.Window{{ID: "7"}}}
+	emit(win)
+	emit(win)
+	emit(wm.Frame{Kind: wm.FrameReady})
+	emit(wm.Frame{Kind: wm.FrameReady})
+	emit(wm.Frame{Kind: wm.FrameWindows, Windows: []wm.Window{{ID: "7"}, {ID: "9"}}})
+	if len(*got) != 4 {
+		t.Errorf("forwarded %d frames, want windows, ready, ready, windows", len(*got))
 	}
 }

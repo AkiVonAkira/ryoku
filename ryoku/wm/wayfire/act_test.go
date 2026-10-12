@@ -727,9 +727,9 @@ func TestDirectionalWindowActs(t *testing.T) {
 	replies := func() map[string]string {
 		r := stageReplies()
 		r["window-rules/list-views"] = `[{"id":7,"bbox":{"x":-1107,"y":0,"width":934,"height":720},
-			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"minimized":false,"wset-index":1,"last-focus-timestamp":100},
+			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"role":"toplevel","minimized":false,"wset-index":1,"last-focus-timestamp":100},
 			{"id":9,"bbox":{"x":-500,"y":-100,"width":934,"height":720},
-			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"minimized":false,"wset-index":1,"last-focus-timestamp":200}]`
+			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"role":"toplevel","minimized":false,"wset-index":1,"last-focus-timestamp":200}]`
 		return r
 	}
 
@@ -799,7 +799,7 @@ func TestDirectionalGeometryActs(t *testing.T) {
 	half := func() map[string]string {
 		r := stageReplies()
 		r["window-rules/get-focused-view"] = `{"result":"ok","info":{"id":7,"bbox":{"x":-1107,"y":0,"width":934,"height":300},
-			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"minimized":false,"wset-index":1,"last-focus-timestamp":100}}`
+			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"role":"toplevel","minimized":false,"wset-index":1,"last-focus-timestamp":100}}`
 		return r
 	}
 
@@ -842,7 +842,7 @@ func TestDirectionalGeometryActs(t *testing.T) {
 	t.Run("resize shorter keeps a usable floor", func(t *testing.T) {
 		r := stageReplies()
 		r["window-rules/get-focused-view"] = `{"result":"ok","info":{"id":7,"bbox":{"x":-1107,"y":0,"width":934,"height":40},
-			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"minimized":false,"wset-index":1,"last-focus-timestamp":100}}`
+			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"role":"toplevel","minimized":false,"wset-index":1,"last-focus-timestamp":100}}`
 		calls := stubAct(t, r)
 		if err := runAct([]string{"window.resizeBy", "shorter"}); err != nil {
 			t.Fatal(err)
@@ -871,7 +871,7 @@ func TestDirectionalGeometryActs(t *testing.T) {
 	t.Run("preset height wraps back to full", func(t *testing.T) {
 		r := stageReplies()
 		r["window-rules/get-focused-view"] = `{"result":"ok","info":{"id":7,"bbox":{"x":-1107,"y":0,"width":934,"height":360},
-			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"minimized":false,"wset-index":1,"last-focus-timestamp":100}}`
+			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"role":"toplevel","minimized":false,"wset-index":1,"last-focus-timestamp":100}}`
 		calls := stubAct(t, r)
 		if err := runAct([]string{"window.presetHeight"}); err != nil {
 			t.Fatal(err)
@@ -883,7 +883,7 @@ func TestDirectionalGeometryActs(t *testing.T) {
 	t.Run("preset first gives the full height and slides up", func(t *testing.T) {
 		r := stageReplies()
 		r["window-rules/get-focused-view"] = `{"result":"ok","info":{"id":7,"bbox":{"x":-1107,"y":100,"width":934,"height":300},
-			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"minimized":false,"wset-index":1,"last-focus-timestamp":100}}`
+			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"role":"toplevel","minimized":false,"wset-index":1,"last-focus-timestamp":100}}`
 		calls := stubAct(t, r)
 		if err := runAct([]string{"window.presetHeight", "first"}); err != nil {
 			t.Fatal(err)
@@ -963,9 +963,9 @@ func TestDirectionalScreenActs(t *testing.T) {
 	}
 	onHDMI := func(r map[string]string) {
 		r["window-rules/list-views"] = `[{"id":7,"bbox":{"x":0,"y":0,"width":934,"height":720},
-			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"minimized":false,"wset-index":1,"last-focus-timestamp":100},
+			"output-name":"HEADLESS-1","output-id":1,"mapped":true,"role":"toplevel","minimized":false,"wset-index":1,"last-focus-timestamp":100},
 			{"id":9,"bbox":{"x":1400,"y":10,"width":400,"height":300},
-			"output-name":"HDMI-A-1","output-id":2,"mapped":true,"minimized":false,"wset-index":2,"last-focus-timestamp":500}]`
+			"output-name":"HDMI-A-1","output-id":2,"mapped":true,"role":"toplevel","minimized":false,"wset-index":2,"last-focus-timestamp":500}]`
 	}
 
 	t.Run("focus lands on the last window the neighbour held", func(t *testing.T) {

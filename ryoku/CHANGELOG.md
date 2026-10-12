@@ -213,6 +213,12 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Wayfire no longer counts the shell's own panels as windows.** The
+  provider reported every layer-shell surface (bar, dock, backdrop) as an open
+  window, so the dock saw itself on the workspace and rebuilt several times a
+  second: a flickering dock and a pegged shell. Only real application windows
+  reach the window list now, and the event stream skips frames that did not
+  change (`wm/wayfire/frames.go`, `wm/wayfire/watch.go`).
 - **Scrolling layouts switch workspaces without exposing hidden columns.** The
   generated Hyprland animation override replaces workspace translation with a
   fade while scrolling is active, keeping the Hub's workspace timing and curve

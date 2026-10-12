@@ -63,12 +63,23 @@ type wayfireView struct {
 	OutputName         string          `json:"output-name"`
 	LastFocusTimestamp int64           `json:"last-focus-timestamp"`
 	Mapped             bool            `json:"mapped"`
+	Role               string          `json:"role"`
 	TiledEdges         int             `json:"tiled-edges"`
 	Fullscreen         bool            `json:"fullscreen"`
 	Minimized          bool            `json:"minimized"`
 	Activated          bool            `json:"activated"`
 	Sticky             bool            `json:"sticky"`
 	WsetIndex          int64           `json:"wset-index"`
+}
+
+// isWindow keeps the seam's window list to application windows. list-views
+// and the view events also carry every layer-shell surface (role
+// "desktop-environment": the shell's own bar, dock and backdrop) and unmanaged
+// X11 popups. Reporting those as windows made the shell count its own dock as
+// a window on the workspace, react by rebuilding the dock, and see that as yet
+// another window change: a loop that recreated the dock several times a second.
+func (v wayfireView) isWindow() bool {
+	return v.Mapped && v.Role == "toplevel"
 }
 
 type wayfireKeyboard struct {
@@ -145,9 +156,15 @@ func readViews() ([]wayfireView, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out []wayfireView
-	if err := json.Unmarshal(raw, &out); err != nil {
+	var all []wayfireView
+	if err := json.Unmarshal(raw, &all); err != nil {
 		return nil, fmt.Errorf("wayfire list-views: bad reply %q", string(raw))
+	}
+	out := all[:0]
+	for _, v := range all {
+		if v.isWindow() {
+			out = append(out, v)
+		}
 	}
 	return out, nil
 }
@@ -203,7 +220,9 @@ func readFocusedOutput() (string, error) {
 
 // readFocusedView answers the window the seat is on, in the same "info"
 // envelope. No window focused reads as absent rather than as a failure: an
-// empty desktop is a state, and the act decides whether it can proceed.
+// empty desktop is a state, and the act decides whether it can proceed. A
+// shell surface holding keyboard focus (the launcher, a panel) is not a
+// window either, so window acts never land on the shell itself.
 func readFocusedView() (wayfireView, bool, error) {
 	raw, err := request("window-rules/get-focused-view", nil)
 	if err != nil {
@@ -222,7 +241,7 @@ func readFocusedView() (wayfireView, bool, error) {
 	if err := json.Unmarshal(reply.Info, &v); err != nil {
 		return wayfireView{}, false, fmt.Errorf("wayfire get-focused-view: bad info %q", string(reply.Info))
 	}
-	return v, true, nil
+	return v, v.isWindow(), nil
 }
 
 func readKeyboard() (wayfireKeyboard, error) {

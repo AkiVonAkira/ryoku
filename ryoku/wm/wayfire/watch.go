@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,13 +43,13 @@ func runWatch(args []string) error {
 
 func streamWatch(wants func(wm.FrameKind) bool) error {
 	enc := json.NewEncoder(stdout)
-	emit := func(f wm.Frame) {
+	emit := changedOnly(func(f wm.Frame) {
 		// Flush per frame: the consumer is a live shell, and an unflushed focus
 		// frame is a bar that never updates.
 		if enc.Encode(f) != nil || stdout.Flush() != nil {
 			os.Exit(0)
 		}
-	}
+	})
 
 	for {
 		conn, err := dialWatch()
@@ -59,6 +60,25 @@ func streamWatch(wants func(wm.FrameKind) bool) error {
 		consume(conn, emit, wants)
 		_ = conn.Close()
 		time.Sleep(reconnectBackoff)
+	}
+}
+
+// changedOnly drops a frame identical to the last one of its kind. wayfire
+// reports every geometry and focus nudge, most of which leave the rendered
+// frame unchanged, and the shell rebuilds its models on every frame it reads,
+// so only a real change is worth a line. Ready always passes.
+func changedOnly(next func(wm.Frame)) func(wm.Frame) {
+	last := map[wm.FrameKind][]byte{}
+	return func(f wm.Frame) {
+		b, err := json.Marshal(f)
+		if err != nil {
+			return
+		}
+		if f.Kind != wm.FrameReady && bytes.Equal(last[f.Kind], b) {
+			return
+		}
+		last[f.Kind] = b
+		next(f)
 	}
 }
 
@@ -184,12 +204,30 @@ func (s *stage) pollKeyboard(emit func(wm.Frame), wants func(wm.FrameKind) bool)
 // idempotent upserts keyed by view id, so an event queued behind the replay
 // re-states what the query already knew instead of corrupting it.
 func (s *stage) apply(name string, frame []byte, emit func(wm.Frame), wants func(wm.FrameKind) bool) {
+	if isViewEvent(name) {
+		var e struct {
+			View wayfireView `json:"view"`
+		}
+		if json.Unmarshal(frame, &e) != nil {
+			return
+		}
+		if name != "view-unmapped" && !e.View.isWindow() {
+			// A shell surface or an unmanaged popup: no window changed,
+			// unless a view this stage held as a window stopped being one.
+			if s.holds(e.View.ID) {
+				s.removeView(e.View.ID)
+				s.emitWindows(emit, wants)
+				s.emitWorkspaces(emit, wants)
+			}
+			return
+		}
+	}
 	switch name {
 	case "view-unmapped":
 		var e struct {
 			View wayfireView `json:"view"`
 		}
-		if json.Unmarshal(frame, &e) == nil {
+		if json.Unmarshal(frame, &e) == nil && s.holds(e.View.ID) {
 			s.removeView(e.View.ID)
 			s.emitWindows(emit, wants)
 			s.emitWorkspaces(emit, wants)
@@ -276,6 +314,26 @@ func (s *stage) upsert(v wayfireView) {
 		}
 	}
 	s.views = append(s.views, v)
+}
+
+func isViewEvent(name string) bool {
+	switch name {
+	case "view-unmapped", "view-focused", "view-mapped",
+		"view-geometry-changed", "view-title-changed", "view-app-id-changed",
+		"view-minimized", "view-fullscreen", "view-sticky", "view-always-on-top",
+		"view-tiled", "view-set-output", "view-wset-changed", "view-workspace-changed":
+		return true
+	}
+	return false
+}
+
+func (s *stage) holds(id int64) bool {
+	for _, v := range s.views {
+		if v.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *stage) removeView(id int64) {
