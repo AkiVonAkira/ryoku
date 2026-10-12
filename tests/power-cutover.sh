@@ -571,6 +571,9 @@ if [[ $name == systemd-run ]]; then
     : >"${*: -1}"
   elif [[ $* == *ryoku-qylock-cutover-wait* ]]; then
     printf 'systemd-run qylock-wait\n' >>"$CUTOVER_LOG"
+    if [[ -n ${QYLOCK_WAITER_PATH_LOG:-} ]]; then
+      printf '%s\n' "${*: -2:1}" >"$QYLOCK_WAITER_PATH_LOG"
+    fi
   elif [[ $* == *ryoku-idle*" start" ]]; then
     printf 'systemd-run idle-daemon\n' >>"$CUTOVER_LOG"
     : >"$CUTOVER_STATE/idle-unit"
@@ -719,6 +722,26 @@ env -i XDG_SESSION_ID=9 XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-test \
 session_env_pid=$!
 printf '%s\n' "$session_env_pid" >"$tmp/cgroup/test.scope/cgroup.procs"
 export RYOKU_CGROUP_ROOT="$tmp/cgroup"
+
+# A deferred qylock handoff must not execute through the transaction's /run
+# copy: package cleanup unlinks that copy as soon as this scheduling call
+# returns. Replacing any prior transient also adopts units left by old builds.
+cp "$helper" "$tmp/staged-cutover-helper"
+cp "$helper" "$tmp/installed-cutover-helper"
+chmod +x "$tmp/staged-cutover-helper" "$tmp/installed-cutover-helper"
+: >"$tmp/calls"
+QYLOCK_WAITER_PATH_LOG="$tmp/qylock-waiter-path" \
+  CUTOVER_LOG="$tmp/calls" CUTOVER_STATE="$tmp/state" \
+  RYOKU_CUTOVER_RUNTIME_HELPER="$tmp/staged-cutover-helper" \
+  RYOKU_CUTOVER_INSTALLED_HELPER="$tmp/installed-cutover-helper" \
+  PATH="$tmp/bin:$PATH" \
+  bash -c 'source "$1"; schedule_qylock_cutover' _ "$tmp/staged-cutover-helper"
+[[ $(<"$tmp/qylock-waiter-path") == "$tmp/installed-cutover-helper" ]] ||
+  fail "deferred qylock cutover depended on the staged transaction helper"
+grep -qxF \
+  'systemctl --user stop ryoku-qylock-cutover-wait.service' "$tmp/calls" ||
+  fail "deferred qylock cutover did not replace the previous waiter"
+
 
 : >"$tmp/calls"
 WM_RELOAD_UNSUPPORTED=1 CUTOVER_LOG="$tmp/calls" CUTOVER_STATE="$tmp/state" \
@@ -921,6 +944,9 @@ REQUIRE_USER_GUARD=1 CUTOVER_LOG="$tmp/calls" CUTOVER_STATE="$tmp/state" \
   || fail "successful login startup left its temporary sleep guard active"
 grep -qxF 'ryoku wm act config.reload' "$tmp/calls" \
   || fail "login startup enabled lid ownership without a successful config reload"
+grep -qxF \
+  'systemctl --user stop ryoku-qylock-cutover-wait.service' "$tmp/calls" \
+  || fail "login startup did not retire the obsolete qylock waiter"
 : >"$tmp/calls"
 : >"$tmp/state/user-guard"
 if SESSION_STATE=closing CUTOVER_LOG="$tmp/calls" CUTOVER_STATE="$tmp/state" \

@@ -53,6 +53,7 @@ qylock_generation_lock="${XDG_RUNTIME_DIR:-/tmp}/ryoku-qylock-generation.lock"
 qylock_mutation_lock="${XDG_RUNTIME_DIR:-/tmp}/ryoku-qylock-mutation.lock"
 qylock_launch_guard_unit=ryoku-qylock-launch-guard.service
 qylock_launch_guard_ready="${XDG_RUNTIME_DIR:-/tmp}/ryoku-qylock-launch-guard.ready"
+qylock_cutover_wait_unit=ryoku-qylock-cutover-wait.service
 log() { printf 'ryoku-power-cutover: %s\n' "$*"; }
 
 host_bin=${RYOKU_HOST_BIN:-ryoku-host}
@@ -491,19 +492,25 @@ wait_lock_clients() {
   done
 }
 
+retire_qylock_waiter() {
+  user_unit_stop "$qylock_cutover_wait_unit" >/dev/null 2>&1 || true
+  user_unit_reset_failed "$qylock_cutover_wait_unit" >/dev/null 2>&1 || true
+}
+
 schedule_qylock_cutover() {
-  local unit=ryoku-qylock-cutover-wait.service
-  if user_unit_active "$unit"; then
-    return 0
-  fi
-  user_unit_reset_failed "$unit" >/dev/null 2>&1 || true
+  local waiter=$self_path
+  # A package transaction removes its /run executor after the user cutover
+  # returns. The deferred unit must therefore enter through the installed path,
+  # which remains valid for its retries after the transaction has finished.
+  [[ -x $installed_helper ]] && waiter=$installed_helper
+  retire_qylock_waiter
   if [[ $init_system == systemd ]]; then
-    systemd-run --user --quiet --collect --unit="$unit" \
+    systemd-run --user --quiet --collect --unit="$qylock_cutover_wait_unit" \
       --property=Type=exec --property=TimeoutStopSec=5s \
       --property=Restart=on-failure --property=RestartSec=2s \
-      "$self_path" wait-qylock
+      "$waiter" wait-qylock
   else
-    runit_transient_start "$unit" -- "$self_path" wait-qylock
+    runit_transient_start "$qylock_cutover_wait_unit" -- "$waiter" wait-qylock
   fi
 }
 
@@ -2258,6 +2265,10 @@ start_login_session() {
           release_user_guard
         fi' EXIT
   start_user_guard
+  # A retired package executor may still be named by an older transient waiter.
+  # This login performs the same generation handoff itself, so the waiter is
+  # redundant and must not keep restarting against a removed path.
+  retire_qylock_waiter
   if ! qylock_stage_matches_installer; then
     ensure_qylock_generation_guard
     quiesce_shell_for_generation

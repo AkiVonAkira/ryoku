@@ -17,6 +17,11 @@
   headless one exits at once.
 
 ### Fixed
+- **The lockscreen cutover waiter can no longer restart forever.** It ran the
+  staged helper under /run, which the cutover retires once it finishes, so a
+  waiter left behind failed every two seconds until the next reboot. It now
+  runs the installed helper, a new waiter replaces an old one, and login
+  clears any stale waiter (`power/ryoku-power-cutover`).
 - `gpu/ryoku-gpu`: **display-only DRM cards are no longer treated as render
   GPUs.** Ranking now requires a `device/drm/renderD*` node, so KMS-only
   devices such as the Touch Bar's `appletbdrm` never enter `AQ_DRM_DEVICES`.
