@@ -121,6 +121,8 @@ func TestResolveEmitsCatalogue(t *testing.T) {
 		"vswitch.send_win_9":                                {activator: "<super> <shift> KEY_9 | <super> <shift> KEY_KP9"},
 		"vswitch.binding_10":                                {activator: "<super> KEY_0 | <super> KEY_KP0"},
 		"wm-actions.toggle_fullscreen":                      {activator: "<super> KEY_F"},
+		"simple-tile.key_toggle":                            {activator: "<super> KEY_A"},
+		"simple-tile.key_toggle_maximized":                  {activator: "<super> KEY_D", mirrorSection: "wm-actions", mirrorOption: "toggle_maximize"},
 		"fast-switcher.activate":                            {activator: "<alt> KEY_TAB"},
 		"shortcuts-inhibit.break_grab":                      {activator: "<super> <shift> KEY_ESC"},
 		"move.activate":                                     {activator: "<super> BTN_LEFT"},
@@ -142,6 +144,11 @@ func TestResolveEmitsCatalogue(t *testing.T) {
 		}
 		if want.cmd != "" && got.cmd != want.cmd {
 			t.Errorf("%s cmd = %q, want %q", option, got.cmd, want.cmd)
+		}
+		if want.mirrorOption != "" &&
+			(got.mirrorSection != want.mirrorSection || got.mirrorOption != want.mirrorOption) {
+			t.Errorf("%s mirror = [%s] %s, want [%s] %s",
+				option, got.mirrorSection, got.mirrorOption, want.mirrorSection, want.mirrorOption)
 		}
 	}
 
@@ -178,6 +185,39 @@ func TestResolveEmitsCatalogue(t *testing.T) {
 	for _, u := range report {
 		if strings.Contains(u.Reason, "already taken") {
 			t.Errorf("a clean default store must not lose a claim: %v", u)
+		}
+	}
+}
+
+func TestTiledAndFloatingNativeBindsStayTogether(t *testing.T) {
+	values := func(s wayfireStore) map[string]string {
+		d := &iniDoc{}
+		applyBinds(d, s)
+		out := map[string]string{}
+		for _, section := range d.sections {
+			for _, key := range section.keys {
+				out[section.name+"."+key.name] = key.value
+			}
+		}
+		return out
+	}
+
+	got := values(defaultStore())
+	if got["simple-tile.key_toggle"] != "<super> KEY_A" {
+		t.Errorf("float toggle = %q, want simple-tile's native attach/detach bind", got["simple-tile.key_toggle"])
+	}
+	for _, option := range []string{"simple-tile.key_toggle_maximized", "wm-actions.toggle_maximize"} {
+		if got[option] != "<super> KEY_D" {
+			t.Errorf("%s = %q, want the shared tiled/floating maximize chord", option, got[option])
+		}
+	}
+
+	unbound := defaultStore()
+	unbound.Unbinds = []string{"SUPER + D"}
+	got = values(unbound)
+	for _, option := range []string{"simple-tile.key_toggle_maximized", "wm-actions.toggle_maximize"} {
+		if got[option] != "" {
+			t.Errorf("unbound %s = %q, want both maximize handlers disabled", option, got[option])
 		}
 	}
 }
@@ -318,7 +358,7 @@ func TestNativeBindPluginsShip(t *testing.T) {
 	}
 	d := parseIni(raw)
 	plugins, _ := d.get("core", "plugins")
-	for _, plugin := range []string{"command", "fast-switcher", "grid", "move", "resize", "shortcuts-inhibit", "vswitch", "wm-actions", "wsets", "zoom"} {
+	for _, plugin := range []string{"command", "fast-switcher", "grid", "move", "resize", "shortcuts-inhibit", "simple-tile", "vswitch", "wm-actions", "wsets", "zoom"} {
 		if !containsField(plugins, plugin) {
 			t.Errorf("core.plugins = %q; missing %s for a shipped bind", plugins, plugin)
 		}
@@ -372,6 +412,12 @@ func TestBindRowsCatalogueAndExclusives(t *testing.T) {
 	if r := byID["window.resize"]; r.Unhonored != "" || r.Label != "Step window width" ||
 		!strings.Contains(r.Hint, "full") {
 		t.Errorf("Wayfire width preset row = %+v", r)
+	}
+	if r := byID["window.float"]; r.Unhonored != "" || !r.Rebindable {
+		t.Errorf("window.float must expose simple-tile's native attach/detach toggle: %+v", r)
+	}
+	if r := byID["column.maximize"]; r.Unhonored != "" || !r.Rebindable {
+		t.Errorf("column.maximize must cover tiled and floating views: %+v", r)
 	}
 	if r := byID["workspace.focus"]; r.Chord != "SUPER + {n}" || !r.Rebindable {
 		t.Errorf("workspace.focus keeps the ten-member family chord: %+v", r)

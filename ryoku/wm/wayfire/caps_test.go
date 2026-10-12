@@ -128,13 +128,13 @@ func TestSpecialWorkspaceCapabilityNeedsLoadedWsets(t *testing.T) {
 	})
 }
 
-// wayfire watches its own config file with inotify, so a configReload claim
-// would offer a reload button with nothing behind it. The reload path is the
-// write itself.
-func TestDeniesConfigReload(t *testing.T) {
+// Deploy replaces the config directory, so Wayfire must expose an imperative
+// reload that reopens the configured path instead of trusting the old inotify
+// inode.
+func TestClaimsConfigReload(t *testing.T) {
 	c := wm.Caps{Supports: capsManifest}
-	if c.Has(wm.CapConfigReload) {
-		t.Error("wayfire must not claim configReload: it reloads its config itself")
+	if !c.Has(wm.CapConfigReload) {
+		t.Error("wayfire must claim configReload: deploy swaps the watched config directory")
 	}
 }
 

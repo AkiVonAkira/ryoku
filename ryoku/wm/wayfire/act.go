@@ -83,8 +83,24 @@ func runAct(args []string) error {
 		if err != nil {
 			return err
 		}
-		// configure-view takes one edge set and has no split to pick, so the
-		// toggle swaps free floating against the full-workspace tile.
+		st, err := tileStage(view)
+		if err != nil {
+			return err
+		}
+		target, layout, ok, err := readSimpleTileLayout(st, view)
+		if err != nil {
+			return err
+		}
+		if ok {
+			if layout.removeView(id) {
+				return setSimpleTileLayout(target, layout)
+			}
+			layout.appendView(id)
+			return setSimpleTileLayout(target, layout)
+		}
+		// An older simple-tile without layout IPC keeps the old floating/full
+		// tile fallback. Wayfire 0.11 uses the layout path above so managed
+		// views detach and reattach instead of having their geometry reverted.
 		edges := 0
 		if view.TiledEdges == 0 {
 			edges = 15
@@ -412,6 +428,11 @@ func runAct(args []string) error {
 			"output:" + conn + "/mode": mode,
 		})
 
+	case wm.ActionConfigReload:
+		// Deploy replaces the config directory, which leaves Wayfire's
+		// inotify watch attached to the old inode. The compositor's reload
+		// method reopens the configured path; optional scopes are harmless.
+		return perform("wayfire/reload-config-metadata", map[string]any{})
 	case wm.ActionCursorReassert:
 		// apply writes the config and wayfire's reload picks the theme up;
 		// there is no imperative call to make before that path exists.
@@ -818,9 +839,355 @@ func focusAtEdge(act wm.Action, edge string) error {
 	return perform("window-rules/focus-view", map[string]any{"id": best.ID})
 }
 
-// moveFocusedBy slides the window an eighth of the screen that way, clamped
-// inside its own cell: one press is one keyboard step, never a jump into the
-// neighbouring cell. The slide clears the snap, the way a drag does.
+// simple-tile/get-layout publishes the geometry and relative size of every
+// leaf. set-layout accepts the same tree shape without geometry, with a weight
+// on each child. Keeping that conversion here makes every tiled geometry act
+// use the plugin's own tree instead of sending a configure request it ignores.
+type simpleTileWorkspace struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+type simpleTileTarget struct {
+	Workspace simpleTileWorkspace `json:"workspace"`
+	WsetIndex int64               `json:"wset-index"`
+}
+
+type simpleTileLayoutNode struct {
+	Percent    float64                `json:"percent"`
+	Geometry   wayfireGeometry        `json:"geometry"`
+	ViewID     *int64                 `json:"view-id"`
+	Horizontal []simpleTileLayoutNode `json:"horizontal-split"`
+	Vertical   []simpleTileLayoutNode `json:"vertical-split"`
+}
+
+type simpleTileSplit struct {
+	children *[]simpleTileLayoutNode
+	index    int
+}
+
+func tileStage(view wayfireView) (*stage, error) {
+	outputs, err := readOutputs()
+	if err != nil {
+		return nil, err
+	}
+	wsets, err := readWsets()
+	if err != nil {
+		return nil, err
+	}
+	return &stage{outputs: outputs, wsets: wsets, views: []wayfireView{view}}, nil
+}
+
+func readSimpleTileLayout(st *stage, view wayfireView) (simpleTileTarget, simpleTileLayoutNode, bool, error) {
+	x, y, gridWidth := st.cellOfView(view)
+	if gridWidth <= 0 {
+		return simpleTileTarget{}, simpleTileLayoutNode{}, false,
+			fmt.Errorf("simple-tile: the window's workspace set is not attached to an output")
+	}
+	target := simpleTileTarget{
+		Workspace: simpleTileWorkspace{X: x, Y: y},
+		WsetIndex: view.WsetIndex,
+	}
+	body, err := request("simple-tile/get-layout", target)
+	if err != nil {
+		return simpleTileTarget{}, simpleTileLayoutNode{}, false, err
+	}
+	var reply struct {
+		Layout *simpleTileLayoutNode `json:"layout"`
+	}
+	if err := json.Unmarshal(body, &reply); err != nil {
+		return simpleTileTarget{}, simpleTileLayoutNode{}, false,
+			fmt.Errorf("simple-tile/get-layout: bad JSON: %w", err)
+	}
+	// Wayfire 0.11 always returns layout. Treat an absent field as the legacy
+	// no-IPC case so a floating view can retain the configure-view fallback.
+	if reply.Layout == nil {
+		return target, simpleTileLayoutNode{}, false, nil
+	}
+	return target, *reply.Layout, true, nil
+}
+
+func (n *simpleTileLayoutNode) split() (string, *[]simpleTileLayoutNode) {
+	if n.Horizontal != nil {
+		return "horizontal", &n.Horizontal
+	}
+	if n.Vertical != nil {
+		return "vertical", &n.Vertical
+	}
+	return "", nil
+}
+
+func (n *simpleTileLayoutNode) containsView(id int64) bool {
+	if n.ViewID != nil {
+		return *n.ViewID == id
+	}
+	_, children := n.split()
+	if children == nil {
+		return false
+	}
+	for i := range *children {
+		if (*children)[i].containsView(id) {
+			return true
+		}
+	}
+	return false
+}
+
+func (n *simpleTileLayoutNode) viewNode(id int64) *simpleTileLayoutNode {
+	if n.ViewID != nil {
+		if *n.ViewID == id {
+			return n
+		}
+		return nil
+	}
+	_, children := n.split()
+	if children == nil {
+		return nil
+	}
+	for i := range *children {
+		if found := (*children)[i].viewNode(id); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+func (n *simpleTileLayoutNode) nearestLeaf(id int64, dx, dy, originX, originY float64,
+	best **simpleTileLayoutNode, bestDistance *float64) {
+	if n.ViewID != nil {
+		if *n.ViewID == id {
+			return
+		}
+		x, y := centerOf(n.Geometry)
+		sx, sy := x-originX, y-originY
+		if sx*dx+sy*dy <= 0 {
+			return
+		}
+		distance := sx*sx + sy*sy
+		if *best == nil || distance < *bestDistance {
+			*best, *bestDistance = n, distance
+		}
+		return
+	}
+	_, children := n.split()
+	if children == nil {
+		return
+	}
+	for i := range *children {
+		(*children)[i].nearestLeaf(id, dx, dy, originX, originY, best, bestDistance)
+	}
+}
+
+func (n *simpleTileLayoutNode) removeView(id int64) bool {
+	if n.ViewID != nil {
+		if *n.ViewID != id {
+			return false
+		}
+		n.ViewID = nil
+		n.Horizontal = nil
+		n.Vertical = []simpleTileLayoutNode{}
+		return true
+	}
+	_, children := n.split()
+	if children == nil {
+		return false
+	}
+	for i := range len(*children) {
+		child := &(*children)[i]
+		if child.ViewID != nil {
+			if *child.ViewID != id {
+				continue
+			}
+			*children = append((*children)[:i], (*children)[i+1:]...)
+			return true
+		}
+		if child.removeView(id) {
+			_, grandchildren := child.split()
+			if grandchildren != nil && len(*grandchildren) == 0 {
+				*children = append((*children)[:i], (*children)[i+1:]...)
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func (n *simpleTileLayoutNode) appendView(id int64) {
+	leaf := simpleTileLayoutNode{Percent: 0.5, ViewID: &id}
+	if n.ViewID != nil {
+		old := *n
+		old.Percent = 0.5
+		n.ViewID = nil
+		n.Horizontal = nil
+		n.Vertical = []simpleTileLayoutNode{old, leaf}
+		return
+	}
+	_, children := n.split()
+	if children == nil {
+		n.Vertical = []simpleTileLayoutNode{leaf}
+		return
+	}
+	sum := 0.0
+	for i := range *children {
+		sum += nodeWeight((*children)[i].Percent)
+	}
+	if sum > 0 {
+		for i := range *children {
+			(*children)[i].Percent = roundTileWeight(0.5 * nodeWeight((*children)[i].Percent) / sum)
+		}
+	}
+	*children = append(*children, leaf)
+}
+
+func (n *simpleTileLayoutNode) splitForView(id int64, axis string) (simpleTileSplit, bool) {
+	kind, children := n.split()
+	if children == nil {
+		return simpleTileSplit{}, false
+	}
+	for i := range *children {
+		if !(*children)[i].containsView(id) {
+			continue
+		}
+		if nested, ok := (*children)[i].splitForView(id, axis); ok {
+			return nested, true
+		}
+		if kind == axis && len(*children) > 1 {
+			return simpleTileSplit{children: children, index: i}, true
+		}
+		return simpleTileSplit{}, false
+	}
+	return simpleTileSplit{}, false
+}
+
+func nodeWeight(weight float64) float64 {
+	if weight <= 0 || math.IsNaN(weight) || math.IsInf(weight, 0) {
+		return 1
+	}
+	return weight
+}
+
+func roundTileWeight(weight float64) float64 {
+	return math.Round(weight*1_000_000) / 1_000_000
+}
+
+func (s simpleTileSplit) fraction() float64 {
+	sum := 0.0
+	for i := range *s.children {
+		sum += nodeWeight((*s.children)[i].Percent)
+	}
+	return nodeWeight((*s.children)[s.index].Percent) / sum
+}
+
+func (s simpleTileSplit) setFraction(fraction float64) {
+	fraction = clampF(fraction, 0.1, 0.9)
+	otherSum := 0.0
+	for i := range *s.children {
+		if i != s.index {
+			otherSum += nodeWeight((*s.children)[i].Percent)
+		}
+	}
+	(*s.children)[s.index].Percent = roundTileWeight(fraction)
+	for i := range *s.children {
+		if i == s.index {
+			continue
+		}
+		share := nodeWeight((*s.children)[i].Percent) / otherSum
+		(*s.children)[i].Percent = roundTileWeight((1 - fraction) * share)
+	}
+}
+
+func tileWeightJSON(weight float64) json.RawMessage {
+	text := strconv.FormatFloat(nodeWeight(weight), 'f', -1, 64)
+	if !strings.Contains(text, ".") {
+		text += ".0"
+	}
+	return json.RawMessage(text)
+}
+
+func (n simpleTileLayoutNode) setLayoutValue() map[string]any {
+	if n.ViewID != nil {
+		return map[string]any{"view-id": *n.ViewID}
+	}
+	axis, children := n.split()
+	if children == nil {
+		axis = "vertical"
+		empty := []simpleTileLayoutNode{}
+		children = &empty
+	}
+	values := make([]map[string]any, 0, len(*children))
+	for i := range *children {
+		value := (*children)[i].setLayoutValue()
+		value["weight"] = tileWeightJSON((*children)[i].Percent)
+		values = append(values, value)
+	}
+	return map[string]any{axis + "-split": values}
+}
+
+func setSimpleTileLayout(target simpleTileTarget, layout simpleTileLayoutNode) error {
+	return perform("simple-tile/set-layout", map[string]any{
+		"layout":     layout.setLayoutValue(),
+		"workspace":  target.Workspace,
+		"wset-index": target.WsetIndex,
+	})
+}
+
+func moveTiledView(target simpleTileTarget, layout simpleTileLayoutNode, id int64, dir string) (bool, error) {
+	origin := layout.viewNode(id)
+	if origin == nil {
+		return false, nil
+	}
+	var next *simpleTileLayoutNode
+	distance := 0.0
+	dx, dy := directionDelta(dir)
+	originX, originY := centerOf(origin.Geometry)
+	layout.nearestLeaf(id, dx, dy, originX, originY, &next, &distance)
+	if next == nil {
+		return true, fmt.Errorf("simple-tile: no tiled window to the %s", dir)
+	}
+	*origin.ViewID, *next.ViewID = *next.ViewID, *origin.ViewID
+	return true, setSimpleTileLayout(target, layout)
+}
+
+func resizeTiledView(target simpleTileTarget, layout simpleTileLayoutNode, id int64, axis string, delta float64) (bool, error) {
+	if !layout.containsView(id) {
+		return false, nil
+	}
+	split, ok := layout.splitForView(id, axis)
+	if !ok {
+		// A lone tile already fills this axis. Re-submit the tree so the act
+		// remains a successful simple-tile operation without detaching it.
+		return true, setSimpleTileLayout(target, layout)
+	}
+	split.setFraction(split.fraction() + delta)
+	return true, setSimpleTileLayout(target, layout)
+}
+
+func presetTiledView(target simpleTileTarget, layout simpleTileLayoutNode, id int64, axis string, first bool) (bool, error) {
+	if !layout.containsView(id) {
+		return false, nil
+	}
+	split, ok := layout.splitForView(id, axis)
+	if !ok {
+		return true, setSimpleTileLayout(target, layout)
+	}
+	fraction := 0.9
+	if !first {
+		presets := [...]float64{0.9, 0.75, 0.5}
+		current := split.fraction()
+		nearest, distance := 0, math.MaxFloat64
+		for i, preset := range presets {
+			if d := math.Abs(current - preset); d < distance {
+				nearest, distance = i, d
+			}
+		}
+		fraction = presets[(nearest+1)%len(presets)]
+	}
+	split.setFraction(fraction)
+	return true, setSimpleTileLayout(target, layout)
+}
+
+// moveFocusedBy swaps a simple-tile leaf with the nearest leaf in the chosen
+// direction. A floating window keeps the free one-eighth-screen nudge.
 func moveFocusedBy(act wm.Action, dir string) error {
 	st, err := readStage()
 	if err != nil {
@@ -829,6 +1196,15 @@ func moveFocusedBy(act wm.Action, dir string) error {
 	origin, err := focusedWindow(act)
 	if err != nil {
 		return err
+	}
+	target, layout, hasLayout, err := readSimpleTileLayout(st, origin)
+	if err != nil {
+		return err
+	}
+	if hasLayout {
+		if tiled, tileErr := moveTiledView(target, layout, origin.ID, dir); tiled {
+			return tileErr
+		}
 	}
 	pl, ok := st.planeOf(origin)
 	if !ok {
@@ -846,10 +1222,8 @@ func moveFocusedBy(act wm.Action, dir string) error {
 	return configurePlaced(origin.ID, nr)
 }
 
-// resizeFocusedBy steps the size an eighth of the screen from the top-left
-// corner, with a floor so a window can never be pressed out of existence. A
-// sized window leaves the snap too: wayfire's snap and the free rectangle
-// are two states of one window, and this act picks the second.
+// resizeFocusedBy changes the nearest matching split weight for a tiled view.
+// A floating window keeps its free one-eighth-screen size step.
 func resizeFocusedBy(act wm.Action, step string) error {
 	st, err := readStage()
 	if err != nil {
@@ -858,6 +1232,26 @@ func resizeFocusedBy(act wm.Action, step string) error {
 	origin, err := focusedWindow(act)
 	if err != nil {
 		return err
+	}
+	target, layout, hasLayout, err := readSimpleTileLayout(st, origin)
+	if err != nil {
+		return err
+	}
+	axis, delta := "horizontal", -0.125
+	switch step {
+	case "narrower":
+		axis, delta = "vertical", -0.125
+	case "wider":
+		axis, delta = "vertical", 0.125
+	case "shorter":
+		axis, delta = "horizontal", -0.125
+	case "taller":
+		axis, delta = "horizontal", 0.125
+	}
+	if hasLayout {
+		if tiled, tileErr := resizeTiledView(target, layout, origin.ID, axis, delta); tiled {
+			return tileErr
+		}
 	}
 	pl, ok := st.planeOf(origin)
 	if !ok {
@@ -877,10 +1271,9 @@ func resizeFocusedBy(act wm.Action, step string) error {
 	return configurePlaced(origin.ID, nr)
 }
 
-// presetFocusedHeight cycles the window through its preset heights as a
-// fraction of the cell it sits in; first lands on the full height the reset
-// key means. The width and the left edge stay put, and the window slides up
-// only as far as it must to stay inside its cell.
+// presetFocusedHeight cycles a tiled view's horizontal split weight. A
+// floating window cycles through the same full, three-quarter and half-height
+// rectangles as before.
 func presetFocusedHeight(act wm.Action, first bool) error {
 	st, err := readStage()
 	if err != nil {
@@ -889,6 +1282,15 @@ func presetFocusedHeight(act wm.Action, first bool) error {
 	origin, err := focusedWindow(act)
 	if err != nil {
 		return err
+	}
+	target, layout, hasLayout, err := readSimpleTileLayout(st, origin)
+	if err != nil {
+		return err
+	}
+	if hasLayout {
+		if tiled, tileErr := presetTiledView(target, layout, origin.ID, "horizontal", first); tiled {
+			return tileErr
+		}
 	}
 	pl, ok := st.planeOf(origin)
 	if !ok {
@@ -915,9 +1317,8 @@ func presetFocusedHeight(act wm.Action, first bool) error {
 	return configurePlaced(origin.ID, nr)
 }
 
-// presetFocusedWidth cycles through three useful fractions of the workspace.
-// It preserves height and the left edge unless that would put the new width
-// outside the cell.
+// presetFocusedWidth cycles a tiled view's vertical split weight. A floating
+// window keeps the free rectangle presets.
 func presetFocusedWidth(act wm.Action) error {
 	st, err := readStage()
 	if err != nil {
@@ -926,6 +1327,15 @@ func presetFocusedWidth(act wm.Action) error {
 	origin, err := focusedWindow(act)
 	if err != nil {
 		return err
+	}
+	target, layout, hasLayout, err := readSimpleTileLayout(st, origin)
+	if err != nil {
+		return err
+	}
+	if hasLayout {
+		if tiled, tileErr := presetTiledView(target, layout, origin.ID, "vertical", false); tiled {
+			return tileErr
+		}
 	}
 	pl, ok := st.planeOf(origin)
 	if !ok {
@@ -949,9 +1359,9 @@ func presetFocusedWidth(act wm.Action) error {
 	return configurePlaced(origin.ID, nr)
 }
 
-// centerFocused centres the window on the screen it is on and lets go of the
-// snap: the screen rather than the cell, because that is the surface the eye
-// reads a centred window against.
+// centerFocused detaches a simple-tile leaf before placing it, because a
+// centred rectangle is floating by definition. A floating view is configured
+// directly.
 func centerFocused(act wm.Action) error {
 	st, err := readStage()
 	if err != nil {
@@ -964,6 +1374,15 @@ func centerFocused(act wm.Action) error {
 	pl, ok := st.planeOf(origin)
 	if !ok {
 		return fmt.Errorf("act %s: the window's screen is gone", act)
+	}
+	target, layout, hasLayout, err := readSimpleTileLayout(st, origin)
+	if err != nil {
+		return err
+	}
+	if hasLayout && layout.removeView(origin.ID) {
+		if err := setSimpleTileLayout(target, layout); err != nil {
+			return err
+		}
 	}
 	nr := pl.rect
 	nr.X = pl.out.Geometry.X + (pl.out.Geometry.Width-nr.Width)/2

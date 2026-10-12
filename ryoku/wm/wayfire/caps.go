@@ -14,13 +14,14 @@ import (
 // this provider cannot perform is worse than omitting it: the desktop would
 // offer a control that does nothing.
 //
-// The absences are wayfire's design, not gaps to fill later:
+// Capability boundaries and conditional claims:
 //
 // CapLayerRules: wayfire's window-rules plugin matches views only, and no
 // rule mechanism covers layer-shell surfaces.
 //
-// CapConfigReload: wayfire watches its config file with inotify and reloads
-// itself, so there is nothing to trigger.
+// CapConfigReload: deploy replaces the config directory atomically, leaving
+// wayfire's inotify watch on the old inode. wayfire/reload-config-metadata
+// reopens the configured path and restores reloads after that swap.
 //
 // CapOutputHdr: wayfire 0.11 has an HDR toggle but no wide-gamut mode or
 // separate SDR-brightness control. The supported HDR boolean is still claimed.
@@ -77,6 +78,7 @@ var capsManifest = []wm.Capability{
 	wm.CapTouchpadToggle,
 	wm.CapPaletteBorder,
 	wm.CapKeyboardLayoutSwitch,
+	wm.CapConfigReload,
 	wm.CapSystemLidEdgeSource,
 }
 

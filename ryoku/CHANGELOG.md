@@ -213,6 +213,11 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Wayfire's tiling shortcuts now act on the simple-tile layout.** Maximise
+  and float work for tiled and floating windows, directional moves swap tiled
+  neighbours, resize and preset keys change split weights, centre detaches
+  before placing, and config reload reopens the deployed path
+  (`wm/wayfire/act.go`, `wm/wayfire/config_binds.go`).
 - **Every Wayfire keybind from the catalogue that Wayfire can express is
   wired.** The ten-workspace family on digits and the keypad, preset width
   stepping, the scratchpad, recovering a grabbed keyboard, Print and the media

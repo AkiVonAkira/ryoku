@@ -120,6 +120,33 @@ func callMethods(calls []actCall) []string {
 	return out
 }
 
+func simpleTileReplies(axis string) map[string]string {
+	r := stageReplies()
+	r["window-rules/list-views"] = `[{"id":7,"title":"term","app-id":"kitty",
+		"geometry":{"x":-1107,"y":0,"width":600,"height":720},
+		"bbox":{"x":-1107,"y":0,"width":600,"height":720},
+		"output-id":1,"output-name":"HEADLESS-1","last-focus-timestamp":200,
+		"mapped":true,"role":"toplevel","tiled-edges":15,"fullscreen":false,
+		"minimized":false,"activated":true,"wset-index":1},
+		{"id":9,"title":"peer","app-id":"kitty",
+		"geometry":{"x":-507,"y":0,"width":600,"height":720},
+		"bbox":{"x":-507,"y":0,"width":600,"height":720},
+		"output-id":1,"output-name":"HEADLESS-1","last-focus-timestamp":100,
+		"mapped":true,"role":"toplevel","tiled-edges":15,"fullscreen":false,
+		"minimized":false,"activated":false,"wset-index":1}]`
+	split := `"vertical-split":[
+		{"percent":0.5,"geometry":{"x":0,"y":0,"width":640,"height":720},"view-id":7},
+		{"percent":0.5,"geometry":{"x":640,"y":0,"width":640,"height":720},"view-id":9}]}`
+	if axis == "horizontal" {
+		split = `"horizontal-split":[
+			{"percent":0.5,"geometry":{"x":0,"y":0,"width":1280,"height":360},"view-id":7},
+			{"percent":0.5,"geometry":{"x":0,"y":360,"width":1280,"height":360},"view-id":9}]}`
+	}
+	r["simple-tile/get-layout"] = `{"result":"ok","layout":{"percent":1.0,
+		"geometry":{"x":0,"y":0,"width":1280,"height":720},` + split + `}`
+	return r
+}
+
 func TestWindowActs(t *testing.T) {
 	t.Run("focus", func(t *testing.T) {
 		calls := stubAct(t, stageReplies())
@@ -151,6 +178,14 @@ func TestWindowActs(t *testing.T) {
 			t.Fatal(err)
 		}
 		wantCall(t, *calls, "window-rules/configure-view", `{"id":7,"tiled-edges":15}`)
+	})
+
+	t.Run("reload reopens the configured path and ignores scope", func(t *testing.T) {
+		calls := stubAct(t, map[string]string{})
+		if err := runAct([]string{"config.reload", "config-only"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "wayfire/reload-config-metadata", `{}`)
 	})
 
 	t.Run("missing id names the argument", func(t *testing.T) {
@@ -757,7 +792,6 @@ func TestDeniedAndUnknownActions(t *testing.T) {
 		{[]string{"output.power"}, "missing on|off"},
 		{[]string{"submap.enter"}, "submap"},
 		{[]string{"overview.toggle"}, "nativeOverview"},
-		{[]string{"config.reload"}, "configReload"},
 		{[]string{"decoration.gameMode", "on"}, "liveConfigEval"},
 		{[]string{"input.focusFollowsMouse", "off"}, "liveConfigEval"},
 		{[]string{"decoration.screenShader", "on"}, "screenShader"},
@@ -999,6 +1033,94 @@ func TestDirectionalGeometryActs(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "no window is focused") {
 			t.Errorf("got %v, want a no-focused-window error", err)
 		}
+	})
+}
+
+func TestSimpleTileWindowActs(t *testing.T) {
+	const getTarget = `{"workspace":{"x":0,"y":0},"wset-index":1}`
+
+	t.Run("float detaches a tiled leaf", func(t *testing.T) {
+		calls := stubAct(t, simpleTileReplies("vertical"))
+		if err := runAct([]string{"window.float", "7"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "simple-tile/get-layout", getTarget)
+		wantCall(t, *calls, "simple-tile/set-layout",
+			`{"layout":{"vertical-split":[{"view-id":9,"weight":0.5}]},"workspace":{"x":0,"y":0},"wset-index":1}`)
+		wantNoCall(t, *calls, "window-rules/configure-view")
+	})
+
+	t.Run("float attaches a free view", func(t *testing.T) {
+		r := simpleTileReplies("vertical")
+		r["simple-tile/get-layout"] = `{"result":"ok","layout":{"percent":1.0,
+			"geometry":{"x":0,"y":0,"width":1280,"height":720},
+			"vertical-split":[{"percent":1.0,"geometry":{"x":0,"y":0,"width":1280,"height":720},"view-id":9}]}}`
+		calls := stubAct(t, r)
+		if err := runAct([]string{"window.float", "7"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "simple-tile/set-layout",
+			`{"layout":{"vertical-split":[{"view-id":9,"weight":0.5},{"view-id":7,"weight":0.5}]},"workspace":{"x":0,"y":0},"wset-index":1}`)
+	})
+
+	t.Run("move swaps with the neighbour in that direction", func(t *testing.T) {
+		calls := stubAct(t, simpleTileReplies("vertical"))
+		if err := runAct([]string{"window.moveBy", "right"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "simple-tile/set-layout",
+			`{"layout":{"vertical-split":[{"view-id":9,"weight":0.5},{"view-id":7,"weight":0.5}]},"workspace":{"x":0,"y":0},"wset-index":1}`)
+		wantNoCall(t, *calls, "window-rules/configure-view")
+	})
+
+	t.Run("resize changes the matching split weight", func(t *testing.T) {
+		calls := stubAct(t, simpleTileReplies("vertical"))
+		if err := runAct([]string{"window.resizeBy", "wider"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "simple-tile/set-layout",
+			`{"layout":{"vertical-split":[{"view-id":7,"weight":0.625},{"view-id":9,"weight":0.375}]},"workspace":{"x":0,"y":0},"wset-index":1}`)
+		wantNoCall(t, *calls, "window-rules/configure-view")
+	})
+
+	t.Run("vertical resize changes a horizontal split", func(t *testing.T) {
+		calls := stubAct(t, simpleTileReplies("horizontal"))
+		if err := runAct([]string{"window.resizeBy", "taller"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "simple-tile/set-layout",
+			`{"layout":{"horizontal-split":[{"view-id":7,"weight":0.625},{"view-id":9,"weight":0.375}]},"workspace":{"x":0,"y":0},"wset-index":1}`)
+	})
+
+	t.Run("width preset changes the vertical split", func(t *testing.T) {
+		calls := stubAct(t, simpleTileReplies("vertical"))
+		if err := runAct([]string{"window.presetWidth"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "simple-tile/set-layout",
+			`{"layout":{"vertical-split":[{"view-id":7,"weight":0.9},{"view-id":9,"weight":0.1}]},"workspace":{"x":0,"y":0},"wset-index":1}`)
+	})
+
+	t.Run("height preset changes the horizontal split", func(t *testing.T) {
+		calls := stubAct(t, simpleTileReplies("horizontal"))
+		if err := runAct([]string{"window.presetHeight", "first"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "simple-tile/set-layout",
+			`{"layout":{"horizontal-split":[{"view-id":7,"weight":0.9},{"view-id":9,"weight":0.1}]},"workspace":{"x":0,"y":0},"wset-index":1}`)
+	})
+
+	t.Run("center detaches before placing the view", func(t *testing.T) {
+		calls := stubAct(t, simpleTileReplies("vertical"))
+		if err := runAct([]string{"window.center"}); err != nil {
+			t.Fatal(err)
+		}
+		wantOrder(t, *calls,
+			expectedCall{"simple-tile/set-layout",
+				`{"layout":{"vertical-split":[{"view-id":9,"weight":0.5}]},"workspace":{"x":0,"y":0},"wset-index":1}`},
+			expectedCall{"window-rules/configure-view",
+				`{"geometry":{"height":720,"width":934,"x":173,"y":0},"id":7,"tiled-edges":0}`},
+		)
 	})
 }
 

@@ -160,18 +160,21 @@ func keybindWhy(k Keybind) string {
 // than hiding it. A row with cmd is a command-plugin row: it lands under
 // [command] as binding_<key> plus command_<key>; repeatable and always choose
 // the corresponding v0.11 command list. A row with section and key is a native
-// option wayfire already understands. extra is a second activator the shipped
-// config carried on the same option. label and hint replace catalogue copy
-// where Wayfire's closest native operation differs.
+// option wayfire already understands. mirrorSection and mirrorKey put the same
+// activator on a second native handler when the two plugins own disjoint window
+// states. extra is a second activator the shipped config carried on the same
+// option. label and hint replace catalogue copy where Wayfire's closest native
+// operation differs.
 type wayfireBind struct {
-	section, key string
-	cmd          string
-	repeatable   bool
-	always       bool
-	extra        string
-	reason       string
-	label        string
-	hint         string
+	section, key             string
+	mirrorSection, mirrorKey string
+	cmd                      string
+	repeatable               bool
+	always                   bool
+	extra                    string
+	reason                   string
+	label                    string
+	hint                     string
 }
 
 // defaultBinds is the whole catalogue mapped onto wayfire's vocabulary: what
@@ -185,13 +188,21 @@ func defaultBinds() map[string]wayfireBind {
 			key: "window_close", extra: "<alt> KEY_F4",
 			cmd: wm.IrisCloseCheck + " && qs -c shell ipc call closeConfirm trigger || ryoku-wm-wayfire act window.close focused",
 		},
-		"window.fullscreen":    {section: "wm-actions", key: "toggle_fullscreen"},
-		"window.float":         {key: "window_float", cmd: "ryoku-wm-wayfire act window.float focused"},
-		"window.pin":           {section: "wm-actions", key: "toggle_sticky"},
-		"window.resize":        {key: "window_preset_width", cmd: "ryoku-wm-wayfire act window.presetWidth", label: "Step window width", hint: "Cycle the window through full, three-quarter and half width"},
-		"window.presetHeight":  {key: "window_preset_height", cmd: "ryoku-wm-wayfire act window.presetHeight"},
-		"column.tabbed":        {reason: "wayfire 0.11 simple-tile has split layouts but no tabbed layout."},
-		"column.maximize":      {section: "wm-actions", key: "toggle_maximize"},
+		"window.fullscreen": {section: "wm-actions", key: "toggle_fullscreen"},
+		// simple-tile's native toggle is the only path which attaches and
+		// detaches managed views; configure-view requests are ignored for them.
+		"window.float":        {section: "simple-tile", key: "key_toggle"},
+		"window.pin":          {section: "wm-actions", key: "toggle_sticky"},
+		"window.resize":       {key: "window_preset_width", cmd: "ryoku-wm-wayfire act window.presetWidth", label: "Step window width", hint: "Cycle the window through full, three-quarter and half width"},
+		"window.presetHeight": {key: "window_preset_height", cmd: "ryoku-wm-wayfire act window.presetHeight"},
+		"column.tabbed":       {reason: "wayfire 0.11 simple-tile has split layouts but no tabbed layout."},
+		// simple-tile handles its managed leaves and wm-actions handles
+		// floating views. simple-tile consumes tile requests for its leaves,
+		// so the pair cannot maximize two states of the same window.
+		"column.maximize": {
+			section: "simple-tile", key: "key_toggle_maximized",
+			mirrorSection: "wm-actions", mirrorKey: "toggle_maximize",
+		},
 		"column.center":        {key: "column_center", cmd: "ryoku-wm-wayfire act window.center"},
 		"window.focusPrevious": {section: "fast-switcher", key: "activate"},
 
@@ -360,12 +371,14 @@ const wayfireWorkspaceCount = 10
 // it) and the activator it accepts. An empty activator with an empty cmd is a
 // native option being switched off.
 type outBind struct {
-	section    string
-	option     string
-	commandOpt string
-	activator  string
-	extra      string
-	cmd        string
+	section       string
+	option        string
+	mirrorSection string
+	mirrorOption  string
+	commandOpt    string
+	activator     string
+	extra         string
+	cmd           string
 }
 
 // effectiveChord resolves a default's emitted chord: the user's rebind when
@@ -493,7 +506,13 @@ func resolveBinds(s wayfireStore) ([]outBind, []wm.Unhonored) {
 			if wb.reason != "" {
 				continue
 			}
-			base := outBind{section: wb.section, extra: wb.extra, cmd: wb.cmd}
+			base := outBind{
+				section:       wb.section,
+				mirrorSection: wb.mirrorSection,
+				mirrorOption:  wb.mirrorKey,
+				extra:         wb.extra,
+				cmd:           wb.cmd,
+			}
 			switch {
 			case wb.cmd != "":
 				if base.section == "" {
@@ -526,6 +545,7 @@ func resolveBinds(s wayfireStore) ([]outBind, []wm.Unhonored) {
 				if cb.Family {
 					member.option = strings.ReplaceAll(base.option, "{n}", strconv.Itoa(n))
 					member.commandOpt = strings.ReplaceAll(base.commandOpt, "{n}", strconv.Itoa(n))
+					member.mirrorOption = strings.ReplaceAll(base.mirrorOption, "{n}", strconv.Itoa(n))
 				}
 				if unbind[chord] {
 					if wb.cmd == "" {
@@ -607,6 +627,9 @@ func applyBinds(d *iniDoc, s wayfireStore) {
 			value = o.activator + " | " + o.extra
 		}
 		d.set(o.section, o.option, value)
+		if o.mirrorOption != "" {
+			d.set(o.mirrorSection, o.mirrorOption, value)
+		}
 	}
 }
 
