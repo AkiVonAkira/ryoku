@@ -48,12 +48,12 @@ package() {
   fi
 }
 case "${1:-}" in
-  build)
-    if ! stage_prebuilt; then
-      mkdir -p "$RYOKU_BUILD_DIR"
-      ( cd "$_repo/ryoku/wm/niri" && go build -o "$RYOKU_BUILD_DIR/ryoku-wm-niri" . )
-    fi
-    ;;
+build)
+  stage_prebuilt && exit 0
+  mkdir -p "$RYOKU_BUILD_DIR"
+  cd "$_repo/ryoku/wm/niri"
+  go build -mod=vendor -o "$RYOKU_BUILD_DIR/ryoku-wm-niri" .
+  ;;
   install)
     pkgdir=${2:?install requires a destination root}
     RYOKU_INIT_MODE=${3:?install requires systemd or runit}

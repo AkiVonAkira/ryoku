@@ -7,13 +7,10 @@ set -euo pipefail
 
 _repo=$RYOKU_SRC
 
-build_payload() {
+stage_prebuilt() {
+  [[ -n ${RYOKU_PREBUILT_DIR:-} ]] || return 1
   mkdir -p "$RYOKU_BUILD_DIR"
-  if [[ -n ${RYOKU_PREBUILT_DIR:-} ]]; then
-    cp -a "$RYOKU_PREBUILT_DIR/." "$RYOKU_BUILD_DIR/"
-    return
-  fi
-  ( cd "$_repo/ryoku/wm/hyprland" && go build -o "$RYOKU_BUILD_DIR/ryoku-wm-hyprland" . )
+  cp -a "$RYOKU_PREBUILT_DIR/." "$RYOKU_BUILD_DIR/"
 }
 
 install_payload() {
@@ -44,9 +41,12 @@ install_payload() {
 }
 
 case "${1:-}" in
-  build)
-    build_payload
-    ;;
+build)
+  stage_prebuilt && exit 0
+  mkdir -p "$RYOKU_BUILD_DIR"
+  cd "$_repo/ryoku/wm/hyprland"
+  go build -mod=vendor -o "$RYOKU_BUILD_DIR/ryoku-wm-hyprland" .
+  ;;
   install)
     pkgdir=${2:?install requires a destination root}
     RYOKU_INIT_MODE=${3:?install requires systemd or runit}
