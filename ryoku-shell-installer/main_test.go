@@ -457,19 +457,19 @@ func TestFedoraPlanKeepsNouveauAndSkipsAUR(t *testing.T) {
 
 func TestScreensFitMinimumTerminal(t *testing.T) {
 	f := &facts{
-		distroName: "Arch Linux",
-		hostname: "ryoku",
-		currentDM: "sddm",
-		online: true,
-		btrfsRoot: true,
-		hasNvidia: true,
-		otherNet: []string{"iwd.service"},
-		rivalPkgs: []string{"other-shell"},
-		softUnits: []string{"waybar.service"},
+		distroName:  "Arch Linux",
+		hostname:    "ryoku",
+		currentDM:   "sddm",
+		online:      true,
+		btrfsRoot:   true,
+		hasNvidia:   true,
+		otherNet:    []string{"iwd.service"},
+		rivalPkgs:   []string{"other-shell"},
+		softUnits:   []string{"waybar.service"},
 		omarchyRepo: true,
-		monOutputs: []niriOutput{{}},
-		monSource: "saved setup",
-		kbLayout: "us",
+		monOutputs:  []niriOutput{{}},
+		monSource:   "saved setup",
+		kbLayout:    "us",
 	}
 	p := defaultPlan(f)
 	items := groupPlanItems(buildItems(f, p))
@@ -479,8 +479,8 @@ func TestScreensFitMinimumTerminal(t *testing.T) {
 	}
 	e := &engine{
 		f: f, p: p, steps: steps,
-		backupDir: "/home/test/.local/state/ryoku/shell-install/backup-20261006-230000",
-		logPath: "/home/test/.local/state/ryoku/shell-install.log",
+		backupDir:   "/home/test/.local/state/ryoku/shell-install/backup-20261006-230000",
+		logPath:     "/home/test/.local/state/ryoku/shell-install.log",
 		prevBackups: 1,
 	}
 	base := model{
