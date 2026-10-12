@@ -227,6 +227,8 @@ stage_fedora_spec_install() {
     active { print }
   ' "$spec")
   [[ -n $script ]] || fail "$pkg spec has no install phase"
+  # The replacement must leave $buildroot for the extracted RPM script to expand.
+  # shellcheck disable=SC2016
   script=${script//'%{buildroot}'/'$buildroot'}
   printf '%s\n' "$script" > "$spec_work/install.sh"
   (cd "$spec_work" && buildroot="$dest" bash install.sh)
@@ -345,6 +347,15 @@ for pkg in "${packages[@]}"; do
   stage_fedora "$pkg" "$work/staged/$pkg-fedora" & jobs+=("$!")
   wait_for_jobs "$pkg staging failed" "${jobs[@]}"
   stage_fedora_spec_install "$pkg" "$work/staged/$pkg-fedora" "$work/staged/$pkg-fedora-spec"
+
+  if [[ $pkg == ryoku-desktop ]]; then
+    [[ -f $work/staged/$pkg-arch/usr/share/libalpm/hooks/96-ryoku-polkit-reload.hook ]] \
+      || fail "ryoku-desktop Arch package is missing the polkit reload hook"
+    for edition in arch void fedora fedora-spec; do
+      [[ -x $work/staged/$pkg-$edition/usr/bin/ryoku-polkit-reload ]] \
+        || fail "ryoku-desktop $edition package is missing the polkit reload helper"
+    done
+  fi
 
   jobs=()
   raw_manifest "$work/direct/$pkg-systemd" "$work/manifests/$pkg-direct-systemd" & jobs+=("$!")

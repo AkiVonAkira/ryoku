@@ -510,6 +510,9 @@ EOF
   install -Dm644 "$_repo/system/policy/52-ryoku-timedate.rules" \
     "$pkgdir/usr/share/polkit-1/rules.d/52-ryoku-timedate.rules"
 
+  install -Dm755 "$_repo/system/policy/ryoku-polkit-reload" \
+    "$pkgdir/usr/bin/ryoku-polkit-reload"
+
   # Container runtime: the same one-click grant for ryoku-docker (installed to
   # /usr/bin by the containers glob above), so the stash Cobalt setup wizard can
   # start docker.service and the cobalt container without a password prompt per
@@ -527,6 +530,8 @@ EOF
       "$pkgdir/usr/share/libalpm/hooks/94-ryoku-power-cutover-prepare.hook"
     install -Dm644 "$_repo/system/hardware/power/95-ryoku-power-cutover.hook" \
       "$pkgdir/usr/share/libalpm/hooks/95-ryoku-power-cutover.hook"
+    install -Dm644 "$_repo/system/policy/96-ryoku-polkit-reload.hook" \
+      "$pkgdir/usr/share/libalpm/hooks/96-ryoku-polkit-reload.hook"
   else
     install -Dm644 "$_repo/system/hardware/power/logind-ryoku-lid.conf" \
       "$pkgdir/etc/elogind/logind.conf.d/10-ryoku-lid.conf"
