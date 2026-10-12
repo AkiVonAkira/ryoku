@@ -265,8 +265,9 @@ func (s *stage) apply(name string, frame []byte, emit func(wm.Frame), wants func
 		if json.Unmarshal(frame, &e) == nil {
 			s.upsert(e.View)
 			s.emitWindows(emit, wants)
-			if name == "view-mapped" || name == "view-set-output" ||
-				name == "view-wset-changed" || name == "view-workspace-changed" {
+			if name == "view-mapped" || name == "view-fullscreen" ||
+				name == "view-set-output" || name == "view-wset-changed" ||
+				name == "view-workspace-changed" {
 				s.emitWorkspaces(emit, wants)
 			}
 		}

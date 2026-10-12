@@ -32,6 +32,9 @@ const (
 	// opened; a title is the only handle when every window of an app shares one
 	// app id, so the app-focus key cannot tell them apart.
 	ActionWindowSummon Action = "window.summon"
+	// ActionWindowHide moves the focused or named window into the provider's
+	// scratch workspace. Providers with native bindings may never call it.
+	ActionWindowHide Action = "window.hide"
 
 	// The nine directional acts a keybind means for the window under focus
 	// or the screen it points at: the direction is the whole argument, no
@@ -43,6 +46,7 @@ const (
 	ActionWindowMoveBy            Action = "window.moveBy"         // <left|right|up|down>
 	ActionWindowResizeBy          Action = "window.resizeBy"       // <narrower|wider|shorter|taller>
 	ActionWindowPresetHeight      Action = "window.presetHeight"   // [first]
+	ActionWindowPresetWidth       Action = "window.presetWidth"
 	ActionWindowCenter            Action = "window.center"
 	ActionOutputFocusDirection    Action = "output.focusDirection"    // <left|right|up|down>
 	ActionWindowMoveToOutputBy    Action = "window.moveToOutputBy"    // <left|right|up|down>
@@ -133,13 +137,14 @@ const (
 func (a Action) Capability() Capability {
 	switch a {
 	case ActionWindowFloat, ActionWindowPlace, ActionWindowMoveBy, ActionWindowResizeBy,
-		ActionWindowPresetHeight, ActionWindowCenter, ActionWindowMoveToOutputBy:
+		ActionWindowPresetHeight, ActionWindowPresetWidth, ActionWindowCenter,
+		ActionWindowMoveToOutputBy:
 		return CapWindowFloat
 	case ActionWindowMoveToWorkspace, ActionWindowMoveToWorkspaceBy, ActionWindowSummon, ActionWorkspaceFocus, ActionWorkspaceCycle:
 		return CapWorkspaces
 	case ActionWorkspaceMoveToOutput, ActionWorkspaceMoveToOutputBy:
 		return CapWorkspaceMoveToOutput
-	case ActionWorkspaceToggleSpecial:
+	case ActionWindowHide, ActionWorkspaceToggleSpecial:
 		return CapSpecialWorkspace
 	case ActionSessionExit:
 		return CapSessionExit

@@ -365,6 +365,9 @@ func (s *stage) wsetByIndex(index int64) (wayfireWset, bool) {
 // to its output's current cell, which is where an ordinary view lives anyway;
 // a view with no output reports grid width 0.
 func (s *stage) cellOfView(v wayfireView) (int, int, int) {
+	if isScratchWset(v.WsetIndex) {
+		return 0, 0, 1
+	}
 	out, ok := s.outputByName(v.OutputName)
 	if !ok {
 		return 0, 0, 0
@@ -378,9 +381,9 @@ func (s *stage) cellOfView(v wayfireView) (int, int, int) {
 	return x, y, ws.Workspace.GridWidth
 }
 
-// workspaceFrame renders one cell per grid slot of every set. Wayfire has no
-// flat workspace list to mirror: the navigable surface is a per-output grid,
-// and the pills show its cells with the current one active.
+// workspaceFrame renders one cell per grid slot of every ordinary set.
+// Scratch sets are one special workspace so their backing grid never leaks
+// into workspace pills. The navigable surface is otherwise a per-output grid.
 func (s *stage) workspaceFrame() []wm.Workspace {
 	counts := map[string]int{}
 	fullscreen := map[string]bool{}
@@ -394,13 +397,23 @@ func (s *stage) workspaceFrame() []wm.Workspace {
 	}
 	out := make([]wm.Workspace, 0, len(s.wsets)*3*3)
 	for _, ws := range s.wsets {
+		if isScratchWset(ws.Index) {
+			attached, _ := s.attachedCurrent(ws)
+			handle := workspaceHandle(ws.Index, 0, 0)
+			out = append(out, wm.Workspace{
+				ID: handle, Name: "scratchpad", Output: ws.OutputName,
+				Active: attached, Windows: counts[handle], Fullscreen: fullscreen[handle],
+				Special: true,
+			})
+			continue
+		}
 		gridW, gridH := ws.Workspace.GridWidth, ws.Workspace.GridHeight
 		if gridW <= 0 || gridH <= 0 {
 			continue
 		}
 		attached, onCurrent := s.attachedCurrent(ws)
-		for y := 0; y < gridH; y++ {
-			for x := 0; x < gridW; x++ {
+		for y := range gridH {
+			for x := range gridW {
 				handle := workspaceHandle(ws.Index, x, y)
 				out = append(out, wm.Workspace{
 					ID:         handle,
@@ -502,7 +515,20 @@ func (s *stage) outputFrame(o wayfireOutput) wm.Output {
 	}
 	if v, ok := section["mode"]; ok {
 		if s, ok := v.valueString(); ok && s != "" && s != "auto" {
-			frame.Mode = s
+			if mirror, found := strings.CutPrefix(s, "mirror "); found {
+				frame.Mirror = strings.TrimSpace(mirror)
+			} else {
+				frame.Mode = s
+			}
+		}
+	}
+	if v, ok := section["hdr"]; ok {
+		if s, ok := v.valueString(); ok {
+			if s == "true" {
+				frame.ColorMode = "hdr"
+			} else {
+				frame.ColorMode = "srgb"
+			}
 		}
 	}
 	if v, ok := section["transform"]; ok {
@@ -529,6 +555,9 @@ func (s *stage) outputsFrame() []wm.Output {
 // activeWorkspaceHandle is the provider-owned key for the cell an output
 // shows, matching Workspace.ID and Window.Workspace.
 func activeWorkspaceHandle(o wayfireOutput) string {
+	if isScratchWset(o.WsetIndex) {
+		return workspaceHandle(o.WsetIndex, 0, 0)
+	}
 	return workspaceHandle(o.WsetIndex, o.Workspace.X, o.Workspace.Y)
 }
 

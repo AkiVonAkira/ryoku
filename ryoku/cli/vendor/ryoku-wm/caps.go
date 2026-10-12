@@ -51,7 +51,11 @@ const (
 	CapTiledLayout  Capability = "tiledLayout"
 	// CapColumnFill is set when the provider can tell the active window spans
 	// its output's width, the full-width column a scrolling tiler makes.
-	CapColumnFill  Capability = "columnFill"
+	CapColumnFill Capability = "columnFill"
+	// CapDeckLayout is set when the compositor can arrange a workspace as an
+	// overlapping deck with the focused card raised. It gates the deck controls
+	// without exposing which compositor plugin supplies that behaviour.
+	CapDeckLayout  Capability = "deckLayout"
 	CapSessionExit Capability = "sessionExit"
 	// CapNightLight is set when the provider can warm the screen to a colour
 	// temperature and restore it, through the nightlight.on and nightlight.off
@@ -90,6 +94,11 @@ const (
 	// toolbar and catalogue) asks for on-demand focus there instead, and takes
 	// the keyboard as the pointer crosses it.
 	CapKeyboardGrabSharesPointer Capability = "keyboardGrabSharesPointer"
+	// CapSystemLidEdgeSource is set when the compositor receives switch devices
+	// but exposes no ordered lid binding or IPC event. The active session's
+	// clamshell owner then watches physical state and routes both edges through
+	// the neutral output action.
+	CapSystemLidEdgeSource Capability = "systemLidEdgeSource"
 )
 
 // All is every capability, so a caps payload can carry an explicit boolean for
@@ -105,8 +114,9 @@ func All() []Capability {
 		CapOverviewState, CapOutputPower,
 		CapKeyboardLayoutSwitch, CapMonitorConfig, CapOutputMirror,
 		CapOutputHdr, CapWindowFloat,
-		CapTiledLayout, CapColumnFill, CapSessionExit, CapNightLight, CapTouchpadToggle,
-		CapPaletteBorder, CapPersistentScreenCapture, CapKeyboardGrabSharesPointer,
+		CapTiledLayout, CapColumnFill, CapDeckLayout, CapSessionExit, CapNightLight,
+		CapTouchpadToggle, CapPaletteBorder, CapPersistentScreenCapture,
+		CapKeyboardGrabSharesPointer, CapSystemLidEdgeSource,
 	}
 }
 

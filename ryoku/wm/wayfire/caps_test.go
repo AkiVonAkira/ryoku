@@ -2,12 +2,22 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
 	wm "ryoku-wm"
 )
+
+func isolatedWayfirePluginDir(t *testing.T) string {
+	t.Helper()
+	original := wayfirePluginDirs
+	dir := t.TempDir()
+	wayfirePluginDirs = []string{dir}
+	t.Cleanup(func() { wayfirePluginDirs = original })
+	return dir
+}
 
 // The caps list is documented as "kept in step with that package's depends".
 // A satellite added to the PKGBUILD but not to this list could never be
@@ -62,6 +72,60 @@ func TestManifestIsDeliverable(t *testing.T) {
 			t.Errorf("manifest claims %q but wm.All() omits it, so it never rides the caps frame", c)
 		}
 	}
+}
+
+func TestOutputCapabilitiesAndPortalContracts(t *testing.T) {
+	c := wm.Caps{Supports: capsManifest}
+	for _, want := range []wm.Capability{wm.CapOutputPower, wm.CapOutputMirror, wm.CapOutputHdr} {
+		if !c.Has(want) {
+			t.Errorf("Wayfire output stack must deliver %s", want)
+		}
+	}
+	have := map[string]bool{}
+	for _, pkg := range compositorPackages {
+		have[pkg] = true
+	}
+	for _, pkg := range []string{"xdg-desktop-portal-wlr", "wlopm", "wlr-randr"} {
+		if !have[pkg] {
+			t.Errorf("reclaim list omits %s", pkg)
+		}
+	}
+	if have["xdg-desktop-portal-gnome"] {
+		t.Error("the Mutter-backed GNOME portal cannot screencast a Wayfire session")
+	}
+}
+
+func TestDeckCapabilityNeedsItsModule(t *testing.T) {
+	dir := isolatedWayfirePluginDir(t)
+	module := filepath.Join(dir, "libdepthdeck.so")
+	if err := os.WriteFile(module, []byte("test"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !wayfirePluginAvailable("depthdeck") {
+		t.Fatal("module in injected plugin directory was not discovered")
+	}
+	c := wm.Caps{Supports: availableCaps()}
+	if !c.Has(wm.CapDeckLayout) {
+		t.Error("present depthdeck module did not enable deckLayout")
+	}
+}
+
+func TestSpecialWorkspaceCapabilityNeedsLoadedWsets(t *testing.T) {
+	isolatedWayfirePluginDir(t)
+	t.Run("loaded", func(t *testing.T) {
+		stubAct(t, map[string]string{
+			"list-methods": `{"methods":["wsets/set-output-wset","wsets/send-view-to-wset"]}`,
+		})
+		if !(wm.Caps{Supports: availableCaps()}).Has(wm.CapSpecialWorkspace) {
+			t.Error("loaded wsets methods must expose the scratch workspace")
+		}
+	})
+	t.Run("missing", func(t *testing.T) {
+		stubAct(t, map[string]string{"list-methods": `{"methods":[]}`})
+		if (wm.Caps{Supports: availableCaps()}).Has(wm.CapSpecialWorkspace) {
+			t.Error("a live session without wsets must not expose a dead scratch workspace")
+		}
+	})
 }
 
 // wayfire watches its own config file with inotify, so a configReload claim

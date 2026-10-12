@@ -213,6 +213,13 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Wayfire now keeps the complete shell window and display contract live.**
+  Fullscreen changes immediately update fullscreen-sensitive bars, docks,
+  notifications and OSDs; the scratchpad hides and restores windows without
+  leaking backing workspaces into the bar; dock focus brings hidden windows
+  back; and the width preset joins the existing window controls. Display state
+  includes connector identity and modes, mirroring and HDR, while screen-off,
+  wake and per-monitor power use Wayfire's output-power protocol.
 - **Wayfire no longer counts the shell's own panels as windows.** The
   provider reported every layer-shell surface (bar, dock, backdrop) as an open
   window, so the dock saw itself on the workspace and rebuilt several times a

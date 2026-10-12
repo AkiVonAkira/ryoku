@@ -121,6 +121,33 @@ func TestViewFocusedClearsOthers(t *testing.T) {
 	}
 }
 
+func TestFullscreenEventRefreshesWorkspaceState(t *testing.T) {
+	s := &stage{
+		outputs: []wayfireOutput{{
+			ID: 1, Name: "HEADLESS-1", Geometry: wayfireGeometry{Width: 1280, Height: 720},
+			WsetIndex: 1, Workspace: wayfireWorkspace{GridWidth: 3, GridHeight: 3},
+		}},
+		wsets: []wayfireWset{{
+			Index: 1, OutputID: 1, OutputName: "HEADLESS-1",
+			Workspace: wayfireWorkspace{GridWidth: 3, GridHeight: 3},
+		}},
+		views: []wayfireView{{
+			ID: 7, Mapped: true, Role: "toplevel", OutputID: 1,
+			OutputName: "HEADLESS-1", WsetIndex: 1,
+		}},
+	}
+	frame := json.RawMessage(`{"event":"view-fullscreen","view":{"id":7,"mapped":true,"role":"toplevel","output-id":1,"output-name":"HEADLESS-1","wset-index":1,"fullscreen":true}}`)
+	emit, got := collect()
+	s.apply("view-fullscreen", frame, emit, allFrames)
+
+	if len(*got) != 2 || (*got)[0].Kind != wm.FrameWindows || (*got)[1].Kind != wm.FrameWorkspaces {
+		t.Fatalf("frames = %+v, want windows then workspaces", *got)
+	}
+	if len((*got)[1].Workspaces) == 0 || !(*got)[1].Workspaces[0].Fullscreen {
+		t.Errorf("workspace did not gain fullscreen state: %+v", (*got)[1].Workspaces)
+	}
+}
+
 func TestUnmappedRemovesAndCountsFollow(t *testing.T) {
 	s := &stage{
 		outputs: []wayfireOutput{{

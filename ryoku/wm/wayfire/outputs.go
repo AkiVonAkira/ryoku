@@ -53,10 +53,9 @@ func runOutputs(args []string) error {
 
 // monitorsIni renders one output section per layout entry. A disabled output is
 // `mode = off`; a mirrored one is `mode = mirror <name>` and carries nothing
-// else, since a clone has no layout of its own; an enabled one carries only the
-// lines it needs, so an omitted mode or scale leaves wayfire to choose.
-// Position is always written for an enabled output, since the editor lays every
-// screen on one canvas.
+// else, since a clone has no layout of its own; an enabled one carries its HDR
+// toggle plus only the layout lines it needs. Position is always written for an
+// enabled output, since the editor lays every screen on one canvas.
 func monitorsIni(layout []wm.OutputLayout) []byte {
 	var b strings.Builder
 	b.WriteString(monitorsHeader)
@@ -72,6 +71,12 @@ func monitorsIni(layout []wm.OutputLayout) []byte {
 		if o.Mirror != "" && o.Mirror != "none" {
 			fmt.Fprintf(&b, "mode = mirror %s\n\n", o.Mirror)
 			continue
+		}
+		switch o.ColorMode {
+		case "", "srgb":
+			b.WriteString("hdr = false\n")
+		case "hdr":
+			b.WriteString("hdr = true\n")
 		}
 		if o.Mode != "" {
 			fmt.Fprintf(&b, "mode = %s\n", wayfireMode(o.Mode))
@@ -163,21 +168,20 @@ func transformFromWayfire(s string) int {
 }
 
 // outputsUnhonored names each requested detail wayfire cannot express. The
-// layout path covers mode (mirroring included), position, scale, transform and
-// VRR; the losses are the HDR / wide-gamut colour pipeline and its SDR
-// brightness, reported per leaf so a profile carried over from another
-// compositor says what it could not keep, rather than the whole apply failing.
-// No non-advertised mode check: wayfire's IPC never advertises the mode list.
+// layout path covers mode (mirroring included), position, scale, transform, VRR
+// and HDR. Wide gamut without HDR and separate SDR brightness are reported per
+// leaf so a profile carried over from another compositor says what it could not
+// keep, rather than the whole apply failing.
 func outputsUnhonored(layout []wm.OutputLayout) []wm.Unhonored {
 	var unh []wm.Unhonored
 	for _, o := range layout {
 		if !o.Enabled {
 			continue
 		}
-		if o.ColorMode != "" && o.ColorMode != "srgb" {
+		if o.ColorMode != "" && o.ColorMode != "srgb" && o.ColorMode != "hdr" {
 			unh = append(unh, wm.Unhonored{
 				Key:    "displays." + o.Name + ".colorMode",
-				Reason: "wayfire has no HDR or wide-gamut colour pipeline",
+				Reason: "wayfire has no separate wide-gamut colour mode",
 			})
 		}
 		if o.SdrBrightness > 0 && o.SdrBrightness != 1 {

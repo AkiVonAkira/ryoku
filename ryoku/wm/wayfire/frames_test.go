@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 
 	wm "ryoku-wm"
@@ -148,6 +149,41 @@ func TestWorkspaceAndWindowFrames(t *testing.T) {
 	}
 }
 
+func TestScratchSetIsOneSpecialWorkspace(t *testing.T) {
+	index := scratchWsetBase + 1
+	s := &stage{
+		outputs: []wayfireOutput{{
+			ID: 1, Name: "HEADLESS-1", WsetIndex: index,
+			Geometry:  wayfireGeometry{Width: 1280, Height: 720},
+			Workspace: wayfireWorkspace{X: 2, Y: 1, GridWidth: 5, GridHeight: 2},
+		}},
+		wsets: []wayfireWset{{
+			Index: index, OutputID: 1, OutputName: "HEADLESS-1",
+			Workspace: wayfireWorkspace{X: 2, Y: 1, GridWidth: 5, GridHeight: 2},
+		}},
+		views: []wayfireView{{
+			ID: 9, OutputName: "HEADLESS-1", WsetIndex: index,
+			Geometry: wayfireGeometry{X: 10, Y: 10, Width: 400, Height: 300},
+		}},
+	}
+	workspaces := s.workspaceFrame()
+	if len(workspaces) != 1 {
+		t.Fatalf("scratch set rendered %d workspace pills, want 1", len(workspaces))
+	}
+	got := workspaces[0]
+	if got.ID != workspaceHandle(index, 0, 0) || got.Name != "scratchpad" ||
+		!got.Special || !got.Active || got.Windows != 1 {
+		t.Errorf("scratch workspace = %+v", got)
+	}
+	if active := s.outputFrame(s.outputs[0]).ActiveWorkspace; active != got.ID {
+		t.Errorf("scratch output active workspace = %q, want %q", active, got.ID)
+	}
+	windows := s.windowFrame()
+	if len(windows) != 1 || windows[0].Workspace != got.ID {
+		t.Errorf("scratch window workspace = %+v, want %q", windows, got.ID)
+	}
+}
+
 // wayfire reports the focused output straight, and an unknown keyboard
 // layout reads as no layout rather than the literal word.
 func TestFocusedAndKeyboard(t *testing.T) {
@@ -166,6 +202,26 @@ func TestFocusedAndKeyboard(t *testing.T) {
 	}
 }
 
+func TestOutputFrameReadsMirrorAndHDR(t *testing.T) {
+	s := &stage{
+		outputs: []wayfireOutput{{
+			ID: 1, Name: "HDMI-A-1", WsetIndex: 1,
+			Geometry:  wayfireGeometry{Width: 1920, Height: 1080},
+			Workspace: wayfireWorkspace{GridWidth: 5, GridHeight: 2},
+		}},
+		config: map[string]map[string]configOption{
+			"output:HDMI-A-1": {
+				"mode": {Value: json.RawMessage(`"mirror eDP-1"`)},
+				"hdr":  {Value: json.RawMessage(`"true"`)},
+			},
+		},
+	}
+	got := s.outputFrame(s.outputs[0])
+	if got.Mirror != "eDP-1" || got.Mode != "" || got.ColorMode != "hdr" {
+		t.Errorf("mirror/HDR output frame = %+v", got)
+	}
+}
+
 // The frame kinds must all exist in the shared contract, or a consumer would
 // read a frame the shell never gates on.
 func TestFrameKindsAreShared(t *testing.T) {
@@ -173,5 +229,38 @@ func TestFrameKindsAreShared(t *testing.T) {
 		if k == "" {
 			t.Fatal("empty frame kind")
 		}
+	}
+}
+
+func TestOutputDetailsFillDisplayEditorState(t *testing.T) {
+	base := []wm.Output{{Name: "eDP-1", Width: 2560, Height: 1600, Scale: 1}}
+	var detail randrOutput
+	detail.Name = "eDP-1"
+	detail.Make = "Thermotrex Corporation"
+	detail.Model = "TL140ADXP02-0"
+	detail.Enabled = true
+	detail.PhysicalSize.Width = 300
+	detail.Position.X = 20
+	detail.Position.Y = 30
+	detail.Transform = "flipped-90"
+	detail.Scale = 1.25
+	detail.AdaptiveSync = true
+	detail.Modes = []randrMode{
+		{Width: 2560, Height: 1600, Refresh: 60.001999, Preferred: true, Current: true},
+		{Width: 2560, Height: 1600, Refresh: 165.001999},
+	}
+	got := enrichOutputs(base, []randrOutput{detail})
+	if len(got) != 1 {
+		t.Fatalf("outputs = %+v", got)
+	}
+	out := got[0]
+	if out.Make != detail.Make || out.Model != detail.Model || out.PhysicalWidth != 300 {
+		t.Errorf("identity = %+v", out)
+	}
+	if out.Mode != "2560x1600@60.001999" || len(out.Modes) != 2 {
+		t.Errorf("modes = %q %+v", out.Mode, out.Modes)
+	}
+	if out.X != 20 || out.Y != 30 || out.Scale != 1.25 || out.Transform != 5 || !out.VRR {
+		t.Errorf("layout = %+v", out)
 	}
 }

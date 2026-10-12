@@ -270,6 +270,24 @@ func TestSummonAndAppFocus(t *testing.T) {
 		wantCall(t, *calls, "window-rules/focus-view", `{"id":7}`)
 	})
 
+	t.Run("dock focus restores a scratch window", func(t *testing.T) {
+		t.Setenv("XDG_STATE_HOME", t.TempDir())
+		replies := stageReplies()
+		replies["window-rules/list-views"] = strings.Replace(
+			replies["window-rules/list-views"], `"wset-index":1`, `"wset-index":1500000001`, 1)
+		replies["window-rules/list-wsets"] = `[
+			{"index":1,"name":"main","output-id":1,"output-name":"HEADLESS-1","workspace":{"x":1,"y":0,"grid_width":3,"grid_height":3}},
+			{"index":1500000001,"name":"scratch","output-id":0,"output-name":"null","workspace":{"x":0,"y":0,"grid_width":3,"grid_height":3}}]`
+		calls := stubAct(t, replies)
+		if err := runAct([]string{"app.focus", "kitty"}); err != nil {
+			t.Fatal(err)
+		}
+		wantOrder(t, *calls,
+			expectedCall{"wsets/send-view-to-wset", `{"view-id":7,"wset-index":1}`},
+			expectedCall{"vswitch/send-view", `{"view-id":7,"x":1,"y":0}`},
+			expectedCall{"window-rules/focus-view", `{"id":7}`})
+	})
+
 	t.Run("app focus missing app", func(t *testing.T) {
 		stubAct(t, stageReplies())
 		err := runAct([]string{"app.focus", "firefox"})
@@ -404,6 +422,76 @@ func TestWorkspaceMoveToOutput(t *testing.T) {
 			t.Errorf("got %v, want a does-not-exist error", err)
 		}
 	})
+}
+
+func TestOutputPower(t *testing.T) {
+	stubAct(t, stageReplies())
+	original := runWlopm
+	var calls [][]string
+	runWlopm = func(args ...string) ([]byte, error) {
+		calls = append(calls, append([]string(nil), args...))
+		return nil, nil
+	}
+	t.Cleanup(func() { runWlopm = original })
+
+	if err := runAct([]string{"output.power", "off"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runAct([]string{"output.power", "on", "HDMI-A-1"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(calls[0], " "); got != "--off *" {
+		t.Errorf("all-output call = %q, want --off *", got)
+	}
+	if got := strings.Join(calls[1], " "); got != "--on HDMI-A-1" {
+		t.Errorf("named-output call = %q, want --on HDMI-A-1", got)
+	}
+
+	if err := runAct([]string{"output.power", "banana"}); err == nil ||
+		!strings.Contains(err.Error(), "state must be on or off") {
+		t.Errorf("bad state error = %v", err)
+	}
+}
+
+func TestScratchpadActs(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	replies := stageReplies()
+	replies["list-methods"] = `{"methods":["wsets/set-output-wset","wsets/send-view-to-wset"]}`
+	calls := stubAct(t, replies)
+
+	if err := runAct([]string{"window.hide", "focused"}); err != nil {
+		t.Fatal(err)
+	}
+	wantCall(t, *calls, "wsets/send-view-to-wset",
+		`{"view-id":7,"wset-index":1500000001}`)
+
+	if err := runAct([]string{"workspace.toggleSpecial", "scratchpad"}); err != nil {
+		t.Fatal(err)
+	}
+	wantCall(t, *calls, "wsets/set-output-wset",
+		`{"output-id":1,"wset-index":1500000001}`)
+
+	replies["window-rules/list-outputs"] = strings.Replace(
+		replies["window-rules/list-outputs"], `"wset-index":1`, `"wset-index":1500000001`, 1)
+	if err := runAct([]string{"workspace.toggleSpecial", "scratchpad"}); err != nil {
+		t.Fatal(err)
+	}
+	wantCallN(t, *calls, "wsets/set-output-wset", 1,
+		`{"output-id":1,"wset-index":1}`)
+
+	if err := runAct([]string{"workspace.toggleSpecial", "named"}); err == nil ||
+		!strings.Contains(err.Error(), "only the scratchpad") {
+		t.Errorf("named special error = %v", err)
+	}
+}
+
+func TestPresetWidth(t *testing.T) {
+	calls := stubAct(t, stageReplies())
+	if err := runAct([]string{"window.presetWidth"}); err != nil {
+		t.Fatal(err)
+	}
+	wantCall(t, *calls, "window-rules/configure-view",
+		`{"geometry":{"height":720,"width":640,"x":-1107,"y":0},"id":7,"tiled-edges":0}`)
 }
 
 func TestKeyboardCycle(t *testing.T) {
@@ -661,18 +749,20 @@ func TestOutputCycleAndEnable(t *testing.T) {
 // manifest denies must say so by name instead of failing obscurely or,
 // worse, pretending.
 func TestDeniedAndUnknownActions(t *testing.T) {
+	isolatedWayfirePluginDir(t)
 	cases := []struct {
 		args []string
 		want string
 	}{
-		{[]string{"output.power", "off"}, "outputPower"},
+		{[]string{"output.power"}, "missing on|off"},
 		{[]string{"submap.enter"}, "submap"},
 		{[]string{"overview.toggle"}, "nativeOverview"},
 		{[]string{"config.reload"}, "configReload"},
 		{[]string{"decoration.gameMode", "on"}, "liveConfigEval"},
 		{[]string{"input.focusFollowsMouse", "off"}, "liveConfigEval"},
 		{[]string{"decoration.screenShader", "on"}, "screenShader"},
-		{[]string{"workspace.toggleSpecial"}, "specialWorkspace"},
+		{[]string{"window.hide", "focused"}, "specialWorkspace: the wsets plugin is not loaded"},
+		{[]string{"workspace.toggleSpecial"}, "specialWorkspace: the wsets plugin is not loaded"},
 		{[]string{"cursor.set"}, "cursorSet"},
 		{[]string{"cursor.reassert"}, "config block"},
 		{[]string{"frobnicate"}, "unknown action"},

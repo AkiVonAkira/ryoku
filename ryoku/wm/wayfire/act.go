@@ -16,6 +16,12 @@ import (
 	wm "ryoku-wm"
 )
 
+// wlopm is the small protocol client for zwlr-output-power-management-v1,
+// which Wayfire exposes but does not wrap in its JSON IPC.
+var runWlopm = func(args ...string) ([]byte, error) {
+	return exec.Command("wlopm", args...).CombinedOutput()
+}
+
 // One neutral action id in, one wayfire ipc request out. The only file
 // allowed to spell a wayfire method name for actions, the sibling of the
 // Hyprland and niri act files.
@@ -42,7 +48,11 @@ func runAct(args []string) error {
 		if err != nil {
 			return err
 		}
-		return perform("window-rules/focus-view", map[string]any{"id": id})
+		view, err := viewByID(id)
+		if err != nil {
+			return err
+		}
+		return focusView(view)
 
 	case wm.ActionWindowClose:
 		id, err := argID(rest, 0, "window id")
@@ -96,6 +106,16 @@ func runAct(args []string) error {
 			return err
 		}
 		return moveViewToCell(id, ws, true)
+
+	case wm.ActionWindowHide:
+		if err := requireSpecialWorkspace(act); err != nil {
+			return err
+		}
+		id, err := argID(rest, 0, "window id")
+		if err != nil {
+			return err
+		}
+		return hideWindow(id)
 
 	case wm.ActionWindowSummon:
 		title, err := arg(rest, 0, "window title")
@@ -164,6 +184,9 @@ func runAct(args []string) error {
 		}
 		return presetFocusedHeight(act, first)
 
+	case wm.ActionWindowPresetWidth:
+		return presetFocusedWidth(act)
+
 	case wm.ActionWindowCenter:
 		return centerFocused(act)
 
@@ -179,7 +202,7 @@ func runAct(args []string) error {
 		if !ok {
 			return fmt.Errorf("act %s: no window of app %q", act, appID)
 		}
-		return perform("window-rules/focus-view", map[string]any{"id": view.ID})
+		return focusView(view)
 
 	case wm.ActionWorkspaceFocus:
 		ws, err := arg(rest, 0, "workspace id")
@@ -272,6 +295,16 @@ func runAct(args []string) error {
 		}
 		return moveCellViewsToOutput(stage, wsetIdx, x, y, target)
 
+	case wm.ActionWorkspaceToggleSpecial:
+		name := "scratchpad"
+		if len(rest) > 0 && strings.TrimSpace(rest[0]) != "" {
+			name = rest[0]
+		}
+		if name != "scratchpad" {
+			return fmt.Errorf("act %s: wayfire has only the scratchpad special workspace, got %q", act, name)
+		}
+		return toggleScratchpad()
+
 	// The screen acts measure direction from the focused screen: focus the
 	// window it last held, hand it over, or send the whole cell across.
 	case wm.ActionOutputFocusDirection:
@@ -301,6 +334,28 @@ func runAct(args []string) error {
 			return fmt.Errorf("act %s: %w", act, err)
 		}
 		return syscall.Kill(pid, syscall.SIGTERM)
+
+	case wm.ActionOutputPower:
+		state, err := arg(rest, 0, "on|off")
+		if err != nil {
+			return err
+		}
+		if state != "on" && state != "off" {
+			return fmt.Errorf("act %s: state must be on or off, got %q", act, state)
+		}
+		output := "*"
+		if len(rest) > 1 && strings.TrimSpace(rest[1]) != "" {
+			output = rest[1]
+		}
+		out, err := runWlopm("--"+state, output)
+		if err != nil {
+			detail := strings.TrimSpace(string(out))
+			if detail != "" {
+				return fmt.Errorf("act %s: %s", act, detail)
+			}
+			return fmt.Errorf("act %s: %w", act, err)
+		}
+		return nil
 
 	case wm.ActionKeyboardCycleLayout:
 		k, err := readKeyboard()
@@ -857,6 +912,40 @@ func presetFocusedHeight(act wm.Action, first bool) error {
 	nr := pl.rect
 	nr.Height = height
 	nr.Y = clampF(nr.Y, pl.cell.Y, pl.cell.Y+pl.cell.Height-height)
+	return configurePlaced(origin.ID, nr)
+}
+
+// presetFocusedWidth cycles through three useful fractions of the workspace.
+// It preserves height and the left edge unless that would put the new width
+// outside the cell.
+func presetFocusedWidth(act wm.Action) error {
+	st, err := readStage()
+	if err != nil {
+		return err
+	}
+	origin, err := focusedWindow(act)
+	if err != nil {
+		return err
+	}
+	pl, ok := st.planeOf(origin)
+	if !ok {
+		return fmt.Errorf("act %s: the window's screen is gone", act)
+	}
+	if pl.cell.Width <= 0 {
+		return fmt.Errorf("act %s: screen %q reports no width", act, pl.out.Name)
+	}
+	presets := [3]float64{1, 0.75, 0.5}
+	fraction := pl.rect.Width / pl.cell.Width
+	nearest, bestD := 0, math.MaxFloat64
+	for i, preset := range presets {
+		if distance := math.Abs(fraction - preset); distance < bestD {
+			nearest, bestD = i, distance
+		}
+	}
+	width := presets[(nearest+1)%len(presets)] * pl.cell.Width
+	nr := pl.rect
+	nr.Width = width
+	nr.X = clampF(nr.X, pl.cell.X, pl.cell.X+pl.cell.Width-width)
 	return configurePlaced(origin.ID, nr)
 }
 
@@ -1508,4 +1597,163 @@ func writeCyclePosition(pos int) error {
 		return err
 	}
 	return os.WriteFile(outputCyclePath(), []byte(strconv.Itoa(pos)), 0o644)
+}
+
+const scratchWsetBase int64 = 1_500_000_000
+
+type scratchWindowState struct {
+	ReturnWset int64  `json:"returnWset"`
+	Output     string `json:"output"`
+	Scratch    int64  `json:"scratch"`
+}
+
+type scratchState struct {
+	ReturnWsets map[string]int64              `json:"returnWsets"`
+	Windows     map[string]scratchWindowState `json:"windows"`
+}
+
+func scratchWset(outputID int) int64 {
+	return scratchWsetBase + int64(outputID)
+}
+
+func scratchStatePath() string {
+	dir := os.Getenv("XDG_STATE_HOME")
+	if dir == "" {
+		dir = filepath.Join(os.Getenv("HOME"), ".local", "state")
+	}
+	return filepath.Join(dir, "ryoku", "wayfire-scratchpad.json")
+}
+
+func readScratchState() scratchState {
+	state := scratchState{
+		ReturnWsets: map[string]int64{},
+		Windows:     map[string]scratchWindowState{},
+	}
+	body, err := os.ReadFile(scratchStatePath())
+	if err == nil {
+		_ = json.Unmarshal(body, &state)
+	}
+	if state.ReturnWsets == nil {
+		state.ReturnWsets = map[string]int64{}
+	}
+	if state.Windows == nil {
+		state.Windows = map[string]scratchWindowState{}
+	}
+	return state
+}
+
+func writeScratchState(state scratchState) error {
+	if err := os.MkdirAll(filepath.Dir(scratchStatePath()), 0o755); err != nil {
+		return err
+	}
+	body, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(scratchStatePath(), body, 0o600)
+}
+
+func focusView(view wayfireView) error {
+	if !isScratchWset(view.WsetIndex) {
+		return perform("window-rules/focus-view", map[string]any{"id": view.ID})
+	}
+	out, x, y, err := focusedCell()
+	if err != nil {
+		return err
+	}
+	if err := moveViewToCell(view.ID, workspaceHandle(out.WsetIndex, x, y), true); err != nil {
+		return err
+	}
+	state := readScratchState()
+	delete(state.Windows, strconv.FormatInt(view.ID, 10))
+	return writeScratchState(state)
+}
+
+func isScratchWset(index int64) bool {
+	return index >= scratchWsetBase && index < scratchWsetBase+1_000_000
+}
+
+func requireSpecialWorkspace(act wm.Action) error {
+	if specialWorkspaceMethodsAvailable() {
+		return nil
+	}
+	return fmt.Errorf("act %s: wayfire does not support %s: the wsets plugin is not loaded",
+		act, wm.CapSpecialWorkspace)
+}
+
+func hideWindow(id int64) error {
+	view, err := viewByID(id)
+	if err != nil {
+		return err
+	}
+	state := readScratchState()
+	key := strconv.FormatInt(id, 10)
+	if prior, ok := state.Windows[key]; ok && view.WsetIndex == prior.Scratch {
+		if err := perform("wsets/send-view-to-wset", map[string]any{
+			"view-id": id, "wset-index": prior.ReturnWset,
+		}); err != nil {
+			return err
+		}
+		delete(state.Windows, key)
+		return writeScratchState(state)
+	}
+	if view.OutputID <= 0 || view.OutputName == "" || view.OutputName == "null" {
+		return fmt.Errorf("window.hide: window %d is detached and has no recorded return workspace", id)
+	}
+	scratch := scratchWset(view.OutputID)
+	state.Windows[key] = scratchWindowState{
+		ReturnWset: view.WsetIndex,
+		Output:     view.OutputName,
+		Scratch:    scratch,
+	}
+	if err := writeScratchState(state); err != nil {
+		return err
+	}
+	if err := perform("wsets/send-view-to-wset", map[string]any{
+		"view-id": id, "wset-index": scratch,
+	}); err != nil {
+		delete(state.Windows, key)
+		_ = writeScratchState(state)
+		return err
+	}
+	return nil
+}
+
+func toggleScratchpad() error {
+	if err := requireSpecialWorkspace(wm.ActionWorkspaceToggleSpecial); err != nil {
+		return err
+	}
+	out, err := focusedOutput(wm.ActionWorkspaceToggleSpecial)
+	if err != nil {
+		return err
+	}
+	state := readScratchState()
+	scratch := scratchWset(out.ID)
+	if out.WsetIndex == scratch {
+		prior := state.ReturnWsets[out.Name]
+		if prior <= 0 {
+			return fmt.Errorf("act %s: output %q has no recorded workspace to return to",
+				wm.ActionWorkspaceToggleSpecial, out.Name)
+		}
+		if err := perform("wsets/set-output-wset", map[string]any{
+			"output-id": out.ID, "wset-index": prior,
+		}); err != nil {
+			return err
+		}
+		delete(state.ReturnWsets, out.Name)
+		return writeScratchState(state)
+	}
+
+	state.ReturnWsets[out.Name] = out.WsetIndex
+	if err := writeScratchState(state); err != nil {
+		return err
+	}
+	if err := perform("wsets/set-output-wset", map[string]any{
+		"output-id": out.ID, "wset-index": scratch,
+	}); err != nil {
+		delete(state.ReturnWsets, out.Name)
+		_ = writeScratchState(state)
+		return err
+	}
+	return nil
 }

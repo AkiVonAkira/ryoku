@@ -14,7 +14,7 @@ import (
 // `mode = mirror <name>` with no layout of its own.
 func TestMonitorsIni(t *testing.T) {
 	got := string(monitorsIni([]wm.OutputLayout{
-		{Name: "eDP-1", Enabled: true, Mode: "2560x1600@165.002", Scale: 1.5, X: 0, Y: 0, Transform: 1, VRR: true},
+		{Name: "eDP-1", Enabled: true, Mode: "2560x1600@165.002", Scale: 1.5, X: 0, Y: 0, Transform: 1, VRR: true, ColorMode: "hdr"},
 		{Name: "DP-2", Enabled: false},
 		{Name: "HDMI-A-1", Enabled: true, Mirror: "eDP-1"},
 	}))
@@ -26,6 +26,7 @@ func TestMonitorsIni(t *testing.T) {
 		"scale = 1.5",
 		"transform = 90",
 		"vrr = true",
+		"hdr = true",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("monitors.ini missing %q\n%s", want, got)
@@ -50,9 +51,9 @@ func TestMonitorsIni(t *testing.T) {
 	}
 }
 
-// An untransformed, non-VRR output emits neither line, so the section stays
-// minimal and a 0 transform never reads back as a rotation; an auto mode stays
-// unset so wayfire picks the panel's preferred one.
+// An untransformed, non-VRR output emits neither line, while explicit SDR keeps
+// an earlier HDR session from leaking through. An auto mode stays unset so
+// wayfire picks the panel's preferred one.
 func TestMonitorsIniOmitsDefaults(t *testing.T) {
 	got := string(monitorsIni([]wm.OutputLayout{
 		{Name: "eDP-1", Enabled: true, Scale: 1, X: 0, Y: 0},
@@ -63,6 +64,9 @@ func TestMonitorsIniOmitsDefaults(t *testing.T) {
 	}
 	if strings.Contains(body, "vrr") {
 		t.Errorf("VRR off must be omitted:\n%s", body)
+	}
+	if !strings.Contains(body, "hdr = false") {
+		t.Errorf("an ordinary SDR output must explicitly disable HDR:\n%s", body)
 	}
 	if strings.Contains(body, "mode = ") {
 		t.Errorf("an auto mode must be omitted:\n%s", body)
@@ -113,23 +117,22 @@ func TestTransformRoundtrip(t *testing.T) {
 	}
 }
 
-// A profile saved on another compositor can carry HDR colour; replayed on
-// wayfire, each leaf is reported so the apply names its losses instead of
-// failing or dropping them silently, while a neutral output reports nothing.
+// Wayfire 0.11 supports a per-output HDR toggle, but not a separate wide-gamut
+// mode or SDR brightness. Unsupported leaves remain visible in the apply report.
 func TestOutputsUnhonoredReportsColour(t *testing.T) {
 	unh := outputsUnhonored([]wm.OutputLayout{
 		{Name: "eDP-1", Enabled: true, ColorMode: "hdr", SdrBrightness: 1.5},
-		{Name: "DP-1", Enabled: true, ColorMode: "srgb", SdrBrightness: 1},
+		{Name: "DP-1", Enabled: true, ColorMode: "wide", SdrBrightness: 1},
 		{Name: "HDMI-A-1", Enabled: false, ColorMode: "wide"},
 	})
 	got := map[string]bool{}
 	for _, u := range unh {
 		got[u.Key] = true
 	}
-	if !got["displays.eDP-1.colorMode"] || !got["displays.eDP-1.sdrBrightness"] {
-		t.Errorf("hdr colour must be reported per leaf, got %v", unh)
+	if got["displays.eDP-1.colorMode"] || !got["displays.eDP-1.sdrBrightness"] {
+		t.Errorf("HDR must be honored while SDR brightness is reported, got %v", unh)
 	}
-	if len(unh) != 2 {
-		t.Errorf("only the enabled HDR output is a loss, got %v", unh)
+	if !got["displays.DP-1.colorMode"] || len(unh) != 2 {
+		t.Errorf("only wide gamut and SDR brightness should be losses, got %v", unh)
 	}
 }
