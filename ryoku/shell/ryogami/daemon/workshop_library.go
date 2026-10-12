@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,6 +23,10 @@ const maxPresetDepth = 32
 type workshopLib struct {
 	d     *daemon
 	props *wePropStore
+
+	libMu    sync.Mutex
+	libStamp string
+	libDirs  []string
 }
 
 func newWorkshopLib(d *daemon) *workshopLib {
@@ -73,7 +78,33 @@ func (w *workshopLib) workshopDir() string {
 	if p := wkString(w.d.setting("paths.steamWorkshop")); p != "" {
 		return resolvePath(p)
 	}
-	return filepath.Join(w.steamRoot(), "steamapps", "workshop", "content", workshopAppID)
+	return filepath.Join(w.weLibrary(), "steamapps", "workshop", "content", workshopAppID)
+}
+
+// The renderer guesses only the native Steam paths, so a Flatpak Steam or a second
+// library would leave scenes without Wallpaper Engine's shared shaders and materials.
+func (w *workshopLib) weAssetsDir() string {
+	if p := wkString(w.d.setting("paths.steamWeAssets")); p != "" {
+		return resolvePath(p)
+	}
+	dir := filepath.Join(w.weLibrary(), "steamapps", "common", "wallpaper_engine", "assets")
+	if dirExists(dir) {
+		return dir
+	}
+	return ""
+}
+
+func (w *workshopLib) weLibrary() string {
+	root := w.steamRoot()
+	vdf, stamp := libraryFoldersFile(root)
+	w.libMu.Lock()
+	if w.libDirs == nil || stamp != w.libStamp {
+		w.libDirs = steamLibraryDirs(root, vdf)
+		w.libStamp = stamp
+	}
+	dirs := w.libDirs
+	w.libMu.Unlock()
+	return pickWeLibrary(dirs)
 }
 
 func detectSteamRoot(homeDir string, exists func(string) bool) string {
@@ -363,7 +394,8 @@ func findPreview(itemDir string, doc map[string]interface{}) string {
 }
 
 func (w *workshopLib) downloadedIDs() []string {
-	entries, err := os.ReadDir(w.workshopDir())
+	dir := w.workshopDir()
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
@@ -376,7 +408,7 @@ func (w *workshopLib) downloadedIDs() []string {
 		if !validWeID(id) {
 			continue
 		}
-		if _, err := validateProject(filepath.Join(w.workshopDir(), id)); err == nil {
+		if _, err := validateProject(filepath.Join(dir, id)); err == nil {
 			ids = append(ids, id)
 		}
 	}
