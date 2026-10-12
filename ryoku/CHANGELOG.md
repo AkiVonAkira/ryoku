@@ -217,6 +217,10 @@
   generated Hyprland animation override replaces workspace translation with a
   fade while scrolling is active, keeps each preset's timing and curve, and
   restores the preset style for other layouts (`wm/hyprland/config_settings.go`).
+- **Workspace clicks use the workspace the widget selected.** The neutral
+  workspace action resolver now keeps an exact provider id before falling back
+  to a display name, so overlapping ids and names cannot redirect focus or
+  window moves to a different workspace (`ui/Singletons/Wm.qml`).
 - **Power profile controls work with Fedora's default provider.** The Hub,
   Nomarchy, game mode, and `ryoku-power` send profile reads and writes through
   the shell daemon's provider-neutral D-Bus client, so tuned-ppd works alongside

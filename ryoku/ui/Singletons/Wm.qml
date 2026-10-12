@@ -279,13 +279,15 @@ Singleton {
             String(Math.round(width)), String(Math.round(height)), String(output)
         ], cb);
     }
-    // State carries workspace NAMES, the key windows and outputs agree on,
-    // while acts take Workspace.ID: a value that names a workspace becomes
-    // its id, anything else passes through, which keeps the opaque wayfire
-    // handle and the ids hyprland and niri already accept working untouched.
+    // Actions take Workspace.ID. Most callers already pass that opaque key;
+    // display names remain accepted for older widgets that address a workspace
+    // by its label.
     function _wsId(key) {
         const k = String(key);
         const list = root.workspaces;
+        for (let i = 0; i < list.length; i++)
+            if (String(list[i].id) === k)
+                return k;
         for (let i = 0; i < list.length; i++)
             if (String(list[i].name) === k)
                 return String(list[i].id);
