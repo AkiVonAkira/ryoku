@@ -255,7 +255,7 @@ Rectangle {
             for (var ri = 0; ri < rows.length; ri++) {
                 var r = rows[ri];
                 if (!isSetting(r)) continue;
-                if (r.caps && !Settings.supports(r.caps)) continue;
+                if (!Settings.supports(r.caps, r.hostCaps)) continue;
                 if (!Settings.modelsKey(r.key)) continue;
                 // a setting also matches its option values (h264, dwindle, dark,
                 // fahrenheit): index the lowercase ones (skips DisplaysPage's
@@ -274,7 +274,7 @@ Rectangle {
             if (!isSetting(pr)) continue;
             var psec = pr.page || "windowmanager";
             if (!hub.sectionAvailable(psec)) continue;
-            if (pr.caps && !Settings.supports(pr.caps)) continue;
+            if (!Settings.supports(pr.caps, pr.hostCaps)) continue;
             if (!Settings.modelsKey(pr.key)) continue;
             var poptkw = (pr.keywords || "") + " " + (pr.opts ? pr.opts.filter(function (o) { return typeof o === "string" && /^[a-z0-9][a-z0-9 ._/-]*$/.test(o); }).join(" ") : "");
             out.push({ section: psec, sectionName: nameOf[psec] || psec, group: cleanGroup(pr.group), tab: pr.tab || "", label: pr.label, desc: pr.desc || "", kw: poptkw, key: pr.key || "", isPage: false });
@@ -493,7 +493,7 @@ Rectangle {
         for (var i = 0; i < rows.length; i++) {
             var r = rows[i];
             if (!r || !r.key) continue;
-            if (r.caps && !Settings.supports(r.caps)) continue;
+            if (!Settings.supports(r.caps, r.hostCaps)) continue;
             if (Settings.modelsKey(r.key)) return true;
         }
         return false;

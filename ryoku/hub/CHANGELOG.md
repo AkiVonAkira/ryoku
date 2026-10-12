@@ -3,6 +3,14 @@
 ## Unreleased
 
 ### Added
+- **The Hub speaks to every edition through `ryoku-host`.** A `Host` singleton
+  reads `ryoku-host capabilities` (package manager, init, snapshots, AUR), and
+  schema rows can gate on it with `hostCaps` the way they gate on compositor
+  capabilities. Snapshots, keymap and initramfs rebuilds, power profiles,
+  network helpers, Bluetooth, fingerprint PAM, install dates, Rashin and
+  Dictation services, Add-ons repairs and config imports now go through the
+  host seam on Arch, CachyOS, Fedora and Void. A control the edition cannot
+  back is shown disabled with the reason instead of failing when used.
 - **Credits now name QS Bar's source.** Quickshell Rise by HANCORE-linux joins
   the Hub credits and root provenance notice
   (`quickshell/pages/CreditsPage.qml`, `../../NOTICE`).

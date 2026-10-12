@@ -66,7 +66,7 @@ Item {
 
     Process {
         id: killStatus
-        command: ["pkexec", "/usr/bin/ryoku-network-kill", "status"]
+        command: ["ryoku-host", "network", "kill", "status"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
@@ -92,7 +92,7 @@ Item {
     Process {
         id: killSetProc
         property string target: ""
-        command: ["pkexec", "/usr/bin/ryoku-network-kill", target]
+        command: ["ryoku-host", "network", "kill", target]
         stderr: StdioCollector {}
         onExited: function(exitCode) {
             pg.killBusy = false;
@@ -471,10 +471,10 @@ Item {
         property bool connectFailed: false
         property bool scanning: false
 
-        // NetworkManager's Wi-Fi backend, read live from `ryoku-wifi-backend get`.
+        // NetworkManager's Wi-Fi backend, read and applied through the host seam.
         // iwd is the default; wpa_supplicant is the escape hatch for WPA3 / phone
-        // hotspots iwd stumbles on. backendBusy gates the segment while pkexec
-        // rewrites the NM drop-in and restarts the service.
+        // hotspots iwd stumbles on. backendBusy gates the segment while the host
+        // seam rewrites the NM drop-in and restarts the service.
         property string wifiBackend: "iwd"
         property bool backendBusy: false
 
@@ -509,13 +509,13 @@ Item {
             autoProc.running = true;
         }
 
-        // flip the NM backend. no-op if unchanged or already switching; the
-        // shipped polkit rule lets wheel run this via pkexec with no prompt.
+        // Flip the NM backend. The host seam validates the choice, escalates once,
+        // and delegates to the packaged helper.
         function setBackend(choice) {
             if (wifi.backendBusy || choice === wifi.wifiBackend)
                 return;
             wifi.backendBusy = true;
-            backendSetProc.command = ["pkexec", "ryoku-wifi-backend", choice];
+            backendSetProc.command = ["ryoku-host", "network", "wifi-backend", "set", choice];
             backendSetProc.running = true;
         }
 
@@ -818,10 +818,10 @@ Item {
             onTriggered: if (wifi.active) secProc.running = true
         }
 
-        // read the current NM Wi-Fi backend (read-only, unprivileged).
+        // Read the current NM Wi-Fi backend through the host seam.
         Process {
             id: backendGetProc
-            command: ["ryoku-wifi-backend", "get"]
+            command: ["ryoku-host", "network", "wifi-backend", "get"]
             stdout: StdioCollector {
                 onStreamFinished: {
                     var v = this.text.trim();
@@ -831,8 +831,8 @@ Item {
             }
         }
 
-        // apply the switch via pkexec; the polkit rule grants wheel passwordless.
-        // NetworkManager restarts, so on exit re-read state and, once it settles,
+        // Apply through the host seam. NetworkManager restarts, so on exit
+        // re-read state and, once it settles,
         // refresh + rescan so the list repopulates on the new backend.
         Process {
             id: backendSetProc
@@ -1521,7 +1521,7 @@ Item {
         // enable --now so it also survives the next boot.
         Process {
             id: svcProc
-            command: ["pkexec", "systemctl", "enable", "--now", "bluetooth.service"]
+            command: ["pkexec", "ryoku-host", "svc", "--system", "enable", "--now", "bluetooth"]
             stdout: StdioCollector {}
             stderr: StdioCollector {}
             onExited: function(exitCode) {

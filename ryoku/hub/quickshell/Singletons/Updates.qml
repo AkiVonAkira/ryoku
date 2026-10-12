@@ -19,8 +19,8 @@ Singleton {
     property string latestName: ""
     property string branch: "main"
     property int behind: 0
-    property bool snapshotsSupported: false
-    property string snapshotReason: ""
+    readonly property bool snapshotsSupported: Host.supports("snapshots")
+    readonly property string snapshotReason: Host.reason("snapshots")
 
     // Ryoku channel commits (when behind) and recent history (when current).
     property var updates: []
@@ -48,22 +48,6 @@ Singleton {
         return Math.floor(h / 24) + "d ago";
     }
 
-    Process {
-        id: snapshotsProbe
-        command: ["ryoku-host", "snapshots"]
-        running: true
-        stdout: StdioCollector { id: snapshotsOut }
-        stderr: StdioCollector {}
-        onExited: (code) => {
-            if (code === 0) {
-                root.snapshotsSupported = true;
-                root.snapshotReason = "";
-            } else if (code === 5) {
-                root.snapshotsSupported = false;
-                root.snapshotReason = snapshotsOut.text.trim();
-            }
-        }
-    }
 
     function check() { root.send("updates.check", {}); }
 

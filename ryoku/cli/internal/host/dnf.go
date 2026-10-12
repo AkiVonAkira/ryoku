@@ -130,7 +130,7 @@ func (a *App) dnf(args []string) int {
 				upgrade = true
 				rest = rest[1:]
 			case "--aur":
-				return ExitNotProvided
+				rest = rest[1:]
 			case "--overwrite":
 				if len(rest) < 2 {
 					return ExitUsage
@@ -145,10 +145,10 @@ func (a *App) dnf(args []string) int {
 		}
 	}
 	if verb == "available" && rest[0] == "--aur" {
-		if len(rest) == 1 {
+		rest = rest[1:]
+		if len(rest) == 0 {
 			return ExitUsage
 		}
-		return ExitNotProvided
 	}
 
 	table, err := a.fedoraTable()
@@ -170,7 +170,7 @@ func (a *App) dnf(args []string) int {
 		if verb == "available" {
 			return ExitNotProvided
 		}
-		fmt.Fprintf(a.cfg.Stderr, "ryoku-host: packages unavailable on this host: %s\n", strings.Join(unavailable, " "))
+		a.reportUnavailablePackages(table, unavailable)
 		return ExitNotProvided
 	}
 

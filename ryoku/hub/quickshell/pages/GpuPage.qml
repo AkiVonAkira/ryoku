@@ -49,8 +49,8 @@ Item {
     property bool namingPreset: false
     property string tuneError: ""
 
-    // cpu power-profile programmer + battery, fronted by `ryoku-hub cpu` (which
-    // wraps ryoku-power). Empty when the backend or machine offers nothing, so
+    // cpu power-profile programmer + battery, fronted by `ryoku-hub cpu` and
+    // the host power seam. Empty when the backend or machine offers nothing, so
     // the sections hide rather than render an empty frame.
     property var cpu: []
     property var cpuProfiles: []
