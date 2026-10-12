@@ -4,8 +4,15 @@ set -eu
 : "${RYOKU_SRC:?RYOKU_SRC is required}"
 : "${RYOKU_BUILD_DIR:?RYOKU_BUILD_DIR is required}"
 
+stage_prebuilt() {
+	[ -n "${RYOKU_PREBUILT_DIR:-}" ] || return 1
+	mkdir -p "$RYOKU_BUILD_DIR"
+	cp -a "$RYOKU_PREBUILT_DIR/." "$RYOKU_BUILD_DIR/"
+}
+
 case "${1:-}" in
 build)
+	stage_prebuilt && exit 0
 	mkdir -p "$RYOKU_BUILD_DIR"
 	cd "$RYOKU_SRC/ryoku/shell/ryogami/daemon"
 	CGO_ENABLED=0 go build -trimpath -mod=vendor -o "$RYOKU_BUILD_DIR/ryogami" .

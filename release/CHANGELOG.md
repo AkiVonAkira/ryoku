@@ -24,6 +24,11 @@
 - **Edition parity is a delivery gate.** `bin/ryoku-edition-parity` requires
   every Arch package to have a build or an explained translation row for Void
   and Fedora.
+- **Every edition is checked to ship the same files.** `tests/payload-parity.sh`
+  stages each monorepo package the way Arch, Void, and Fedora build it and
+  compares paths, modes, and hashes; only declared init, boot, and
+  package-manager adapters may differ. The Hyprland package now uses a shared
+  `payload.sh` like every other monorepo package.
 - **The R2 bucket keeps the last ten of everything.** A scheduled Cloudflare
   Worker (`r2-retention/`) keeps ten stable releases and ten unstable builds
   per edition and Fedora release, plus ten ISOs for each image-producing

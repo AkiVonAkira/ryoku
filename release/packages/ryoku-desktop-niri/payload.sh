@@ -3,6 +3,13 @@ set -euo pipefail
 
 : "${RYOKU_SRC:?set RYOKU_SRC to the checkout root}"
 : "${RYOKU_PKGVER:?set RYOKU_PKGVER to the package version}"
+: "${RYOKU_BUILD_DIR:?set RYOKU_BUILD_DIR to the build directory}"
+
+stage_prebuilt() {
+  [[ -n ${RYOKU_PREBUILT_DIR:-} ]] || return 1
+  mkdir -p "$RYOKU_BUILD_DIR"
+  cp -a "$RYOKU_PREBUILT_DIR/." "$RYOKU_BUILD_DIR/"
+}
 
 _repo=$RYOKU_SRC
 
@@ -29,10 +36,9 @@ package() {
   # cp -a kept source modes; the tree is all data, so world-readable is right.
   chmod -R u=rwX,go=rX "$pkgdir/usr/share/ryoku"
 
-  # ryoku-wm-niri: the niri half of the window-manager seam. Built from the
-  # ryoku/wm module (its root is one dir up from the niri package).
-  ( cd "$_repo/ryoku/wm/niri" && go build -o ryoku-wm-niri . )
-  install -Dm755 "$_repo/ryoku/wm/niri/ryoku-wm-niri" \
+  # ryoku-wm-niri: the niri half of the window-manager seam. The shared build
+  # directory keeps package staging out of the checkout.
+  install -Dm755 "$RYOKU_BUILD_DIR/ryoku-wm-niri" \
     "$pkgdir/usr/bin/ryoku-wm-niri"
   if [[ $RYOKU_INIT_MODE == systemd ]]; then
     # The systemd session orders the config bootstrap ahead of niri so the
@@ -43,6 +49,10 @@ package() {
 }
 case "${1:-}" in
   build)
+    if ! stage_prebuilt; then
+      mkdir -p "$RYOKU_BUILD_DIR"
+      ( cd "$_repo/ryoku/wm/niri" && go build -o "$RYOKU_BUILD_DIR/ryoku-wm-niri" . )
+    fi
     ;;
   install)
     pkgdir=${2:?install requires a destination root}
