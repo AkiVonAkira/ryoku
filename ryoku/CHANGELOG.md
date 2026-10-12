@@ -219,6 +219,13 @@
   second: a flickering dock and a pegged shell. Only real application windows
   reach the window list now, and the event stream skips frames that did not
   change (`wm/wayfire/frames.go`, `wm/wayfire/watch.go`).
+- **Wayfire's config is recomposed when it is stale.** Every composed
+  `wayfire.ini` carries a mark of the baseline it was built from, and
+  materialize renders it again when the mark is missing or names an older
+  baseline, so a raw baseline copy or an old compose no longer leaves Wayfire
+  without its keybinds. A checkout box composes from the checkout's baseline
+  (`wm/wayfire/apply.go`, `wm/detect.go`, `cli/internal/updater/materialize.go`,
+  `shell/deploy.sh`).
 - **Scrolling layouts switch workspaces without exposing hidden columns.** The
   generated Hyprland animation override replaces workspace translation with a
   fade while scrolling is active, keeping the Hub's workspace timing and curve

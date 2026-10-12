@@ -327,17 +327,22 @@ func borderPaletteColors() (active, inactive string, ok bool) {
 }
 
 // userEditsWayfireDir is the wayfire slice of the user overlay tree. The
-// generated ini lives here so it survives an update as a user edit;
-// writeOverlayIni reflects the same bytes into the live wayfire dir so a reload
-// picks them up at once.
+// generated ini is mirrored here so overlay delivery and live reload see the
+// same bytes; its baseline mark distinguishes that mirror from a whole-file
+// fork.
 func userEditsWayfireDir() string {
 	return filepath.Join(configHome(), "ryoku", "user_edits", "wayfire")
 }
 
-// shareDefaultsPath is the wayfire.ini the package ships: the baseline layer
-// the composition starts from. It is a var so a test can point it at a fixture
-// instead of the installed package.
-var shareDefaultsPath = "/usr/share/ryoku/config/wayfire/wayfire.ini"
+// shareDefaultsPath resolves the baseline through the same config-base
+// override materialize uses. Packaged systems fall back to the installed tree.
+func shareDefaultsPath() string {
+	base := os.Getenv("RYOKU_CONFIG_BASE")
+	if base == "" {
+		base = "/usr/share/ryoku/config"
+	}
+	return filepath.Join(base, "wayfire", "wayfire.ini")
+}
 
 // --- disk ------------------------------------------------------------------
 

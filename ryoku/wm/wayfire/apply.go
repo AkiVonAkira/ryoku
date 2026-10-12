@@ -89,9 +89,10 @@ func runDefaults() error {
 // no shell and no depthdeck, and looks like a render all the same. A missing
 // seed stays skippable; a seed is one machine's own addition.
 func compose(s wayfireStore) ([]byte, error) {
-	base, err := os.ReadFile(shareDefaultsPath)
+	defaultsPath := shareDefaultsPath()
+	base, err := os.ReadFile(defaultsPath)
 	if err != nil {
-		return nil, fmt.Errorf("shipped wayfire defaults at %s (ryoku-desktop-wayfire ships them): %w", shareDefaultsPath, err)
+		return nil, fmt.Errorf("shipped wayfire defaults at %s (ryoku-desktop-wayfire ships them): %w", defaultsPath, err)
 	}
 	layers := []iniDoc{parseIni(base)}
 	layers = append(layers, renderStoreIni(s))
@@ -103,7 +104,12 @@ func compose(s wayfireStore) ([]byte, error) {
 	merged := mergeIni(layers...)
 	adjustPlugins(&merged, s)
 	applyBinds(&merged, s)
-	return renderIni(merged), nil
+	mark := wm.GeneratedConfigBaselineMarker(wm.ProviderWayfire, base)
+	body := renderIni(merged)
+	out := make([]byte, 0, len(mark)+1+len(body))
+	out = append(out, mark...)
+	out = append(out, '\n')
+	return append(out, body...), nil
 }
 
 // renderStoreIni is the store's own layer: every wayfire key the neutral and

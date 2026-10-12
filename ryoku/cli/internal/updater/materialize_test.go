@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -711,56 +712,133 @@ func TestApplyGeneratedCompletesLaidTrees(t *testing.T) {
 	}
 }
 
-// The provider's generated file must reach ~/.config through the provider's own
-// apply, even when the packaged base ships that very path: wayfire ships its
-// baseline as compose's first layer (read from the base directly) and the live
-// file is the provider's render. Laying the shipped bytes would forge
-// applyGenerated's "generated file exists" signal: the render would never run,
-// the first login would read the raw baseline -- no store rows, no seeds, no
-// keybinds -- and every later materialize would clobber a composed file back to
-// it.
-func TestMaterializeRendersTheProvidersOwnOutput(t *testing.T) {
+// A provider that composes its entire config marks the render with the shipped
+// baseline digest. Materialize repairs raw or old output, leaves current output
+// untouched, and never replaces a user_edits fork.
+func TestMaterializeRefreshesProviderGeneratedBaseline(t *testing.T) {
+	provider := ""
+	for _, name := range wm.Providers() {
+		if wm.GeneratedConfigBaselineMarker(name, []byte("probe")) != "" {
+			provider = name
+			break
+		}
+	}
+	if provider == "" {
+		t.Skip("no provider declares a generated baseline marker")
+	}
+
 	base, dest := t.TempDir(), t.TempDir()
 	t.Setenv("RYOKU_CONFIG_BASE", base)
 	t.Setenv("XDG_CONFIG_HOME", dest)
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 
-	// wayfire's shipped tree is all generated state: the baseline its apply
-	// composes over, and no static file at all.
-	writeFile(t, filepath.Join(base, "wayfire/wayfire.ini"), "# shipped baseline\n")
-	// a companion provider still ships a static file, so the lay lays trees.
-	writeFile(t, filepath.Join(base, "niri/config.kdl"), "// static\n")
+	entry := wm.ConfigEntry(provider)
+	dir := wm.ConfigDir(provider)
+	overlayRel := ""
+	for _, rel := range wm.GeneratedConfig(provider) {
+		if d, _, ok := strings.Cut(rel, "/"); !ok || d != dir {
+			overlayRel = rel
+			break
+		}
+	}
+	if entry == "" || overlayRel == "" {
+		t.Fatal("marked provider does not declare its live and overlay outputs")
+	}
+
+	baseline := []byte("# shipped baseline\n")
+	writeFile(t, filepath.Join(base, entry), string(baseline))
+	writeFile(t, filepath.Join(dest, entry), string(baseline))
+	writeFile(t, filepath.Join(dest, "ryoku", "desktop.json"), "{}\n")
 
 	var calls []string
+	available := true
 	old := applyProvider
 	applyProvider = func(name, store string) error {
 		calls = append(calls, name)
-		for _, rel := range wm.GeneratedConfig(name) {
-			if d, _, ok := strings.Cut(rel, "/"); !ok || d != wm.ConfigDir(name) {
-				continue
-			}
-			if err := os.WriteFile(filepath.Join(dest, rel), []byte("// rendered by "+name+"\n"), 0o644); err != nil {
-				return err
-			}
+		if !available {
+			return os.ErrNotExist
 		}
+		current, err := os.ReadFile(filepath.Join(base, entry))
+		if err != nil {
+			return err
+		}
+		body := wm.GeneratedConfigBaselineMarker(name, current) + "\n# provider render\n"
+		writeFile(t, filepath.Join(dest, entry), body)
+		writeFile(t, filepath.Join(dest, overlayRel), body)
 		return nil
 	}
 	t.Cleanup(func() { applyProvider = old })
 
 	if err := Materialize(); err != nil {
-		t.Fatalf("fresh materialize: %v", err)
+		t.Fatalf("materialize raw baseline: %v", err)
 	}
-	if !slices.Contains(calls, "wayfire") {
-		t.Fatalf("apply ran for %v, want wayfire: its shipped baseline is not its render", calls)
+	if len(calls) != 1 || calls[0] != provider {
+		t.Fatalf("raw baseline apply calls = %v, want %s", calls, provider)
 	}
-	wantFile(t, filepath.Join(dest, "wayfire/wayfire.ini"), "rendered by wayfire")
-	wantFile(t, filepath.Join(dest, "niri/config.kdl"), "static")
 
-	// a later release ships a new baseline; the render is provider state and
-	// the lay must not write over it again.
-	writeFile(t, filepath.Join(base, "wayfire/wayfire.ini"), "# a newer baseline\n")
-	if err := Materialize(); err != nil {
-		t.Fatalf("update materialize: %v", err)
+	current, err := os.ReadFile(filepath.Join(dest, entry))
+	if err != nil {
+		t.Fatal(err)
 	}
-	wantFile(t, filepath.Join(dest, "wayfire/wayfire.ini"), "rendered by wayfire")
+	calls = nil
+	if err := Materialize(); err != nil {
+		t.Fatalf("materialize current render: %v", err)
+	}
+	if len(calls) != 0 {
+		t.Fatalf("current render must not be rewritten, got apply calls %v", calls)
+	}
+	unchanged, err := os.ReadFile(filepath.Join(dest, entry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(unchanged, current) {
+		t.Fatal("current provider render changed without an apply")
+	}
+
+	baseline = []byte("# newer shipped baseline\n")
+	writeFile(t, filepath.Join(base, entry), string(baseline))
+	calls = nil
+	if err := Materialize(); err != nil {
+		t.Fatalf("materialize old digest: %v", err)
+	}
+	if len(calls) != 1 || calls[0] != provider {
+		t.Fatalf("old digest apply calls = %v, want %s", calls, provider)
+	}
+	wantFile(t, filepath.Join(dest, entry), wm.GeneratedConfigBaselineMarker(provider, baseline))
+
+	if err := os.Remove(filepath.Join(dest, "ryoku", "desktop.json")); err != nil {
+		t.Fatal(err)
+	}
+	fork := "# my whole-file fork\n"
+	writeFile(t, filepath.Join(dest, overlayRel), fork)
+	writeFile(t, filepath.Join(dest, entry), fork)
+	baseline = []byte("# third shipped baseline\n")
+	writeFile(t, filepath.Join(base, entry), string(baseline))
+	calls = nil
+	if err := Materialize(); err != nil {
+		t.Fatalf("materialize user fork: %v", err)
+	}
+	if len(calls) != 0 {
+		t.Fatalf("user_edits fork triggered apply calls %v", calls)
+	}
+	wantFile(t, filepath.Join(dest, entry), "my whole-file fork")
+
+	oldRender := wm.GeneratedConfigBaselineMarker(provider, []byte("# older baseline\n")) + "\n# provider render\n"
+	writeFile(t, filepath.Join(dest, overlayRel), oldRender)
+	writeFile(t, filepath.Join(dest, entry), oldRender)
+	available = false
+	calls = nil
+	if err := Materialize(); err != nil {
+		t.Fatalf("materialize without provider binary: %v", err)
+	}
+	if len(calls) != 1 || calls[0] != provider {
+		t.Fatalf("unavailable provider calls = %v, want one best-effort apply", calls)
+	}
+	got, err := os.ReadFile(filepath.Join(dest, entry))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, []byte(oldRender)) {
+		t.Fatal("unavailable provider changed the stale render")
+	}
 }

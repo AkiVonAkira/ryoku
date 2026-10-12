@@ -1168,8 +1168,10 @@ mv "$staging" "$cfg/$wm_dir"
 # The swap carries the generated settings across, but a box that has none (a
 # recovery clears them with the Hub store) would boot without them, and a
 # missing include is fatal on niri. Author them from the store here, the way
-# the inactive providers below are; an absent store renders the defaults.
-if [[ -x $wm_bin ]] && ! "$wm_bin" apply "$cfg/ryoku/desktop.json" >/dev/null; then
+# the inactive providers below are; an absent store renders the defaults. A
+# provider that composes over a shipped baseline reads it from this checkout,
+# since a dev box has no packaged copy under /usr/share.
+if [[ -x $wm_bin ]] && ! RYOKU_CONFIG_BASE="$here/.." "$wm_bin" apply "$cfg/ryoku/desktop.json" >/dev/null; then
   say "the $wm_name provider could not write its generated config" >&2
 fi
 fi
@@ -1201,7 +1203,7 @@ for d in "$here/../wm"/*/; do
     [[ -e "$cfg/$other_dir/$f.keep" ]] && mv "$cfg/$other_dir/$f.keep" "$cfg/$other_dir/$f"
   done
   if [[ -x "$bindir/ryoku-wm-$other" ]]; then
-    "$bindir/ryoku-wm-$other" apply "$cfg/ryoku/desktop.json" >/dev/null 2>&1 || true
+    RYOKU_CONFIG_BASE="$here/.." "$bindir/ryoku-wm-$other" apply "$cfg/ryoku/desktop.json" >/dev/null 2>&1 || true
   fi
   say "laid the $other config tree -> $cfg/$other_dir"
 done

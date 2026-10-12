@@ -28,17 +28,19 @@ func wayfireHome(t *testing.T) string {
 	return wayfireConfigDir()
 }
 
-// withDefaults points the shipped-defaults layer at a fixture body and restores
-// the package path afterwards.
+// withDefaults points the shipped-defaults layer at a fixture body through the
+// same config-base override a checkout deploy uses.
 func withDefaults(t *testing.T, body string) {
 	t.Helper()
-	p := filepath.Join(t.TempDir(), "wayfire.ini")
+	base := t.TempDir()
+	p := filepath.Join(base, "wayfire", "wayfire.ini")
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	prev := shareDefaultsPath
-	shareDefaultsPath = p
-	t.Cleanup(func() { shareDefaultsPath = prev })
+	t.Setenv("RYOKU_CONFIG_BASE", base)
 }
 
 func writeStore(t *testing.T, body string) string {
@@ -103,13 +105,14 @@ func readGen(t *testing.T, dir, name string) string {
 // change in ordering or spelling has to be a deliberate edit here.
 func TestComposeLastWins(t *testing.T) {
 	dir := wayfireHome(t)
-	withDefaults(t, "[core]\nvwidth = 3\nplugins = animate blur grid\n\n[decoration]\nborder_size = 8\n")
+	baseline := "[core]\nvwidth = 3\nplugins = animate blur grid\n\n[decoration]\nborder_size = 8\n"
+	withDefaults(t, baseline)
 	writeSeed(t, dir, "keyboard.ini", "[input]\nxkb_layout = us\n")
 	writeSeed(t, dir, "user.ini", "[decoration]\nborder_size = 1\n")
 	store := writeStore(t, `{"desktop":{"appearance":{"borderSize":4,"activeBorder":"#112233","inactiveBorder":"#445566","borderFollowsPalette":false,"animations":true,"blurEnabled":true},"input":{"kbLayout":"de"}}}`)
 
 	got := string(mustCompose(t, loadStore(store)))
-	want := generatedHeader + `
+	want := wm.GeneratedConfigBaselineMarker(wm.ProviderWayfire, []byte(baseline)) + "\n" + generatedHeader + `
 [core]
 vwidth = 3
 plugins = animate blur grid
@@ -367,6 +370,21 @@ activate = <super> BTN_RIGHT
 `
 	if got != want {
 		t.Errorf("composed body differs from the pinned golden:\n--- want ---\n%s\n--- got ---\n%s", want, got)
+	}
+}
+
+func TestComposeReadsBaselineFromConfigBaseAndMarksIt(t *testing.T) {
+	wayfireHome(t)
+	baseline := []byte("[core]\nvwidth = 7\nplugins = animate\n")
+	withDefaults(t, string(baseline))
+
+	body := mustCompose(t, defaultStore())
+	mark := wm.GeneratedConfigBaselineMarker(wm.ProviderWayfire, baseline)
+	if !bytes.HasPrefix(body, []byte(mark+"\n")) {
+		t.Fatalf("composed file starts with %q, want baseline mark %q", body[:min(len(body), len(mark)+1)], mark)
+	}
+	if !bytes.Contains(body, []byte("vwidth = 7")) {
+		t.Fatalf("compose did not read the baseline under RYOKU_CONFIG_BASE:\n%s", body)
 	}
 }
 
@@ -751,13 +769,13 @@ func TestApplyRefusesWhenTheShippedDefaultsAreMissing(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "wayfire.ini"), []byte("# last good render\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	prev := shareDefaultsPath
-	shareDefaultsPath = filepath.Join(t.TempDir(), "absent.ini")
-	t.Cleanup(func() { shareDefaultsPath = prev })
+	t.Setenv("RYOKU_CONFIG_BASE", t.TempDir())
 
 	store := writeStore(t, `{}`)
 	if _, err := compose(loadStore(store)); err == nil {
 		t.Fatal("compose without its shipped defaults must fail")
+	} else if !strings.Contains(err.Error(), filepath.Join(os.Getenv("RYOKU_CONFIG_BASE"), "wayfire", "wayfire.ini")) {
+		t.Fatalf("missing-baseline error does not name the resolved path: %v", err)
 	}
 	if err := runApply([]string{store}); err == nil {
 		t.Fatal("apply without its shipped defaults must fail")
