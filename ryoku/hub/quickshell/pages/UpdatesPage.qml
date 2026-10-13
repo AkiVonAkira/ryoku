@@ -107,6 +107,10 @@ Item {
     property double started: 0
     property double beat: 0
     property var steps: []
+    property var pieces: []
+    property string piecesStep: ""
+    property int piecesTypical: 0
+    property bool firstBuild: false
     property var logLines: []
     property string activity: ""
     property var watch: ({})
@@ -288,6 +292,7 @@ Item {
     // when it changed, or every delegate would rebuild (and every pulse
     // restart) on each beat.
     property string stepsKey: ""
+    property string piecesKey: ""
     property string logKey: ""
 
     function applyState(t) {
@@ -320,6 +325,15 @@ Item {
             pg.stepsKey = sk;
             pg.steps = o.steps || [];
         }
+        const pieces = Array.isArray(o.pieces) ? o.pieces : [];
+        const pk = JSON.stringify(pieces);
+        if (pk !== pg.piecesKey) {
+            pg.piecesKey = pk;
+            pg.pieces = pieces;
+        }
+        pg.piecesStep = typeof o.piecesStep === "string" ? o.piecesStep : "";
+        pg.piecesTypical = typeof o.piecesTypical === "number" ? Math.max(0, Math.floor(o.piecesTypical)) : 0;
+        pg.firstBuild = o.firstBuild === true;
         const lk = JSON.stringify(o.log || []);
         if (lk !== pg.logKey) {
             pg.logKey = lk;
