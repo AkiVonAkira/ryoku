@@ -26,6 +26,11 @@
 *.iso
 __pycache__/
 *.pyc
+# Compiler caches the package publishers restore into the checkout. Ignored so
+# the Fedora source step's clean-checkout check does not refuse them.
+/.ccache*/
+/.gocache*/
+/.gomod*/
 
 # Isolated worktrees
 /.worktrees/
