@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **`ryoku update` shows one bar per compilation on source boxes, with how long
+  each piece usually takes.** The terminal and Hub share the per-piece view and
+  first-build explanation.
 - **`ryoku update` checks the channel build before touching the box.** An
   in-progress packaged build stops the run with its Actions URL; `--wait` polls
   for completion and `--force` bypasses the hold. A failed last build warns and

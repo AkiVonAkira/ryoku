@@ -168,6 +168,11 @@ func Update(args []string) (err error) {
 
 	con = openConsole(verboseLog, channelLine(checkout), releaseLine(checkout),
 		func() string { return i18n.T("now on ") + releaseLine(checkout) })
+	// Piece markers are consumed by the captured console; verbose mode has no
+	// capture and would expose those protocol lines as raw output.
+	if con.mode != conVerbose {
+		os.Setenv("RYOKU_UPDATE_PROGRESS", "1")
+	}
 	defer settleConsole(&err)
 	switch {
 	case checkout:
@@ -2065,9 +2070,9 @@ type statusReport struct {
 	// the installed release (the boot-guard-revert wedge, #291): the box can take
 	// no updates and "behind N" would read backwards. RecoverChannel names the
 	// channel `ryoku track` moves back to.
-	ChannelPinStale  bool   `json:"channelPinStale,omitempty"`
-	RecoverChannel   string `json:"recoverChannel,omitempty"`
-	RepositoryNotice string `json:"repositoryNotice,omitempty"`
+	ChannelPinStale  bool            `json:"channelPinStale,omitempty"`
+	RecoverChannel   string          `json:"recoverChannel,omitempty"`
+	RepositoryNotice string          `json:"repositoryNotice,omitempty"`
 	ChannelBuild     *channelBuild   `json:"channelBuild,omitempty"`
 	ChannelCheck     *checkedPointer `json:"channelCheck,omitempty"`
 }

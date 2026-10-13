@@ -108,7 +108,7 @@ pkill -9 -x ryoku-shell 2>/dev/null || true
 pkill -f "quickshell.*hub" 2>/dev/null || true
 nohup "$HOME/.local/bin/ryoku-shell" daemon >/dev/null 2>&1 &
 
-say "Done. ryoku status should say $CHANNEL now (a relogin picks it up everywhere)."
+say "Done. ryoku status should say $CHANNEL now (a relogin picks it up everywhere). The first build compiles everything and takes a few minutes; later updates reuse the caches."
 cat <<EOF
 
 Every update after: ryoku update. Full reset to stable main: ryoku recovery.

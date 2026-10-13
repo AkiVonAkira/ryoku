@@ -43,8 +43,8 @@ const buildStaleAfter = 90 * time.Minute
 var (
 	buildHTTPClient   = &http.Client{Timeout: 5 * time.Second}
 	buildPollInterval = 20 * time.Second
-	updateWait         bool
-	updateForce        bool
+	updateWait        bool
+	updateForce       bool
 )
 
 func channelBuildStatus(channel string) (channelBuild, bool) {

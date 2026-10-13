@@ -25,6 +25,56 @@ bindir="$HOME/.local/bin"
 repo_root="$(cd "$here/../.." && pwd)"
 say() { printf '  %s\n' "$*"; }
 
+# A piece is one unit of the deploy worth watching: `ryoku update` draws a bar
+# per piece from these markers and remembers how long each took. A plain
+# `bash deploy.sh` prints only the human line.
+current_piece=
+piece() { # piece <key> <label>
+  say "$2"
+  if [[ -n ${RYOKU_UPDATE_PROGRESS:-} ]]; then
+    printf '::piece:: begin %s %s\n' "$1" "$2"
+  fi
+  current_piece=$1
+}
+piece_end() { # piece_end [ok|skipped|failed]
+  if [[ -n ${RYOKU_UPDATE_PROGRESS:-} && -n ${current_piece:-} ]]; then
+    printf '::piece:: end %s %s\n' "$current_piece" "${1:-ok}"
+  fi
+  current_piece=
+}
+piece_note() {
+  if [[ -n ${RYOKU_UPDATE_PROGRESS:-} ]]; then
+    printf '::piece:: note %s\n' "$*"
+  fi
+}
+
+# go build prints nothing until it is done; -v names each package as it
+# compiles, and the dependency count from go list turns that into [n/m] lines
+# the update console reads as a bar. The count includes the standard library
+# because a cold cache compiles it too, and that first build is the one that
+# needs an honest bar; a warm build names only what changed and ends early,
+# and the console fills from last time's duration instead.
+build_go() { # build_go <dir> <output> [package]
+  local dir=$1 out=$2 pkg=${3:-.} total
+  if [[ -z ${RYOKU_UPDATE_PROGRESS:-} ]]; then
+    (cd "$dir" && go build -o "$out" "$pkg")
+    return
+  fi
+  total=$(cd "$dir" && go list -deps "$pkg" 2>/dev/null | wc -l || true)
+  (cd "$dir" && go build -v -o "$out" "$pkg" 2>&1 |
+    awk -v t="${total:-0}" '/^[^ :]+$/ { n++; printf "[%d/%d] %s\n", n, t, $0; next } { print }')
+}
+
+# Errexit can leave from inside a helper or subshell before its caller regains
+# control. Close the active marker from the parent shell's exit path.
+piece_exit() {
+  local status=$1
+  if (( status != 0 )); then
+    piece_end failed
+  fi
+}
+trap 'status=$?; piece_exit "$status"; exit "$status"' EXIT
+
 host_pkgmgr() {
   if command -v ryoku-host >/dev/null 2>&1; then
     ryoku-host pkgmgr 2>/dev/null && return
@@ -212,7 +262,7 @@ stop_power_cutover_guard() {
     power_cutover_guard_pid=
   fi
 }
-trap 'exit 130' INT TERM
+trap 'piece_end failed; exit 130' INT TERM
 
 start_power_cutover_guard() {
   if [ -d /run/systemd/system ]; then
@@ -508,8 +558,9 @@ if ! command -v go >/dev/null 2>&1; then
 fi
 
 # Build the daemon/client and put it on PATH.
-say "building ryoku-shell"
-(cd "$here/ipc" && go build -o ryoku-shell .)
+piece shell "ryoku-shell, the desktop daemon"
+build_go "$here/ipc" ryoku-shell
+piece_end
 mkdir -p "$bindir"
 install -m755 "$here/ipc/ryoku-shell" "$bindir/ryoku-shell"
 say "installed $bindir/ryoku-shell"
@@ -517,14 +568,16 @@ say "installed $bindir/ryoku-shell"
 # one: a checkout must be able to deploy, then switch compositors and find the
 # other provider already on PATH. deploy routes the config-swap pause and reload
 # below through whichever one is live.
+piece wm "compositor providers"
 for p in "$here/../wm"/*/; do
   [[ -f "$p/main.go" ]] || continue
   name=${p%/}; name=${name##*/}
   say "building ryoku-wm-$name"
-  (cd "$p" && go build -o "ryoku-wm-$name" .)
+  build_go "$p" "ryoku-wm-$name"
   install -m755 "$p/ryoku-wm-$name" "$bindir/ryoku-wm-$name"
   say "installed $bindir/ryoku-wm-$name"
 done
+piece_end
 # Every shell leaf script the bar, launcher, Hub, keybinds, recorder and the
 # daemon call by bare name (ryoku-app, ryoku-cmd-*, ryoku-sysinfo, the recorder
 # helpers, ...). They ride the shell to PATH with no compositor config tree, so
@@ -582,18 +635,22 @@ rm -f "$bindir"/ryoku-{depth,parallax-engine}
 # libs (build-time only); skip cleanly when absent so a plain config deploy still
 # works (it ships prebuilt on installs, and a missing daemon just leaves the clip's
 # still frame as the wallpaper).
+piece livewall "ryogami-live, the video wallpaper engine"
 if command -v wayland-scanner >/dev/null 2>&1 && command -v cc >/dev/null 2>&1 &&
    "$here/livewall/build.sh" "$bindir/ryogami-live"; then
   say "installed $bindir/ryogami-live"
+  piece_end
 else
   say "skipped ryogami-live (toolchain or ffmpeg/wayland dev libs absent; live falls back to the still)"
+  piece_end skipped
 fi
 
 # Build ryogami, the Go wallpaper daemon (catalog, thumbs, applies, depth
 # surface) the shell and the picker drive over ryogami.sock. Same Go
 # toolchain the rest of the desktop builds with, so no extra gate.
-say "building ryogami"
-(cd "$here/ryogami/daemon" && go build -o ryogami .)
+piece ryogami "ryogami, the wallpaper daemon"
+build_go "$here/ryogami/daemon" ryogami
+piece_end
 install -m755 "$here/ryogami/daemon/ryogami" "$bindir/ryogami"
 say "installed $bindir/ryogami"
 
@@ -612,14 +669,16 @@ rm -rf "$datadir/ryogami/wall-ui"
 
 # Build the Ryoku Hub backend (a separate Go binary; the hub's quickshell config
 # shells out to it for the keybind legend and its TOML config).
-say "building ryoku-hub"
-(cd "$here/../hub/backend" && go build -o ryoku-hub .)
+piece hub "ryoku-hub, the settings backend"
+build_go "$here/../hub/backend" ryoku-hub
+piece_end
 install -m755 "$here/../hub/backend/ryoku-hub" "$bindir/ryoku-hub"
 say "installed $bindir/ryoku-hub"
 # Build the Ryoku Rashin backend (the optional agent OS daemon; a separate Go
 # binary that serves the dashboard and bridges the Hermes agent over ACP).
-say "building ryoku-rashin"
-(cd "$here/../rashin/backend" && go build -o ryoku-rashin .)
+piece rashin "ryoku-rashin, the agent daemon"
+build_go "$here/../rashin/backend" ryoku-rashin
+piece_end
 install -m755 "$here/../rashin/backend/ryoku-rashin" "$bindir/ryoku-rashin"
 # `rashin` is the terminal-lane command: the same binary under a second name
 # (busybox pattern), argv0 routes a bare argument to the terminal ask.
@@ -649,9 +708,24 @@ if [ -d /run/systemd/system ]; then
 fi
 # Rashin is on by default: bring it up at boot now unless the user opted out.
 "$bindir/ryoku-rashin" ensure 2>/dev/null || true
-say "building ryoku CLI"
-(cd "$here/../cli" && go build -o ryoku .)
-(cd "$here/../cli" && go build -o ryoku-host ./cmd/ryoku-host)
+piece cli "the ryoku command"
+build_go "$here/../cli" ryoku
+build_go "$here/../cli" ryoku-host ./cmd/ryoku-host
+# An app may carry Go helper(s): a subdir with a go.mod builds to a bin named
+# for the module (ryovm/fetch -> ryovm-fetch). They compile with the CLI piece
+# because they are command-line helpers rather than part of the app surface.
+for appdir in "$here"/../apps/*/; do
+  for gomod in "${appdir}"*/go.mod; do
+    [[ -f $gomod ]] || continue
+    helperdir=${gomod%/go.mod}
+    helper="$(sed -n -E 's/^module[[:space:]]+//p' "$gomod" | head -1)"
+    [[ -n $helper ]] || continue
+    say "building $helper"
+    build_go "$helperdir" "$helper"
+    install -m755 "$helperdir/$helper" "$bindir/$helper"
+  done
+done
+piece_end
 install -m755 "$here/../cli/ryoku" "$bindir/ryoku"
 # every system helper the package ships to /usr/bin, by the same globs, so a new
 # hardware or container helper reaches a checkout the moment it lands.
@@ -827,28 +901,32 @@ case "$package_manager" in
   *) qtver="$(pkg-config --modversion Qt6Core 2>/dev/null || true)" ;;
 esac
 qtstamp="$qmldir/Ryoku/Blobs/.qt-version"
+piece blobs "Ryoku.Blobs, the frame renderer"
 if command -v cmake >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1; then
   if [ -z "$qtver" ] || [ "$(cat "$qtstamp" 2>/dev/null)" != "$qtver" ]; then
     rm -rf "${RYOKU_BLOBS_BUILD:-$here/plugin/build}"
   fi
-  say "building Ryoku.Blobs plugin"
   "$here/plugin/build.sh" "$qmldir"
   [ -n "$qtver" ] && printf '%s\n' "$qtver" > "$qtstamp"
   say "installed Ryoku.Blobs -> $qmldir/Ryoku/Blobs"
+  piece_end
 else
   say "skipping Ryoku.Blobs plugin (cmake/ninja not found)"
+  piece_end skipped
 fi
 
 
 # Built beside Ryoku.Blobs; the daemon adds this dir to the picker's import path.
 # Always rebuilt: the picker changes with the checkout and ninja makes an
 # unchanged tree a no-op.
+piece picker "Ryoku.Ryogami, the wallpaper picker"
 if command -v cmake >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1; then
-  say "building Ryoku.Ryogami plugin"
   "$here/ryogami/picker/build.sh" "$qmldir"
   say "installed Ryoku.Ryogami -> $qmldir/Ryoku/Ryogami"
+  piece_end
 else
   say "skipping Ryoku.Ryogami plugin (cmake/ninja not found)"
+  piece_end skipped
 fi
 
 # Build the optional Hyprland compositor plugins (dynamic-cursors, hyprbars,
@@ -867,19 +945,47 @@ fi
 # out and the Plugins page says why). Packaged installs get these from [ryoku]
 # as ryoku-desktop deps.
 rm -f "$HOME/.local/lib/hyprland/plugins/.hyprland-version"   # the pre-receipt stamp; receipts carry the ABI now
+piece hypr-plugins "Hyprland compositor plugins"
 if pkg-config --exists hyprland 2>/dev/null; then
   mkdir -p "$HOME/.cache/ryoku"
-  say "building Hyprland compositor plugins that are missing or stale"
   if _out="$("$bindir/ryoku-hub" desktop plugins rebuild --stale --checkout "$here/../.." 2>"$HOME/.cache/ryoku/hypr-plugins-build.log")"; then
-    say "  $(jq -r '"built: " + (.built|join(", ")|if .=="" then "none" else . end) + "  skipped: " + (.skipped|length|tostring) + "  failed: " + ((.failed|keys)|join(", ")|if .=="" then "none" else . end)' <<<"$_out")"
+    _plugin_summary="$(jq -r '"built: " + (.built|join(", ")|if .=="" then "none" else . end) + "  skipped: " + (.skipped|length|tostring) + "  failed: " + ((.failed|keys)|join(", ")|if .=="" then "none" else . end)' <<<"$_out")"
+    say "  $_plugin_summary"
+    piece_note "$_plugin_summary"
     say "  log: ~/.cache/ryoku/hypr-plugins-build.log"
+    piece_end
   else
     say "  plugin build could not run (see ~/.cache/ryoku/hypr-plugins-build.log); toggles stay off"
+    piece_end failed
   fi
 else
   say "skipping Hyprland compositor plugins (Hyprland headers not found)"
+  piece_end skipped
 fi
 
+# Compile first-party Qt apps before the copy-only module and config phases.
+# Their later install loop still owns launchers, icons and Quickshell trees.
+appshare="${XDG_DATA_HOME:-$HOME/.local/share}"
+for appdir in "$here"/../apps/*/; do
+  appname=${appdir%/}
+  appname=${appname##*/}
+  if [[ -f "${appdir}CMakeLists.txt" ]]; then
+    piece "app-$appname" "the $appname app"
+    if command -v cmake >/dev/null 2>&1; then
+      cmake -S "$appdir" -B "${appdir}build" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
+      if [[ -n ${RYOKU_UPDATE_PROGRESS:-} ]]; then
+        cmake --build "${appdir}build"
+      else
+        cmake --build "${appdir}build" >/dev/null
+      fi
+      piece_end
+    else
+      piece_end skipped
+    fi
+  fi
+done
+
+piece modules "shell and Hub modules"
 # Install the Ryoku.Ui QML module: the design system every surface imports --
 # the shell's configs, the Hub and the first-party apps. Pure QML, a plain copy.
 # Note the import path only reaches `qs` when the daemon launches it; a Hub
@@ -897,16 +1003,6 @@ say "installing Ryoku.Ui module"
 say "installing Ryoku i18n catalog"
 "$here/../i18n/tools/install.sh"
 
-# Seed the decor art the Decor/Placard components render into ~/Pictures/ryodecors
-# (beside Wallpapers and livewalls): the dev-loop equivalent of the installer seed
-# and `ryoku doctor`. Missing-only, so a swapped or added file survives a redeploy.
-decordir="$HOME/Pictures/ryodecors"
-mkdir -p "$decordir"
-for f in "$here/../assets/ryodecors"/*; do
-  [[ -e $f ]] || continue
-  [[ -e "$decordir/${f##*/}" ]] || cp -a "$f" "$decordir/"
-done
-say "seeded decor art -> $decordir"
 
 # Install the Ryoku.PluginKit QML module (the signature kit a plugin imports for
 # its content) onto the same import path. Pure QML, so a plain copy, no toolchain.
@@ -936,13 +1032,6 @@ rm -rf "$cfg/quickshell"
 mkdir -p "$cfg/quickshell"
 cp -a "$here/quickshell/." "$cfg/quickshell/"
 
-# xdg-desktop-portal: route each compositor's portals. Hyprland owns its own
-# ScreenCast/Screenshot; niri uses the GNOME backend while only FileChooser is
-# pinned to gtk; Wayfire captures through the wlroots backend. Every file
-# lands; the portal reads the one named for the running desktop.
-install -Dm644 "$here/../hyprland/hyprland-portals.conf" "$cfg/xdg-desktop-portal/hyprland-portals.conf"
-install -Dm644 "$here/../niri/niri-portals.conf" "$cfg/xdg-desktop-portal/niri-portals.conf"
-install -Dm644 "$here/../wayfire/wayfire-portals.conf" "$cfg/xdg-desktop-portal/wayfire-portals.conf"
 # The single-instance shell ships as ryoku/shell/quickshell/shell and lands at
 # $cfg/quickshell/shell via the copy above; the ryoku-shell daemon launches it as
 # `qs -c shell`, the live desktop.
@@ -950,12 +1039,12 @@ install -Dm644 "$here/../wayfire/wayfire-portals.conf" "$cfg/xdg-desktop-portal/
 # Ryoku Hub's quickshell config (qs -c hub), kept beside the shell's components.
 mkdir -p "$cfg/quickshell/hub"
 cp -a "$here/../hub/quickshell/." "$cfg/quickshell/hub/"
+piece_end
 
 # First-party GUI apps: each ryoku/apps/<name>/ ships as a Quickshell app (a
 # quickshell/ tree, launched as qs -c <name>) or a compiled Qt app (a
 # CMakeLists.txt, built to $bindir/<name>). Either way a .desktop entry and an
 # icon ride along. Drop in a new app dir and it ships.
-appshare="${XDG_DATA_HOME:-$HOME/.local/share}"
 for appdir in "$here"/../apps/*/; do
   appname="$(basename "$appdir")"
   if [[ -d "${appdir}quickshell" ]]; then
@@ -963,23 +1052,10 @@ for appdir in "$here"/../apps/*/; do
     cp -a "${appdir}quickshell/." "$cfg/quickshell/$appname/"
   fi
   if [[ -f "${appdir}CMakeLists.txt" ]] && command -v cmake >/dev/null 2>&1; then
-    say "building app $appname"
-    cmake -S "$appdir" -B "${appdir}build" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
-    cmake --build "${appdir}build" >/dev/null
     install -m755 "${appdir}build/$appname" "$bindir/$appname"
   fi
   [[ -d "${appdir}quickshell" || -f "${appdir}CMakeLists.txt" ]] || continue
   for b in "${appdir}bin/"*; do [[ -f "$b" ]] && install -m755 "$b" "$bindir/$(basename "$b")"; done
-  # an app may carry Go helper(s): a subdir with a go.mod builds to a bin named
-  # for the module (ryovm/fetch -> ryovm-fetch). keeps "drop in an app dir" true.
-  for gomod in "${appdir}"*/go.mod; do
-    [[ -f "$gomod" ]] || continue
-    helperdir="$(dirname "$gomod")"
-    helper="$(sed -n -E 's/^module[[:space:]]+//p' "$gomod" | head -1)"
-    [[ -n "$helper" ]] || continue
-    say "building $helper"
-    (cd "$helperdir" && go build -o "$helper" .) && install -m755 "$helperdir/$helper" "$bindir/$helper"
-  done
   for d in "${appdir}"*.desktop; do [[ -f "$d" ]] && install -Dm644 "$d" "$appshare/applications/$(basename "$d")"; done
   icon="${appdir}quickshell/logo.svg"
   [[ -f "$icon" ]] || icon="${appdir}logo.svg"
@@ -1088,6 +1164,24 @@ elif [[ $package_manager == dnf ]]; then
 else
   say "skipping packaged externals (sudo or pacman not available)"
 fi
+
+piece config "configuration files"
+
+# Route each compositor to its own portal stack. Every file lands here; the
+# portal reads the one named for the running desktop.
+install -Dm644 "$here/../hyprland/hyprland-portals.conf" "$cfg/xdg-desktop-portal/hyprland-portals.conf"
+install -Dm644 "$here/../niri/niri-portals.conf" "$cfg/xdg-desktop-portal/niri-portals.conf"
+install -Dm644 "$here/../wayfire/wayfire-portals.conf" "$cfg/xdg-desktop-portal/wayfire-portals.conf"
+
+# Seed the decor art beside wallpapers and livewalls. Missing-only keeps local
+# replacements and additions intact across deploys.
+decordir="$HOME/Pictures/ryodecors"
+mkdir -p "$decordir"
+for f in "$here/../assets/ryodecors"/*; do
+  [[ -e $f ]] || continue
+  [[ -e "$decordir/${f##*/}" ]] || cp -a "$f" "$decordir/"
+done
+say "seeded decor art -> $decordir"
 
 # Nautilus stash actions (a nautilus-python extension). Installs ship it system-wide
 # from the ryoku-desktop package; the dev loop drops it in the user extensions dir.
@@ -1409,6 +1503,9 @@ if (( reload )) && [[ $wireplumber_before != "$wireplumber_after" ]]; then
     fi
   fi
 fi
+piece_end
+
+piece desktop "restarting the desktop"
 
 
 if (( wm_live && reload )); then
@@ -1416,30 +1513,34 @@ if (( wm_live && reload )); then
   if ! check_renderer; then
     say "installed. next login stages and activates qylock with the new shell."
     release_power_cutover_lock
+    piece_end skipped
   elif [ -d /run/systemd/system ]; then
     # Hold a durable login1 block and the qylock generation writer gate before
     # stopping the old daemon. Existing locks can finish first; new launches
     # cannot cross into a half-replaced generation.
     if [[ ! -x $bindir/ryoku-idle || ! -x $bindir/ryoku-clamshell ]]; then
       say "cannot cut over lid policy: installed power helpers are missing" >&2
+      piece_end failed
       exit 1
     fi
     if ! command -v sudo >/dev/null 2>&1 ||
        ! cmp -s "$here/../../system/hardware/power/logind-ryoku-lid.conf" \
          /etc/systemd/logind.conf.d/10-ryoku-lid.conf; then
       say "cannot activate the guarded lid policy: the logind drop-in is not installed" >&2
+      piece_end failed
       exit 1
     fi
     start_power_cutover_guard
     # A later failure (session-bind, a reload) used to exit through errexit
     # with the durable sleep block still live, denying every suspend until a
     # reboot (#282). The stop is a no-op once the success path released it.
-    trap 'stop_power_cutover_guard' EXIT
+    trap 'status=$?; piece_exit "$status"; stop_power_cutover_guard || true; exit "$status"' EXIT
     "$bindir/ryoku-power-cutover" generation-guard-start
     "$bindir/ryoku-power-cutover" shell-quiesce
     stage_qylock_user 1
     if ! sudo systemctl reload systemd-logind; then
       say "could not activate logind's guarded lid policy" >&2
+      piece_end failed
       exit 1
     fi
     "$bindir/ryoku-clamshell" stop
@@ -1450,6 +1551,7 @@ if (( wm_live && reload )); then
     "$bindir/ryoku" wm act config.reload >/dev/null || wm_reload_rc=$?
     if (( wm_reload_rc != 0 && wm_reload_rc != 4 )); then
       say "window-manager config reload failed with exit $wm_reload_rc" >&2
+      piece_end failed
       exit "$wm_reload_rc"
     fi
     start_session_power_units
@@ -1459,23 +1561,27 @@ if (( wm_live && reload )); then
     stop_power_cutover_guard
     release_power_cutover_lock
     say "deployed and reloaded the compositor."
+    piece_end
   else
     if [[ ! -x $bindir/ryoku-idle || ! -x $bindir/ryoku-clamshell ]]; then
       say "cannot cut over lid policy: installed power helpers are missing" >&2
+      piece_end failed
       exit 1
     fi
     if ! cmp -s "$here/../../system/hardware/power/logind-ryoku-lid.conf" \
       /etc/elogind/logind.conf.d/10-ryoku-lid.conf; then
       say "cannot activate the guarded lid policy: the elogind drop-in is not installed" >&2
+      piece_end failed
       exit 1
     fi
     start_power_cutover_guard
-    trap 'stop_power_cutover_guard' EXIT
+    trap 'status=$?; piece_exit "$status"; stop_power_cutover_guard || true; exit "$status"' EXIT
     "$bindir/ryoku-power-cutover" generation-guard-start
     "$bindir/ryoku-power-cutover" shell-quiesce
     stage_qylock_user 1
     if ! sudo loginctl reload; then
       say "could not activate elogind's guarded lid policy" >&2
+      piece_end failed
       exit 1
     fi
     "$bindir/ryoku-clamshell" stop
@@ -1486,6 +1592,7 @@ if (( wm_live && reload )); then
     "$bindir/ryoku" wm act config.reload >/dev/null || wm_reload_rc=$?
     if (( wm_reload_rc != 0 && wm_reload_rc != 4 )); then
       say "window-manager config reload failed with exit $wm_reload_rc" >&2
+      piece_end failed
       exit "$wm_reload_rc"
     fi
     start_session_power_units
@@ -1495,9 +1602,11 @@ if (( wm_live && reload )); then
     stop_power_cutover_guard
     release_power_cutover_lock
     say "deployed and reloaded the compositor."
+    piece_end
   fi
 else
   # The rewritten service stages and activates the matching local generation
   # on the next login, while this session keeps its current lock client intact.
   say "installed. log out and back in to activate the new shell and qylock."
+  piece_end skipped
 fi
