@@ -304,8 +304,8 @@ GlazePKG (`gpk`), dualsensectl, Ryoku's packaged Oh My Zsh, and Ryotunes ship
 from Ryoku's signed Void repository.
 
 Packages come from Ryoku's signed XBPS repository. Stable releases use
-`https://repo.ryoku.dev/stable/void/x86_64`; every `unstable-dev` push publishes
-the testing channel at
+`https://repo.ryoku.dev/stable/void/x86_64`; every `unstable-dev` push that
+passes the Testing gate publishes the testing channel at
 `https://repo.ryoku.dev/stable/void/channels/testing/x86_64`. `ryoku update`
 updates the Ryoku set, and `ryoku update --system` updates the Void base as
 well. On snapshot-enabled installs, both commands take a snapper pre/post pair.

@@ -29,8 +29,8 @@ command below.
 
 |Command|What it does|Where|Who|
 |---|---|---|---|
-|`update`|Snapshot when supported, then bring the system current and redeploy|both|you|
-|`status [--json]`|Version, how far behind, snapshot count when supported|both|you, the Hub|
+|`update [--wait] [--force]`|Snapshot when supported, then bring the system current and redeploy; held while the channel is still building|both|you|
+|`status [--json]`|Version, how far behind, the channel's build or check state, snapshot count when supported|both|you, the Hub|
 |`rollback [id]`|List releases; on snapshot-capable hosts, guide a boot-menu restore|both|you|
 |`snapshots`|List snapshots when the host provides them|both|you|
 |`reload`|Restart the shell and reload Hyprland|both|you|
@@ -82,7 +82,18 @@ package manager, git, the builds, the doctor) goes to
 `error:`, `warning:` and `note:` lines, pending package config, and the doctor's
 findings. On failure the card shows the error and the last lines the work
 printed. When a pre-update snapshot exists, it also offers that snapshot for
-rollback.
+rollback. On a source box the **Deploying the desktop** step opens into its
+pieces: one line per compilation with its own bar, how long it usually takes on
+this box (`~/.local/state/ryoku/deploy-pieces.json`), and the compiler's current
+line; the first build on a box says why it is slow.
+
+Before a packaged run snapshots or touches packages it reads the channel's
+`status.json`. A build still in progress refuses the run and names the Actions
+run; `--wait` polls until it finishes, `--force` proceeds anyway. A failed last
+build warns and takes the previous good build. On a source box the same flags
+apply to the Testing gate: the checkout fast-forwards only to the last commit
+that passed every required check, `--wait` polls a gate still running, and
+`--force` deploys the tip unchecked.
 
 - `ryoku update -v` (`--verbose`) streams the raw output instead, including the
   native package manager's own progress.
@@ -107,7 +118,10 @@ shows the channel, the deployed commit (`installed`), and how many commits behin
 the channel you are; on a packaged install it shows the installed
 `ryoku-desktop` version, what the signed repository offers, and the count of
 pending distribution packages. Those are listed as `system:` because plain
-`ryoku update` does not take them. It ends with the snapshot count.
+`ryoku update` does not take them. It ends with the snapshot count. When the
+channel's publisher is building or its last build failed, a `build:` line says
+so with the Actions run; on a source box a `checked:` line says when the tip is
+still being checked, failed its checks, or is newer than the last checked commit.
 
 On Fedora, status uses the same publication check as update. An unpublished
 running release is named directly, rather than being reported as having no
@@ -118,15 +132,21 @@ humans.
 
 ### `ryoku track <channel-or-version>`
 
-`stable` follows named releases and `unstable` follows packages rebuilt from
-`unstable-dev`. A stable release tag pins its frozen release directory; an
-unstable build name such as `v0.94.1-beta.20.dev.12+g1234567` pins the matching
-frozen testing build. `ryoku track stable` or `ryoku track unstable` returns to
-that channel's moving head. Pacman, XBPS, and DNF perform the channel move as
-one transaction and restore the previous repository if the package move fails.
+`stable` follows named releases as signed packages. `unstable` builds the box
+from the `unstable-dev` checkout under `~/ryoku-arch`: `bin/ryoku-track`
+installs the host toolchain, clones or updates the checkout, and runs
+`ryoku/shell/deploy.sh`; from then on `ryoku update` fast-forwards to the last
+commit the Testing gate passed and redeploys. A stable release tag pins its
+frozen release directory; an unstable build name such as
+`v0.94.1-beta.20.dev.12+g1234567` pins the matching frozen testing build, as
+packages. `ryoku track stable` returns a box to packages; `ryoku track unstable`
+returns a pinned box to the source lane. Pacman, XBPS, and DNF perform a package
+channel move as one transaction and restore the previous repository if the
+package move fails.
 
-`--source` accepts only `stable` or `unstable` and builds from the corresponding
-checkout branch instead of selecting a package repository.
+`--source` with `stable` builds from the `main` branch instead of selecting the
+stable package repository; with `unstable` it changes nothing, since unstable
+is the source lane already.
 
 
 ### `ryoku rollback [id]`

@@ -505,10 +505,15 @@ on one origin.
 
 ### Release-day checklist
 
-1. Fast-forward `main` from the green `unstable-dev` tip, then dispatch **Stable
-   Release** on `main`. It creates the `v*` tag and dispatches
+1. Fast-forward `main` from the green `unstable-dev` tip (green means
+   `channels/testing/checked.json` names that commit with `state: passed`), then
+   dispatch **Stable Release** on `main`. It creates the `v*` tag and dispatches
    `publish-repo.yml`, `publish-repo-void.yml`, and
-   `publish-repo-fedora.yml` on that tag.
+   `publish-repo-fedora.yml` on that tag. Each publisher's gate job waits for
+   the tagged commit's required checks before it uploads; a `VERSION` bump
+   commit the workflow made on `main` has none, so the gate passes it after
+   its grace period and the stable head writes `status.json` as `building`
+   until the publish lands.
 2. Wait for all three publishers. Their stable `release.json` files must name
    the tag at `stable/x86_64/release.json`,
    `stable/void/x86_64/release.json`, and
@@ -548,10 +553,10 @@ the ISOs they name, the ledgers except to remove deleted entries, the signing
 key, or the bucket-root `install.sh`. Each run logs one JSON line per group and
 an `r2_retention_total` line.
 
-`ryoku track stable | unstable --source` is the developer path: it builds and
-tracks a git checkout instead of packages (see `docs/development.md`). An
-explicitly recorded checkout selects this source lane on Arch, Void, or Fedora;
-packaged installs simply never create that record.
+`ryoku track unstable` and `ryoku track stable --source` build and track a git
+checkout instead of packages (see `docs/development.md`). An explicitly
+recorded checkout selects this source lane on Arch, Void, or Fedora; packaged
+installs simply never create that record.
 
 ### Release names
 

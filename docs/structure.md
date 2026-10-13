@@ -334,10 +334,18 @@ menu. Wayfire is unavailable because Fedora ships 0.10.1 and Ryoku requires
 - `bin/` repo tooling: the release version helpers (`ryoku-release-version`,
   `ryoku-release-bump`), the CI and hook checks
   (`ryoku-dev-scan-slop`, `ryoku-dev-audit-shell-binds`), the
-  `ryoku-edition-parity` package coverage gate, and `art/` for art authoring
+  `ryoku-edition-parity` package coverage gate, the delivery gates the
+  workflows share (`ryoku-ci-gate` waits for every required check on a commit;
+  `ryoku-channel-status` and `ryoku-checked-pointer` write a channel's
+  `status.json` and the testing `checked.json`), `ryoku-track` (the source
+  lane behind `ryoku track unstable`), and `art/` for art authoring
   (`ryodither` bakes an image or gif into a 1-bit bone-on-transparent decor;
   `tiling-demos` generates the Appearance tiling-layout preview loops).
 - `tests/` standalone CI check scripts (install chroot-safety, shell tool
   availability).
 - `.github/` the workflows and issue/PR templates; `.githooks/` the commit gates.
+  `testing-gate.yml` runs on every `unstable-dev` push and advances the source
+  lane; the three `publish-repo*.yml` publishers run the same gate before they
+  upload; `i18n.yml` runs only by hand. `docs/updates.md`, "Publishing", has the
+  channel layout they write.
 - `VERSION` the base semver; `.woke.yml` the inclusive-language config.
