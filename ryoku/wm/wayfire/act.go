@@ -1832,9 +1832,10 @@ var touchpadNotify = func(title, body string) {
 	_ = exec.Command("notify-send", "-a", "Ryoku", title, body).Run()
 }
 
-// setBorderPalette pushes the live palette's border colours into the running
-// config: the ipc call emits wayfire's reload signal and the decoration
-// plugin recolours the frame, without the file underneath the user changing.
+// setBorderPalette carries the live palette's border colours to the running
+// session: the palette file is a layer the composer reads, and the recompose
+// reloads Wayfire, which recolours both the decor ring and the stock title
+// bars without a value being pinned for the session.
 func setBorderPalette(args []string) error {
 	active, err := arg(args, 0, "active colour")
 	if err != nil {
@@ -1851,31 +1852,14 @@ func setBorderPalette(args []string) error {
 	}
 	// A fixed border colour is the user's own choice; a wallpaper change must
 	// not override it, the store gate the sibling acts share.
-	if !loadStore(storePath()).Appearance.BorderFollowsPalette {
+	s := loadStore(storePath())
+	if !s.Appearance.BorderFollowsPalette {
 		return nil
 	}
-	// The palette file is what the composer reads: every apply rewrites the
-	// config from the store, so the colours have to land in the file as well as
-	// on the wire or the next apply would snap back to the store colours.
 	if err := writeBorderPalette(na, ni, aok, iok); err != nil {
 		return err
 	}
-	// The decor plugin draws the ring when it is installed; the stock
-	// decoration colours still frame server-side title bars.
-	sections := []string{"decoration"}
-	if wayfirePluginAvailable("ryoku-decor") {
-		sections = append(sections, "ryoku-decor")
-	}
-	colors := map[string]any{}
-	for _, sec := range sections {
-		if aok {
-			colors[sec+"/active_color"] = na + "ff"
-		}
-		if iok {
-			colors[sec+"/inactive_color"] = ni + "ff"
-		}
-	}
-	return perform("wayfire/set-config-options", colors)
+	return writeComposed(s)
 }
 
 // writeBorderPalette records the live palette's colours for the composer. A

@@ -560,6 +560,9 @@ func TestKeyboardCycle(t *testing.T) {
 }
 
 func TestTouchpadAct(t *testing.T) {
+	// The toggle stamps the runtime dir to drop key echoes; a shared one lets a
+	// run that follows another within the echo window skip its toggle.
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
 	devices := func(pad bool) map[string]string {
 		r := stageReplies()
 		list := `[{"id":7,"name":"Logitech Mouse","type":"pointer","enabled":true},
@@ -640,26 +643,43 @@ func TestTouchpadAct(t *testing.T) {
 }
 
 func TestBorderColors(t *testing.T) {
-	t.Run("pushes both colours as runtime values", func(t *testing.T) {
+	// Both rings must take the palette through the composed file and a reload:
+	// a set-config-options push would lock the colours for the session, and a
+	// later Hub save could then no longer change the border.
+	paletteRings := func(t *testing.T, decor bool) {
 		calls := stubAct(t, stageReplies())
 		wayfireHome(t)
+		withDefaults(t, "[core]\nplugins = decoration\n")
+		if decor {
+			withWayfirePlugins(t, "ryoku-decor")
+		}
 		if err := runAct([]string{"decoration.borderColors", "#AABBCC", "112233"}); err != nil {
 			t.Fatal(err)
 		}
-		wantCall(t, *calls, "wayfire/set-config-options",
-			`{"decoration/active_color":"#aabbccff","decoration/inactive_color":"#112233ff"}`)
+		wantNoCall(t, *calls, "wayfire/set-config-options")
+		wantCall(t, *calls, reloadConfigMethod, `{}`)
+		body, err := os.ReadFile(filepath.Join(wayfireConfigDir(), "wayfire.ini"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc := parseIni(body)
+		sections := []string{"decoration"}
+		if decor {
+			sections = append(sections, "ryoku-decor")
+		}
+		for _, sec := range sections {
+			a, _ := doc.get(sec, "active_color")
+			i, _ := doc.get(sec, "inactive_color")
+			if a != "#AABBCCFF" || i != "#112233FF" {
+				t.Errorf("[%s] colours = %q/%q, want the palette's", sec, a, i)
+			}
+		}
+	}
+	t.Run("the stock ring takes the palette through the config", func(t *testing.T) {
+		paletteRings(t, false)
 	})
-
 	t.Run("an installed decor plugin's ring follows the palette too", func(t *testing.T) {
-		calls := stubAct(t, stageReplies())
-		wayfireHome(t)
-		withWayfirePlugins(t, "ryoku-decor")
-		if err := runAct([]string{"decoration.borderColors", "#AABBCC", "112233"}); err != nil {
-			t.Fatal(err)
-		}
-		wantCall(t, *calls, "wayfire/set-config-options",
-			`{"decoration/active_color":"#aabbccff","decoration/inactive_color":"#112233ff",`+
-				`"ryoku-decor/active_color":"#aabbccff","ryoku-decor/inactive_color":"#112233ff"}`)
+		paletteRings(t, true)
 	})
 
 	t.Run("garbage colours", func(t *testing.T) {
@@ -703,6 +723,7 @@ func TestBorderColors(t *testing.T) {
 	t.Run("the palette file hands the composer both colours", func(t *testing.T) {
 		stubAct(t, stageReplies())
 		wayfireHome(t)
+		withDefaults(t, "[core]\nplugins = decoration\n")
 		if err := runAct([]string{"decoration.borderColors", "#AABBCC", "112233"}); err != nil {
 			t.Fatal(err)
 		}
@@ -715,6 +736,7 @@ func TestBorderColors(t *testing.T) {
 	t.Run("one unusable side keeps the stored one", func(t *testing.T) {
 		stubAct(t, stageReplies())
 		wayfireHome(t)
+		withDefaults(t, "[core]\nplugins = decoration\n")
 		prev := `{"active":"#111111","inactive":"#222222"}`
 		if err := os.MkdirAll(filepath.Dir(borderPalettePath()), 0o755); err != nil {
 			t.Fatal(err)

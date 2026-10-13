@@ -51,6 +51,19 @@ func runApply(args []string) error {
 	if preview {
 		return encodeReport(rep)
 	}
+	if err := writeComposed(s); err != nil {
+		return err
+	}
+	wm.PublishGreeterNumlock(s.Input.NumlockByDefault)
+	rep.Written = []string{filepath.Join(wayfireConfigDir(), "wayfire.ini")}
+	return encodeReport(rep)
+}
+
+// writeComposed is the one way a change reaches Wayfire: compose the whole
+// file, write it, and have a running session read it. Values are never pushed
+// over set-config-options, which locks each option it sets for the rest of
+// the session, after which no reload and so no Hub save can change it again.
+func writeComposed(s wayfireStore) error {
 	body, err := compose(s)
 	if err != nil {
 		return err
@@ -58,12 +71,7 @@ func runApply(args []string) error {
 	if err := writeOverlayIni("wayfire.ini", body); err != nil {
 		return err
 	}
-	wm.PublishGreeterNumlock(s.Input.NumlockByDefault)
-	rep.Written = []string{filepath.Join(wayfireConfigDir(), "wayfire.ini")}
-	if err := reloadRunning(); err != nil {
-		return err
-	}
-	return encodeReport(rep)
+	return reloadRunning()
 }
 
 const reloadConfigMethod = "wayfire/reload-config-metadata"
