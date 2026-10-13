@@ -141,6 +141,22 @@ func TestFedoraNamesGRUBNotLimine(t *testing.T) {
 	}
 }
 
+func TestFedoraSnapshotsRowPromisesNoRollback(t *testing.T) {
+	for _, tc := range []struct {
+		variant, label, tag string
+	}{
+		{variantFedora, "Snapshots subvolume", "optional"},
+		{"plain", "Snapshots & rollback", "recommended"},
+	} {
+		m := model{variant: tc.variant, picks: map[string]string{"disk": "whole"}}
+		for _, row := range m.layoutRows() {
+			if row.key == "snap" && (row.label != tc.label || row.tag != tc.tag) {
+				t.Fatalf("%s snapshots row = %q (%s), want %q (%s)", tc.variant, row.label, row.tag, tc.label, tc.tag)
+			}
+		}
+	}
+}
+
 func TestLocaleAListUsesSupportedSpelling(t *testing.T) {
 	got := utf8Locales("C\nC.utf8\nPOSIX\nde_DE.utf8\nen_US.utf8\nja_JP.eucjp\n")
 	want := []string{"C.UTF-8", "de_DE.UTF-8", "en_US.UTF-8"}

@@ -6,6 +6,9 @@
 - **The Fedora ISO offers every locale.** The live image carries all glibc
   langpacks, and the installer reads `locale -a` in the `de_DE.UTF-8` spelling,
   so the locale step is no longer limited to English and `en_US` leads again.
+- **The encryption step says what it does.** It no longer mentions a retired
+  "-luks host variant"; the passphrase is asked at every boot. On Fedora the
+  layout row reads "Snapshots subvolume", since rollback is not set up yet.
 - **Installer product choices no longer drift between editions or entry
   points.** Browser, login-shell and compositor order, labels, defaults,
   package stacks and fresh/existing shell policies now come from one shared

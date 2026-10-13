@@ -567,7 +567,7 @@ func stepsForVariant(variant string) []step {
 		{key: "password", title: i18n.T("User password"), kind: kPass,
 			desc: []string{i18n.T("Set a password for your account.")}},
 		{key: "encryption", title: i18n.T("Disk encryption"), kind: kConfirm,
-			desc: []string{i18n.T("Encrypt the root with LUKS?"), i18n.T("Installs the -luks host variant.")}},
+			desc: []string{i18n.T("Encrypt the root with LUKS?"), i18n.T("You type its passphrase at every boot.")}},
 		{key: "review", title: i18n.T("Review"), kind: kConfirm,
 			desc: []string{i18n.T("Last safe point, nothing written yet.")}},
 	}
@@ -1947,7 +1947,11 @@ func (m model) layoutRows() []lrow {
 		rows = append(rows, lrow{"size", "esp", i18n.T("ESP size"), "/boot · fat32", "required"}) // alongside boot is fixed at 2 GiB
 	}
 	rows = append(rows, lrow{"size", "swap", i18n.T("Swap (swapfile)"), i18n.T("@swap · 0 = none · carved from root"), "optional"})
-	rows = append(rows, lrow{"toggle", "snap", i18n.T("Snapshots & rollback"), "@snapshots → /.snapshots", "recommended"})
+	if isFedoraVariant(m.variant) {
+		rows = append(rows, lrow{"toggle", "snap", i18n.T("Snapshots subvolume"), i18n.T("@snapshots → /.snapshots · no rollback yet"), "optional"})
+	} else {
+		rows = append(rows, lrow{"toggle", "snap", i18n.T("Snapshots & rollback"), "@snapshots → /.snapshots", "recommended"})
+	}
 	rows = append(rows,
 		lrow{"toggle", "home", i18n.T("Separate /home"), "@home → /home", "optional"},
 		lrow{"toggle", "backups", i18n.T("Backups"), "@backups → /.backups", "optional"},
