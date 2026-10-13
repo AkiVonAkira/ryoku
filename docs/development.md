@@ -74,6 +74,13 @@ After displayed copy changes, regenerate translations by dispatching the
   surface down to a black screen. `deploy.sh` stamps `Ryoku.Blobs` with the Qt it
   built against and rebuilds when that changes; `ryoku doctor` reports a renderer
   or module that cannot load.
+- **A deploy build step:** wrap the work in `ryoku/shell/deploy.sh` with
+  `piece <key> <label>` and `piece_end`; send Go builds through `build_go`.
+  Add the label to the `pieceLabels` map in
+  `ryoku/cli/internal/updater/pieces.go` so it can be translated.
+  `RYOKU_UPDATE_PROGRESS` is the only switch for emitting piece markers.
+  Running `bash deploy.sh` by hand leaves it unset and prints only the human
+  lines.
 - **A system helper:** a `ryoku-<thing>` script under `system/hardware/.../`,
   shipped to `/usr/bin` by the `ryoku-desktop` package (its PKGBUILD installs
   every `system/hardware/*/ryoku-*`), and invoked by name from Lua autostart or

@@ -170,6 +170,13 @@ created one. It drives its own runs (`ryoku update --gui`) without a terminal;
 the terminal shows a curated console and keeps the raw output in
 `~/.local/state/ryoku/update-log.txt` (`ryoku update -v` streams it instead).
 
+On the source lane, **Deploying the desktop** opens into the pieces it builds.
+The terminal gives each piece its own progress bar, using progress reported by
+the compiler when it is available or the duration remembered from the last run
+in `~/.local/state/ryoku/deploy-pieces.json`. The first build on a box explains
+that every piece is compiling from scratch and that later runs reuse the build
+caches. The Hub shows the same list beneath the deploy step.
+
 The database refresh happens before the set is read, so a move onto a frozen
 release asks only for packages that release served. Pacman targets are
 repo-qualified (`ryoku/<name>`); XBPS targets use their native names and `-f`
