@@ -135,7 +135,7 @@ type Inputs struct {
 // ryoku-desktop-niri or xwayland-satellite in the lane would offer the other
 // desktop's packages to everyone), and OptIn names a hardware-gated or
 // user-chosen path owns (asusctl, dualsensectl, the fingerprint module, the
-// snapshot sync, the palette bridge).
+// snapshot sync, the limine hook, the palette bridge).
 func Build(in Inputs) Manifest {
 	m := Manifest{
 		Schema:      Schema,

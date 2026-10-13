@@ -88,6 +88,32 @@ func TestPlanManifestReportsRetiredNames(t *testing.T) {
 	}
 }
 
+func TestSatisfiedByProvidersKeepsTheBoxsOwnProvider(t *testing.T) {
+	// A CachyOS box carrying rustup and tuned-ppd: pacman counts rust and
+	// power-profiles-daemon as installed through them, and installing the stock
+	// package over either conflicts under --noconfirm on every update. go is
+	// satisfied by nothing, so it stays a real gap the converge delivers.
+	t.Setenv("RYOKU_HOST_PKGMGR", "pacman")
+	bin := t.TempDir()
+	writeExec(t, filepath.Join(bin, "pacman"), "#!/bin/sh\n[ \"$1\" = -T ] || exit 2\nshift\nrc=0\nfor n; do case $n in rust|power-profiles-daemon) ;; *) echo \"$n\"; rc=127;; esac; done\nexit $rc\n")
+	t.Setenv("PATH", bin)
+	m := ryokumanifest.Manifest{Base: []string{"base", "rust", "power-profiles-daemon"}, Dev: []string{"go"}}
+
+	installed := SatisfiedByProviders(m, map[string]bool{"base": true})
+	if want := map[string]bool{"base": true, "rust": true, "power-profiles-daemon": true}; !reflect.DeepEqual(installed, want) {
+		t.Fatalf("installed = %v, want %v", installed, want)
+	}
+	plan := PlanManifest(&m, map[string]bool{"base": true}, &m, installed)
+	if !reflect.DeepEqual(plan.Install, []string{"go"}) {
+		t.Fatalf("install = %v, want [go]: a provided name must not be installed over its provider", plan.Install)
+	}
+
+	writeExec(t, filepath.Join(bin, "pacman"), "#!/bin/sh\nexit 1\n")
+	if got := SatisfiedByProviders(m, map[string]bool{"base": true}); !reflect.DeepEqual(got, map[string]bool{"base": true}) {
+		t.Fatalf("a failed pacman -T widened the set to %v", got)
+	}
+}
+
 func TestFedoraPackageSetsUseRPMAndDNFUserInstalled(t *testing.T) {
 	t.Setenv("RYOKU_HOST_PKGMGR", "dnf")
 	bin := t.TempDir()

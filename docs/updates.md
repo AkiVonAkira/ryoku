@@ -346,11 +346,15 @@ installs what the release wants that this box never received, which is what
 makes a package added to a set reach every box on the next update without a hard
 depend, and heals a box that has been missing one all along. A name present at
 the baseline and gone now was deleted by the user and stays gone; a name the
-release retired is reported, never uninstalled. The deliver-once apps stay
-`reconcileShippedApps'` lane, so one update never runs two transactions over the
-same names. Best-effort: a box with no mirror or no network reports what did not
-land and the update moves on. `ryoku verify` answers the same diff read-only, so
-two machines can be compared line by line.
+release retired is reported, never uninstalled. A name another installed
+package provides (rustup for rust, tuned-ppd for power-profiles-daemon) counts
+as present, so the box's own choice is never overwritten, and the opt-in names
+(`ryokumanifest.OptIn`: hardware packages, the Limine hook and snapshot sync)
+belong to their gated reconcilers and are never converged. The deliver-once
+apps stay `reconcileShippedApps'` lane, so one update never runs two
+transactions over the same names. Best-effort: a box with no mirror or no
+network reports what did not land and the update moves on. `ryoku verify`
+answers the same diff read-only, so two machines can be compared line by line.
 
 ## More than one compositor
 

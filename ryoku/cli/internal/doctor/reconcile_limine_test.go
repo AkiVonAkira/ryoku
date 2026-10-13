@@ -322,6 +322,35 @@ func TestLimineDependentChecksStandAsideOnUnreadableConf(t *testing.T) {
 	}
 }
 
+// A box that boots through another build of limine-entry-tool (the plain tool
+// CachyOS ships, or limine-dracut-support) has no package named
+// limine-mkinitcpio-hook, and the hook conflicts with what it does have.
+// Reading that as "hook missing" made the doctor attempt the same failing
+// install on every run.
+func TestLimineUKITreeAcceptsAnotherEntryToolBuild(t *testing.T) {
+	dir := t.TempDir()
+	stubLimineBootGates(t)
+	origESP, origDef := limineESPConf, limineDefaultsPath
+	t.Cleanup(func() { limineESPConf, limineDefaultsPath = origESP, origDef })
+	liminePkgInstalled = func(name string) bool { return name == "limine" || name == "limine-entry-tool" }
+	t.Setenv("PATH", t.TempDir())
+
+	limineDefaultsPath = filepath.Join(dir, "default_limine")
+	if err := os.WriteFile(limineDefaultsPath, []byte("ENABLE_UKI=yes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	limineESPConf = filepath.Join(dir, "limine.conf")
+	tree := "timeout: 3\ndefault_entry: 2\n\n/+Ryoku\n    comment: Ryoku\n//linux\n    protocol: efi\n"
+	if err := os.WriteFile(limineESPConf, []byte(tree), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, checkOnly := range []bool{true, false} {
+		if res := reconcileLimineUKITree(checkOnly); res.status != recOK {
+			t.Fatalf("checkOnly=%v: got %s %q, want ok without installing limine-mkinitcpio-hook", checkOnly, res.status.label(), res.detail)
+		}
+	}
+}
+
 // TestGatherLimineLayoutStateInaccessibleEFIBinaries verifies that when EFI binaries
 // cannot be inspected due to access or I/O errors, planLimineLayout yields limineLayoutUnreadable
 // instead of silently assuming they are absent.

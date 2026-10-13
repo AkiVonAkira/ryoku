@@ -167,6 +167,18 @@
   `internal/sys/release.go`, `internal/updater/release.go`).
 
 ### Fixed
+- **Updates stop fighting packages a box carries its own way.** The manifest
+  step counted a package as present only under its exact name, so a box with
+  rustup, sudo-rs, tuned-ppd or CachyOS's plain limine-entry-tool looked like it
+  was missing rust, sudo, power-profiles-daemon or limine-mkinitcpio-hook. Every
+  update tried to install the stock package over it, pacman refused under
+  `--noconfirm`, and the next update tried again. A name an installed package
+  provides now counts as present (`pacman -T`, as the shell installer already
+  did), limine-mkinitcpio-hook joins limine-snapper-sync as a Limine-box package
+  the doctor owns, and the UKI boot-tree check accepts any build of
+  limine-entry-tool instead of installing the hook over it
+  (`internal/updater/manifest.go`, `internal/ryokumanifest/manifest.go`,
+  `internal/doctor/reconcile_limine.go`).
 - **A refused package transaction names its packages everywhere.** The pair
   pacman says are in conflict, or the dependency it cannot satisfy or would
   break, now reaches the error the Hub's failure card and the console's closing

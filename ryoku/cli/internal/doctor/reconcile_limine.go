@@ -812,17 +812,26 @@ func reconcileLimineUKITree(checkOnly bool) recResult {
 		return noteRes(i18n.T("no readable %s; the layout reconciler owns that"), limineESPConf)
 	}
 	conf := string(b)
-	hookMissing := !liminePkgInstalled("limine-mkinitcpio-hook")
+	// limine-mkinitcpio-hook, limine-dracut-support and the plain
+	// limine-entry-tool CachyOS ships are three builds of one tool that
+	// conflict with each other, and pacman -Q resolves the shared name to
+	// whichever the box carries. A box booting through another build already
+	// has the tool; installing the hook over it can only fail, on every run.
+	toolMissing := !liminePkgInstalled("limine-entry-tool")
 	_, hasFlat := limineDropFlat(conf)
-	if !hookMissing && limineHasUKITree(conf) && !hasFlat {
-		return okRes(i18n.T("limine-mkinitcpio-hook owns the boot menu (UKI tree with kernel sub-entries)"))
+	if !toolMissing && limineHasUKITree(conf) && !hasFlat {
+		return okRes(i18n.T("limine-entry-tool owns the boot menu (UKI tree with kernel sub-entries)"))
 	}
 	if checkOnly {
+		fix := i18n.T("ryoku doctor rebuilds the menu with limine-update and promotes it to the UKI tree")
+		if toolMissing {
+			fix = i18n.T("ryoku doctor installs limine-mkinitcpio-hook and promotes the menu to the /+Ryoku UKI tree")
+		}
 		return wouldRes(i18n.T("the boot menu is still the flat install placeholder, so limine-snapper-sync cannot add the Snapshots submenu (rollbacks never appear at boot)")).
-			withFix(i18n.T("ryoku doctor installs limine-mkinitcpio-hook and promotes the menu to the /+Ryoku UKI tree"))
+			withFix(fix)
 	}
 	var done []string
-	if hookMissing {
+	if toolMissing {
 		if err := sys.Run("ryoku-pkg-aur-add", "limine-mkinitcpio-hook"); err != nil {
 			return failRes(i18n.T("could not install limine-mkinitcpio-hook: %v"), err).
 				withFix(i18n.T("ryoku-pkg-aur-add limine-mkinitcpio-hook, then ryoku doctor"))

@@ -120,8 +120,12 @@ func (m Manifest) DeliverableOnce() []string { return m.Provisioned }
 // dualsensectl belong to an ASUS laptop or a DualSense pad (reconcileAsusAura
 // and the controller docs deliver them); pam-fprint-grosshack belongs to a
 // machine with a fingerprint reader (reconcileFingerprintModule);
-// limine-snapper-sync belongs to a btrfs+Limine box (the snapshot offer and
-// the doctor); ryoku-palette-bridge is a Ryogami setting the user turns on.
+// limine-snapper-sync and limine-mkinitcpio-hook belong to a Limine box whose
+// boot Ryoku manages (the snapshot offer and the doctor's limine reconcilers);
+// ryoku-palette-bridge is a Ryogami setting the user turns on. The hook is one
+// of three conflicting builds of limine-entry-tool (CachyOS ships the plain
+// tool, dracut boxes carry limine-dracut-support), so pushing it at a box that
+// boots through another build fails the update every time.
 // Without this list the control manifest reads every [ryoku] PKGBUILD as a
 // requirement and offers to install all of them on every machine.
 var OptIn = []string{
@@ -129,6 +133,7 @@ var OptIn = []string{
 	"dualsensectl",
 	"pam-fprint-grosshack",
 	"limine-snapper-sync",
+	"limine-mkinitcpio-hook",
 	"ryoku-palette-bridge",
 }
 

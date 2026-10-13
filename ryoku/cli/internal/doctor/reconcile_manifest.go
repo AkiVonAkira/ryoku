@@ -80,6 +80,7 @@ func reconcileManifest(checkOnly bool) recResult {
 	if err != nil {
 		return warnRes(i18n.T("could not read the installed set: %v"), err)
 	}
+	installed = updater.SatisfiedByProviders(served, installed)
 	var prev *ryokumanifest.Manifest
 	prevPresent := map[string]bool{}
 	if applied != nil {
@@ -219,6 +220,7 @@ func manifestVerify() (updater.VerifyReport, *ryokumanifest.Manifest, error) {
 	if err != nil {
 		return updater.VerifyReport{}, nil, err
 	}
+	installed = updater.SatisfiedByProviders(served, installed)
 	explicit, err := updater.PacmanExplicit()
 	if err != nil {
 		return updater.VerifyReport{}, nil, err
