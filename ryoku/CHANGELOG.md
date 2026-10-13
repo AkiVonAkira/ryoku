@@ -213,6 +213,11 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Rashin opens on an NVIDIA display under compositors with explicit sync.**
+  WebKitGTK 2.54 switched the window to GL mid-frame, NVIDIA turned on explicit
+  sync for it, and the compositor dropped the app before its window appeared.
+  The app now falls back to implicit sync on that driver, and links it opens
+  keep explicit sync (`apps/rashin-app/main.cpp`).
 - **The previous-track and touchpad keys work on Wayfire.** Their bindings
   named evdev keys that do not exist, so Wayfire dropped them at load; they now
   use the kernel's names (`wm/wayfire/config_binds.go`).

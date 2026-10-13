@@ -16,6 +16,7 @@ constexpr int kDefaultPort = 3600;
 constexpr int kDefaultWidth = 1280;
 constexpr int kDefaultHeight = 820;
 constexpr guint kPollIntervalMs = 500;
+constexpr const char *kExplicitSyncOverride = "__NV_DISABLE_EXPLICIT_SYNC";
 
 constexpr const char *kBootPage = R"HTML(
 <!doctype html>
@@ -69,6 +70,7 @@ struct AppState {
     guint recovery_source = 0;
     bool polling = false;
     bool quitting = false;
+    bool explicit_sync_override = false;
     int port = kDefaultPort;
     int width = kDefaultWidth;
     int height = kDefaultHeight;
@@ -76,6 +78,23 @@ struct AppState {
     std::string ping_uri;
     std::string chat_uri;
 };
+
+// WebKitGTK 2.54 creates the window's first GL context in the middle of a
+// GTK 3 frame. NVIDIA's EGL platform turns on explicit sync for the toplevel at
+// that moment, and GTK then ends the frame with a wl_shm buffer that carries no
+// acquire point, which an explicit-sync compositor answers with a protocol
+// error before the window maps (WebKit bug 324551, fixed after 2.54). Implicit
+// sync keeps the DMABUF renderer and avoids it. A value the user set is kept.
+bool disable_nvidia_explicit_sync() {
+    if (g_getenv(kExplicitSyncOverride) || !g_getenv("WAYLAND_DISPLAY"))
+        return false;
+    const char *backend = g_getenv("GDK_BACKEND");
+    if (backend && g_str_has_prefix(backend, "x11"))
+        return false;
+    if (!g_file_test("/sys/module/nvidia", G_FILE_TEST_IS_DIR))
+        return false;
+    return g_setenv(kExplicitSyncOverride, "1", FALSE);
+}
 
 
 std::optional<int> json_integer(const char *json, const char *key) {
@@ -283,8 +302,16 @@ gboolean decide_policy(WebKitWebView *, WebKitPolicyDecision *decision,
     if (!uri || g_str_has_prefix(uri, "about:") || is_daemon_uri(state, uri))
         return FALSE;
 
+    // A link opens in the user's browser, which must not inherit the explicit
+    // sync override this host set for itself.
     GError *error = nullptr;
-    gtk_show_uri_on_window(GTK_WINDOW(state->window), uri, GDK_CURRENT_TIME, &error);
+    GdkAppLaunchContext *context =
+        gdk_display_get_app_launch_context(gtk_widget_get_display(state->window));
+    gdk_app_launch_context_set_timestamp(context, GDK_CURRENT_TIME);
+    if (state->explicit_sync_override)
+        g_app_launch_context_unsetenv(G_APP_LAUNCH_CONTEXT(context), kExplicitSyncOverride);
+    g_app_info_launch_default_for_uri(uri, G_APP_LAUNCH_CONTEXT(context), &error);
+    g_object_unref(context);
     g_clear_error(&error);
     webkit_policy_decision_ignore(decision);
     return TRUE;
@@ -428,6 +455,7 @@ void activate(GtkApplication *application, gpointer data) {
 
 int main(int argc, char **argv) {
     AppState state;
+    state.explicit_sync_override = disable_nvidia_explicit_sync();
     state.application = gtk_application_new(
         "dev.ryoku.rashin", G_APPLICATION_DEFAULT_FLAGS);
 
