@@ -213,6 +213,12 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Wayfire applies Hub saves and display changes straight away.** Wayfire
+  stops watching its config once the folder is replaced, so saves could land
+  on disk and wait for the next login; display layouts never reached the file
+  Wayfire reads at all. Every save now reloads the running compositor, a
+  display save rebuilds that file, and the window ring follows the wallpaper
+  colours live (`wm/wayfire/apply.go`, `wm/wayfire/outputs.go`).
 - **Wayfire windows get rounded corners, borders and shadows.** The corner
   radius, softness, border and shadow settings on the Window Manager page now
   work on Wayfire as they do on Hyprland and niri, drawn by Ryoku's own window

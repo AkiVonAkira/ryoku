@@ -20,11 +20,14 @@ import (
 
 // wayfireHome points the provider's config and overlay trees at a temp dir and
 // pins the state dir, so the palette file and the greeter hand-off cannot leak
-// in from the dev box.
+// in from the dev box. The runtime dir is emptied too: apply reloads a running
+// Wayfire, and socket discovery would otherwise find the session's.
 func wayfireHome(t *testing.T) string {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	t.Setenv("WAYFIRE_SOCKET", "")
 	withWayfirePlugins(t)
 	return wayfireConfigDir()
 }

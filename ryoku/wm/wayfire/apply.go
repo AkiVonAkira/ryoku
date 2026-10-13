@@ -16,11 +16,10 @@ import (
 // apply and defaults: the write half of the seam for wayfire. apply composes
 // wayfire.ini from the shipped defaults, the store and the seed files and
 // reports what it could not express; defaults hands the Hub the baseline it
-// overlays user values on. wayfire watches its own config file
-// (workarounds/auto_reload_config, shipped on in the defaults layer), so
-// ReloadNeeded is always false and there is no reload action; with --preview
-// apply writes nothing and only reports the losses, which is what
-// `ryoku wm use wayfire` shows a user as the cost of switching.
+// overlays user values on. A write is followed by a reload of the running
+// Wayfire (reloadRunning), so ReloadNeeded stays false: the caller has nothing
+// left to do. With --preview apply writes nothing and only reports the losses,
+// which is what `ryoku wm use wayfire` shows a user as the cost of switching.
 
 // runApply composes wayfire.ini and prints an ApplyReport. With --preview it
 // writes nothing (empty Written) but still walks the store for the unhonored
@@ -61,7 +60,25 @@ func runApply(args []string) error {
 	}
 	wm.PublishGreeterNumlock(s.Input.NumlockByDefault)
 	rep.Written = []string{filepath.Join(wayfireConfigDir(), "wayfire.ini")}
+	if err := reloadRunning(); err != nil {
+		return err
+	}
 	return encodeReport(rep)
+}
+
+const reloadConfigMethod = "wayfire/reload-config-metadata"
+
+// reloadRunning makes a running Wayfire read the config just written. Its own
+// file watch is attached at startup to the directory it found, and anything
+// that replaces ~/.config/wayfire (a checkout deploy, a factory reset) detaches
+// it for the rest of the session, after which a save would land on disk and
+// nowhere else. The reload method reopens the configured path. Off a session
+// there is nothing to reload.
+func reloadRunning() error {
+	if !live() {
+		return nil
+	}
+	return perform(reloadConfigMethod, map[string]any{})
 }
 
 func encodeReport(rep wm.ApplyReport) error {

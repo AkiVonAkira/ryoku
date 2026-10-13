@@ -432,7 +432,7 @@ func runAct(args []string) error {
 		// Deploy replaces the config directory, which leaves Wayfire's
 		// inotify watch attached to the old inode. The compositor's reload
 		// method reopens the configured path; optional scopes are harmless.
-		return perform("wayfire/reload-config-metadata", map[string]any{})
+		return perform(reloadConfigMethod, map[string]any{})
 	case wm.ActionCursorReassert:
 		// apply writes the config and wayfire's reload picks the theme up;
 		// there is no imperative call to make before that path exists.
@@ -1854,18 +1854,26 @@ func setBorderPalette(args []string) error {
 	if !loadStore(storePath()).Appearance.BorderFollowsPalette {
 		return nil
 	}
-	// The palette file is what the composer reads: wayfire reloads its config
-	// on any write, so the colours have to land in the file as well as on the
-	// wire or the next apply would snap back to the store colours.
+	// The palette file is what the composer reads: every apply rewrites the
+	// config from the store, so the colours have to land in the file as well as
+	// on the wire or the next apply would snap back to the store colours.
 	if err := writeBorderPalette(na, ni, aok, iok); err != nil {
 		return err
 	}
-	colors := map[string]any{}
-	if aok {
-		colors["decoration/active_color"] = na + "ff"
+	// The decor plugin draws the ring when it is installed; the stock
+	// decoration colours still frame server-side title bars.
+	sections := []string{"decoration"}
+	if wayfirePluginAvailable("ryoku-decor") {
+		sections = append(sections, "ryoku-decor")
 	}
-	if iok {
-		colors["decoration/inactive_color"] = ni + "ff"
+	colors := map[string]any{}
+	for _, sec := range sections {
+		if aok {
+			colors[sec+"/active_color"] = na + "ff"
+		}
+		if iok {
+			colors[sec+"/inactive_color"] = ni + "ff"
+		}
 	}
 	return perform("wayfire/set-config-options", colors)
 }

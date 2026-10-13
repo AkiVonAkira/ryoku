@@ -47,7 +47,19 @@ func runOutputs(args []string) error {
 	if err := atomicWrite(path, monitorsIni(layout), 0o644); err != nil {
 		return err
 	}
-	rep.Written = []string{path}
+	// Wayfire reads only the composed wayfire.ini, so the layout reaches the
+	// session through a recompose that layers monitors.ini back in.
+	body, err := compose(loadStore(storePath()))
+	if err != nil {
+		return err
+	}
+	if err := writeOverlayIni("wayfire.ini", body); err != nil {
+		return err
+	}
+	rep.Written = []string{path, filepath.Join(wayfireConfigDir(), "wayfire.ini")}
+	if err := reloadRunning(); err != nil {
+		return err
+	}
 	return encodeReport(rep)
 }
 

@@ -1,6 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -134,5 +138,66 @@ func TestOutputsUnhonoredReportsColour(t *testing.T) {
 	}
 	if !got["displays.DP-1.colorMode"] || len(unh) != 2 {
 		t.Errorf("only wide gamut and SDR brightness should be losses, got %v", unh)
+	}
+}
+
+// A save must reach a running Wayfire even when its file watch is gone (a
+// deploy or reset replaced the config directory), so every write ends in one
+// reload, a layout save recomposes the one file Wayfire reads, and nothing is
+// reloaded for a preview or off a session.
+func TestSavesReachARunningWayfire(t *testing.T) {
+	wayfireHome(t)
+	withDefaults(t, "[core]\nplugins = animate\n")
+	store := writeStore(t, `{}`)
+	oldOut := stdout
+	stdout = bufio.NewWriter(io.Discard)
+	t.Cleanup(func() { stdout = oldOut })
+	calls := stubAct(t, nil)
+	reloads := func() int {
+		n := 0
+		for _, c := range *calls {
+			if c.method == reloadConfigMethod {
+				n++
+			}
+		}
+		return n
+	}
+
+	if err := runApply([]string{store}); err != nil {
+		t.Fatal(err)
+	}
+	if got := reloads(); got != 1 {
+		t.Errorf("apply reloaded %d times, want once after the write", got)
+	}
+
+	*calls = nil
+	layout := filepath.Join(t.TempDir(), "layout.json")
+	if err := os.WriteFile(layout, []byte(`[{"name":"eDP-1","enabled":true,"mode":"1920x1080@60","scale":1}]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runOutputs([]string{layout}); err != nil {
+		t.Fatal(err)
+	}
+	composed, err := os.ReadFile(filepath.Join(wayfireConfigDir(), "wayfire.ini"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(composed), "[output:eDP-1]") {
+		t.Errorf("a layout save must land in the composed wayfire.ini:\n%s", composed)
+	}
+	if got := reloads(); got != 1 {
+		t.Errorf("a layout save reloaded %d times, want once", got)
+	}
+
+	*calls = nil
+	if err := runApply([]string{"--preview", store}); err != nil {
+		t.Fatal(err)
+	}
+	aliveCheck = func(string) bool { return false }
+	if err := runApply([]string{store}); err != nil {
+		t.Fatalf("apply off a session must still write: %v", err)
+	}
+	if got := reloads(); got != 0 {
+		t.Errorf("a preview or an apply off a session reloaded %d times, want none", got)
 	}
 }

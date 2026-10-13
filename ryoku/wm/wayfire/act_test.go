@@ -650,6 +650,18 @@ func TestBorderColors(t *testing.T) {
 			`{"decoration/active_color":"#aabbccff","decoration/inactive_color":"#112233ff"}`)
 	})
 
+	t.Run("an installed decor plugin's ring follows the palette too", func(t *testing.T) {
+		calls := stubAct(t, stageReplies())
+		wayfireHome(t)
+		withWayfirePlugins(t, "ryoku-decor")
+		if err := runAct([]string{"decoration.borderColors", "#AABBCC", "112233"}); err != nil {
+			t.Fatal(err)
+		}
+		wantCall(t, *calls, "wayfire/set-config-options",
+			`{"decoration/active_color":"#aabbccff","decoration/inactive_color":"#112233ff",`+
+				`"ryoku-decor/active_color":"#aabbccff","ryoku-decor/inactive_color":"#112233ff"}`)
+	})
+
 	t.Run("garbage colours", func(t *testing.T) {
 		stubAct(t, stageReplies())
 		err := runAct([]string{"decoration.borderColors", "salad", "mayo"})
