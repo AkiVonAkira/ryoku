@@ -213,6 +213,10 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Wayfire window shadows no longer draw as a black frame.** Over a
+  wallpaper, the decor drew a window's shadow with blending switched off, so
+  the area around some apps (Zen, Discord, the Hub) turned solid black
+  (`wm/wayfire/decor/src/transformer.cpp`).
 - **The network kill switch's Restore button is visible while isolated.** The
   active card turns light and the button kept light text on it; it now takes
   the dark-on-light style the Hub's confirm buttons use

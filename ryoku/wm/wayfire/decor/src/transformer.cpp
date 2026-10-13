@@ -56,15 +56,17 @@ class decoration_render_instance_t :
 
     void render(const wf::scene::render_instruction_t& data) override
     {
+        // Rendering the children runs a nested pass that leaves blending off
+        // after an opaque surface, so it must finish before the subpass sets GL up.
+        wf::dimensionsf_t render_size;
+        auto contents = get_texture(data.target.scale, &render_size);
+        if (!contents)
+        {
+            return;
+        }
+
         data.pass->custom_gles_subpass(data.target, [&]
         {
-            wf::dimensionsf_t render_size;
-            auto contents = get_texture(data.target.scale, &render_size);
-            if (!contents)
-            {
-                return;
-            }
-
             auto children_box = self->get_children_bounding_box();
             auto texture_box = wf::construct_box(wf::origin(children_box), render_size);
             texture_box = data.target.aligned_geometry_from_geometry_box(texture_box);
