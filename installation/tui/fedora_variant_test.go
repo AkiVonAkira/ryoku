@@ -140,3 +140,11 @@ func TestFedoraNamesGRUBNotLimine(t *testing.T) {
 		t.Fatalf("Fedora bootloader phase = %q, want GRUB", last)
 	}
 }
+
+func TestLocaleAListUsesSupportedSpelling(t *testing.T) {
+	got := utf8Locales("C\nC.utf8\nPOSIX\nde_DE.utf8\nen_US.utf8\nja_JP.eucjp\n")
+	want := []string{"C.UTF-8", "de_DE.UTF-8", "en_US.UTF-8"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("utf8Locales = %v, want %v", got, want)
+	}
+}

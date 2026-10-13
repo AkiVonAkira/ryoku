@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Fixed
+- **The Fedora ISO offers every locale.** The live image carries all glibc
+  langpacks, and the installer reads `locale -a` in the `de_DE.UTF-8` spelling,
+  so the locale step is no longer limited to English and `en_US` leads again.
 - **Installer product choices no longer drift between editions or entry
   points.** Browser, login-shell and compositor order, labels, defaults,
   package stacks and fresh/existing shell policies now come from one shared

@@ -43,7 +43,7 @@
 	<packages type="image" patternType="plusRecommended">
 		<namedCollection name="core"/>
 		<ignore name="kernel-*debug*"/>
-		<package name="glibc-langpack-en"/>
+		<package name="glibc-all-langpacks"/>
 		<package name="kernel"/>
 		<package name="kernel-modules"/>
 		<package name="kernel-modules-extra"/>

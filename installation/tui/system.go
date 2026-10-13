@@ -136,11 +136,7 @@ func sysLocales() []item {
 	}
 	if len(lines) == 0 {
 		if out, ok := run("locale", "-a"); ok {
-			for _, l := range strings.Split(out, "\n") {
-				if strings.Contains(strings.ToLower(l), "utf") {
-					lines = append(lines, strings.TrimSpace(l))
-				}
-			}
+			lines = utf8Locales(out)
 		}
 	}
 	var items []item
@@ -151,6 +147,19 @@ func sysLocales() []item {
 		items = append(items, item{c, c, ""})
 	}
 	return promote(items, []string{"en_US.UTF-8", "en_GB.UTF-8", "de_DE.UTF-8", "fr_FR.UTF-8", "es_ES.UTF-8"})
+}
+
+// utf8Locales keeps the UTF-8 entries of `locale -a`, which prints glibc's
+// normalized "de_DE.utf8"; SUPPORTED and the promoted defaults spell it
+// "de_DE.UTF-8".
+func utf8Locales(out string) []string {
+	var lines []string
+	for _, l := range strings.Split(out, "\n") {
+		if l = strings.TrimSpace(l); strings.HasSuffix(strings.ToLower(l), ".utf8") {
+			lines = append(lines, l[:len(l)-len(".utf8")]+".UTF-8")
+		}
+	}
+	return lines
 }
 
 func localeTerritory(locale string) string {
