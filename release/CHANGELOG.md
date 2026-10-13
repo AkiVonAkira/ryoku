@@ -139,6 +139,13 @@
   the other plugin packages.
 
 ### Fixed
+- **Updates past the prowl switch no longer fail on prowl-agent.** prowl
+  conflicted with the prowl-agent it replaces, and `ryoku update` moves the
+  Ryoku set with an explicit `pacman -S`, which never applies a replacement, so
+  every update that pulled prowl in through ryoku-rashin stopped at "conflicting
+  dependencies" on a box that still had prowl-agent. The two share no files;
+  prowl now only replaces it, so the update installs prowl beside the old agent
+  and a `pacman -Syu` still swaps them (`release/packages/prowl`).
 - **[ryoku] serves the current Limine tools.** limine-mkinitcpio-hook 1.40.0
   and limine-snapper-sync 1.32.1 replace 1.37.1 and 1.31.0, the versions
   CachyOS ships, so a CachyOS box no longer sees an older copy in [ryoku] and
