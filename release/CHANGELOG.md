@@ -139,6 +139,11 @@
   the other plugin packages.
 
 ### Fixed
+- **[ryoku] serves the current Limine tools.** limine-mkinitcpio-hook 1.40.0
+  and limine-snapper-sync 1.32.1 replace 1.37.1 and 1.31.0, the versions
+  CachyOS ships, so a CachyOS box no longer sees an older copy in [ryoku] and
+  Arch boxes get the upstream fixes. Both build with GraalVM 25.0.4 and the
+  1.1.14 buildtools plugin, refreshed in `release/gradle-offline/repo`.
 - **Fedora Ryogami requires the real OpenH264.** `ffmpeg-free` can satisfy its
   H.264 library with the `noopenh264` stub, which makes every H.264 encode and
   decode fail; `ryogami` now requires `openh264` from Fedora's Cisco
