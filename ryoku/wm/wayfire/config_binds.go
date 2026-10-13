@@ -188,20 +188,17 @@ func defaultBinds() map[string]wayfireBind {
 			key: "window_close", extra: "<alt> KEY_F4",
 			cmd: wm.IrisCloseCheck + " && qs -c shell ipc call closeConfirm trigger || ryoku-wm-wayfire act window.close focused",
 		},
-		"window.fullscreen": {section: "wm-actions", key: "toggle_fullscreen"},
-		// simple-tile's native toggle is the only path which attaches and
-		// detaches managed views; configure-view requests are ignored for them.
-		"window.float":        {section: "simple-tile", key: "key_toggle"},
+		"window.fullscreen":   {section: "wm-actions", key: "toggle_fullscreen"},
+		"window.float":        {key: "window_float", cmd: "ryoku-wm-wayfire act window.float focused", hint: "Float the window at 1000x660, centred, or tile it back"},
 		"window.pin":          {section: "wm-actions", key: "toggle_sticky"},
 		"window.resize":       {key: "window_preset_width", cmd: "ryoku-wm-wayfire act window.presetWidth", label: "Step window width", hint: "Cycle the window through full, three-quarter and half width"},
 		"window.presetHeight": {key: "window_preset_height", cmd: "ryoku-wm-wayfire act window.presetHeight"},
 		"column.tabbed":       {reason: "wayfire 0.11 simple-tile has split layouts but no tabbed layout."},
-		// simple-tile handles its managed leaves and wm-actions handles
-		// floating views. simple-tile consumes tile requests for its leaves,
-		// so the pair cannot maximize two states of the same window.
+		// simple-tile toggles its own leaves; the act fits floating windows.
 		"column.maximize": {
-			section: "simple-tile", key: "key_toggle_maximized",
-			mirrorSection: "wm-actions", mirrorKey: "toggle_maximize",
+			key: "column_maximize", cmd: "ryoku-wm-wayfire act window.maximize",
+			mirrorSection: "simple-tile", mirrorKey: "key_toggle_maximized",
+			hint: "Fill the work area inside the gaps; press again to restore",
 		},
 		"column.center":        {key: "column_center", cmd: "ryoku-wm-wayfire act window.center"},
 		"window.focusPrevious": {section: "fast-switcher", key: "activate"},

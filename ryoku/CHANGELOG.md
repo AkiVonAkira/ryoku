@@ -213,6 +213,17 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Wayfire's workspace pills, dock and tray agree with the screen again.**
+  Windows were placed by their shadow, so a window at the left gap counted on
+  the previous workspace and the dock lost it; workspace sets left behind by
+  an output reconnect repeated every pill. A tray click now brings an app's
+  window forward from another workspace instead of asking the app to, which
+  Wayfire refuses (`wm/wayfire/frames.go`, `shell/ipc/tray.go`).
+- **Super+D and Super+A on Wayfire match Hyprland.** Maximise fills the work
+  area inside the gaps and a second press restores the window, instead of
+  shrinking a window that opened maximised to a 100 px square; float centres
+  the window at 1000x660. The Hub opens inside the gaps with its border on
+  screen (`wm/wayfire/fit.go`, `wm/wayfire/pages.go`).
 - **Wayfire applies Hub saves and display changes straight away.** Wayfire
   stops watching its config once the folder is replaced, so saves could land
   on disk and wait for the next login; display layouts never reached the file

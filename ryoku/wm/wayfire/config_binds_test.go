@@ -142,8 +142,8 @@ func TestResolveEmitsCatalogue(t *testing.T) {
 		"vswitch.send_win_9":                                {activator: "<super> <shift> KEY_9 | <super> <shift> KEY_KP9"},
 		"vswitch.binding_10":                                {activator: "<super> KEY_0 | <super> KEY_KP0"},
 		"wm-actions.toggle_fullscreen":                      {activator: "<super> KEY_F"},
-		"simple-tile.key_toggle":                            {activator: "<super> KEY_A"},
-		"simple-tile.key_toggle_maximized":                  {activator: "<super> KEY_D", mirrorSection: "wm-actions", mirrorOption: "toggle_maximize"},
+		"command.binding_window_float":                      {activator: "<super> KEY_A", commandOpt: "command_window_float", cmd: "ryoku-wm-wayfire act window.float focused"},
+		"command.binding_column_maximize":                   {activator: "<super> KEY_D", commandOpt: "command_column_maximize", cmd: "ryoku-wm-wayfire act window.maximize", mirrorSection: "simple-tile", mirrorOption: "key_toggle_maximized"},
 		"fast-switcher.activate":                            {activator: "<alt> KEY_TAB"},
 		"shortcuts-inhibit.break_grab":                      {activator: "<super> <shift> KEY_ESC"},
 		"move.activate":                                     {activator: "<super> BTN_LEFT"},
@@ -224,10 +224,10 @@ func TestTiledAndFloatingNativeBindsStayTogether(t *testing.T) {
 	}
 
 	got := values(defaultStore())
-	if got["simple-tile.key_toggle"] != "<super> KEY_A" {
-		t.Errorf("float toggle = %q, want simple-tile's native attach/detach bind", got["simple-tile.key_toggle"])
+	if got["command.binding_window_float"] != "<super> KEY_A" {
+		t.Errorf("float toggle = %q, want the float act's centred float/tile toggle", got["command.binding_window_float"])
 	}
-	for _, option := range []string{"simple-tile.key_toggle_maximized", "wm-actions.toggle_maximize"} {
+	for _, option := range []string{"simple-tile.key_toggle_maximized", "command.binding_column_maximize"} {
 		if got[option] != "<super> KEY_D" {
 			t.Errorf("%s = %q, want the shared tiled/floating maximize chord", option, got[option])
 		}
@@ -236,7 +236,7 @@ func TestTiledAndFloatingNativeBindsStayTogether(t *testing.T) {
 	unbound := defaultStore()
 	unbound.Unbinds = []string{"SUPER + D"}
 	got = values(unbound)
-	for _, option := range []string{"simple-tile.key_toggle_maximized", "wm-actions.toggle_maximize"} {
+	for _, option := range []string{"simple-tile.key_toggle_maximized", "command.binding_column_maximize"} {
 		if got[option] != "" {
 			t.Errorf("unbound %s = %q, want both maximize handlers disabled", option, got[option])
 		}

@@ -48,6 +48,7 @@ const (
 	ActionWindowPresetHeight      Action = "window.presetHeight"   // [first]
 	ActionWindowPresetWidth       Action = "window.presetWidth"
 	ActionWindowCenter            Action = "window.center"
+	ActionWindowMaximize          Action = "window.maximize"
 	ActionOutputFocusDirection    Action = "output.focusDirection"    // <left|right|up|down>
 	ActionWindowMoveToOutputBy    Action = "window.moveToOutputBy"    // <left|right|up|down>
 	ActionWorkspaceMoveToOutputBy Action = "workspace.moveToOutputBy" // <left|right|up|down>
@@ -137,7 +138,7 @@ const (
 func (a Action) Capability() Capability {
 	switch a {
 	case ActionWindowFloat, ActionWindowPlace, ActionWindowMoveBy, ActionWindowResizeBy,
-		ActionWindowPresetHeight, ActionWindowPresetWidth, ActionWindowCenter,
+		ActionWindowPresetHeight, ActionWindowPresetWidth, ActionWindowCenter, ActionWindowMaximize,
 		ActionWindowMoveToOutputBy:
 		return CapWindowFloat
 	case ActionWindowMoveToWorkspace, ActionWindowMoveToWorkspaceBy, ActionWindowSummon, ActionWorkspaceFocus, ActionWorkspaceCycle:

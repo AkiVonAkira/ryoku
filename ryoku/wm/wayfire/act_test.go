@@ -1073,7 +1073,7 @@ func TestDirectionalGeometryActs(t *testing.T) {
 func TestSimpleTileWindowActs(t *testing.T) {
 	const getTarget = `{"workspace":{"x":0,"y":0},"wset-index":1}`
 
-	t.Run("float detaches a tiled leaf", func(t *testing.T) {
+	t.Run("float detaches a tiled leaf at the centred float size", func(t *testing.T) {
 		calls := stubAct(t, simpleTileReplies("vertical"))
 		if err := runAct([]string{"window.float", "7"}); err != nil {
 			t.Fatal(err)
@@ -1081,7 +1081,8 @@ func TestSimpleTileWindowActs(t *testing.T) {
 		wantCall(t, *calls, "simple-tile/get-layout", getTarget)
 		wantCall(t, *calls, "simple-tile/set-layout",
 			`{"layout":{"vertical-split":[{"view-id":9,"weight":0.5}]},"workspace":{"x":0,"y":0},"wset-index":1}`)
-		wantNoCall(t, *calls, "window-rules/configure-view")
+		wantCall(t, *calls, "window-rules/configure-view",
+			`{"geometry":{"height":634,"width":1000,"x":140,"y":43},"id":7,"tiled-edges":0}`)
 	})
 
 	t.Run("float attaches a free view", func(t *testing.T) {
@@ -1156,6 +1157,42 @@ func TestSimpleTileWindowActs(t *testing.T) {
 				`{"geometry":{"height":720,"width":934,"x":173,"y":0},"id":7,"tiled-edges":0}`},
 		)
 	})
+}
+
+func TestMaximizeFitsAndRestores(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	view := func(x, y, w, h float64, edges int) string {
+		b, _ := json.Marshal(map[string]any{
+			"id": 7, "title": "term", "app-id": "kitty", "output-name": "HEADLESS-1",
+			"geometry": map[string]float64{"x": x, "y": y, "width": w, "height": h},
+			"mapped": true, "role": "toplevel", "tiled-edges": edges, "wset-index": 1,
+		})
+		return string(b)
+	}
+	press := func(v string) []actCall {
+		r := stageReplies()
+		r["window-rules/list-views"] = "[" + v + "]"
+		r["window-rules/get-focused-view"] = `{"result":"ok","info":` + v + `}`
+		r["simple-tile/get-layout"] = `{"result":"ok","layout":{"vertical-split":[]}}`
+		r["wayfire/get-config-option"] = `{"result":"ok","value":"10"}`
+		calls := stubAct(t, r)
+		if err := runAct([]string{"window.maximize"}); err != nil {
+			t.Fatal(err)
+		}
+		return *calls
+	}
+
+	calls := press(view(100, 100, 400, 300, 0))
+	wantCall(t, calls, "window-rules/configure-view",
+		`{"geometry":{"height":680,"width":1240,"x":20,"y":20},"id":7,"tiled-edges":0}`)
+
+	calls = press(view(20, 20, 1240, 680, 0))
+	wantCall(t, calls, "window-rules/configure-view",
+		`{"geometry":{"height":300,"width":400,"x":100,"y":100},"id":7,"tiled-edges":0}`)
+
+	calls = press(view(0, 0, 1280, 720, 15))
+	wantCall(t, calls, "window-rules/configure-view",
+		`{"geometry":{"height":634,"width":1000,"x":140,"y":43},"id":7,"tiled-edges":0}`)
 }
 
 func TestFocusedKeyword(t *testing.T) {

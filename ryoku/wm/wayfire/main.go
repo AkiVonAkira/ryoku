@@ -56,6 +56,8 @@ func main() {
 		err = runBinds(os.Args[2:])
 	case "environment":
 		err = runEnvironment(os.Args[2:])
+	case "pages":
+		err = runPages()
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -84,6 +86,7 @@ func usage() {
   apply <store>    write the compositor config from the neutral store
   outputs <file>   apply an output layout from the neutral display store
   environment <pid> export this provider's session handle (NUL-delimited)
+  pages            fit full-page windows to the work area as they open
 
 Consumers should go through wm.Client rather than exec this directly.
 `)

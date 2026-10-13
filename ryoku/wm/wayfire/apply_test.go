@@ -163,7 +163,6 @@ keep_fullscreen_on_adjacent = true
 inner_gap_size = 12
 outer_horiz_gap_size = 18
 outer_vert_gap_size = 18
-key_toggle = <super> KEY_A
 key_toggle_maximized = <super> KEY_D
 
 [vswitch]
@@ -324,10 +323,14 @@ maximized_front_scale = 0.9
 [command]
 command_window_close = jq -e '(.barStyle // "qsbar") == "iris" and .inir.closeConfirm.enabled == true' "${XDG_CONFIG_HOME:-$HOME/.config}/ryoku/shell.json" >/dev/null 2>&1 && qs -c shell ipc call closeConfirm trigger || ryoku-wm-wayfire act window.close focused
 binding_window_close = <super> KEY_Q | <alt> KEY_F4
+command_window_float = ryoku-wm-wayfire act window.float focused
+binding_window_float = <super> KEY_A
 command_window_preset_width = ryoku-wm-wayfire act window.presetWidth
 binding_window_preset_width = <super> KEY_R
 command_window_preset_height = ryoku-wm-wayfire act window.presetHeight
 binding_window_preset_height = <super> <shift> KEY_R
+command_column_maximize = ryoku-wm-wayfire act window.maximize
+binding_column_maximize = <super> KEY_D
 command_column_center = ryoku-wm-wayfire act window.center
 binding_column_center = <super> KEY_C
 command_focus_left = ryoku-wm-wayfire act window.focusDirection left
@@ -482,7 +485,6 @@ always_binding_hardware_touchpad_off = KEY_TOUCHPAD_OFF
 [wm-actions]
 toggle_fullscreen = <super> KEY_F
 toggle_sticky = <super> <shift> KEY_P
-toggle_maximize = <super> KEY_D
 
 [shortcuts-inhibit]
 break_grab = <super> <shift> KEY_ESC

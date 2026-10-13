@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	wm "ryoku-wm"
@@ -181,6 +182,43 @@ func TestScratchSetIsOneSpecialWorkspace(t *testing.T) {
 	windows := s.windowFrame()
 	if len(windows) != 1 || windows[0].Workspace != got.ID {
 		t.Errorf("scratch window workspace = %+v, want %q", windows, got.ID)
+	}
+}
+
+func TestDetachedSetsListOnlyWhileHoldingWindows(t *testing.T) {
+	grid := wayfireWorkspace{GridWidth: 5, GridHeight: 2}
+	s := &stage{
+		outputs: []wayfireOutput{{
+			ID: 3, Name: "eDP-1", WsetIndex: 3, Workspace: grid,
+			Geometry: wayfireGeometry{Width: 2560, Height: 1600},
+		}},
+		wsets: []wayfireWset{
+			{Index: 1, OutputID: -1, Workspace: grid},
+			{Index: 2, OutputID: -1, Workspace: grid},
+			{Index: 3, OutputID: 3, OutputName: "eDP-1", Workspace: grid},
+		},
+		views: []wayfireView{{
+			ID: 7, WsetIndex: 2, Geometry: wayfireGeometry{X: 10, Y: 10, Width: 400, Height: 300},
+		}},
+	}
+	sets := map[string]int{}
+	for _, w := range s.workspaceFrame() {
+		set, _, _, _ := parseWorkspaceHandle(w.ID)
+		sets[strconv.FormatInt(set, 10)]++
+	}
+	if sets["1"] != 0 || sets["2"] != 10 || sets["3"] != 10 {
+		t.Errorf("pills per set = %v, want the empty detached set dropped and the others whole", sets)
+	}
+}
+
+func TestRectIgnoresDecorExtent(t *testing.T) {
+	geometry := wayfireGeometry{X: 471, Y: 209, Width: 1509, Height: 1069}
+	shadowed := wayfireGeometry{X: 426, Y: 169, Width: 1599, Height: 1159}
+	if got := (wayfireView{Geometry: geometry, BBox: shadowed}).rect(); got != geometry {
+		t.Errorf("rect = %+v, want the window geometry without its shadow", got)
+	}
+	if got := (wayfireView{Geometry: geometry, BBox: shadowed, Fullscreen: true}).rect(); got != shadowed {
+		t.Errorf("fullscreen rect = %+v, want the rendered bbox", got)
 	}
 }
 

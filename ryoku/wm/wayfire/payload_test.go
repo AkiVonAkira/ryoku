@@ -220,8 +220,8 @@ func TestShippedBindingsHaveOneOwnerPerChord(t *testing.T) {
 	allowed := map[string]string{
 		normalizedWayfireChord("<super> BTN_LEFT"):  "move.activate,simple-tile.button_move",
 		normalizedWayfireChord("<super> BTN_RIGHT"): "resize.activate,simple-tile.button_resize",
-		// simple-tile handles tiled views while wm-actions handles floating views.
-		normalizedWayfireChord("<super> KEY_D"): "simple-tile.key_toggle_maximized,wm-actions.toggle_maximize",
+		// simple-tile toggles tiled views while the maximize act fits floating ones.
+		normalizedWayfireChord("<super> KEY_D"): "command.binding_column_maximize,simple-tile.key_toggle_maximized",
 	}
 	for chord, got := range owners {
 		if len(got) < 2 {

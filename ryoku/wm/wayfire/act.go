@@ -93,7 +93,15 @@ func runAct(args []string) error {
 		}
 		if ok {
 			if layout.removeView(id) {
-				return setSimpleTileLayout(target, layout)
+				if err := setSimpleTileLayout(target, layout); err != nil {
+					return err
+				}
+				// A detached leaf keeps its tile size; float it the size Hyprland does.
+				out, err := readOutput(view.OutputName)
+				if err != nil {
+					return err
+				}
+				return configurePlaced(id, restoreRect(out))
 			}
 			layout.appendView(id)
 			return setSimpleTileLayout(target, layout)
@@ -205,6 +213,9 @@ func runAct(args []string) error {
 
 	case wm.ActionWindowCenter:
 		return centerFocused(act)
+
+	case wm.ActionWindowMaximize:
+		return maximizeFocused(act)
 
 	case wm.ActionAppFocus:
 		appID, err := arg(rest, 0, "app id")

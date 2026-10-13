@@ -41,6 +41,7 @@ type wayfireOutput struct {
 	ID        int              `json:"id"`
 	Name      string           `json:"name"`
 	Geometry  wayfireGeometry  `json:"geometry"`
+	Workarea  wayfireGeometry  `json:"workarea"`
 	WsetIndex int64            `json:"wset-index"`
 	Workspace wayfireWorkspace `json:"workspace"`
 }
@@ -70,6 +71,7 @@ type wayfireView struct {
 	Activated          bool            `json:"activated"`
 	Sticky             bool            `json:"sticky"`
 	WsetIndex          int64           `json:"wset-index"`
+	Pid                int             `json:"pid"`
 }
 
 // isWindow keeps the seam's window list to application windows. list-views
@@ -285,11 +287,11 @@ func workspaceName(x, y, gridW int) string {
 	return strconv.Itoa(y*gridW + x + 1)
 }
 
-// rect is the view's on-screen extent. bbox is what actually rendered: a
-// fullscreen XWayland window can leave the logical geometry stale, while a
-// view nothing has drawn yet reports an empty bbox and keeps its geometry.
+// rect is the view's logical geometry; bbox also spans the decor's border and
+// shadow. A fullscreen XWayland view can leave geometry stale, so it uses bbox.
 func (v wayfireView) rect() wayfireGeometry {
-	if v.BBox.Width > 0 && v.BBox.Height > 0 {
+	hasBBox := v.BBox.Width > 0 && v.BBox.Height > 0
+	if hasBBox && (v.Fullscreen || v.Geometry.Width <= 0 || v.Geometry.Height <= 0) {
 		return v.BBox
 	}
 	return v.Geometry
@@ -383,14 +385,17 @@ func (s *stage) cellOfView(v wayfireView) (int, int, int) {
 
 // workspaceFrame renders one cell per grid slot of every ordinary set.
 // Scratch sets are one special workspace so their backing grid never leaks
-// into workspace pills. The navigable surface is otherwise a per-output grid.
+// into workspace pills. A set without an output is listed only while it holds
+// windows: an output re-created on hotplug leaves its old empty set behind.
 func (s *stage) workspaceFrame() []wm.Workspace {
 	counts := map[string]int{}
+	setWindows := map[int64]int{}
 	fullscreen := map[string]bool{}
 	for _, v := range s.views {
 		x, y, _ := s.cellOfView(v)
 		handle := workspaceHandle(v.WsetIndex, x, y)
 		counts[handle]++
+		setWindows[v.WsetIndex]++
 		if v.Fullscreen {
 			fullscreen[handle] = true
 		}
@@ -412,6 +417,9 @@ func (s *stage) workspaceFrame() []wm.Workspace {
 			continue
 		}
 		attached, onCurrent := s.attachedCurrent(ws)
+		if !attached && setWindows[ws.Index] == 0 {
+			continue
+		}
 		for y := range gridH {
 			for x := range gridW {
 				handle := workspaceHandle(ws.Index, x, y)
@@ -479,6 +487,7 @@ func (s *stage) windowFrame() []wm.Window {
 			Title:      v.Title,
 			Workspace:  workspace,
 			Output:     v.OutputName,
+			Pid:        v.Pid,
 			FocusOrder: i,
 			Floating:   v.TiledEdges == 0 && !v.Fullscreen,
 			X:          int(math.Round(rect.X)),
