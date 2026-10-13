@@ -30,6 +30,8 @@ func TestClassifyCapturedKeepsSignalOnly(t *testing.T) {
 		{"deploy", "CMake Warning at /usr/lib/cmake/Qt6/QtPublicDependencyHelpers.cmake:339 (message):", want{}},
 		{"deploy", "installed /home/u/.local/bin/ryoku-shell", want{}},
 		{"packages", "core is up to date", want{}},
+		{"packages", ":: limine-mkinitcpio-hook and limine-entry-tool are in conflict. Remove limine-entry-tool? [y/N]", want{noteErr, "limine-mkinitcpio-hook and limine-entry-tool are in conflict. Remove limine-entry-tool? [y/N]", true}},
+		{"packages", ":: Synchronizing package databases...", want{}},
 		{"doctor", "! orphaned packages", want{noteWarn, "orphaned packages", true}},
 		{"doctor", "✓ stale pacman lock (fixed)", want{noteOK, "stale pacman lock (fixed)", true}},
 		{"doctor", "✓ all checks passed", want{noteOK, "all checks passed", true}},

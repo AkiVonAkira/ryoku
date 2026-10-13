@@ -946,8 +946,9 @@ func (c *console) captured(line string) {
 }
 
 // classifyCaptured picks out the captured lines worth a note: a tool's own
-// "error:", "warning:" and "note:" lines, a .pacnew left behind, and, while
-// the doctor runs, its findings. Everything else stays in the log. The doctor
+// "error:", "warning:" and "note:" lines, a .pacnew left behind, the pair
+// pacman names when packages conflict, and, while the doctor runs, its
+// findings. Everything else stays in the log. The doctor
 // speaks its own format (a glyph, the check's name, then indented detail), so
 // its output is read only that way: a finding's detail mentioning a .pacnew is
 // part of the finding already on screen, not a second one. pure.
@@ -978,6 +979,8 @@ func classifyCaptured(step, line string) (noteKind, string, bool) {
 		return noteInfo, strings.TrimSpace(line[len("note:"):]), true
 	case strings.Contains(low, ".pacnew"), strings.Contains(low, ".pacsave"):
 		return noteWarn, line, true
+	case strings.Contains(low, " are in conflict"):
+		return noteErr, strings.TrimPrefix(line, ":: "), true
 	}
 	return 0, "", false
 }

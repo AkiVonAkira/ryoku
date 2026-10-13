@@ -213,6 +213,11 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **A failed update names the packages that conflict.** pacman reports the pair
+  on a `::` line and only the `error:` summary reached the terminal, so an
+  aborted transaction read as "conflicting dependencies" with nothing to act on.
+  That line is now a note like any other error
+  (`cli/internal/updater/console.go`).
 - **Wayfire window shadows no longer draw as a black frame.** Over a
   wallpaper, the decor drew a window's shadow with blending switched off, so
   the area around some apps (Zen, Discord, the Hub) turned solid black
