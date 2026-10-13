@@ -310,7 +310,15 @@ release fast-forwards it).
   `global | installation | system | ryoku | docs | test | tooling | release`
   (shell uses `[global]`). No em-dash, no authorship/attribution trailer.
 - `pre-commit`: no em-dash in text files, valid bash syntax on staged scripts,
-  no filler comment lines.
+  no filler comment lines, every user config delivered, compositor specifics
+  kept inside `ryoku/wm`, and, where `rashin-reviewer` is installed, its review
+  gate: no secrets or conflict markers, no JSON, YAML, TOML, Python, Lua or QML
+  file left unparseable, and ShellCheck (CI's flags) and gofmt clean on the
+  added lines. `.rashin-reviewer.yaml` holds its settings; mark an intentional
+  hit with `rashin-reviewer:allow <rule>` on the line. A clone that sets
+  `git config ryoku.reviewGate required` refuses to commit without the
+  reviewer. `rashin-reviewer review` adds a model review of uncommitted work,
+  steered by `.coderabbit.yaml`.
 - `pre-push`: `main` moves only as the release fast-forward
   (`RYOKU_RELEASE_PUSH=1`, onto a commit `origin/unstable-dev` carries), is
   never rewritten or deleted; shellcheck with CI's flags when installed; subjects

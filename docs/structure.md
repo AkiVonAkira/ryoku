@@ -348,4 +348,5 @@ menu. Wayfire is unavailable because Fedora ships 0.10.1 and Ryoku requires
   lane; the three `publish-repo*.yml` publishers run the same gate before they
   upload; `i18n.yml` runs only by hand. `docs/updates.md`, "Publishing", has the
   channel layout they write.
-- `VERSION` the base semver; `.woke.yml` the inclusive-language config.
+- `VERSION` the base semver; `.woke.yml` the inclusive-language config;
+  `.rashin-reviewer.yaml` the pre-commit review gate's settings.

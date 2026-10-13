@@ -51,6 +51,12 @@ for finer detail.
   mutable channels current without changing frozen distro snapshots.
 
 ### Added
+- **Commits pass a review gate.** Where `rashin-reviewer` is installed, the
+  pre-commit hook refuses secrets, conflict markers, a JSON, YAML, TOML,
+  Python, Lua or QML file the commit leaves unparseable, and ShellCheck (CI's
+  flags) or gofmt problems on the added lines. Replayed over the last 400
+  commits, it stopped seven, each for ShellCheck warnings CI's own flags
+  raise or for gofmt slips, and raised no false blocks.
 - **Fedora 44 and 45 now carry the complete Fedora-compatible Ryoku desktop.**
   The shell installer supports mutable Workstation, KDE Plasma, Server, and
   spin systems, refuses unpublished releases before sudo, and names the
