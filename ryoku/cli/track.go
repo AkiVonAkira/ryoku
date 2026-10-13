@@ -10,10 +10,14 @@ import (
 	"strings"
 )
 
-// where the track script lives, for boxes with no local checkout that select
-// the source lane. Always the main copy: the stable script moves a box in either
-// direction, so a packaged box can still reach it.
-const trackURL = "https://raw.githubusercontent.com/ryoku-dev/ryoku/main/bin/ryoku-track"
+// trackScriptURL is where a box with no local checkout fetches bin/ryoku-track
+// from: the copy on the branch it is about to track. The main copy lags
+// unstable-dev between releases, and the script's edition support travels
+// with the branch, so fetching main's copy for unstable-dev ran the previous
+// release's installer against the current tree.
+func trackScriptURL(branch string) string {
+	return "https://raw.githubusercontent.com/ryoku-dev/ryoku/" + branch + "/bin/ryoku-track"
+}
 
 // sourceBranches maps source-backed tracks to the branch bin/ryoku-track builds.
 // Unstable always uses this lane; stable selects it only with --source.
@@ -114,7 +118,7 @@ func trackFromSource(branch string) error {
 		}
 	}
 	if !sys.Has("curl") {
-		return fmt.Errorf(i18n.T("no local track script and curl is missing; run it by hand:\n  curl -fsSL %s | bash -s -- %s"), trackURL, branch)
+		return fmt.Errorf(i18n.T("no local track script and curl is missing; run it by hand:\n  curl -fsSL %s | bash -s -- %s"), trackScriptURL(branch), branch)
 	}
 	tmp, err := os.CreateTemp("", "ryoku-track-*.sh")
 	if err != nil {
@@ -122,8 +126,8 @@ func trackFromSource(branch string) error {
 	}
 	tmp.Close()
 	defer os.Remove(tmp.Name())
-	if err := sys.Run("curl", "-fsSL", trackURL, "-o", tmp.Name()); err != nil {
-		return fmt.Errorf(i18n.T("fetch track script from %s: %w"), trackURL, err)
+	if err := sys.Run("curl", "-fsSL", trackScriptURL(branch), "-o", tmp.Name()); err != nil {
+		return fmt.Errorf(i18n.T("fetch track script from %s: %w"), trackScriptURL(branch), err)
 	}
 	return sys.Run("bash", tmp.Name(), branch)
 }
