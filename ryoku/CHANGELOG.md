@@ -213,6 +213,10 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **The network kill switch's Restore button is visible while isolated.** The
+  active card turns light and the button kept light text on it; it now takes
+  the dark-on-light style the Hub's confirm buttons use
+  (`hub/quickshell/pages/ConnectionsPage.qml`).
 - **Wayfire's workspace pills, dock and tray agree with the screen again.**
   Windows were placed by their shadow, so a window at the left gap counted on
   the previous workspace and the dock lost it; workspace sets left behind by

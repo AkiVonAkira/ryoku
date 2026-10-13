@@ -243,21 +243,24 @@ Item {
         id: mp
         property string text: ""
         property bool armed: true
+        property bool onBone: false
         signal act()
         implicitHeight: 22
         implicitWidth: mpLab.implicitWidth + 18
         radius: Tokens.radius
         opacity: armed ? 1 : 0.3
-        color: mph.hovered && armed ? Tokens.tint10 : "transparent"
+        color: onBone
+            ? (mph.hovered && armed ? Tokens.inkOnBoneDim : Tokens.inkOnBone)
+            : (mph.hovered && armed ? Tokens.tint10 : "transparent")
         border.width: Tokens.border
-        border.color: mph.hovered && armed ? Tokens.lineStrong : Tokens.line
+        border.color: onBone ? Tokens.inkOnBone : (mph.hovered && armed ? Tokens.lineStrong : Tokens.line)
         Behavior on color { ColorAnimation { duration: Tokens.snap } }
         Behavior on border.color { ColorAnimation { duration: Tokens.snap } }
         Text {
             id: mpLab
             anchors.centerIn: parent
             text: mp.text
-            color: Tokens.ink
+            color: mp.onBone ? Tokens.bone : Tokens.ink
             font.family: Tokens.ui
             font.pixelSize: Tokens.fMicro
             font.weight: Font.Medium
@@ -2210,6 +2213,7 @@ Item {
                 anchors { right: parent.right; rightMargin: Tokens.s3; verticalCenter: parent.verticalCenter }
                 text: pg.killBusy ? I18n.tr("WORKING") : (pg.killState === "off" ? I18n.tr("ISOLATE") : I18n.tr("RESTORE"))
                 armed: !pg.killBusy && pg.killState !== "checking"
+                onBone: pg.killActive
                 onAct: pg.toggleKillSwitch()
             }
         }
