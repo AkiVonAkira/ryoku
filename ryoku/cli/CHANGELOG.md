@@ -167,6 +167,14 @@
   `internal/sys/release.go`, `internal/updater/release.go`).
 
 ### Fixed
+- **A refused package transaction names its packages everywhere.** The pair
+  pacman says are in conflict, or the dependency it cannot satisfy or would
+  break, now reaches the error the Hub's failure card and the console's closing
+  card show, not only the console notes, and the question pacman printed under
+  `--noconfirm` reads as the same pair instead of a second note. The
+  package-database healing still reads only pacman's own error lines, so a
+  package name never drops the [ryoku] db (`internal/updater/upgradelog.go`,
+  `internal/updater/console.go`).
 - **NVIDIA driver updates now warn before a black-screen login.** Doctor
   compares the loaded module with the version installed for the running kernel,
   and a completed update tells the user to restart before logging out when they

@@ -30,8 +30,17 @@ func TestClassifyCapturedKeepsSignalOnly(t *testing.T) {
 		{"deploy", "CMake Warning at /usr/lib/cmake/Qt6/QtPublicDependencyHelpers.cmake:339 (message):", want{}},
 		{"deploy", "installed /home/u/.local/bin/ryoku-shell", want{}},
 		{"packages", "core is up to date", want{}},
-		{"packages", ":: limine-mkinitcpio-hook and limine-entry-tool are in conflict. Remove limine-entry-tool? [y/N]", want{noteErr, "limine-mkinitcpio-hook and limine-entry-tool are in conflict. Remove limine-entry-tool? [y/N]", true}},
+		// pacman's --noconfirm conflict, verbatim from a CachyOS run: the
+		// question shares its line with the next error, then the pair repeats
+		// after the summary. Both read as the same pair, so one note.
+		{"packages", ":: limine-mkinitcpio-hook-1.37.1-1 and limine-entry-tool-1.40.0-1 are in conflict. Remove limine-entry-tool? [y/N] error: unresolvable package conflicts detected", want{noteErr, "limine-mkinitcpio-hook-1.37.1-1 and limine-entry-tool-1.40.0-1 are in conflict", true}},
+		{"packages", ":: limine-mkinitcpio-hook-1.37.1-1 and limine-entry-tool-1.40.0-1 are in conflict", want{noteErr, "limine-mkinitcpio-hook-1.37.1-1 and limine-entry-tool-1.40.0-1 are in conflict", true}},
+		// the question can name the virtual package behind the conflict while
+		// the summary line does not; both are the same pair to a user.
+		{"packages", ":: rust-1:1.99.0-1 and rustup-1.29.1-1 are in conflict (cargo). Remove rustup? [y/N] error: unresolvable package conflicts detected", want{noteErr, "rust-1:1.99.0-1 and rustup-1.29.1-1 are in conflict", true}},
+		{"packages", ":: unable to satisfy dependency 'qt6-base=6.12.0' required by quickshell", want{noteErr, "unable to satisfy dependency 'qt6-base=6.12.0' required by quickshell", true}},
 		{"packages", ":: Synchronizing package databases...", want{}},
+		{"packages", ":: Proceed with installation? [Y/n]", want{}},
 		{"doctor", "! orphaned packages", want{noteWarn, "orphaned packages", true}},
 		{"doctor", "✓ stale pacman lock (fixed)", want{noteOK, "stale pacman lock (fixed)", true}},
 		{"doctor", "✓ all checks passed", want{noteOK, "all checks passed", true}},

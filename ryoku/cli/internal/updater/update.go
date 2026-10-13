@@ -571,12 +571,19 @@ func healPackageUpgrade(conflicts []string, err error) {
 }
 
 // dbRejection reports whether a pacman failure is a database/signature
-// rejection rather than a dependency, conflict or download error.
+// rejection rather than a dependency, conflict or download error. Only
+// pacman's own error: lines count: the package names a transaction error also
+// carries say nothing about the database.
 func dbRejection(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := strings.ToLower(err.Error())
+	msg := err.Error()
+	var tx *transactionError
+	if errors.As(err, &tx) {
+		msg = strings.Join(tx.reasons, "; ")
+	}
+	msg = strings.ToLower(msg)
 	for _, needle := range []string{"invalid or corrupted", "signature", "database", "could not read db"} {
 		if strings.Contains(msg, needle) {
 			return true
