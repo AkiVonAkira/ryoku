@@ -946,7 +946,10 @@ type model struct {
 	reclaim []part
 	// retried is set by the failed screen's "r": the next backend run has to be
 	// allowed to clean up the debris the failed one left (see installEnv).
-	retried                    bool
+	retried bool
+	// partitioned is set once the backend reports its first install step: from
+	// then on the target disk holds this installer's own partitions.
+	partitioned                bool
 	reclaimG                   int
 	gpt                        bool   // target disk has a GPT label (alongside requires it)
 	bitlocker                  bool   // target disk carries a BitLocker partition (review warning)
@@ -1228,7 +1231,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.tickCmd()
 	case installStepMsg:
-		m.installAt = int(msg)
+		m.installAt, m.partitioned = int(msg), true
 		if m.istream != nil {
 			return m, m.istream.wait()
 		}

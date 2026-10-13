@@ -1254,10 +1254,11 @@ func (m model) installEnv() []string {
 	// RYOKU_WIPE_CONFIRMED; an alongside install that must free leftover ryoku/
 	// ryokuboot partitions needs RYOKU_RECLAIM_LEFTOVERS (the backend otherwise
 	// dies listing them). Never emit both -- each backend path demands only its own.
-	// A disk that was blank at Review needed no ack, but a failed attempt leaves
-	// its own partitions on it; everything there is that run's debris, so the
-	// retry may wipe it.
-	if m.wipeStage != 2 && m.retried && m.picks["disk"] == "whole" && len(m.existing) == 0 {
+	// A disk that was blank at Review needed no ack, but a failed attempt that
+	// reached the partition step leaves its own partitions on it; everything
+	// there is that run's debris, so the retry may wipe it. A run that failed
+	// in preflight never touched the disk and earns no token.
+	if m.wipeStage != 2 && m.retried && m.partitioned && m.picks["disk"] == "whole" && len(m.existing) == 0 {
 		env = append(env, "RYOKU_WIPE_CONFIRMED=1")
 	}
 	if m.wipeStage == 2 {
