@@ -624,6 +624,10 @@ func TestMaterializeKeepsTheTreeOfASwitchedAwayCompositor(t *testing.T) {
 // first login of the target used to run that target's apply. Every name here
 // comes from the seam, so the test names no compositor.
 func TestApplyGeneratedCompletesLaidTrees(t *testing.T) {
+	// An empty config base ships no whole-file baseline, so staleness never
+	// re-applies a laid tree here; a host with such a baseline installed would
+	// otherwise add its provider to every run.
+	t.Setenv("RYOKU_CONFIG_BASE", t.TempDir())
 	providers := wm.Providers()
 	if len(providers) == 0 {
 		t.Skip("no providers in the seam")
