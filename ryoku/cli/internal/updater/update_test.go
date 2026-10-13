@@ -295,6 +295,8 @@ func TestRyokuInstallArgsStayInTheRyokuLane(t *testing.T) {
 		"/usr/lib/initcpio/install/ryoku-gpu-trim",
 		"/usr/share/ryoku/boot/default.conf",
 		"/usr/share/ryoku/lockscreen/ryoku-greeter",
+		"/usr/share/ryoku/config/wayfire/wayfire.ini",
+		"/usr/share/ryoku/config/xdg-desktop-portal/wayfire-portals.conf",
 		"/etc/systemd/logind.conf.d/10-ryoku-lid.conf",
 		"/etc/boot/hooks/post.d/45-ryoku-windows",
 		"/etc/modules-load.d/99-ryoku-uinput.conf",

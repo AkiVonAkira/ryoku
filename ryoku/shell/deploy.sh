@@ -700,6 +700,14 @@ if command -v sudo >/dev/null 2>&1; then
   # package's older wrapper and logs in with its startup and failure rules.
   _priv_install "$here/../lockscreen/sddm/ryoku-wayland-session" \
     /usr/share/ryoku/lockscreen/ryoku-wayland-session 755
+  # Wayfire composes its whole config from the shipped baseline, so every later
+  # apply (a Hub save, materialize) reads it from the config base the variant
+  # package installs. A checkout box has no variant package: lay the baseline
+  # and the portal routing the doctor reads where the package would.
+  _priv_install "$here/../wayfire/wayfire.ini" \
+    /usr/share/ryoku/config/wayfire/wayfire.ini 644
+  _priv_install "$here/../wayfire/wayfire-portals.conf" \
+    /usr/share/ryoku/config/xdg-desktop-portal/wayfire-portals.conf 644
   _priv_install "$netdir/ryoku-dns" /usr/bin/ryoku-dns 755
   _priv_install "$netdir/50-ryoku-dns.rules" /usr/share/polkit-1/rules.d/50-ryoku-dns.rules 644
   _priv_install "$netdir/ryoku-wifi-powersave" /usr/bin/ryoku-wifi-powersave 755
@@ -908,10 +916,11 @@ cp -a "$here/quickshell/." "$cfg/quickshell/"
 
 # xdg-desktop-portal: route each compositor's portals. Hyprland owns its own
 # ScreenCast/Screenshot; niri uses the GNOME backend while only FileChooser is
-# pinned to gtk. Every file lands; the portal reads the one named for the
-# running desktop.
+# pinned to gtk; Wayfire captures through the wlroots backend. Every file
+# lands; the portal reads the one named for the running desktop.
 install -Dm644 "$here/../hyprland/hyprland-portals.conf" "$cfg/xdg-desktop-portal/hyprland-portals.conf"
 install -Dm644 "$here/../niri/niri-portals.conf" "$cfg/xdg-desktop-portal/niri-portals.conf"
+install -Dm644 "$here/../wayfire/wayfire-portals.conf" "$cfg/xdg-desktop-portal/wayfire-portals.conf"
 # The single-instance shell ships as ryoku/shell/quickshell/shell and lands at
 # $cfg/quickshell/shell via the copy above; the ryoku-shell daemon launches it as
 # `qs -c shell`, the live desktop.
@@ -1029,7 +1038,7 @@ if command -v sudo >/dev/null 2>&1 && command -v pacman >/dev/null 2>&1; then
   # the boot configs); once ryoku-desktop packages them an unowned copy otherwise
   # aborts the whole -Syu with "exists in filesystem" and nothing upgrades.
   # Mirrors updater.RyokuOverwriteGlob / the doctor's ryokuSystemGlobs.
-  _rovw='/usr/bin/ryoku-*,/usr/lib/systemd/system/ryoku-*,/usr/lib/initcpio/install/ryoku-*,/usr/share/polkit-1/rules.d/*ryoku*.rules,/usr/share/plymouth/themes/ryoku/*,/usr/share/ryoku/boot/*,/usr/share/ryoku/lockscreen/ryoku-*,/usr/share/ryoku/lockscreen/install-qylock,/etc/systemd/logind.conf.d/10-ryoku-lid.conf,/etc/boot/hooks/post.d/*ryoku*,/etc/modules-load.d/*ryoku*,/usr/lib/udev/rules.d/*ryoku*.rules,/usr/local/share/applications/mimeapps.list'
+  _rovw='/usr/bin/ryoku-*,/usr/lib/systemd/system/ryoku-*,/usr/lib/initcpio/install/ryoku-*,/usr/share/polkit-1/rules.d/*ryoku*.rules,/usr/share/plymouth/themes/ryoku/*,/usr/share/ryoku/boot/*,/usr/share/ryoku/lockscreen/ryoku-*,/usr/share/ryoku/lockscreen/install-qylock,/usr/share/ryoku/config/wayfire/*,/usr/share/ryoku/config/xdg-desktop-portal/wayfire-portals.conf,/etc/systemd/logind.conf.d/10-ryoku-lid.conf,/etc/boot/hooks/post.d/*ryoku*,/etc/modules-load.d/*ryoku*,/usr/lib/udev/rules.d/*ryoku*.rules,/usr/local/share/applications/mimeapps.list'
   _pac_ryotunes() { sudo pacman -Syu --needed --noconfirm --overwrite "$_rovw" ryotunes; }
   # shellcheck disable=SC2024
   if _pac_ryotunes >"$_plog" 2>&1; then
@@ -1173,8 +1182,8 @@ mv "$staging" "$cfg/$wm_dir"
 # recovery clears them with the Hub store) would boot without them, and a
 # missing include is fatal on niri. Author them from the store here, the way
 # the inactive providers below are; an absent store renders the defaults. A
-# provider that composes over a shipped baseline reads it from this checkout,
-# since a dev box has no packaged copy under /usr/share.
+# provider that composes over a shipped baseline reads it from this checkout:
+# the copy laid under /usr/share above needs sudo, and may be absent.
 if [[ -x $wm_bin ]] && ! RYOKU_CONFIG_BASE="$here/.." "$wm_bin" apply "$cfg/ryoku/desktop.json" >/dev/null; then
   say "the $wm_name provider could not write its generated config" >&2
 fi

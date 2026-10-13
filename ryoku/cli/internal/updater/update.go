@@ -664,6 +664,8 @@ const RyokuOverwriteGlob = "/usr/bin/ryoku-*," +
 	"/usr/share/ryoku/boot/*," +
 	"/usr/share/ryoku/lockscreen/ryoku-*," +
 	"/usr/share/ryoku/lockscreen/install-qylock," +
+	"/usr/share/ryoku/config/wayfire/*," +
+	"/usr/share/ryoku/config/xdg-desktop-portal/wayfire-portals.conf," +
 	"/etc/systemd/logind.conf.d/10-ryoku-lid.conf," +
 	"/etc/boot/hooks/post.d/*ryoku*," +
 	"/etc/modules-load.d/*ryoku*," +
