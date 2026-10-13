@@ -80,6 +80,7 @@ hyprsunset	-	hyprland	Hyprland is not packaged on Void.
 imagemagick	ImageMagick	desktop	
 imgborders	-	hyprland	Hyprland is not packaged on Void.
 inetutils	inetutils	optional	
+inotify-tools	inotify-tools	desktop	
 intel-media-driver	intel-media-driver	hardware:intel	
 intel-ucode	intel-ucode	hardware:intel	repo=nonfree
 inter-font	font-inter	desktop	
