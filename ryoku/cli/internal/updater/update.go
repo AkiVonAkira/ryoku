@@ -649,16 +649,18 @@ func unownedFiles(paths []string) []string {
 // ryoku-wifi-powersave, ryoku-hub), their polkit rules, the Plymouth splash
 // theme, the ryoku-owned systemd units, the mkinitcpio install hooks the HOOKS
 // drop-in names, the shipped boot configs under /usr/share/ryoku/boot, the
-// logind lid-switch drop-in, the boot hook, the uinput modules-load drop-in,
-// the backlight udev rule, the lockscreen greeter bundle, and the default-apps
-// mimeapps map. Every ryoku-desktop (re)install --overwrites these, or the
-// first upgrade that starts owning a seeded path aborts the whole transaction
+// Wayfire plugin and its metadata, the logind lid-switch drop-in, the boot hook,
+// the uinput modules-load drop-in, the backlight udev rule, the lockscreen
+// greeter bundle, and the default-apps mimeapps map. Every ryoku-desktop
+// (re)install --overwrites these, or the first upgrade that starts owning a
+// seeded path aborts the whole transaction
 // ("exists in filesystem") and blocks every update until the files are removed
 // by hand. Keep in sync with the doctor's ryokuSystemGlobs, which clears the
 // same paths on an already-wedged box.
 const RyokuOverwriteGlob = "/usr/bin/ryoku-*," +
 	"/usr/lib/systemd/system/ryoku-*," +
 	"/usr/lib/initcpio/install/ryoku-*," +
+	"/usr/lib/wayfire/libryoku-*," +
 	"/usr/share/polkit-1/rules.d/*ryoku*.rules," +
 	"/usr/share/plymouth/themes/ryoku/*," +
 	"/usr/share/ryoku/boot/*," +
@@ -666,6 +668,7 @@ const RyokuOverwriteGlob = "/usr/bin/ryoku-*," +
 	"/usr/share/ryoku/lockscreen/install-qylock," +
 	"/usr/share/ryoku/config/wayfire/*," +
 	"/usr/share/ryoku/config/xdg-desktop-portal/wayfire-portals.conf," +
+	"/usr/share/wayfire/metadata/ryoku-*," +
 	"/etc/systemd/logind.conf.d/10-ryoku-lid.conf," +
 	"/etc/boot/hooks/post.d/*ryoku*," +
 	"/etc/modules-load.d/*ryoku*," +

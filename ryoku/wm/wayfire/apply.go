@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -172,6 +173,21 @@ func renderStoreIni(s wayfireStore) iniDoc {
 	d.set("decoration", "active_color", iniColor(active))
 	d.set("decoration", "inactive_color", iniColor(inactive))
 
+	if wayfirePluginAvailable("ryoku-decor") {
+		d.set("ryoku-decor", "radius", strconv.Itoa(a.Rounding))
+		d.set("ryoku-decor", "corner_power", numText(a.RoundingPower))
+		d.set("ryoku-decor", "border_width", strconv.Itoa(a.BorderSize))
+		d.set("ryoku-decor", "active_color", iniColor(active))
+		d.set("ryoku-decor", "inactive_color", iniColor(inactive))
+		d.set("ryoku-decor", "shadow_enabled", boolText(a.ShadowEnabled))
+		d.set("ryoku-decor", "shadow_radius", strconv.Itoa(a.ShadowRange))
+		d.set("ryoku-decor", "shadow_spread", strconv.Itoa(a.ShadowSpread))
+		d.set("ryoku-decor", "shadow_offset_x", strconv.Itoa(a.ShadowOffsetX))
+		d.set("ryoku-decor", "shadow_offset_y", strconv.Itoa(a.ShadowOffsetY))
+		d.set("ryoku-decor", "shadow_color", iniShadowColor(a.ShadowColor))
+		d.set("ryoku-decor", "ignore_views", w.Decoration.IgnoreViews)
+	}
+
 	d.set("blur", "blur_by_default", w.Blur.BlurByDefault)
 	d.set("blur", "method", w.Blur.Method)
 	d.set("blur", "saturation", numText(w.Blur.Saturation))
@@ -258,14 +274,16 @@ func renderStoreIni(s wayfireStore) iniDoc {
 
 // adjustPlugins enforces the store toggles represented by plugin presence.
 // This runs after the merge, so a seed's plugin list is still the shape of the
-// list and only an off switch carves its plugin out. Its options section goes
-// with it so the generated config describes only plugins Wayfire will load.
+// list and only an off or unavailable plugin is carved out. Its options section
+// goes with it so the generated config describes only plugins Wayfire will load.
 func adjustPlugins(d *iniDoc, s wayfireStore) {
+	decorAvailable := wayfirePluginAvailable("ryoku-decor")
 	sections := d.sections[:0]
 	for _, sec := range d.sections {
 		disabled := sec.name == "animate" && !s.Appearance.Animations ||
 			sec.name == "blur" && !s.Appearance.BlurEnabled ||
-			sec.name == "wobbly" && !s.Appearance.WobblyWindows
+			sec.name == "wobbly" && !s.Appearance.WobblyWindows ||
+			sec.name == "ryoku-decor" && !decorAvailable
 		if !disabled {
 			sections = append(sections, sec)
 		}
@@ -275,15 +293,14 @@ func adjustPlugins(d *iniDoc, s wayfireStore) {
 	}
 	d.sections = sections
 
-	if s.Appearance.Animations && s.Appearance.BlurEnabled && s.Appearance.WobblyWindows {
+	value, present := d.get("core", "plugins")
+	if !present && !decorAvailable {
 		return
 	}
-	value, ok := d.get("core", "plugins")
-	if !ok {
-		return
-	}
-	keep := make([]string, 0, 16)
-	for _, p := range strings.Fields(value) {
+	listed := strings.Fields(value)
+	plugins := make([]string, 0, len(listed)+1)
+	haveDecor := false
+	for _, p := range listed {
 		if p == "animate" && !s.Appearance.Animations {
 			continue
 		}
@@ -293,9 +310,34 @@ func adjustPlugins(d *iniDoc, s wayfireStore) {
 		if p == "wobbly" && !s.Appearance.WobblyWindows {
 			continue
 		}
-		keep = append(keep, p)
+		if p == "ryoku-decor" {
+			if !decorAvailable || haveDecor {
+				continue
+			}
+			haveDecor = true
+		}
+		plugins = append(plugins, p)
 	}
-	d.set("core", "plugins", strings.Join(keep, " "))
+	if decorAvailable && !haveDecor {
+		at := len(plugins)
+		for i, p := range plugins {
+			if p == "autostart" {
+				at = i
+				break
+			}
+		}
+		plugins = slices.Insert(plugins, at, "ryoku-decor")
+	}
+	// A list nothing changed keeps the defaults' own spelling.
+	if !present || !slices.Equal(plugins, listed) {
+		d.set("core", "plugins", strings.Join(plugins, " "))
+	}
+
+	if decorAvailable {
+		// Keep the stock plugin for title bars and buttons on server-decorated
+		// views, but its border would double Ryoku's ring.
+		d.set("decoration", "border_size", "0")
+	}
 }
 
 // applyLaunchEnvironment gives every process Wayfire starts the neutral session
@@ -377,6 +419,25 @@ func iniColor(s string) string {
 	return "#000000FF"
 }
 
+// iniShadowColor keeps an explicit alpha and gives a six-digit store colour
+// niri's default window-shadow alpha. The shared default is intentionally an
+// opaque RGB value, while the rendered shadow must be translucent.
+func iniShadowColor(s string) string {
+	h := strings.TrimPrefix(strings.TrimSpace(s), "#")
+	if len(h) != 6 && len(h) != 8 {
+		return "#00000070"
+	}
+	for _, c := range h {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return "#00000070"
+		}
+	}
+	if len(h) == 6 {
+		h += "70"
+	}
+	return "#" + strings.ToUpper(h)
+}
+
 // animText renders an AnimKind as wayfire's duration spelling, the
 // "<ms>ms <curve>" its duration options parse. An empty curve falls back to
 // wayfire's own default easing rather than writing a bare number the parser
@@ -449,7 +510,7 @@ func unhonored(storePath string) []wm.Unhonored {
 		return nil
 	}
 	var out []wm.Unhonored
-	out = append(out, unhonoredLeaves(ns.Desktop["appearance"], "appearance", appearanceEmitted, appearanceReason)...)
+	out = append(out, unhonoredLeaves(ns.Desktop["appearance"], "appearance", appearanceEmitted(), appearanceReason)...)
 	out = append(out, unhonoredLeaves(ns.Desktop["input"], "input", inputEmitted, inputReason)...)
 	out = append(out, unhonoredLeaves(ns.Desktop["cursor"], "cursor", cursorEmitted, cursorReason)...)
 	out = append(out, unhonoredWindowRules(ns.Desktop["windowRules"])...)
@@ -470,7 +531,7 @@ var desktopHandled = map[string]bool{
 	"env": true, "apps": true,
 }
 
-var appearanceEmitted = map[string]bool{
+var appearanceEmittedWithoutDecor = map[string]bool{
 	"gapsIn": true, "gapsOut": true, "gapsWorkspaces": true,
 	"borderSize": true, "activeOpacity": true,
 	"activeBorder": true, "inactiveBorder": true, "borderFollowsPalette": true,
@@ -478,16 +539,36 @@ var appearanceEmitted = map[string]bool{
 	"wobblyWindows": true,
 }
 
+var appearanceEmittedWithDecor = map[string]bool{
+	"gapsIn": true, "gapsOut": true, "gapsWorkspaces": true,
+	"borderSize": true, "activeOpacity": true,
+	"activeBorder": true, "inactiveBorder": true, "borderFollowsPalette": true,
+	"animations": true, "blurEnabled": true, "blurSize": true, "blurPasses": true,
+	"wobblyWindows": true,
+	"rounding":      true, "roundingPower": true,
+	"shadowEnabled": true, "shadowRange": true, "shadowColor": true,
+	"shadowOffsetX": true, "shadowOffsetY": true, "shadowSpread": true,
+}
+
+func appearanceEmitted() map[string]bool {
+	if wayfirePluginAvailable("ryoku-decor") {
+		return appearanceEmittedWithDecor
+	}
+	return appearanceEmittedWithoutDecor
+}
+
 func appearanceReason(leaf string) string {
 	switch {
-	case leaf == "rounding" || leaf == "roundingPower":
-		return "Wayfire's decoration plugin has no corner-radius option."
+	case leaf == "rounding" || leaf == "roundingPower" ||
+		leaf == "shadowEnabled" || leaf == "shadowRange" || leaf == "shadowColor" ||
+		leaf == "shadowOffsetX" || leaf == "shadowOffsetY" || leaf == "shadowSpread":
+		return "The Ryoku window decor plugin is missing; it ships with ryoku-desktop-wayfire."
+	case strings.HasPrefix(leaf, "shadow"):
+		return "The Ryoku window decor plugin has no matching control for this shadow setting."
 	case leaf == "inactiveOpacity":
 		return "Wayfire can set one opacity when a window opens, but cannot change it when focus moves."
 	case strings.HasSuffix(leaf, "Opacity") || leaf == "fullscreenOpacity":
 		return "Wayfire has no matching dynamic window-opacity state."
-	case strings.HasPrefix(leaf, "shadow"):
-		return "Wayfire's decoration plugin has no window-shadow options."
 	case strings.HasPrefix(leaf, "glow"):
 		return "wayfire has no glow."
 	case strings.HasPrefix(leaf, "dim"):

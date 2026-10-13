@@ -26,6 +26,8 @@ type Appearance struct {
 	GapsOut              int     `json:"gapsOut"`
 	GapsWorkspaces       int     `json:"gapsWorkspaces"`
 	BorderSize           int     `json:"borderSize"`
+	Rounding             int     `json:"rounding"`
+	RoundingPower        float64 `json:"roundingPower"`
 	ActiveOpacity        float64 `json:"activeOpacity"`
 	ActiveBorder         string  `json:"activeBorder"`
 	InactiveBorder       string  `json:"inactiveBorder"`
@@ -35,6 +37,12 @@ type Appearance struct {
 	BlurSize             int     `json:"blurSize"`
 	BlurPasses           int     `json:"blurPasses"`
 	WobblyWindows        bool    `json:"wobblyWindows"`
+	ShadowEnabled        bool    `json:"shadowEnabled"`
+	ShadowRange          int     `json:"shadowRange"`
+	ShadowColor          string  `json:"shadowColor"`
+	ShadowOffsetX        int     `json:"shadowOffsetX"`
+	ShadowOffsetY        int     `json:"shadowOffsetY"`
+	ShadowSpread         int     `json:"shadowSpread"`
 }
 
 // Input: the keyboard, pointer and touchpad leaves Wayfire's input and vswipe
@@ -276,11 +284,14 @@ func defaultStore() wayfireStore {
 	return wayfireStore{
 		Appearance: Appearance{
 			GapsIn: 12, GapsOut: 18, GapsWorkspaces: 20,
-			BorderSize: 4, ActiveOpacity: 1,
-			ActiveBorder: "#e0563b", InactiveBorder: "#313a4d",
+			BorderSize: 4, Rounding: 0, RoundingPower: 4,
+			ActiveOpacity: 1,
+			ActiveBorder:  "#e0563b", InactiveBorder: "#313a4d",
 			BorderFollowsPalette: true, Animations: true,
 			BlurEnabled: false, BlurSize: 2, BlurPasses: 2,
 			WobblyWindows: true,
+			ShadowEnabled: true, ShadowRange: 45, ShadowColor: "#000000",
+			ShadowOffsetX: 0, ShadowOffsetY: 5, ShadowSpread: 0,
 		},
 		Input: Input{
 			KbLayout: "us", NumlockByDefault: false,

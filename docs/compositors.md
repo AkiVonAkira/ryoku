@@ -290,6 +290,23 @@ One rule shapes wayfire's tree: `wayfire.ini` is composed in full on every
 refuses to run without its defaults rather than emitting a partial file. There
 is no authored entry layer beside it.
 
+### Wayfire window decoration
+
+Wayfire's core does not round window content or draw shadows, and its stock
+`decoration` plugin frames only server-decorated views. Ryoku therefore draws
+the rounded clip, active or inactive border ring, and drop shadow with its own
+`ryoku-decor` plugin. The provider reads the same `desktop.appearance.*` values
+as the other providers and writes them to `[ryoku-decor]`; changes from the
+Window Manager page apply on the next config reload. The stock plugin remains
+loaded for title bars and buttons, with its border width forced to zero so it
+does not draw a second ring.
+
+The source and option metadata live in `ryoku/wm/wayfire/decor/`. The Wayfire
+variant package installs `libryoku-decor.so` under `/usr/lib/wayfire/` and
+`ryoku-decor.xml` under `/usr/share/wayfire/metadata/`. A checkout deploy builds
+the same source outside the repository and installs those same two files before
+the provider composes `wayfire.ini`.
+
 Two niri rules shape its tree:
 
 - A **missing include is a hard config error**, and a niri with an unreadable

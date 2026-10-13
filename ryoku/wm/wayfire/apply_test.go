@@ -25,7 +25,21 @@ func wayfireHome(t *testing.T) string {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	withWayfirePlugins(t)
 	return wayfireConfigDir()
+}
+
+func withWayfirePlugins(t *testing.T, names ...string) {
+	t.Helper()
+	old := wayfirePluginDirs
+	dir := t.TempDir()
+	for _, name := range names {
+		if err := os.WriteFile(filepath.Join(dir, "lib"+name+".so"), []byte("fixture"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	wayfirePluginDirs = []string{dir}
+	t.Cleanup(func() { wayfirePluginDirs = old })
 }
 
 // withDefaults points the shipped-defaults layer at a fixture body through the
@@ -105,6 +119,7 @@ func readGen(t *testing.T, dir, name string) string {
 // change in ordering or spelling has to be a deliberate edit here.
 func TestComposeLastWins(t *testing.T) {
 	dir := wayfireHome(t)
+	withWayfirePlugins(t, "ryoku-decor")
 	baseline := "[core]\nvwidth = 3\nplugins = animate blur grid\n\n[decoration]\nborder_size = 8\n"
 	withDefaults(t, baseline)
 	writeSeed(t, dir, "keyboard.ini", "[input]\nxkb_layout = us\n")
@@ -115,7 +130,7 @@ func TestComposeLastWins(t *testing.T) {
 	want := wm.GeneratedConfigBaselineMarker(wm.ProviderWayfire, []byte(baseline)) + "\n" + generatedHeader + `
 [core]
 vwidth = 5
-plugins = animate blur grid
+plugins = animate blur grid ryoku-decor
 vheight = 2
 preferred_decoration_mode = client
 xwayland = true
@@ -124,7 +139,7 @@ focus_button_with_modifiers = false
 focus_buttons_passthrough = true
 
 [decoration]
-border_size = 1
+border_size = 0
 title_height = 0
 font = sans-serif
 font_color = \#FFFFFFFF
@@ -183,6 +198,20 @@ send_win_10 = <super> <shift> KEY_0 | <super> <shift> KEY_KP0
 
 [place]
 mode = center
+
+[ryoku-decor]
+radius = 0
+corner_power = 4
+border_width = 4
+active_color = \#112233FF
+inactive_color = \#445566FF
+shadow_enabled = true
+shadow_radius = 45
+shadow_spread = 0
+shadow_offset_x = 0
+shadow_offset_y = 5
+shadow_color = \#00000070
+ignore_views = none
 
 [blur]
 blur_by_default = type is "toplevel"
@@ -464,6 +493,86 @@ activate = <super> BTN_RIGHT
 	}
 }
 
+func TestDecorPluginPresent(t *testing.T) {
+	wayfireHome(t)
+	withWayfirePlugins(t, "ryoku-decor")
+	withDefaults(t, "[core]\nplugins = decoration autostart\n\n[decoration]\nborder_size = 9\n")
+	store := writeStore(t, `{
+	  "desktop":{"appearance":{
+	    "rounding":18,"roundingPower":6,"borderSize":7,
+	    "activeBorder":"#102030","inactiveBorder":"#405060","borderFollowsPalette":false,
+	    "shadowEnabled":true,"shadowRange":31,"shadowColor":"#102030",
+	    "shadowOffsetX":-4,"shadowOffsetY":9,"shadowSpread":3
+	  }},
+	  "wm":{"wayfire":{"decoration":{"ignoreViews":"app_id is \"no-frame\""}}}
+	}`)
+
+	body := string(mustCompose(t, loadStore(store)))
+	for _, want := range []string{
+		"plugins = decoration ryoku-decor autostart",
+		"[decoration]\nborder_size = 0",
+		"[ryoku-decor]\nradius = 18",
+		"corner_power = 6",
+		"border_width = 7",
+		"active_color = \\#102030FF",
+		"inactive_color = \\#405060FF",
+		"shadow_enabled = true",
+		"shadow_radius = 31",
+		"shadow_spread = 3",
+		"shadow_offset_x = -4",
+		"shadow_offset_y = 9",
+		"shadow_color = \\#10203070",
+		`ignore_views = app_id is "no-frame"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("composed decor config misses %q:\n%s", want, body)
+		}
+	}
+	for _, u := range unhonored(store) {
+		switch strings.TrimPrefix(u.Key, "desktop.appearance.") {
+		case "rounding", "roundingPower", "shadowEnabled", "shadowRange",
+			"shadowColor", "shadowOffsetX", "shadowOffsetY", "shadowSpread":
+			t.Errorf("installed decor plugin must honor %s: %s", u.Key, u.Reason)
+		}
+	}
+}
+
+func TestDecorPluginAbsent(t *testing.T) {
+	wayfireHome(t)
+	withDefaults(t, "[core]\nplugins = decoration ryoku-decor autostart\n\n[decoration]\nborder_size = 9\n\n[ryoku-decor]\nradius = 50\n")
+	store := writeStore(t, `{"desktop":{"appearance":{
+	  "rounding":18,"roundingPower":6,"borderSize":7,
+	  "shadowEnabled":true,"shadowRange":31,"shadowColor":"#102030",
+	  "shadowOffsetX":-4,"shadowOffsetY":9,"shadowSpread":3
+	}}}`)
+
+	body := string(mustCompose(t, loadStore(store)))
+	if !strings.Contains(body, "plugins = decoration autostart") {
+		t.Errorf("missing plugin was not removed from core.plugins:\n%s", body)
+	}
+	if strings.Contains(body, "[ryoku-decor]") {
+		t.Errorf("missing plugin left its option section in the composed file:\n%s", body)
+	}
+	if !strings.Contains(body, "[decoration]\nborder_size = 7") {
+		t.Errorf("stock decoration border was not retained:\n%s", body)
+	}
+
+	const reason = "The Ryoku window decor plugin is missing; it ships with ryoku-desktop-wayfire."
+	got := map[string]string{}
+	for _, u := range unhonored(store) {
+		got[u.Key] = u.Reason
+	}
+	for _, key := range []string{
+		"rounding", "roundingPower", "shadowEnabled", "shadowRange",
+		"shadowColor", "shadowOffsetX", "shadowOffsetY", "shadowSpread",
+	} {
+		full := "desktop.appearance." + key
+		if got[full] != reason {
+			t.Errorf("%s reason = %q, want %q", full, got[full], reason)
+		}
+	}
+}
+
 func TestComposeReadsBaselineFromConfigBaseAndMarksIt(t *testing.T) {
 	wayfireHome(t)
 	baseline := []byte("[core]\nplugins = animate\n\n[ryoku-probe]\nsource = config-base\n")
@@ -571,13 +680,13 @@ func TestUnhonoredNamesLosses(t *testing.T) {
 	}
 	for key, contains := range map[string]string{
 		"desktop.appearance.inactiveOpacity": "cannot change it when focus moves",
-		"desktop.appearance.rounding":        "no corner-radius option",
-		"desktop.appearance.shadowColor":     "no window-shadow options",
-		"desktop.appearance.shadowEnabled":   "no window-shadow options",
-		"desktop.appearance.shadowOffsetX":   "no window-shadow options",
-		"desktop.appearance.shadowOffsetY":   "no window-shadow options",
-		"desktop.appearance.shadowRange":     "no window-shadow options",
-		"desktop.appearance.shadowSpread":    "no window-shadow options",
+		"desktop.appearance.rounding":        "Ryoku window decor plugin is missing",
+		"desktop.appearance.shadowColor":     "Ryoku window decor plugin is missing",
+		"desktop.appearance.shadowEnabled":   "Ryoku window decor plugin is missing",
+		"desktop.appearance.shadowOffsetX":   "Ryoku window decor plugin is missing",
+		"desktop.appearance.shadowOffsetY":   "Ryoku window decor plugin is missing",
+		"desktop.appearance.shadowRange":     "Ryoku window decor plugin is missing",
+		"desktop.appearance.shadowSpread":    "Ryoku window decor plugin is missing",
 		"desktop.input.followMouse":          "no focus-follows-pointer mode",
 		"desktop.input.middleClickPaste":     "no primary-selection switch",
 		"desktop.cursor.hideOnKeyPress":      "no inactivity timeout or keypress-hide option",

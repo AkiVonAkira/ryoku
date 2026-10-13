@@ -3,10 +3,10 @@
 # ryoku-desktop-wayfire: the wayfire compositor variant of the Ryoku desktop.
 # Carries Wayfire and the XWayland server it spawns, the wlroots portal backend
 # for native screenshots and screencasts, the Wayfire config tree, the
-# ryoku-wm-wayfire provider binary, and the depthdeck plugin built from the
-# vendored git bundle beside this recipe. It provides the
-# ryoku-desktop-compositor virtual and may be installed beside the other
-# variants, so switching sessions does not require swapping packages.
+# ryoku-wm-wayfire provider binary, the Ryoku window-decoration plugin, and the
+# depthdeck plugin built from the vendored git bundle beside this recipe. It
+# provides the ryoku-desktop-compositor virtual and may be installed beside the
+# other variants, so switching sessions does not require swapping packages.
 #
 # No systemd drop-in, unlike niri: the wayfire package ships no user unit, so
 # there is no place to order the config bootstrap against. ryoku-bootstrap is
@@ -18,9 +18,8 @@
 pkgname=ryoku-desktop-wayfire
 pkgver=${RYOKU_PKGVER:-0.1.0}
 pkgrel=1
-pkgdesc="Ryoku desktop: the wayfire compositor, its X11 server, the depthdeck plugin and the ryoku-wm-wayfire provider"
-# package() builds the Go provider and the meson plugin, so the payload is
-# arch-specific.
+pkgdesc="Ryoku desktop: Wayfire, Ryoku window decoration, depthdeck and the ryoku-wm-wayfire provider"
+# The Go provider and two native plugins make the payload arch-specific.
 arch=('x86_64')
 url="https://ryoku.dev"
 license=('GPL-3.0-or-later')
@@ -73,6 +72,12 @@ build() {
   cd "$srcdir/depthdeck"
   meson setup --buildtype=release build
   meson compile -C build
+
+  # ryoku-decor is owned by this variant and built out of tree so packaging
+  # never leaves generated files in the checkout.
+  meson setup --buildtype=release "$srcdir/decor-build" \
+    "$_repo/ryoku/wm/wayfire/decor"
+  meson compile -C "$srcdir/decor-build"
 }
 
 package() {
@@ -106,4 +111,10 @@ package() {
     "$pkgdir/usr/lib/wayfire/libdepthdeck.so"
   install -Dm644 "$srcdir/depthdeck/metadata/depthdeck.xml" \
     "$pkgdir/usr/share/wayfire/metadata/depthdeck.xml"
+
+  # ryoku-decor: the shared appearance store's rounded clip, border and shadow.
+  install -Dm755 "$srcdir/decor-build/libryoku-decor.so" \
+    "$pkgdir/usr/lib/wayfire/libryoku-decor.so"
+  install -Dm644 "$_repo/ryoku/wm/wayfire/decor/metadata/ryoku-decor.xml" \
+    "$pkgdir/usr/share/wayfire/metadata/ryoku-decor.xml"
 }

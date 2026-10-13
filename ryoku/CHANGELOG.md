@@ -213,6 +213,11 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Wayfire windows get rounded corners, borders and shadows.** The corner
+  radius, softness, border and shadow settings on the Window Manager page now
+  work on Wayfire as they do on Hyprland and niri, drawn by Ryoku's own window
+  decor plugin, and a save applies them at once (`wm/wayfire/decor/`,
+  `wm/wayfire/apply.go`, `../release/packages/ryoku-desktop-wayfire/PKGBUILD`).
 - **Rashin opens on an NVIDIA display under compositors with explicit sync.**
   WebKitGTK 2.54 switched the window to GL mid-frame, NVIDIA turned on explicit
   sync for it, and the compositor dropped the app before its window appeared.

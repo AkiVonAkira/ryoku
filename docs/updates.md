@@ -628,10 +628,10 @@ island (when the channel serves the next line) and the Hub's Updates page.
   it.** The ISO installer and `ryoku/shell/deploy.sh` seed some paths before a
   package owns them: the privileged helpers and their polkit rules, the Plymouth
   theme, the shipped boot configs and lockscreen bundle, Wayfire's baseline
-  config and portal routing (a checkout box has no Wayfire variant package),
-  the boot hook, the modules-load and udev rules, the default-apps mimeapps
-  map, and the logind lid-switch drop-in
-  `/etc/systemd/logind.conf.d/10-ryoku-lid.conf`. An unowned
+  config, portal routing, window-decoration plugin and plugin metadata (a
+  checkout box has no Wayfire variant package), the boot hook, the modules-load
+  and udev rules, the default-apps mimeapps map, and the logind lid-switch
+  drop-in `/etc/systemd/logind.conf.d/10-ryoku-lid.conf`. An unowned
   copy collides with the package on the next transaction ("exists in
   filesystem") and aborts the whole atomic `-Syu`, so every ryoku pacman
   transaction -- `ryoku update`, the channel move, and the compositor switch
