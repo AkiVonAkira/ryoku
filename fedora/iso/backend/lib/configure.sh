@@ -50,7 +50,11 @@ fedora_services() {
       units+=("$unit.service")
     fi
   done
-  log 'enabling %s' "${units[*]}"
-  fedora_chroot systemctl enable "${units[@]}"
+  if ((${#units[@]})); then
+    log 'enabling %s' "${units[*]}"
+    fedora_chroot systemctl enable "${units[@]}"
+  else
+    log 'WARNING: none of sddm, NetworkManager, bluetooth or power-profiles-daemon is installed; enabling nothing'
+  fi
   fedora_chroot systemctl set-default graphical.target
 }
