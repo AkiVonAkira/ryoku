@@ -150,14 +150,20 @@ func sysLocales() []item {
 }
 
 // utf8Locales keeps the UTF-8 entries of `locale -a`, which prints glibc's
-// normalized "de_DE.utf8"; SUPPORTED and the promoted defaults spell it
-// "de_DE.UTF-8".
+// normalized "de_DE.utf8" and "sr_RS.utf8@latin"; SUPPORTED and the promoted
+// defaults spell them "de_DE.UTF-8" and "sr_RS.UTF-8@latin".
 func utf8Locales(out string) []string {
 	var lines []string
 	for _, l := range strings.Split(out, "\n") {
-		if l = strings.TrimSpace(l); strings.HasSuffix(strings.ToLower(l), ".utf8") {
-			lines = append(lines, l[:len(l)-len(".utf8")]+".UTF-8")
+		name, modifier, _ := strings.Cut(strings.TrimSpace(l), "@")
+		base, ok := strings.CutSuffix(name, ".utf8")
+		if !ok {
+			continue
 		}
+		if modifier != "" {
+			modifier = "@" + modifier
+		}
+		lines = append(lines, base+".UTF-8"+modifier)
 	}
 	return lines
 }

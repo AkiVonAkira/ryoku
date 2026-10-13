@@ -158,8 +158,8 @@ func TestFedoraSnapshotsRowPromisesNoRollback(t *testing.T) {
 }
 
 func TestLocaleAListUsesSupportedSpelling(t *testing.T) {
-	got := utf8Locales("C\nC.utf8\nPOSIX\nde_DE.utf8\nen_US.utf8\nja_JP.eucjp\n")
-	want := []string{"C.UTF-8", "de_DE.UTF-8", "en_US.UTF-8"}
+	got := utf8Locales("C\nC.utf8\nPOSIX\nde_DE.utf8\nen_US.utf8\nja_JP.eucjp\nsr_RS.utf8@latin\nsr_RS@latin\n")
+	want := []string{"C.UTF-8", "de_DE.UTF-8", "en_US.UTF-8", "sr_RS.UTF-8@latin"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("utf8Locales = %v, want %v", got, want)
 	}
