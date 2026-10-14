@@ -655,6 +655,15 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **Picking a file no longer crashes the shell once its window has been
+  rebuilt.** Quickshell deletes the window behind a hidden layer-shell or popup
+  surface, and Qt's non-native `FileDialog` kept a bare pointer to the
+  implementation it had parented to that window, so the next "+ Browse" on a
+  desktop widget, Stage layer pick, profile-picture or subtitle chooser, VPN
+  import or dock-folder pick dereferenced freed memory (a segfault on Qt 6.12,
+  the dialog silently doing nothing before). Every site now goes through
+  `Ryoku.Ui.FileDialogHost`, which builds the dialog for the window it opens in
+  and drops it when that window goes away (#405).
 - **The dedicated microphone-mute key works again.** `XF86AudioMicMute` now
   toggles the default PipeWire source on every supported compositor (#394).
 - **Super+T is labelled “Group windows (tabbed)”.** The clearer name distinguishes

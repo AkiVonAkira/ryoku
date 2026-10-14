@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import QtQuick.Dialogs
 import "Singletons"
+import Ryoku.Ui as Ui
 import Ryoku.Ui.Singletons
 import "../stage/Singletons" as StageCfg
 // The right-click menu for a plugin desktop tile, built on the shared
@@ -486,7 +486,7 @@ Item {
                                 }
                             }
                         }
-                        FileDialog {
+                        Ui.FileDialogHost {
                             id: imgFileDlg
                             currentFolder: "file://" + Quickshell.env("HOME") + "/Pictures"
                             title: I18n.tr("Choose an image")
