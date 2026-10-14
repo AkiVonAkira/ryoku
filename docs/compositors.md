@@ -330,6 +330,8 @@ niri has no unbind. A duplicate chord in one `binds` block is a hard error, so
 `rebinds.kdl` is the single, total keybind set: the shipped defaults with
 rebinds applied, unbinds removed, and one winner per chord. There is no seeded
 bind block to subtract from.
+`desktop.keybindDisabled` names a shipped chord the user switched off: Hyprland
+never registers it, while niri and Wayfire release it before rebinds resolve.
 
 Two seeds are compositor-specific in practice. `ryoku-gpu` keeps its policy in
 the Hyprland pin file (`gpu.lua`, the store the Hub GPU page and doctor audit).

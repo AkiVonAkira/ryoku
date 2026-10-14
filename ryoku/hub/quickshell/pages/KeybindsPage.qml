@@ -557,6 +557,8 @@ Item {
         for (var c = 0; c < pg.categories.length; c++) {
             var binds = pg.categories[c].binds || [];
             for (var b = 0; b < binds.length; b++) {
+                if (pg.isDisabled(binds[b].combo || ""))
+                    continue;
                 // a family stands for ten chords, so expand it before counting:
                 // that is how a rebound family clashes with another effective chord.
                 var chords = Combos.expandFamily(pg.effectiveCombo(binds[b].combo || ""));
@@ -577,6 +579,8 @@ Item {
     // a family compares its ten expanded chords against the other effective
     // chords; a plain chord expands to itself, so both go through one path.
     function comboConflict(defCombo) {
+        if (pg.isDisabled(defCombo))
+            return false;
         var chords = Combos.expandFamily(pg.effectiveCombo(defCombo));
         for (var i = 0; i < chords.length; i++) {
             var n = pg.normKeys(chords[i]);

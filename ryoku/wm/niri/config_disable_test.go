@@ -27,3 +27,26 @@ func TestDisabledBindsAreNotEmitted(t *testing.T) {
 		t.Errorf("switching binds off emitted %d chords, was %d: nothing was dropped", len(after), len(before))
 	}
 }
+
+func TestDisabledBindRowCarriesNoEffectiveChord(t *testing.T) {
+	s := niriStore{
+		KeybindRebinds:  map[string]string{"SUPER + Q": "SUPER + X"},
+		KeybindDisabled: []string{"SUPER + Q"},
+	}
+	for _, row := range bindRows(s) {
+		if row.ID != "window.close" {
+			continue
+		}
+		if !row.Disabled {
+			t.Fatal("disabled catalogue row was not marked disabled")
+		}
+		if row.Chord != "" || len(row.Keys) != 0 {
+			t.Fatalf("disabled catalogue row still carries chord %q and keys %v", row.Chord, row.Keys)
+		}
+		if row.Default != "SUPER + Q" {
+			t.Fatalf("disabled catalogue row lost its stable default: %q", row.Default)
+		}
+		return
+	}
+	t.Fatal("window.close catalogue row missing")
+}

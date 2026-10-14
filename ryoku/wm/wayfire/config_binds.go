@@ -653,6 +653,7 @@ func applyBinds(d *iniDoc, s wayfireStore) {
 func bindRows(s wayfireStore) []wm.BindRow {
 	defs := defaultBinds()
 	rows := make([]wm.BindRow, 0, 128)
+	off := wm.DisabledSet(s.KeybindDisabled)
 
 	for _, cb := range wm.ShippedBinds() {
 		wb := defs[cb.ID]
@@ -682,6 +683,11 @@ func bindRows(s wayfireStore) []wm.BindRow {
 			Kind:       cb.Kind,
 			Rebindable: wb.reason == "" && rebindable(cb),
 			Locked:     cb.Locked,
+			Disabled:   off[cb.Chord],
+		}
+		if row.Disabled {
+			row.Keys = nil
+			row.Chord = ""
 		}
 		if wb.reason != "" {
 			row.Unhonored = wb.reason

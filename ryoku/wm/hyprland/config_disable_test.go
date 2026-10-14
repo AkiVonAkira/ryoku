@@ -5,43 +5,57 @@ import (
 	"testing"
 )
 
-// A switched-off bind is released at the chord it actually holds. binds.lua has
-// already registered the shipped chord by the time this block runs, and K() has
-// already swapped a rebound one, so unbinding the stored default would miss a
-// bind the user had moved and leave it live.
-func TestDisabledBindIsReleasedAtItsEffectiveChord(t *testing.T) {
+// A moved bind that is switched off must not be registered at either chord or
+// released after another bind has had a chance to claim its old chord.
+func TestDisabledMovedBindIsNeverRegisteredOrUnbound(t *testing.T) {
 	o := Overrides{
 		KeybindRebinds:  map[string]string{"SUPER + W": "SUPER + ALT + W"},
-		KeybindDisabled: []string{"SUPER + W", "SUPER + Q"},
+		KeybindDisabled: []string{"SUPER + W"},
 	}
-	got := genUnbinds(o)
-	for _, want := range []string{`hl.unbind("SUPER + ALT + W")`, `hl.unbind("SUPER + Q")`} {
-		if !strings.Contains(got, want) {
-			t.Errorf("missing %s in:\n%s", want, got)
-		}
+	got := string(renderRebinds(o))
+	if !strings.Contains(got, `["SUPER + W"] = false`) {
+		t.Fatalf("disabled lookup missing:\n%s", got)
 	}
-	if strings.Contains(got, `hl.unbind("SUPER + W")`) {
-		t.Errorf("released the shipped chord, not the one the bind holds:\n%s", got)
+	if strings.Contains(got, `"SUPER + ALT + W"`) {
+		t.Errorf("disabled bind still registers its moved chord:\n%s", got)
 	}
-}
-
-// A family is one stored entry standing for ten chords, so switching it off has
-// to release all ten and both number-pad faces of each.
-func TestDisabledFamilyReleasesEveryMember(t *testing.T) {
-	got := genUnbinds(Overrides{KeybindDisabled: []string{"SUPER + KP_{n}"}})
-	for _, want := range []string{`hl.unbind("SUPER + KP_1")`, `hl.unbind("SUPER + KP_0")`, `hl.unbind("SUPER + KP_End")`} {
-		if !strings.Contains(got, want) {
-			t.Errorf("missing %s in:\n%s", want, got)
-		}
+	if got := genUnbinds(o); got != "" {
+		t.Errorf("disabled bind is released after registration:\n%s", got)
 	}
 }
 
-// Unbinds and KeybindDisabled are separate lists on purpose, and an entry in
-// both must still produce one line: Hyprland's unbind drops a single bind per
-// call, so a second call would take a different bind off the same chord.
-func TestDisabledAndImportedUnbindEmitOnce(t *testing.T) {
-	o := Overrides{Unbinds: []string{"SUPER + D"}, KeybindDisabled: []string{"SUPER + D"}}
-	if n := strings.Count(genUnbinds(o), `hl.unbind("SUPER + D")`); n != 1 {
-		t.Fatalf("emitted the same unbind %d times, want 1:\n%s", n, genUnbinds(o))
+// A disabled family overrides both its family rebind and a legacy per-member
+// rebind, including every NumLock-off key that binds.lua looks up.
+func TestDisabledFamilyOverridesLegacyMemberRebind(t *testing.T) {
+	o := Overrides{
+		KeybindRebinds: map[string]string{
+			"SUPER + KP_{n}": "SUPER + CTRL + KP_{n}",
+			"SUPER + KP_3":   "SUPER + ALT + KP_3",
+		},
+		KeybindDisabled: []string{"SUPER + KP_{n}"},
+	}
+	got := string(renderRebinds(o))
+	for _, chord := range []string{"SUPER + KP_1", "SUPER + KP_3", "SUPER + KP_0", "SUPER + KP_End"} {
+		want := `["` + chord + `"] = false`
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %s in:\n%s", want, got)
+		}
+		if n := strings.Count(got, `["`+chord+`"]`); n != 1 {
+			t.Errorf("%s emitted %d times, want 1:\n%s", chord, n, got)
+		}
+	}
+	for _, moved := range []string{"SUPER + CTRL + KP_1", "SUPER + ALT + KP_3"} {
+		if strings.Contains(got, moved) {
+			t.Errorf("disabled family still registers %s:\n%s", moved, got)
+		}
+	}
+}
+
+// A provider-exclusive bind has no catalogue family but still uses its shipped
+// chord as the stable key in the disabled list.
+func TestDisabledExclusiveBindIsNotRegistered(t *testing.T) {
+	got := string(renderRebinds(Overrides{KeybindDisabled: []string{"SUPER + ALT + X"}}))
+	if !strings.Contains(got, `["SUPER + ALT + X"] = false`) {
+		t.Fatalf("exclusive disabled lookup missing:\n%s", got)
 	}
 }

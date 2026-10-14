@@ -38,7 +38,7 @@
   gains a control per row that leaves an action with no chord at all, and a
   second press gives it one back. Until now an empty value meant "back to the
   shipped default", so a shortcut you did not want had to be parked on some
-  other key. Switched-off binds are released on every compositor Ryoku supports,
+  other key. Switched-off binds are not registered by any supported compositor,
   are left out of the Super+K cheatsheet, and stay listed in Settings so the
   action remains findable (`desktop.keybindDisabled`).
 - **`ryoku update` shows one bar per compilation on source boxes, with how long

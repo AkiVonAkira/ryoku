@@ -86,7 +86,7 @@ func buildBindRows(modulesDir string, o Overrides) []wm.BindRow {
 			continue
 		}
 		consumed[n] = true
-		rows = append(rows, exclusiveRow(p))
+		rows = append(rows, exclusiveRow(p, off))
 	}
 
 	for i, k := range o.Keybinds {
@@ -241,12 +241,12 @@ func rebindableCombo(combo string) bool {
 // exclusiveRow renders a Lua bind the catalogue does not document as a row under
 // the compositor's own name, its label the Lua comment (or a description read off
 // the dispatcher when the line carried none).
-func exclusiveRow(p parsedBind) wm.BindRow {
+func exclusiveRow(p parsedBind, off map[string]bool) wm.BindRow {
 	label := strings.TrimSpace(p.comment)
 	if label == "" {
 		label = describeDispatcher(p.dispatcher)
 	}
-	return wm.BindRow{
+	row := wm.BindRow{
 		ID:         "hyprland." + chordSlug(p.combo),
 		Category:   "Hyprland",
 		Label:      capitalize(label),
@@ -255,7 +255,13 @@ func exclusiveRow(p parsedBind) wm.BindRow {
 		Chord:      p.combo,
 		Kind:       wm.BindWM,
 		Rebindable: rebindableCombo(p.combo),
+		Disabled:   off[p.combo],
 	}
+	if row.Disabled {
+		row.Keys = nil
+		row.Chord = ""
+	}
+	return row
 }
 
 // customRow renders one of the store's own shortcuts as a Custom row. The label

@@ -82,7 +82,7 @@ var hyprlandDesktopFields = map[string]bool{
 	"windowRules": true, "appOverrides": true, "autostart": true,
 	"keybinds": true, "keybindRebinds": true, "unbinds": true, "apps": true,
 	"keybindDisabled": true,
-	"windows": true,
+	"windows":         true,
 }
 
 // unhonored names every desktop.* key the store carries that Hyprland cannot

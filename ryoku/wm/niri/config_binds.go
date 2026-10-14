@@ -374,6 +374,7 @@ func genBinds(s niriStore) (string, []wm.Unhonored) {
 func bindRows(s niriStore) []wm.BindRow {
 	defs := defaultBinds()
 	rows := make([]wm.BindRow, 0, 128)
+	off := wm.DisabledSet(s.KeybindDisabled)
 
 	for _, cb := range wm.ShippedBinds() {
 		nb := defs[cb.ID]
@@ -402,6 +403,11 @@ func bindRows(s niriStore) []wm.BindRow {
 			Kind:       cb.Kind,
 			Rebindable: rebindable(cb),
 			Locked:     cb.Locked,
+			Disabled:   off[cb.Chord],
+		}
+		if row.Disabled {
+			row.Keys = nil
+			row.Chord = ""
 		}
 		if nb.action == "" {
 			row.Unhonored = nb.reason

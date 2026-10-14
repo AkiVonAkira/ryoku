@@ -145,7 +145,7 @@ var desktopHandled = map[string]bool{
 	"windowRules": true, "appOverrides": true, "autostart": true,
 	"keybinds": true, "keybindRebinds": true, "unbinds": true, "apps": true,
 	"keybindDisabled": true,
-	"windows": true,
+	"windows":         true,
 }
 
 var appearanceEmitted = map[string]bool{
