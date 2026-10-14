@@ -366,7 +366,7 @@ func defaultOverrides() Overrides {
 			LeftHanded: false, MouseNaturalScroll: false, MouseScrollFactor: 1,
 			MiddleClickPaste: true,
 			NaturalScroll:    false, TapToClick: true, TapAndDrag: true,
-			Clickfinger: false, MiddleEmulation: false, TouchScrollFactor: 1,
+			Clickfinger: true, MiddleEmulation: false, TouchScrollFactor: 1,
 			DisableWhileTyping: true,
 			RepeatRate:         25, RepeatDelay: 600,
 			WorkspaceSwipe: false, SwipeFingers: 3,

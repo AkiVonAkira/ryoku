@@ -345,7 +345,7 @@ func defaultStore() niriStore {
 			Sensitivity: 0, AccelProfile: "", LeftHanded: false,
 			MouseNaturalScroll: false, MouseScrollFactor: 1, MiddleClickPaste: true,
 			NaturalScroll: true, TouchScrollFactor: 1,
-			TapToClick: true, TapAndDrag: true, Clickfinger: false,
+			TapToClick: true, TapAndDrag: true, Clickfinger: true,
 			MiddleEmulation: false, DisableWhileTyping: true,
 			RepeatRate: 25, RepeatDelay: 600,
 		},

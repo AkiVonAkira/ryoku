@@ -370,9 +370,8 @@ func genConfig(o Overrides, follow bool) string {
 	if in.TapAndDrag != di.TapAndDrag {
 		touch = append(touch, fmt.Sprintf("tap_and_drag = %t", in.TapAndDrag))
 	}
-	if in.Clickfinger != di.Clickfinger {
-		touch = append(touch, fmt.Sprintf("clickfinger_behavior = %t", in.Clickfinger))
-	}
+	// Hyprland defaults to button areas, so Ryoku's click method must stay explicit.
+	touch = append(touch, fmt.Sprintf("clickfinger_behavior = %t", in.Clickfinger))
 	if in.MiddleEmulation != di.MiddleEmulation {
 		touch = append(touch, fmt.Sprintf("middle_button_emulation = %t", in.MiddleEmulation))
 	}
