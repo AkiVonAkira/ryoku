@@ -44,10 +44,10 @@ Singleton {
     property alias frameBars: adapter.frameBars
     readonly property var normalizedFrameBars: FrameBars.normalize(frameBars, BarCatalog, MenuCatalog)
 
-    // barStyle: which bar design renders. "qsbar" is the default QS Bar top bar
-    // (a shipped folder style under modules/bar/barstyles/qsbar); "sumi" is the
-    // built-in painted left rail; any other id is an installed store folder
-    // style. Each owns its own bar, popouts and settings. Default qsbar.
+    // barStyle: which bar design renders. "orpheus" is the shipped default,
+    // provided by modules/bar/barstyles/orpheus. "sumi" is the built-in painted
+    // left rail; other ids select another shipped or installed folder style.
+    // Each style owns its own bar, popouts and settings.
     property alias batteryAlerts: adapter.batteryAlerts
     property alias barStyle: adapter.barStyle
 
@@ -59,6 +59,7 @@ Singleton {
     property alias nacre: adapter.nacre
     property alias qsbar: adapter.qsbar
     property alias kairos: adapter.kairos
+    property alias orpheus: adapter.orpheus
 
     // python: the serpantinum bar style's own settings namespace (shell.json
     // "python"), read and written by the style's own Config mirror.
@@ -272,12 +273,13 @@ Singleton {
             property string screenShader: ""
             property var frameBars: FrameBars.defaultConfig()
             property var batteryAlerts: ({ enabled: true, warningEnabled: true, criticalEnabled: true, warningPercent: 25, criticalPercent: 10 })
-            property string barStyle: "qsbar"
+            property string barStyle: "orpheus"
             property string launcherTarget: "studio"
             property var obi: ({})
             property var nacre: NacreConfig.defaultConfig()
             property var qsbar: ({})
             property var kairos: ({})
+            property var orpheus: ({})
             property var python: ({})
             property var nomarchy: ({
                 "notifications": true,

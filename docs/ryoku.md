@@ -69,10 +69,10 @@ locked behind a text editor.
 ## How the parts fit
 
 - **The shell** (`ryoku/shell/`) is the desktop UI. `quickshell/` is the QML
-  front end (the `qsbar` top bar by default, with the built-in `sumi`
-  monochrome rail as its alternative, plus the `launcher` and
-  `ryoshot` screenshot tool). `ipc/ryoku-shell` is a single Go daemon that is the
-  control plane: it supervises the UI components, owns the wallpaper, clipboard,
+  front end (the `orpheus` liquid top bar by default, with `qsbar` and the
+  built-in `sumi` monochrome rail among its alternatives, plus the `launcher`
+  and `ryoshot` screenshot tool). `ipc/ryoku-shell` is a single Go daemon that is
+  the control plane: it supervises the UI components, owns the wallpaper, clipboard,
   and lock, and answers one socket. Keybinds and the UI talk to it; it decides.
 - **The control CLI** (`ryoku/cli/`, the `ryoku` command) is the system front
   door: `ryoku update`, `status`, `materialize`, and the snapshot and rollback

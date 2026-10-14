@@ -208,12 +208,12 @@ doing that arithmetic itself.
   are paper and ink. Emphasis is inversion: a surface flips to bone and its ink
   flips to dark. The frame carries the accent; the content does not compete with
   it.
-- **The default bar is the one surface that wears the whole palette.** QS Bar,
-  the shipped default, retints every slot from the wallpaper's seven colour slots
-  (`color01..color07`, mapped onto the ANSI roles), not just the accent, so it
-  reads in full colour like a terminal theme. It is a deliberate exception opted
-  into as the default; the Hub, the apps, the frame, and the monochrome Sumi bar
-  hold the line above. See `docs/barstyles.md`.
+- **QS Bar is the one surface that wears the whole palette.** It retints every
+  slot from the wallpaper's seven colour slots (`color01..color07`, mapped onto
+  the ANSI roles), not just the accent, so it reads in full colour like a
+  terminal theme. It is a deliberate built-in exception; the default Orpheus
+  bar, the Hub, the apps, the frame, and the monochrome Sumi bar hold the line
+  above. See `docs/barstyles.md`.
 
 So the rice wins inside an envelope the brand enforces. Write that down rather
 than the reverse: the envelope is the design.
@@ -487,13 +487,14 @@ and per-monitor visibility from `ShellState`.
 
 - **frame** the rounded screen border and the popouts that melt into it; the
   desktop's signature surface. See `docs/frame.md`.
-- **bar** the desktop's edge instrument, chosen by `barStyle`. Two ship built in:
-  **QS Bar** (the default, `barstyles/qsbar/`, a full-colour top bar retinted
-  from the wallpaper's seven palette slots) and **Sumi** (the monochrome
-  four-edge frame-bar system in `shell/modules/bar/framebars/`, the paper-and-ink
-  alternative). **Obi** and **Nacre** are folder styles you install from
-  Ryostore, and the Hub carries their controls (`OBI WIDGETS`, `NACRE LAYOUT`)
-  for when they are present. `BarProducts` resolves the id: built in, or from
+- **bar** the desktop's edge instrument, chosen by `barStyle`. Seven ship built
+  in. **Orpheus** is the default liquid top bar. **QS Bar**
+  (`barstyles/qsbar/`) is a full-colour top bar retinted from the wallpaper's
+  seven palette slots, and **Sumi** is the monochrome four-edge frame-bar system
+  in `shell/modules/bar/framebars/`. **Obi** and **Nacre** are folder styles you
+  install from Ryostore, and the Hub carries their controls (`OBI WIDGETS`,
+  `NACRE LAYOUT`) for when they are present. `BarProducts` resolves the id:
+  built in, or from
   `~/.local/state/ryoku/store/barstyles.json`. Every style reads the same service
   surfaces and grows the same popout cards from the kit under
   `shell/modules/bar/popouts/`: clicking a status widget (network, Bluetooth,
