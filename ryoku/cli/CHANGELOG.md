@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Fixed
+- **`ryoku update` stops ending on a health warning you cannot act on.** On a box
+  where /boot is root-only, the kernel-image reconciler could not stat the boot
+  images and reported a warning, so every unprivileged update finished with "the
+  health check found issues" over something only root can even look at. A denied
+  read is now a note, like the boot-layout and /boot-headroom reconcilers beside
+  it already treated it; an image that fails to stat for any other reason is
+  still a warning (`internal/doctor/reconcile_limine_images.go`).
+
 ### Added
 - **`ryoku update` shows one bar per compilation on source boxes, with how long
   each piece usually takes.** The terminal and Hub share the per-piece view and

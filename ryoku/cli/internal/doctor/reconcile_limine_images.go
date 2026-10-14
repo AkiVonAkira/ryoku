@@ -39,6 +39,11 @@ type limineBootKernel struct {
 	imageExists       bool
 	imageOlder        bool
 	imageInaccessible bool
+	// Why the image could not be read. A root-only /boot denies every one of
+	// them on a normal `ryoku update`, which is nothing the user has to act on;
+	// anything else is a real finding. Without the distinction both read as a
+	// warning and every update ends on one.
+	imagePermissionDenied bool
 }
 
 var (
@@ -182,6 +187,7 @@ func gatherLimineBootKernels(conf, esp string, installed map[string]installedKer
 				}
 			} else if !errors.Is(err, os.ErrNotExist) {
 				e.imageInaccessible = true
+				e.imagePermissionDenied = errors.Is(err, os.ErrPermission)
 			}
 		}
 		out = append(out, e)
@@ -353,7 +359,8 @@ func reconcileLimineKernelImages(checkOnly bool) recResult {
 	}
 	installed, incomplete, err := limineInstalledKernels()
 	if err != nil {
-		return warnRes(i18n.T("cannot inspect installed kernel metadata: %v"), err).
+		return inspectionRes(errors.Is(err, os.ErrPermission),
+			i18n.T("cannot inspect installed kernel metadata: %v"), err).
 			withFix("sudo ryoku doctor --check")
 	}
 	entries := gatherLimineBootKernels(string(b), "/boot", installed)
@@ -365,13 +372,16 @@ func reconcileLimineKernelImages(checkOnly bool) recResult {
 		return okRes(i18n.T("no installed kernels to check"))
 	}
 	var inaccessible []string
+	permissionOnly := true
 	for _, e := range entries {
 		if e.imageInaccessible {
 			inaccessible = append(inaccessible, e.name)
+			permissionOnly = permissionOnly && e.imagePermissionDenied
 		}
 	}
 	if len(inaccessible) > 0 {
-		return warnRes(i18n.T("cannot inspect kernel boot images on /boot to verify versions: %s"), strings.Join(inaccessible, ", ")).
+		return inspectionRes(permissionOnly,
+			i18n.T("cannot inspect kernel boot images on /boot to verify versions: %s"), strings.Join(inaccessible, ", ")).
 			withFix("sudo ryoku doctor --check")
 	}
 	stale, stray := planLimineKernelImages(installed, entries)
