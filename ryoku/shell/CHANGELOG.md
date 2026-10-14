@@ -601,6 +601,13 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **A source checkout builds the Ryogami picker without guessing at Vulkan.**
+  `ryoku track unstable && ryoku update` stopped half a minute into the picker
+  with `fatal error: vulkan/vulkan.h: No such file or directory` on a machine
+  without the Vulkan headers: the packaged builds declare them, the source build
+  never did. The build now asks for the header while configuring and names the
+  package when it is missing, and the Fedora RPM declares it like the PKGBUILD
+  and the Void template already do.
 - **Ryogami's Workshop tab finds your Wallpaper Engine scenes.** On the first
   run after an install the tab said "No Wallpaper Engine scenes yet" until
   ryogami restarted, because the picker never refreshed it after the first scan.
