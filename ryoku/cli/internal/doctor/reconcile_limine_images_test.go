@@ -1087,6 +1087,10 @@ func TestReconcileLimineKernelImagesMixedRealAndBrokenSymlink(t *testing.T) {
 // quiet: a /boot that denies the read is a note, but an image that cannot be
 // stat'd for any other reason is still a finding the user should see.
 func TestReconcileLimineKernelImagesWarnsOnNonPermissionStatFailure(t *testing.T) {
+	// Without this the reconciler returns early on any host whose boot Ryoku's
+	// Limine tooling does not manage, so the test would pass on a Limine box and
+	// fail on the runner.
+	stubLimineBootGates(t)
 	origESP, origPkg, origStat := limineESPConf, liminePkgInstalled, limineKernelImageStat
 	origKernels, origRebuild, origPrune := limineInstalledKernels, limineRebuildInitramfs, liminePruneStrayImages
 	t.Cleanup(func() {
