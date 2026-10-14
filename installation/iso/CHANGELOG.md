@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Fixed
+- **A local build no longer trips the pre-build gates.** `build.sh` keeps one
+  package cache per variant (`offline-cache-$VARIANT`), which the gitignore did
+  not cover, so the multi-GB cache showed up as untracked. `iso-preflight.sh`
+  linted the vendored scripts a build leaves in `staging/`, and woke died on the
+  root-owned `work/` that mkarchiso leaves behind. The caches are ignored and
+  both gates lint only git's file list.
 - **Both ISO staging paths carry the shared installer-choice manifest.** The
   prebuilt TUI and Bash backend now resolve the same browser, login-shell and
   compositor policy inside Arch, CachyOS and Void live images.
@@ -28,6 +34,12 @@
   ISO). Covered by `tests/offline-repo-integrity.sh`.
 
 ### Added
+- **`RYOKU_ISO_WORKTREE=1` builds a test ISO from uncommitted work.** The
+  payload under `/usr/share/ryoku` is baked with `git archive HEAD`, so an
+  uncommitted package-list or config change reached the TUI and backend on a
+  local ISO but not the payload. The option archives the working tree through a
+  throwaway index instead: no commit, the real index untouched, ignored files
+  still left out. The payload commit is tagged `+worktree`.
 - The offline closure ships GPU Screen Recorder. `base.packages` swaps
   `wf-recorder` for `gpu-screen-recorder`, so the baked `[offline]` repo carries
   the GPU-only recorder; Ryoku Motion (`ryomotion`) is no longer built, so it

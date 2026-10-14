@@ -111,6 +111,13 @@ The ISO lands in `installation/iso/out/`. To stage everything but stop before
 ./build.sh --stage-only
 ```
 
+The payload under `/usr/share/ryoku` is baked from `HEAD`. To test uncommitted
+work, bake the working tree instead (no commit is made):
+
+```
+RYOKU_ISO_WORKTREE=1 ./build.sh
+```
+
 If `mkarchiso` is missing, `build.sh` stages the profile and prints the exact
 command to finish by hand:
 
@@ -119,7 +126,9 @@ sudo --preserve-env=SOURCE_DATE_EPOCH mkarchiso -v -w work -o out ./staging/prof
 ```
 
 Output, work, and staging directories live under `installation/iso/` and are
-git-ignored.
+git-ignored, as is the package cache the offline bake keeps per variant
+(`offline-cache-plain`, `offline-cache-cachyos`) so a rebuild downloads only
+what changed.
 
 ## Booting it
 
