@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import Quickshell
+import Ryoku.Ui as RyokuUi
 import stage.modules.common.functions
 import stage.modules.common.widgets
 import stage.services
@@ -61,11 +61,12 @@ Item {
         TaskbarApps.reorderPinnedFileByIndex(index, targetIndex);
     }
 
-    FolderDialog {
+    RyokuUi.FileDialogHost {
         id: dockFolderDialog
+        folders: true
         title: Translation.tr("Choose a folder for the dock")
         currentFolder: "file://" + Quickshell.env("HOME")
-        onAccepted: subPageRoot.addDockFolder(selectedFolder.toString())
+        onAccepted: subPageRoot.addDockFolder(dockFolderDialog.selectedFolder.toString())
     }
 
     // Geometry for the cards' items: the dock's own, laid out flat.

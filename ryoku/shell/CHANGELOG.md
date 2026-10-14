@@ -8,6 +8,10 @@
   longer carry a border-width arm for a state in which nothing is drawn. The
   exclusive-zone reserves above keep theirs, since a zone is claimed whether or
   not a band is painted (`modules/bar/Frame.qml`).
+- **Every file dialog opens somewhere sensible.** "+ Browse" on a desktop
+  widget, the Stage layer pickers, the wallpaper card and the profile picture
+  used to open in the shell's working directory; the image choosers now start
+  in the picture directory and the rest at home.
 
 ### Added
 - **The ii dock design.** The dock ported from P3DROVFX's ii-p3drovfx joins the
@@ -651,6 +655,15 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **Picking a file no longer crashes the shell once its window has been
+  rebuilt.** Quickshell deletes the window behind a hidden layer-shell or popup
+  surface, and Qt's non-native `FileDialog` kept a bare pointer to the
+  implementation it had parented to that window, so the next "+ Browse" on a
+  desktop widget, Stage layer pick, profile-picture or subtitle chooser, VPN
+  import or dock-folder pick dereferenced freed memory (a segfault on Qt 6.12,
+  the dialog silently doing nothing before). Every site now goes through
+  `Ryoku.Ui.FileDialogHost`, which builds the dialog for the window it opens in
+  and drops it when that window goes away (#405).
 - **The dedicated microphone-mute key works again.** `XF86AudioMicMute` now
   toggles the default PipeWire source on every supported compositor (#394).
 - **Super+T is labelled “Group windows (tabbed)”.** The clearer name distinguishes

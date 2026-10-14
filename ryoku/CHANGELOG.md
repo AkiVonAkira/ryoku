@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Added
+- **`FileDialogHost` (`Ryoku.Ui`): the one way a surface opens the system file
+  or folder dialog.** It takes a `FileDialog`'s `title`, `nameFilters` and
+  `currentFolder`, builds the dialog for the window it opens in and drops it
+  when that window is rebuilt, which is what Quickshell does to every hidden
+  layer-shell or popup window. A `FileDialog` declared directly in a surface
+  outlives its implementation and crashes on its next open.
 - **The desktop now has a Fedora host path.** Package and service actions use
   DNF and systemd through `ryoku-host`, the Hub reflects Fedora's unavailable
   snapshot and AUR capabilities, and updates and compositor package switches
