@@ -186,6 +186,7 @@ jobs:
             -e HOST_UID="$(id -u)" \
             -e HOST_GID="$(id -g)" \
             -e RYOKU_VARIANT="$RYOKU_VARIANT" \
+            -e RYOKU_ISO_REPO_URL="$RYOKU_ISO_REPO_URL" \
             archlinux:latest \
             bash -euo pipefail -c '
               # refresh the keyring first: a stale base image cannot verify
