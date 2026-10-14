@@ -9,7 +9,7 @@ local function close_active()
     local f = io.open((os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")) .. "/ryoku/shell.json")
     local s = f and f:read("a") or ""
     if f then f:close() end
-    local style = s:match('"barStyle"%s*:%s*"([^"]*)"') or "qsbar"
+    local style = s:match('"barStyle"%s*:%s*"([^"]*)"') or "orpheus"
     if style == "iris" and s:find('"closeConfirm"%s*:%s*{[^{}]*"enabled"%s*:%s*true') then
         hl.exec_cmd("qs -c shell ipc call closeConfirm trigger")
     else

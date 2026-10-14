@@ -581,7 +581,7 @@ Item {
 
         JsonAdapter {
             id: shellAdapter
-            property string barStyle: "qsbar"
+            property string barStyle: "orpheus"
         }
     }
 

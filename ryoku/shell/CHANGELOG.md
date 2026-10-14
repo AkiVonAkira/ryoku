@@ -3,6 +3,26 @@
 ## Unreleased
 
 ### Added
+- **Orpheus is Ryoku's default bar.** `Ryoku.Blobs` drops hang from the top
+  edge with a voice in the middle that shows the time, the track, a fresh
+  notification, or a recording, budding small bubbles beside it when it is
+  busy. Every drop moves with the music. The lower edge rises on the beat and
+  settles on the chosen feel, traced in ink where it lifts, and stays flat in
+  silence. The Sound page's gain slider sets how much it reacts. The liquid form
+  melts every drop into the edge; the square form keeps crisp corners and hangs a
+  row of level blocks under the voice. Islands tuck the side drops into the
+  screen corners, fused joins them, and full runs edge to edge, morphing between
+  them; pages grow out of the drop they belong to, melt into a screen edge they
+  reach, and close on a click anywhere else. Pages and the settings window use
+  Ryoku's own controls on the frame's paper, and the settings window arranges
+  modules by drag and drop. Every choice is confirmed by the shell daemon and
+  retried until it lands, and the settings rail says when one could not be saved.
+  New installs select Orpheus, and `ryoku doctor` moves stores with no
+  `barStyle` or a retired style to it while keeping explicit choices
+  (`quickshell/shell/modules/bar/barstyles/orpheus/`,
+  `quickshell/shell/services/Config.qml`, `plugin/blobgroup.cpp`,
+  `plugin/blobwave.cpp`, `plugin/shaders/blob.frag`,
+  `../assets/rices/default/rice.json`, `../cli/internal/doctor/doctor.go`).
 - **Kairos quick settings can forget a paired Bluetooth device.** The Bluetooth
   page offered only Connect and Disconnect, so a device paired from there could
   not be dropped without `bluetoothctl`; Forget now sits beside Connect on any
@@ -115,7 +135,7 @@
   respects reduced motion and low-power mode, and fits smaller screens
   (`quickshell/welcome/`).
 - **New installs land on Ryoku's default rice.** On the first login after a
-  fresh install, the session intro applies the packaged default look (QS Bar
+  fresh install, the session intro applies the packaged default look (Orpheus
   with the shipped settings, matched on both compositors), picks a random
   wallpaper from the seeded set, and only then opens the welcome. A failed
   apply keeps the installer's marker and retries on the next login; existing
@@ -452,6 +472,11 @@
   Ryoku's seams (`../inir/`).
 
 ### Changed
+- **The spectrum feed stays quiet in silence.** A band at the noise floor now
+  reads as silent, a silent frame that follows another no longer rewrites the
+  levels, and the settle-to-flat timer writes once instead of every 120 ms, so
+  music surfaces rest in a quiet room
+  (`quickshell/shell/services/AudioBars.qml`).
 - **Python catches up with serpantinum's fixes.** A curated sync of the
   upstream shell's bug fixes and small features that stand on their own,
   leaving its rearchitecture out: the clock stops re-evaluating its date string
@@ -600,12 +625,6 @@
   it. The sharp themes keep their crisp joins, and the Fusion slider still
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
-- **QS Bar is the shipped default again.** A store with no `barStyle` renders
-  QS Bar, and the Hub's Bar Studio, the Ryostore catalogue and both compositors'
-  close-confirm binds now agree on that; iRiS stays one click away
-  (`services/Config.qml`, `../../hub/quickshell/pages/BarStudioPage.qml`,
-  `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
-  `../../hyprland/modules/binds.lua`).
 ### Fixed
 - **Ryogami's Workshop tab finds your Wallpaper Engine scenes.** On the first
   run after an install the tab said "No Wallpaper Engine scenes yet" until
