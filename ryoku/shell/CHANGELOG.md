@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Changed
+- **Ask and the sidebar chat point at the Hub when Rashin is off.** A quick
+  ask or a chat message on a box without `ryoku-rashin` answers "Rashin is off,
+  switch it on in Ryoku Hub" instead of naming a package to install by hand.
 - **The painted frame band drops four fallbacks it could never reach.** `FrameChrome`
   is only visible while the sumi frame is active, so its per-edge reserves no
   longer carry a border-width arm for a state in which nothing is drawn. The
