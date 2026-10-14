@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Added
+- **A catalogue bind can need a program.** `wm.CatalogBind.Needs` names the
+  optional app a bind launches; while that program is not on PATH every
+  provider registers no chord for it (the Hyprland K() table carries `false`,
+  niri and Wayfire leave it out of the rendered config) and the legend row
+  names what is missing. The Ask bar and the Rashin window are the first two,
+  so removing Rashin takes Alt+Space and Super+Alt+Space with it instead of
+  leaving keys that open a surface that can only say it is gone.
 - **`FileDialogHost` (`Ryoku.Ui`): the one way a surface opens the system file
   or folder dialog.** It takes a `FileDialog`'s `title`, `nameFilters` and
   `currentFolder`, builds the dialog for the window it opens in and drops it

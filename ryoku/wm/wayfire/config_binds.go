@@ -178,11 +178,28 @@ type wayfireBind struct {
 	hint                     string
 }
 
+// hasProgram is the PATH lookup behind the catalogue's Needs rule; a test pins
+// it so the rendered config never depends on what the box running it has.
+var hasProgram = wm.HasProgram
+
 // defaultBinds is the whole catalogue mapped onto wayfire's vocabulary: what
-// wayfire performs natively, what it runs through the command plugin, and what
-// it honestly cannot do. An id absent here is left off entirely, which would be
-// a bug, so the tests assert full coverage.
+// wayfire performs natively, what it runs through the command plugin, what it
+// honestly cannot do, and what it cannot do right now because the program a
+// bind launches is not installed, which takes the same reason-only shape so it
+// is neither emitted nor hidden. An id absent here is left off entirely, which
+// would be a bug, so the tests assert full coverage.
 func defaultBinds() map[string]wayfireBind {
+	defs := shippedBinds()
+	for _, cb := range wm.ShippedBinds() {
+		if reason := cb.Missing(hasProgram); reason != "" {
+			wb := defs[cb.ID]
+			defs[cb.ID] = wayfireBind{reason: reason, label: wb.label, hint: wb.hint}
+		}
+	}
+	return defs
+}
+
+func shippedBinds() map[string]wayfireBind {
 	return map[string]wayfireBind{
 		// Windows
 		"window.close": {

@@ -44,14 +44,33 @@ func spawnArgs(args ...string) string {
 
 func spawnSh(cmd string) string { return "spawn-sh " + kdlStr(cmd) }
 
+// hasProgram is the PATH lookup behind the catalogue's Needs rule; a test pins
+// it so the rendered config never depends on what the box running it has.
+var hasProgram = wm.HasProgram
+
 // defaultBinds maps each catalogue id to niri's expression of it. Compositor
 // behaviours become niri actions; app and shell launches spawn the same commands
 // (shell surfaces go through ryoku-shell, whose openSurface bus is compositor
 // agnostic); niri's own overview takes the workspace overview. Behaviours niri
 // cannot perform (pin, the scratchpad, mouse-button drag, desktop blocks) carry
-// a reason so the legend reports them instead of hiding them. An id absent here
-// is left off entirely, which would be a bug, so the tests assert full coverage.
+// a reason so the legend reports them instead of hiding them, and a bind whose
+// program is not installed takes the same shape, so it is neither emitted nor
+// hidden. An id absent here is left off entirely, which would be a bug, so the
+// tests assert full coverage.
 func defaultBinds() map[string]niriBind {
+	defs := shippedBinds()
+	for _, cb := range wm.ShippedBinds() {
+		if reason := cb.Missing(hasProgram); reason != "" {
+			nb := defs[cb.ID]
+			nb.action = ""
+			nb.reason = reason
+			defs[cb.ID] = nb
+		}
+	}
+	return defs
+}
+
+func shippedBinds() map[string]niriBind {
 	return map[string]niriBind{
 		// Windows
 		// The iRiS frame can ask before a window closes; only when that is on and

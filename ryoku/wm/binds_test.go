@@ -283,3 +283,30 @@ func find(t *testing.T, id string) CatalogBind {
 	t.Fatalf("bind %q not in catalogue", id)
 	return CatalogBind{}
 }
+
+// A bind that launches an optional app loses its chord when the app is gone,
+// and the legend names the program; every other bind is untouched by the lookup.
+func TestMissingNamesTheAbsentProgram(t *testing.T) {
+	absent := func(string) bool { return false }
+	present := func(string) bool { return true }
+	var needy, plain int
+	for _, b := range ShippedBinds() {
+		if b.Needs == "" {
+			plain++
+			if got := b.Missing(absent); got != "" {
+				t.Errorf("%s needs nothing but reads missing: %q", b.ID, got)
+			}
+			continue
+		}
+		needy++
+		if got := b.Missing(present); got != "" {
+			t.Errorf("%s has its program but reads missing: %q", b.ID, got)
+		}
+		if got := b.Missing(absent); got != b.Needs+" is not installed." {
+			t.Errorf("%s missing reason = %q", b.ID, got)
+		}
+	}
+	if needy == 0 || plain == 0 {
+		t.Fatalf("catalogue has %d needy and %d plain binds; the test needs both", needy, plain)
+	}
+}
