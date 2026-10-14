@@ -637,6 +637,9 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **Staggered launcher results no longer create binding loops.** An Entrance
+  that fills its parent no longer derives its implicit size from children that
+  fill it in turn, stopping repeated geometry warnings and memory growth (#383).
 - **Monitor reconnects now trigger the shell's screen-settle handler.** The
   `screensChanged` callback restarts its Timer by QML id instead of reading a
   nonexistent property from `root`; without the timer, the per-monitor surface
