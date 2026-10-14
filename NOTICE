@@ -69,6 +69,17 @@ depth services, gives it the Ryoku look, and leaves out its lock screen, bar and
 dock editing. ii-p3drovfx is released under the GNU General Public License
 version 3; the ported portions keep that license, compatible with Ryoku's GPL-3.
 
+The ii dock design (ryoku/shell/quickshell/shell/modules/dock/ii/) is based on
+the dock of the same shell, ii-p3drovfx by P3DROVFX, Scrimas and contributors
+(https://github.com/P3DROVFX/ii-p3drovfx), itself descended from end-4's
+illogical-impulse (https://github.com/end-4/dots-hyprland). It is a modified
+version: Ryoku reads and writes its options through its own shared dock store
+and stage configuration, takes its global state, theme, window data and
+keybinds from the Ryoku shell and window-manager seams, and adds the store
+bridge that keeps the design in sync with the other dock designs. It is
+released under the GNU General Public License version 3; the ported portions
+keep that license, compatible with Ryoku's GPL-3.
+
 The QS Bar style at
 ryoku/shell/quickshell/shell/modules/bar/barstyles/qsbar/ is a port of
 Quickshell Rise by HANCORE-linux

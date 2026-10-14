@@ -3,6 +3,17 @@
 ## Unreleased
 
 ### Added
+- **The ii dock design.** The dock ported from P3DROVFX's ii-p3drovfx joins the
+  shared dock store as a fourth design: pick "ii" in the Stage Editor's dock
+  page and the shell mounts the ported tray, its magnification, app groups,
+  widget tiles (media, weather, tasks, sports, live preview, phone), the
+  live-draw overlay, the alarm clock app and the design's own settings page,
+  on Hyprland and niri alike. Its options live beside the other designs' in
+  shell.json's one `dock` object, so the Hub, `ryoku-shell dock` and the stage
+  edit pages keep working unchanged (`quickshell/shell/modules/dock/ii/`,
+  `quickshell/shell/modules/dock/IiDockHost.qml`,
+  `quickshell/shell/components/WindowEmbed.qml`,
+  `quickshell/shell/components/WorkspaceSlide.qml`).
 - **Orpheus is Ryoku's default bar.** `Ryoku.Blobs` drops hang from the top
   edge with a voice in the middle that shows the time, the track, a fresh
   notification, or a recording, budding small bubbles beside it when it is

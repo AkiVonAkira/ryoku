@@ -19,6 +19,9 @@
 - **Credits now name QS Bar's source.** Quickshell Rise by HANCORE-linux joins
   the Hub credits and root provenance notice
   (`quickshell/pages/CreditsPage.qml`, `../../NOTICE`).
+- **Credits name ii-p3drovfx as the ii dock's source too.** The row that
+  already credited the shell for the Stage Editor now names the dock design
+  beside it (`quickshell/pages/CreditsPage.qml`, `../../NOTICE`).
 - Global > Language & Region offers a 24-hour time switch for all Ryoku clocks; off selects 12-hour time with AM/PM.
 - Battery settings include low-battery alerts, independent warning and critical
   switches and percentages, and a test notification. Either reminder can run
