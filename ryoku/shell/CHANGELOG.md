@@ -34,6 +34,12 @@
   `quickshell/shell/services/Config.qml`, `plugin/blobgroup.cpp`,
   `plugin/blobwave.cpp`, `plugin/shaders/blob.frag`,
   `../assets/rices/default/rice.json`, `../cli/internal/doctor/doctor.go`).
+- **Kairos quick settings can forget a paired Bluetooth device.** The Bluetooth
+  page offered only Connect and Disconnect, so a device paired from there could
+  not be dropped without `bluetoothctl`; Forget now sits beside Connect on any
+  device the adapter has saved, which is what a device that has gone stale on
+  the other end needs before it will pair again
+  (`modules/bar/barstyles/kairos/quicksettings/pages/BluetoothPage.qml`).
 - **`ryoku update` shows one bar per compilation on source boxes, with how long
   each piece usually takes.** The terminal and Hub share the per-piece view and
   first-build explanation.
