@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Fixed
+- **The CachyOS edition's disk layout starts from CachyOS's sizes.** It
+  defaulted to the Arch edition's 1 GiB ESP and 16 GiB swap; it now starts at a
+  4 GiB ESP and no swap partition, as CachyOS's installer does for Limine
+  (`cachyos-settings` brings zram swap). The Zen browser hint on that edition
+  names the CachyOS repo it installs from instead of the AUR.
 - **Installer product choices no longer drift between editions or entry
   points.** Browser, login-shell and compositor order, labels, defaults,
   package stacks and fresh/existing shell policies now come from one shared

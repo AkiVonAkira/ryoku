@@ -353,8 +353,8 @@ ryoku_boot_default_limine() {
 # limine hook. shadowing candidates are removed either way.
 ryoku_boot_limine_conf() {
   local mode=$1
-  # variant kernel: cachyos boots linux-cachyos (stock linux stays installed and
-  # the limine hook lists it as fallback); plain boots stock linux.
+  # variant kernel: cachyos boots linux-cachyos (linux-cachyos-lts is installed
+  # too and the limine hook lists it as fallback); plain boots stock linux.
   local kver=linux; [[ ${RYOKU_VARIANT:-plain} == cachyos ]] && kver=linux-cachyos
   # record it: on a live box a kernel package the user added later looks exactly
   # like the one the install was built around, so `ryoku doctor` has nothing to

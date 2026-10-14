@@ -3,6 +3,16 @@
 ## Unreleased
 
 ### Added
+- `cachyos.packages`: **a CachyOS install carries what CachyOS's own installer
+  lays.** `linux-cachyos-lts` and its headers (the fallback kernel, in place of
+  stock `linux`), `cachyos-rate-mirrors`, `yay`, `cachyos-hooks`, `chwd`,
+  `cachyos-kernel-manager`, `cachyos-packageinstaller` and `btrfs-assistant`.
+  `zlib-ng-compat` and `lib32-zlib-ng-compat` are named because CachyOS marks
+  them as replacing zlib: pacman resolves a dependency by name, so without them
+  the install got plain zlib and the first update asked to swap it.
+- `cachyos.replaces`: **new.** The `base.packages` and `aur.packages` names the
+  CachyOS layer replaces (`linux`, `yay-bin`), left out of pacstrap, the AUR
+  step and the offline bake.
 - `base.packages`: **new installs choose one browser and one login-shell stack.**
   Firefox and Fish are recommended, with Chromium or Zen and Bash or Zsh
   available in the installers. The unchosen packages are filtered before

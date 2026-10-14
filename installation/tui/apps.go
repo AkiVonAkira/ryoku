@@ -74,8 +74,20 @@ func browsers() []item {
 	return choiceItems(installerplan.Browser, installerplan.ResolveSource("Arch"), true)
 }
 
+// cachyosBrowserHints replaces the shared hint of a browser the CachyOS
+// repositories serve, which that edition installs from the repo, not the AUR.
+var cachyosBrowserHints = map[string]string{"zen": "vertical tabs · CachyOS repo"}
+
 func browsersForVariant(variant string) []item {
-	return choiceItems(installerplan.Browser, installerChoicesForVariant(variant), true)
+	items := choiceItems(installerplan.Browser, installerChoicesForVariant(variant), true)
+	if variant == variantCachyOS {
+		for i := range items {
+			if hint, ok := cachyosBrowserHints[items[i].key]; ok {
+				items[i].hint = i18n.T(hint)
+			}
+		}
+	}
+	return items
 }
 
 // shippedBrowserCount is how many browsers the edition can install: the None
