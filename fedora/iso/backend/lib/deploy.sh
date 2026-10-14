@@ -7,7 +7,10 @@ fedora_desktop_install() {
   local lane id lanes plan
   lanes=$(ryoku_profile_lanes) || exit 1
   while IFS= read -r lane; do args+=(--lane "$lane"); done <<<"$lanes"
-  [[ $RYOKU_COMPOSITOR != hyprland ]] || args+=(--lane hyprland)
+  # A provider with a lane of its own name in the translation table gets it.
+  if cut -f3 "$RYOKU_REPO/fedora/packages/translations.tsv" | tr ',' '\n' | grep -qx -- "$RYOKU_COMPOSITOR"; then
+    args+=(--lane "$RYOKU_COMPOSITOR")
+  fi
   for id in "${RYOKU_COMPOSITOR_CHOICES[@]}"; do
     [[ $id == "$RYOKU_COMPOSITOR" ]] || args+=(--drop "ryoku-desktop-$id")
   done

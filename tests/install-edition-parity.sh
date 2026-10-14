@@ -44,6 +44,9 @@ answers=(
   RYOKU_LOCALE=en_US.UTF-8
   RYOKU_TIMEZONE=auto
   RYOKU_ONLINE=1
+  # The Fedora backend reads the release from the host otherwise, which an Arch
+  # dev box does not carry.
+  RYOKU_FEDORA_RELEASEVER=44
   RYOKU_FIRMWARE_MODE=uefi
   RYOKU_ESP_MODE=shared
   RYOKU_SUBVOL_SNAPSHOTS=1

@@ -40,9 +40,8 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 run_case() {
-  local name=$1 strategy=$2 compositor=$3 encrypt=$4 esp_mode=${5:-dedicated} snapshots=${6:-1}
-  local out=$tmp/$name.out config=$compositor
-  [[ $compositor == hyprland ]] && config=hypr
+  local name=$1 strategy=$2 compositor=$3 config=$4 encrypt=$5 esp_mode=${6:-dedicated} snapshots=${7:-1}
+  local out=$tmp/$name.out
   local -a envs=(
     RYOKU_DISK_STRATEGY="$strategy"
     RYOKU_PROFILE=amd
@@ -75,12 +74,13 @@ run_case() {
   grep -qF 'systemctl set-default graphical.target' "$out" || fail "$name: graphical target"
   ! grep -qiE 'limine|xbps|pacman -S' "$out" || fail "$name: another edition's tooling leaked in"
 
-  if [[ $compositor == hyprland ]]; then
-    grep -qE 'install .* hyprland ' "$out" || fail "$name: hyprland lane"
-    grep -qE 'install .* ryoku-desktop-hyprland ' "$out" || fail "$name: hyprland variant"
-    ! grep -qE 'install .* ryoku-desktop-niri( |$)' "$out" || fail "$name: niri variant installed"
-  else
-    ! grep -qE 'install .* ryoku-desktop-hyprland( |$)' "$out" || fail "$name: hyprland variant installed"
+  # The chosen provider's variant lands, no other provider's does, and a
+  # provider with a lane of its own name in the table gets that lane's packages.
+  grep -qE "install .* ryoku-desktop-$compositor( |$)" "$out" || fail "$name: $compositor variant"
+  others=$(grep -oE 'ryoku-desktop-[a-z]+' "$out" | sort -u | grep -vx -- "ryoku-desktop-$compositor" || true)
+  [[ -z $others ]] || fail "$name: another provider's variant installed: $others"
+  if cut -f3 "$repo/fedora/packages/translations.tsv" | tr ',' '\n' | grep -qx -- "$compositor"; then
+    grep -qE "install .* $compositor( |$)" "$out" || fail "$name: $compositor lane"
   fi
   if [[ $encrypt == yes ]]; then
     grep -qF 'rd.luks.uuid=luks-' "$out" || fail "$name: LUKS cmdline"
@@ -100,11 +100,11 @@ run_case() {
 }
 
 printf 'VERSION_ID=44\n' >"$tmp/os-release"
-run_case whole-niri whole niri no
-run_case whole-hyprland-crypt whole hyprland yes
-run_case whole-no-snapshots whole niri no dedicated 0
-run_case alongside-auto alongside niri no auto
-run_case alongside-dedicated alongside hyprland yes dedicated
+run_case whole-niri whole niri niri no
+run_case whole-hyprland-crypt whole hyprland hypr yes
+run_case whole-no-snapshots whole niri niri no dedicated 0
+run_case alongside-auto alongside niri niri no auto
+run_case alongside-dedicated alongside hyprland hypr yes dedicated
 
 shared_out=$tmp/shared-refused.out
 if install_dryrun_run fedora "$shared_out" \
