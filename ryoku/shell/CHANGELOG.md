@@ -640,6 +640,10 @@
 - **Staggered launcher results no longer create binding loops.** An Entrance
   that fills its parent no longer derives its implicit size from children that
   fill it in turn, stopping repeated geometry warnings and memory growth (#383).
+- **A proportional system font no longer reaches the terminal.** The font
+  pipeline applies the UI and terminal families independently, defaulting kitty
+  and the desktop monospace setting to JetBrainsMono Nerd Font while the shell
+  and apps keep Space Grotesk.
 - **Monitor reconnects now trigger the shell's screen-settle handler.** The
   `screensChanged` callback restarts its Timer by QML id instead of reading a
   nonexistent property from `root`; without the timer, the per-monitor surface
