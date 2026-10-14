@@ -461,9 +461,12 @@ func TestReconcileLimineKernelImagesInaccessiblePreventsRebuild(t *testing.T) {
 	}
 
 	// In apply mode (checkOnly = false). Must NOT rebuild or prune on uncertain state.
+	// A denied read is a note, not a warning: /boot is root-only on a normal box,
+	// so every unprivileged `ryoku update` would otherwise end on a finding the
+	// user can do nothing about.
 	res := reconcileLimineKernelImages(false)
-	if res.status != recWarn {
-		t.Fatalf("got status %d, want recWarn (%d)", res.status, recWarn)
+	if res.status != recNote {
+		t.Fatalf("got status %d, want recNote (%d)", res.status, recNote)
 	}
 	if !strings.Contains(res.detail, "cannot inspect kernel boot images on /boot") || !strings.Contains(res.detail, "linux") {
 		t.Errorf("unexpected detail: %s", res.detail)
@@ -663,16 +666,16 @@ func TestReconcileLimineKernelImagesIncompleteDiscoveryPreventsPruneAndRebuild(t
 	limineESPConf = confPath
 
 	resCheck := reconcileLimineKernelImages(true)
-	if resCheck.status != recWarn {
-		t.Fatalf("check mode: got status %d, want recWarn (%d)", resCheck.status, recWarn)
+	if resCheck.status != recNote {
+		t.Fatalf("check mode: got status %d, want recNote (%d)", resCheck.status, recNote)
 	}
 	if !strings.Contains(resCheck.detail, "cannot inspect installed kernel metadata") {
 		t.Errorf("check mode: unexpected detail: %s", resCheck.detail)
 	}
 
 	resApply := reconcileLimineKernelImages(false)
-	if resApply.status != recWarn {
-		t.Fatalf("apply mode: got status %d, want recWarn (%d)", resApply.status, recWarn)
+	if resApply.status != recNote {
+		t.Fatalf("apply mode: got status %d, want recNote (%d)", resApply.status, recNote)
 	}
 	if rebuildCalled {
 		t.Error("apply mode: rebuildInitramfs was called despite incomplete kernel discovery")
@@ -1077,5 +1080,38 @@ func TestReconcileLimineKernelImagesMixedRealAndBrokenSymlink(t *testing.T) {
 	}
 	if pruneCalled {
 		t.Error("apply mode: pruneLimineStrayImages was called despite broken symlink")
+	}
+}
+
+// The point of the change is the distinction, not making every unreadable image
+// quiet: a /boot that denies the read is a note, but an image that cannot be
+// stat'd for any other reason is still a finding the user should see.
+func TestReconcileLimineKernelImagesWarnsOnNonPermissionStatFailure(t *testing.T) {
+	origESP, origPkg, origStat := limineESPConf, liminePkgInstalled, limineKernelImageStat
+	origKernels, origRebuild, origPrune := limineInstalledKernels, limineRebuildInitramfs, liminePruneStrayImages
+	t.Cleanup(func() {
+		limineESPConf, liminePkgInstalled, limineKernelImageStat = origESP, origPkg, origStat
+		limineInstalledKernels, limineRebuildInitramfs, liminePruneStrayImages = origKernels, origRebuild, origPrune
+	})
+	liminePkgInstalled = func(string) bool { return true }
+	limineInstalledKernels = func() (map[string]installedKernel, []incompleteKernel, error) {
+		return map[string]installedKernel{"linux": {version: "7.2-arch"}}, nil, nil
+	}
+	limineKernelImageStat = func(string) (os.FileInfo, error) { return nil, syscall.EIO }
+
+	dir := t.TempDir()
+	confPath := filepath.Join(dir, "limine.conf")
+	conf := "/+Ryoku\n" +
+		"  //linux\n" +
+		"  comment: Kernel version: 7.2-arch\n" +
+		"  protocol: efi\n" +
+		"  path: boot():/EFI/Linux/ryoku_linux.efi\n"
+	if err := os.WriteFile(confPath, []byte(conf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	limineESPConf = confPath
+
+	if res := reconcileLimineKernelImages(true); res.status != recWarn {
+		t.Fatalf("got status %d, want recWarn (%d): %s", res.status, recWarn, res.detail)
 	}
 }
