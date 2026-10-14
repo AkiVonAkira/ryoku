@@ -186,6 +186,11 @@ var loginShellChoices = installerplan.IDs(installerplan.LoginShell)
 var browserPackage = func() map[string]string {
 	packages := make(map[string]string, len(browserChoices))
 	for _, choice := range installerplan.Choices(installerplan.Browser) {
+		// None installs nothing, so it has no package to name and stays out of
+		// the map. Its only reader asks for "zen" by name.
+		if len(choice.Packages) == 0 {
+			continue
+		}
 		packages[choice.ID] = choice.Packages[0]
 	}
 	return packages
@@ -2563,6 +2568,13 @@ func (e *engine) setDefaultBrowser() error {
 	if e.dry {
 		e.say(i18n.Tf("DRYRUN: set %s as the default browser for http, https and html", e.p.browser))
 		e.say(i18n.Tf("DRYRUN: write desktop.apps.browser=%s to %s", browserRoleCommand(e.p.browser), store))
+		return nil
+	}
+	// "none" is the user declining a browser, not one that failed to land.
+	// Returning here keeps the log honest and leaves desktop.apps.browser unset,
+	// which browserRoleCommand would otherwise fill with the literal "none".
+	if e.p.browser == "none" {
+		e.say(i18n.T("no browser chosen; leaving the browser defaults and the desktop role unset"))
 		return nil
 	}
 	desktop := ""

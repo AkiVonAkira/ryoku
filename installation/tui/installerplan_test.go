@@ -72,7 +72,8 @@ func TestUnavailableChoiceNoticeUsesEditionTableReason(t *testing.T) {
 			for _, item := range items {
 				ids = append(ids, item.key)
 			}
-			if got, want := strings.Join(ids, ","), "firefox,chromium"; got != want {
+			// None installs nothing, so no edition table can withhold it.
+			if got, want := strings.Join(ids, ","), "firefox,chromium,none"; got != want {
 				t.Fatalf("browser choices = %q, want %q", got, want)
 			}
 			notices := unavailableChoiceNotices(plan, installerplan.Browser)

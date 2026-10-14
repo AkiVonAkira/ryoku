@@ -381,16 +381,16 @@ func TestEditionBrowserChoicesFollowPackageTables(t *testing.T) {
 		"Fedora fixture": {
 			facts:   &facts{distro: fedoraLinux},
 			edition: loadUnavailableZenFixture("fedora"),
-			want:    "firefox,chromium",
+			want:    "firefox,chromium,none",
 		},
 		"Void fixture": {
 			facts:   &facts{distro: voidLinux},
 			edition: loadUnavailableZenFixture("void"),
-			want:    "firefox,chromium",
+			want:    "firefox,chromium,none",
 		},
 		"Arch": {
 			facts: &facts{distro: archLinux},
-			want:  "firefox,chromium,zen",
+			want:  "firefox,chromium,zen,none",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

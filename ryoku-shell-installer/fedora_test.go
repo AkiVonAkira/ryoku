@@ -356,7 +356,8 @@ func TestFedoraCompositorsComeFromEditionTable(t *testing.T) {
 	if got := strings.Join(plan.choices.AvailableIDs(installerplan.Compositor), ","); got != "hyprland,niri" {
 		t.Fatalf("Fedora compositors = %q, want hyprland,niri", got)
 	}
-	if got := strings.Join(plan.choices.AvailableIDs(installerplan.Browser), ","); got != "firefox,chromium" {
+	// None installs nothing, so no edition table can withhold it.
+	if got := strings.Join(plan.choices.AvailableIDs(installerplan.Browser), ","); got != "firefox,chromium,none" {
 		t.Fatalf("Fedora browsers = %q, want firefox,chromium", got)
 	}
 	if got := strings.Join(unavailableChoiceNotices(plan, installerplan.Compositor), "\n"); !strings.Contains(got, "Wayfire unavailable") || !strings.Contains(got, "requires 0.11") {

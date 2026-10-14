@@ -28,6 +28,11 @@ type Choice struct {
 	TUIHint            string
 	ShellDetail        string
 	Experimental       bool
+	// Installs nothing: the "none" flag marks a choice that is a deliberate
+	// opt-out rather than a row whose package column was left blank by mistake.
+	// Only a browser carries one today; a compositor or a login shell is not
+	// something a Ryoku box can go without.
+	NoPackages bool
 }
 
 type Availability struct {
@@ -91,12 +96,21 @@ func parseManifest(data []byte) (definition, error) {
 				TUIHint:            dashEmpty(fields[9]),
 				ShellDetail:        dashEmpty(fields[10]),
 				Experimental:       strings.Contains(","+fields[11]+",", ",experimental,"),
+				NoPackages:         strings.Contains(","+fields[11]+",", ",none,"),
 			}
 			if packages := dashEmpty(fields[4]); packages != "" {
 				choice.Packages = strings.Split(packages, ",")
 			}
-			if choice.Kind == "" || choice.ID == "" || choice.Label == "" || len(choice.Packages) == 0 {
+			if choice.Kind == "" || choice.ID == "" || choice.Label == "" {
 				return definition{}, fmt.Errorf("installer choices line %d is incomplete", lineNo+1)
+			}
+			// An empty package column is a typo unless the row says it meant it,
+			// and a row that says so must not also carry packages.
+			if len(choice.Packages) == 0 && !choice.NoPackages {
+				return definition{}, fmt.Errorf("installer choices line %d lists no packages; add the none flag if that is deliberate", lineNo+1)
+			}
+			if len(choice.Packages) > 0 && choice.NoPackages {
+				return definition{}, fmt.Errorf("installer choices line %d is flagged none but lists packages", lineNo+1)
 			}
 			for _, existing := range def.choices[choice.Kind] {
 				if existing.ID == choice.ID {
