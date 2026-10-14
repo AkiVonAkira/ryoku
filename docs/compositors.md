@@ -109,6 +109,7 @@ Hyprland only:
 
     configReload  cursorSet  focusGrab  globalShortcuts  liveConfigEval
     persistentScreenCapture  plugins  screenShader  submap  tiledLayout
+    windowEmbed  workspaceSlideStyle
 
 niri only:
 
@@ -165,6 +166,14 @@ that change what a user sees:
   (`wlopm`), so a single named output can be blanked; its HDR claim is the
   compositor's on/off switch, with wide gamut and SDR brightness reported as
   losses.
+- **`windowEmbed`** is absent on niri and wayfire: no window can be pinned to
+  a layer surface's screen and corner there, so the ii dock's phone-mirror
+  frame shows its scrcpy session as a plain window instead of drawing it
+  through the panel's cut-out.
+- **`workspaceSlideStyle`** is absent on niri and wayfire: neither answers a
+  query for its resolved workspace animation, so the live-draw overlay keeps
+  its built-in curve there and matches the compositor's own slide only on
+  Hyprland.
 
 `nightLight` is the one shared capability the desktop drives through named
 actions rather than a settings row:
@@ -321,6 +330,8 @@ niri has no unbind. A duplicate chord in one `binds` block is a hard error, so
 `rebinds.kdl` is the single, total keybind set: the shipped defaults with
 rebinds applied, unbinds removed, and one winner per chord. There is no seeded
 bind block to subtract from.
+`desktop.keybindDisabled` names a shipped chord the user switched off: Hyprland
+never registers it, while niri and Wayfire release it before rebinds resolve.
 
 Two seeds are compositor-specific in practice. `ryoku-gpu` keeps its policy in
 the Hyprland pin file (`gpu.lua`, the store the Hub GPU page and doctor audit).

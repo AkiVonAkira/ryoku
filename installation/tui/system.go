@@ -26,7 +26,10 @@ import (
 	wm "ryoku-wm"
 )
 
-const variantVoid = "void"
+const (
+	variantVoid    = "void"
+	variantCachyOS = "cachyos"
+)
 
 var variantMarkerPath = "/usr/share/ryoku/variant"
 
@@ -123,11 +126,7 @@ func sysLocales() []item {
 	}
 	if len(lines) == 0 {
 		if out, ok := run("locale", "-a"); ok {
-			for _, l := range strings.Split(out, "\n") {
-				if strings.Contains(strings.ToLower(l), "utf") {
-					lines = append(lines, strings.TrimSpace(l))
-				}
-			}
+			lines = utf8Locales(out)
 		}
 	}
 	var items []item
@@ -138,6 +137,25 @@ func sysLocales() []item {
 		items = append(items, item{c, c, ""})
 	}
 	return promote(items, []string{"en_US.UTF-8", "en_GB.UTF-8", "de_DE.UTF-8", "fr_FR.UTF-8", "es_ES.UTF-8"})
+}
+
+// utf8Locales keeps the UTF-8 entries of `locale -a`, which prints glibc's
+// normalized "de_DE.utf8" and "sr_RS.utf8@latin"; SUPPORTED and the promoted
+// defaults spell them "de_DE.UTF-8" and "sr_RS.UTF-8@latin".
+func utf8Locales(out string) []string {
+	var lines []string
+	for _, l := range strings.Split(out, "\n") {
+		name, modifier, _ := strings.Cut(strings.TrimSpace(l), "@")
+		base, ok := strings.CutSuffix(name, ".utf8")
+		if !ok {
+			continue
+		}
+		if modifier != "" {
+			modifier = "@" + modifier
+		}
+		lines = append(lines, base+".UTF-8"+modifier)
+	}
+	return lines
 }
 
 func localeTerritory(locale string) string {
@@ -1226,6 +1244,13 @@ func (m model) installEnv() []string {
 	// RYOKU_WIPE_CONFIRMED; an alongside install that must free leftover ryoku/
 	// ryokuboot partitions needs RYOKU_RECLAIM_LEFTOVERS (the backend otherwise
 	// dies listing them). Never emit both -- each backend path demands only its own.
+	// A disk that was blank at Review needed no ack, but a failed attempt that
+	// reached the partition step leaves its own partitions on it; everything
+	// there is that run's debris, so the retry may wipe it. A run that failed
+	// in preflight never touched the disk and earns no token.
+	if m.wipeStage != 2 && m.retried && m.partitioned && m.picks["disk"] == "whole" && len(m.existing) == 0 {
+		env = append(env, "RYOKU_WIPE_CONFIRMED=1")
+	}
 	if m.wipeStage == 2 {
 		switch m.picks["disk"] {
 		case "whole":

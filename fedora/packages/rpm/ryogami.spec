@@ -19,6 +19,7 @@ BuildRequires:  qt6-qtbase-private-devel
 BuildRequires:  qt6-qtdeclarative-devel
 BuildRequires:  qt6-qtshadertools-devel
 BuildRequires:  qt6-qtmultimedia-devel
+BuildRequires:  vulkan-headers
 BuildRequires:  wayland-devel
 BuildRequires:  wayland-protocols-devel
 BuildRequires:  ffmpeg-free-devel

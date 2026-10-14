@@ -25,6 +25,8 @@ ryoku_preflight() {
   if [[ -n ${RYOKU_DRYRUN:-} ]]; then
     if [[ ${RYOKU_REQUIRE_UEFI:-1} == 0 ]]; then
       log 'preflight: would require root, UEFI or legacy BIOS (Secure Boot off on UEFI; override RYOKU_ALLOW_SECUREBOOT=1), and %s a whole disk >= 32 GiB' "$RYOKU_DISK"
+    elif [[ ${RYOKU_ALLOW_SECUREBOOT:-} == 1 ]]; then
+      log 'preflight: would require root, UEFI (/sys/firmware/efi) with Secure Boot allowed, and %s a whole disk >= 32 GiB' "$RYOKU_DISK"
     else
       log 'preflight: would require root, UEFI (/sys/firmware/efi) with Secure Boot off (override RYOKU_ALLOW_SECUREBOOT=1), and %s a whole disk >= 32 GiB' "$RYOKU_DISK"
     fi

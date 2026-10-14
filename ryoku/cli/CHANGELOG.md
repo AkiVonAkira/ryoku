@@ -2,7 +2,35 @@
 
 ## Unreleased
 
+### Fixed
+- **Updates preserve installer package choices.** Control-manifest convergence
+  now excludes browser, login-shell, and compositor packages selected per box,
+  so it cannot install alternatives the user did not choose.
+- **`ryoku doctor` adopts the buttonless-touchpad click default once.** Saved
+  desktop settings that still carry the old disabled clickfinger default move
+  to the new enabled default, while a later explicit choice remains untouched.
+- **Privileged doctor checks stay on the desktop user's session and boot path.**
+  User services and the login shell now target the resolved sudo account,
+  Limine migrations write a nested kernel entry path instead of a numeric
+  default, and stale unloaded app scopes no longer produce reset-failed noise.
+- **`ryoku update` stops ending on a health warning you cannot act on.** On a box
+  where /boot is root-only, the kernel-image reconciler could not stat the boot
+  images and reported a warning, so every unprivileged update finished with "the
+  health check found issues" over something only root can even look at. A denied
+  read is now a note, like the boot-layout and /boot-headroom reconcilers beside
+  it already treated it; an image that fails to stat for any other reason is
+  still a warning (`internal/doctor/reconcile_limine_images.go`).
+
+### Removed
+- **`ryoku doctor` removes the unread nested frame switch.** Existing
+  `shell.json` files shed the retired key while preserving every sibling
+  setting (`internal/doctor/doctor.go`).
+
 ### Added
+- **Doctor now gates the 0.75.5 shell-settings jump with a real fixture.** The
+  test runs every shell-store migration, checks preserved choices and
+  idempotency, and rejects any retired key drop that is not explicitly listed
+  (`internal/doctor/shell_migration_fixture_test.go`).
 - **`ryoku update` shows one bar per compilation on source boxes, with how long
   each piece usually takes.** The terminal and Hub share the per-piece view and
   first-build explanation.
@@ -145,6 +173,12 @@
   (`internal/doctor/reconcile_boot_rw.go`).
 
 ### Changed
+- **Rashin is a deliver-once app.** `ryoku-rashin` joins the manifest's apps
+  table, so the doctor installs it once on a box that never had it, marks an
+  existing install as explicit (it stays when the desktop stops depending on
+  it), and leaves a removal alone. `prowl` joins the opt-in list: it only ever
+  arrives as Rashin's dependency, so a box without Rashin never gets it back
+  from the first-party lane.
 - **`bin/ryoku-track` prepares one compositor-neutral source checkout.** It
   clones `https://github.com/ryoku-dev/ryoku.git`, installs the toolchain
   through the host package manager, and no longer writes a compositor config

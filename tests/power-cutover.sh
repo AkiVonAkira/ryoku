@@ -1182,18 +1182,24 @@ exec 8>&-
   || fail "session watcher deadlocked before acknowledging its subscription"
 rm -f "$tmp/watch-runtime/ryoku-session-guard.9.ready"
 
+# A removed desktop session releases systemd's generic graphical targets so the
+# display manager can start a different desktop without stale session state.
 printf '9\n' >"$tmp/watch-runtime/ryoku-session.id"
 SESSION_WATCH_LOG="$tmp/watch-calls" SESSION_ACTIVITY_LOG="$tmp/activity-calls" \
   XDG_RUNTIME_DIR="$tmp/watch-runtime" PATH="$tmp/watch-bin:$PATH" \
   bash -c 'source "$1"; watch_session 9' _ "$helper"
 cat >"$tmp/watch-want" <<'EOF'
 --user stop ryoku-session.target
+--user is-active --quiet graphical-session.target
+--user stop graphical-session.target
+--user is-active --quiet graphical-session-pre.target
+--user stop graphical-session-pre.target
 --user stop ryoku-session-lock-9-*.service ryoku-qylock-unlock-guard-9.service
 --user is-active --quiet ryoku-power-cutover-guard.service
 --user stop ryoku-power-cutover-guard.service
 EOF
 if ! diff -u "$tmp/watch-want" "$tmp/watch-calls"; then
-  fail "removed login1 session did not stop its target and failed cutover guard"
+  fail "removed login1 session did not stop its graphical targets and failed cutover guard"
 fi
 [[ ! -e $tmp/watch-runtime/ryoku-session.id ]] \
   || fail "removed login1 session left its lifecycle marker behind"

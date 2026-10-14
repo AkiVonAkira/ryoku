@@ -268,10 +268,10 @@ serves them with no release infrastructure.
   tested unstable builds, then rebuilds their ledgers with
   `bin/ryoku-release-ledger`.
 - `r2-retention/` is the scheduled Cloudflare Worker for the shared `ryoku-iso`
-  bucket. Its planner keeps ten stable releases and unstable builds per edition
-  and Fedora release, and ten ISOs per variant and channel where an edition
-  publishes images. It removes incomplete frozen uploads after 48 hours and
-  preserves moving heads, current pointers, and protected bucket objects.
+  bucket. Its planner keeps ten stable releases and unstable builds per package
+  edition and Fedora release. For editions that publish images, it keeps ten
+  ISOs per variant and channel. It removes incomplete frozen uploads after 48
+  hours and preserves moving heads, current pointers, and protected objects.
 
 ## `void/` the Void Linux port
 
@@ -324,10 +324,11 @@ are supported; Atomic and other rpm-ostree systems are refused.
   frozen releases and unstable builds, and their ledgers below
   `stable/fedora/<N>/`.
 
-Fedora is installed through the shell installer, not an ISO. It leaves NVIDIA
-on nouveau, keeps GRUB, and does not provide Ryoku snapshots or a snapshot boot
-menu. Wayfire is unavailable because Fedora ships 0.10.1 and Ryoku requires
-0.11. Package rollback and the boot guard use DNF downgrades.
+Fedora is installed by the shell installer onto an existing supported Fedora
+system. It leaves NVIDIA on nouveau, keeps GRUB, and does not provide Ryoku
+snapshots or a snapshot boot menu. Wayfire is unavailable because Fedora ships
+0.10.1 and Ryoku requires 0.11. Package rollback and the boot guard use DNF
+downgrades.
 
 ## Tooling
 

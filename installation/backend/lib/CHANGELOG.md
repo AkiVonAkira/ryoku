@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- `lanes`/`dracut`: **profile lanes and the dracut cmdline are shared.** The
+  helpers moved out of the Void backend without changing its dry-run output.
+  `filesystem` gained the shared fstab subvolume and target API-mount helpers,
+  and `drivers`/`chroot` run through `$RYOKU_TARGET_CHROOT`.
 - `choices`: **browser, login-shell and compositor policy is resolved once.**
   Both ISO backends read the shared manifest and edition translation table
   through this helper, including defaults, package drops and unavailable-choice
@@ -47,6 +51,16 @@
   normal install.
 
 ### Fixed
+- `cachyos`: **the target gets CachyOS's own pacman.conf.** The installer edited
+  Arch's stock file with sed, knew only the v3 repos and left out CachyOS's
+  options, so CachyOS's `pacman.conf` landed as a `.pacnew`. It now writes
+  CachyOS's `pacman-more.conf` with the repos for the CPU's tier (znver4, v4 or
+  v3, in CachyOS's detection order), or the baseline repos alone for an older
+  CPU. The tier builds carry a higher pkgrel than the generic ones the ISO
+  installs, so the first `pacman -Syu` moves the box onto them.
+  `ryoku_cachyos_drops` adds `cachyos.replaces` to the drop list, so the
+  replaced packages never land and the provisioning ledger keeps
+  `ryoku update` from adding them back.
 - `cachyos`: **non-v3 CPUs keep compatible repositories after install.**
   The target now enables the v3 core/extra rebuilds only when glibc reports
   x86-64-v3 support; baseline x86-64 uses the generic `[cachyos]` repository.

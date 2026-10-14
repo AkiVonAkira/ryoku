@@ -273,6 +273,7 @@ func reconcilers() []reconciler {
 		{i18n.T("stale dev residue"), reconcileDevResidue},
 		{i18n.T("ryostore cache location"), reconcileRyostoreCache},
 		{i18n.T("desktop settings store"), reconcileDesktopStore},
+		{i18n.T("clickfinger default"), reconcileClickfingerDefault},
 		{i18n.T("retired cursor keys"), reconcileRetiredCursorLeaf},
 		{i18n.T("session target units"), reconcileSessionTarget},
 		{i18n.T("Turnstile session bus"), reconcileTurnstile},
@@ -2382,6 +2383,28 @@ var retiredShellKeys = []string{
 	"washiVariant",
 }
 
+func removeRetiredShellFrameKey(cfg map[string]any) bool {
+	bars, ok := cfg["bars"].(map[string]any)
+	if !ok {
+		return false
+	}
+	frame, ok := bars["frame"].(map[string]any)
+	if !ok {
+		return false
+	}
+	if _, present := frame["enable_frame"]; !present {
+		return false
+	}
+	delete(frame, "enable_frame")
+	if len(frame) == 0 {
+		delete(bars, "frame")
+	}
+	if len(bars) == 0 {
+		delete(cfg, "bars")
+	}
+	return true
+}
+
 func migrateOrpheusGain(raw []byte) ([]byte, bool, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &top); err != nil {
@@ -2469,6 +2492,9 @@ func migrateShellConfig(raw []byte) ([]byte, []string, error) {
 	}
 	if removed {
 		changes = append(changes, i18n.T("removed retired settings"))
+	}
+	if removeRetiredShellFrameKey(cfg) {
+		changes = append(changes, i18n.T("removed retired bars.frame.enable_frame setting"))
 	}
 	if len(changes) == 0 {
 		return nil, nil, nil
@@ -4244,7 +4270,8 @@ func reconcileFailedUnits(checkOnly bool) recResult {
 	var reset int
 	if !checkOnly {
 		for _, u := range failedUnits("--user") {
-			if transientAppScope(u) && sys.Run("systemctl", "--user", "reset-failed", u) == nil {
+			if transientAppScope(u) && userUnitLoaded(u) &&
+				doctorService("--user", "reset-failed", u) == host.ExitOK {
 				reset++
 			}
 		}
@@ -4737,15 +4764,24 @@ func transientAppScope(unit string) bool {
 	return strings.HasPrefix(unit, "app-") && strings.HasSuffix(unit, ".scope")
 }
 
-// failedUnits lists failed unit names from `systemctl [extra] --failed`.
+func userUnitLoaded(unit string) bool {
+	state, err := host.Default().ServiceProperty("--user", unit, "LoadState")
+	return err == nil && state == "loaded"
+}
+
+// failedUnits lists failed unit names through the host service seam.
 func failedUnits(extra ...string) []string {
-	args := append(append([]string{}, extra...), "--failed", "--no-legend", "--plain")
-	out, _ := sys.RunOut("systemctl", args...)
-	var names []string
-	for _, l := range nonEmptyLines(out) {
-		if f := strings.Fields(l); len(f) > 0 {
-			names = append(names, f[0])
-		}
+	scope := "--system"
+	if len(extra) > 0 {
+		scope = extra[0]
+	}
+	failures, err := host.Default().FailedServicesFor(scope)
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(failures))
+	for _, failure := range failures {
+		names = append(names, failure.Name)
 	}
 	return names
 }

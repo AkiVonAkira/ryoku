@@ -186,6 +186,11 @@ var loginShellChoices = installerplan.IDs(installerplan.LoginShell)
 var browserPackage = func() map[string]string {
 	packages := make(map[string]string, len(browserChoices))
 	for _, choice := range installerplan.Choices(installerplan.Browser) {
+		// None installs nothing, so it has no package to name and stays out of
+		// the map. Its only reader asks for "zen" by name.
+		if len(choice.Packages) == 0 {
+			continue
+		}
 		packages[choice.ID] = choice.Packages[0]
 	}
 	return packages
@@ -2098,6 +2103,26 @@ func enableFedoraPowerProfiles(e *engine, unitDirs ...string) error {
 	return nil
 }
 
+func enableFedoraBluetooth(e *engine, unitDirs ...string) error {
+	if len(unitDirs) == 0 {
+		unitDirs = []string{"/usr/lib/systemd/system", "/lib/systemd/system"}
+	}
+	for _, dir := range unitDirs {
+		if _, err := os.Stat(filepath.Join(dir, "bluetooth.service")); err != nil {
+			continue
+		}
+		if unitEnabled("system", "bluetooth.service") {
+			return nil
+		}
+		if err := e.sudo("systemctl", "enable", "bluetooth.service"); err != nil {
+			return err
+		}
+		e.recordRestore("sudo systemctl disable bluetooth.service")
+		return nil
+	}
+	return nil
+}
+
 func stepSession(e *engine) error {
 	if e.usesRunit() {
 		if err := wireRunitServices(e); err != nil {
@@ -2112,6 +2137,9 @@ func stepSession(e *engine) error {
 			return err
 		}
 		if err := enableFedoraPowerProfiles(e); err != nil {
+			return err
+		}
+		if err := enableFedoraBluetooth(e); err != nil {
 			return err
 		}
 	}
@@ -2255,6 +2283,126 @@ EOF`); err != nil {
 	return nil
 }
 
+// seededKeymap is the layout the installer carries into the store: an explicit
+// AZERTY choice first, else what detection salvaged. Empty when there is
+// nothing to carry (no layout, or plain us).
+func seededKeymap(e *engine) (layout, variant, options, source string, explicit bool) {
+	layout, variant, options, source = e.f.kbLayout, e.f.kbVariant, e.f.kbOptions, e.f.kbSource
+	explicit = e.p != nil && (e.p.azertyFR || e.p.azertyBE)
+	if explicit {
+		layout, variant, options, source = "fr", "", "", "plan"
+		if e.p.azertyBE {
+			layout = "be"
+		}
+	}
+	if layout == "" || (layout == "us" && variant == "" && options == "") {
+		return "", "", "", "", false
+	}
+	if source == "" {
+		source = "localectl"
+	}
+	return layout, variant, options, source, explicit
+}
+
+// seedDesktopKeymap writes the carried layout into the neutral store and
+// reports whether it did; a store that already holds a deliberate pick is
+// left alone unless the plan carries an explicit choice.
+func seedDesktopKeymap(e *engine) (bool, error) {
+	layout, variant, options, source, explicit := seededKeymap(e)
+	if layout == "" {
+		return false, nil
+	}
+
+	store := filepath.Join(e.f.homeDir, ".config/ryoku/desktop.json")
+	root := map[string]any{}
+	data, err := os.ReadFile(store)
+	switch {
+	case err == nil && strings.TrimSpace(string(data)) != "":
+		if err := json.Unmarshal(data, &root); err != nil {
+			return false, fmt.Errorf("read keyboard settings from %s: %w", store, err)
+		}
+	case err != nil && !os.IsNotExist(err):
+		return false, fmt.Errorf("read keyboard settings from %s: %w", store, err)
+	}
+	if root == nil {
+		root = map[string]any{}
+	}
+	desktopNode, ok := root["desktop"].(map[string]any)
+	if !ok {
+		if _, exists := root["desktop"]; exists {
+			return false, fmt.Errorf("%s: desktop must be an object", store)
+		}
+		desktopNode = map[string]any{}
+		root["desktop"] = desktopNode
+	}
+	input, ok := desktopNode["input"].(map[string]any)
+	if !ok {
+		if _, exists := desktopNode["input"]; exists {
+			return false, fmt.Errorf("%s: desktop.input must be an object", store)
+		}
+		input = map[string]any{}
+		desktopNode["input"] = input
+	}
+	if current, exists := input["kbLayout"]; exists && !explicit {
+		currentLayout, stringValue := current.(string)
+		if !stringValue || (currentLayout != "" && currentLayout != "us") {
+			return false, nil
+		}
+	}
+	if e.dry {
+		e.sayf(i18n.T("DRYRUN: seed keyboard layout %q variant %q options %q from %s into %s"),
+			layout, variant, options, source, store)
+		return true, nil
+	}
+
+	input["kbLayout"] = layout
+	input["kbVariant"] = variant
+	input["kbOptions"] = options
+	data, err = json.MarshalIndent(root, "", "  ")
+	if err != nil {
+		return false, err
+	}
+	if err := os.MkdirAll(filepath.Dir(store), 0o755); err != nil {
+		return false, err
+	}
+	if err := os.WriteFile(store, append(data, '\n'), 0o644); err != nil {
+		return false, err
+	}
+	e.sayf(i18n.T("seeded keyboard layout %q variant %q options %q from %s into %s"),
+		layout, variant, options, source, store)
+	return true, nil
+}
+
+var x11KeymapFieldRe = regexp.MustCompile(`(?m)^\s*X11 (Layout|Variant|Options):\s*(\S+)`)
+
+// applySystemKeymap puts the carried layout on the console and the login
+// screen now, with the sudo the installer already holds. Left to the doctor,
+// the same change goes through polkit, which prompts for a password in the
+// middle of an unattended run and hangs it where no agent can answer.
+func applySystemKeymap(e *engine, layout, variant, options string) error {
+	if !has("localectl") {
+		return nil
+	}
+	previous := map[string]string{}
+	for _, m := range x11KeymapFieldRe.FindAllStringSubmatch(out("localectl", "status"), -1) {
+		if m[2] != "(unset)" && m[2] != "n/a" {
+			previous[m[1]] = m[2]
+		}
+	}
+	if err := e.sudo("localectl", "set-x11-keymap", layout, "", variant, options); err != nil {
+		return err
+	}
+	// Positional arguments, so the empty model slot has to be quoted or the
+	// variant would be read as the model.
+	restore := "us"
+	if previous["Layout"] != "" {
+		restore = fmt.Sprintf("%q '' %q %q", previous["Layout"], previous["Variant"], previous["Options"])
+	}
+	e.recordRestore("sudo localectl set-x11-keymap " + restore)
+	e.say(i18n.Tf("set the console and login screen keymap to %s", layout))
+	return nil
+}
+
 func stepConfigs(e *engine) error {
 	ryoku := e.ryokuBin()
 	if !e.dry && ryoku == "" {
@@ -2262,6 +2410,16 @@ func stepConfigs(e *engine) error {
 	}
 	if ryoku == "" {
 		ryoku = "ryoku"
+	}
+	layout, variant, options, _, _ := seededKeymap(e)
+	seeded, err := seedDesktopKeymap(e)
+	if err != nil {
+		return err
+	}
+	if seeded {
+		if err := applySystemKeymap(e, layout, variant, options); err != nil {
+			return err
+		}
 	}
 	// a source build has no packaged base tree for materialize to apply;
 	// deploy.sh in the build step already laid and overlaid the config.
@@ -2271,13 +2429,9 @@ func stepConfigs(e *engine) error {
 		}
 	}
 
-	// salvaged monitor pins go in before the stub pass, real pins beat a
-	// comment stub. only the hyprland dialect supports desc: names.
-	//
-	// The file and the dialect both follow the compositor being installed: the
-	// seam names the hand-pin file, and its extension picks the emitter. A
-	// hardcoded Lua path would drop a file niri never reads, and the salvaged
-	// layout would vanish with no error.
+	// Salvaged monitor pins go in before the stub pass, so real pins beat a
+	// comment stub. The provider seam names the hand-pin file, and its extension
+	// selects the emitter.
 	if rel := monitorPinFile(e.p.compositor); e.p.monPins && len(e.f.monOutputs) > 0 && rel != "" {
 		render := renderPins
 		if filepath.Ext(rel) == ".kdl" {
@@ -2301,68 +2455,6 @@ func stepConfigs(e *engine) error {
 				}
 				e.sayf(i18n.T("carried the %s monitor layout into %s"), e.f.monSource, rel)
 			}
-		}
-	}
-
-	// an explicit AZERTY choice in the plan beats any salvaged layout.
-	azerty := e.p.azertyFR || e.p.azertyBE
-	if azerty {
-		layout := "fr"
-		if e.p.azertyBE {
-			layout = "be"
-		}
-		e.f.kbLayout, e.f.kbVariant, e.f.kbOptions, e.f.kbSource = layout, "", "", "plan"
-	}
-
-	// keyboard.lua is user-owned: seeded once, never touched by updates.
-	lua := func(s string) string { return strings.NewReplacer(`"`, ``, `\`, ``).Replace(s) }
-	if e.f.kbLayout != "" && (e.f.kbLayout != "us" || e.f.kbVariant != "" || e.f.kbOptions != "") {
-		src := e.f.kbSource
-		if src == "" {
-			src = "localectl"
-		}
-		kb := filepath.Join(e.f.homeDir, ".config/hypr/keyboard.lua")
-		// a salvaged layout never clobbers an existing file (a repair run
-		// keeps hand edits); an explicit AZERTY choice always writes.
-		if _, err := os.Lstat(kb); err == nil && !azerty {
-			e.say(i18n.T("hypr/keyboard.lua already exists, keeping it"))
-		} else {
-			e.sayf(i18n.T("seeding keyboard layout %q variant %q options %q (from %s) into hypr/keyboard.lua"),
-				e.f.kbLayout, e.f.kbVariant, e.f.kbOptions, src)
-			if !e.dry {
-				content := "-- keyboard layout, carried over by the installer. edits here stick.\n" +
-					"hl.config({\n    input = {\n        kb_layout = \"" + lua(e.f.kbLayout) + "\",\n" +
-					"        kb_variant = \"" + lua(e.f.kbVariant) + "\",\n" +
-					"        kb_options = \"" + lua(e.f.kbOptions) + "\",\n    },\n})\n"
-				if err := os.WriteFile(kb, []byte(content), 0o644); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	// console + login-screen parity for an explicit AZERTY choice: the vt
-	// keymap and SDDM's X11 greeter follow the desktop layout.
-	if azerty {
-		layout, keymap := "fr", "fr"
-		if e.p.azertyBE {
-			layout, keymap = "be", "be-latin1"
-		}
-		e.say(i18n.Tf("setting the console keymap to %s in /etc/vconsole.conf", keymap))
-		if err := e.sudoSh(`install -Dm644 /dev/stdin /etc/vconsole.conf <<'EOF'
-KEYMAP=` + keymap + `
-EOF`); err != nil {
-			return err
-		}
-		e.say(i18n.Tf("pointing the SDDM login screen at the %s layout via xorg.conf.d", layout))
-		if err := e.sudoSh(`install -Dm644 /dev/stdin /etc/X11/xorg.conf.d/00-keyboard.conf <<'EOF'
-Section "InputClass"
-        Identifier "system-keyboard"
-        MatchIsKeyboard "on"
-        Option "XkbLayout" "` + layout + `"
-EndSection
-EOF`); err != nil {
-			return err
 		}
 	}
 
@@ -2560,6 +2652,13 @@ func browserRoleCommand(browser string) string {
 
 func (e *engine) setDefaultBrowser() error {
 	store := filepath.Join(e.f.homeDir, ".config/ryoku/desktop.json")
+	// "none" is the user declining a browser, not one that failed to land.
+	// Returning here keeps the log honest and leaves desktop.apps.browser unset,
+	// which browserRoleCommand would otherwise fill with the literal "none".
+	if e.p.browser == "none" {
+		e.say(i18n.T("no browser chosen; leaving the browser defaults and the desktop role unset"))
+		return nil
+	}
 	if e.dry {
 		e.say(i18n.Tf("DRYRUN: set %s as the default browser for http, https and html", e.p.browser))
 		e.say(i18n.Tf("DRYRUN: write desktop.apps.browser=%s to %s", browserRoleCommand(e.p.browser), store))

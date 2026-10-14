@@ -33,11 +33,13 @@ func TestVariantMarkerRoutesWizard(t *testing.T) {
 
 	flow := steps()
 	browser := stepByKey(t, flow, "browser")
-	if len(browser.items) != 2 {
-		t.Fatalf("Void browsers = %v, want firefox and chromium", browser.items)
+	// Zen is an AUR build and not offered on Void; None is, since it installs
+	// nothing for an edition table to withhold.
+	if len(browser.items) != 3 {
+		t.Fatalf("Void browsers = %v, want firefox, chromium and none", browser.items)
 	}
-	if got := []string{browser.items[0].key, browser.items[1].key}; !reflect.DeepEqual(got, []string{"firefox", "chromium"}) {
-		t.Fatalf("Void browser keys = %v, want firefox and chromium", got)
+	if got := []string{browser.items[0].key, browser.items[1].key, browser.items[2].key}; !reflect.DeepEqual(got, []string{"firefox", "chromium", "none"}) {
+		t.Fatalf("Void browser keys = %v, want firefox, chromium and none", got)
 	}
 	compositor := stepByKey(t, flow, "compositor")
 	m := model{variant: variantVoid, flow: flow, idx: flowIndex(flow, "compositor"), picks: map[string]string{"compositor": wm.ProviderNiri}}
@@ -306,5 +308,48 @@ func TestVoidOfflineRepositoryHandoff(t *testing.T) {
 	archEnv := archModel.installEnv()
 	if !envHas(archEnv, "RYOKU_ONLINE=0") || !envHas(archEnv, "RYOKU_OFFLINE_REPO="+archOfflineRepoPath) {
 		t.Fatalf("Arch offline repository handoff changed: %v", archEnv)
+	}
+}
+
+func TestCachyOSLayoutMatchesCachyOSInstaller(t *testing.T) {
+	cachy := model{variant: variantCachyOS, picks: map[string]string{"disk": "whole"}}
+	cachy.resetLayoutChoices()
+	if cachy.espG != 4 || cachy.swapG != 0 {
+		t.Fatalf("CachyOS layout defaults esp=%dG swap=%dG, want esp=4G swap=0G", cachy.espG, cachy.swapG)
+	}
+	if _, _, maxESP, _, _ := cachy.rowSpec("esp"); cachy.espG > maxESP {
+		t.Fatalf("CachyOS ESP default %dG exceeds the ESP row maximum %dG", cachy.espG, maxESP)
+	}
+
+	arch := model{variant: "plain", picks: map[string]string{"disk": "whole"}}
+	arch.resetLayoutChoices()
+	if arch.espG != 1 || arch.swapG != 16 {
+		t.Fatalf("Arch layout defaults changed: esp=%dG swap=%dG", arch.espG, arch.swapG)
+	}
+}
+
+func TestCachyOSZenHintNamesTheRepo(t *testing.T) {
+	hintOf := func(variant string) string {
+		for _, b := range browsersForVariant(variant) {
+			if b.key == "zen" {
+				return b.hint
+			}
+		}
+		t.Fatalf("%s edition offers no Zen browser", variant)
+		return ""
+	}
+	if got := hintOf(variantCachyOS); strings.Contains(got, "AUR") || !strings.Contains(got, "CachyOS repo") {
+		t.Fatalf("CachyOS Zen hint = %q, want the CachyOS repo", got)
+	}
+	if got := hintOf("plain"); !strings.Contains(got, "AUR") {
+		t.Fatalf("Arch Zen hint = %q, want the AUR build", got)
+	}
+}
+
+func TestLocaleAListUsesSupportedSpelling(t *testing.T) {
+	got := utf8Locales("C\nC.utf8\nPOSIX\nde_DE.utf8\nen_US.utf8\nja_JP.eucjp\nsr_RS.utf8@latin\nsr_RS@latin\n")
+	want := []string{"C.UTF-8", "de_DE.UTF-8", "en_US.UTF-8", "sr_RS.UTF-8@latin"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("utf8Locales = %v, want %v", got, want)
 	}
 }

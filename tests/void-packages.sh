@@ -90,6 +90,9 @@ declare -A neutral_hard=() neutral_opt=() neutral_seen=() \
 	hypr_hard=() hypr_opt=() hypr_seen=() \
 	wayf_hard=() wayf_opt=() wayf_seen=()
 walk_closure ryoku-desktop neutral_hard neutral_opt neutral_seen
+# Rashin is optional on Arch, but this edition's desktop package still
+# requires it, so its own dependencies belong to the desktop closure here.
+walk_closure ryoku-rashin neutral_hard neutral_opt neutral_seen
 walk_closure ryoku-desktop-niri niri_hard niri_opt niri_seen
 walk_closure ryoku-desktop-hyprland hypr_hard hypr_opt hypr_seen
 walk_closure ryoku-desktop-wayfire wayf_hard wayf_opt wayf_seen
@@ -272,6 +275,11 @@ for template in "$SRCPKGS"/*/template; do
 			fi
 			# Desktop notifications are optional; the service is headless.
 			if [[ $template_pkg == limine-snapper-sync && $expected_dep == libnotify ]]; then
+				continue
+			fi
+			# Arch pins Rashin to the desktop; here the desktop requires Rashin,
+			# so the pin runs the other way and a reverse edge would be a cycle.
+			if [[ $template_pkg == ryoku-rashin && $expected_dep == ryoku-desktop ]]; then
 				continue
 			fi
 			[[ -n ${template_depends[$expected_dep]:-} ]] \

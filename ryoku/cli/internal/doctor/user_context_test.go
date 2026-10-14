@@ -12,12 +12,14 @@ import (
 
 func TestConfigureDoctorUserResolvesSudoUserHome(t *testing.T) {
 	oldEUID, oldLookup := doctorEffectiveUID, doctorLookupUser
+	oldResolved := resolvedDoctorUser
 	doctorEffectiveUID = func() int { return 0 }
 	doctorLookupUser = func(name string) (*user.User, error) {
 		return &user.User{Username: name, Uid: "1007", Gid: "1007", HomeDir: "/home/desktop"}, nil
 	}
 	t.Cleanup(func() {
 		doctorEffectiveUID, doctorLookupUser = oldEUID, oldLookup
+		resolvedDoctorUser = oldResolved
 	})
 
 	t.Setenv("SUDO_USER", "desktop")
@@ -25,6 +27,8 @@ func TestConfigureDoctorUserResolvesSudoUserHome(t *testing.T) {
 	t.Setenv("USER", "root")
 	t.Setenv("LOGNAME", "root")
 	t.Setenv("XDG_CONFIG_HOME", "/root/.config")
+	t.Setenv("XDG_CACHE_HOME", "/root/.cache")
+	t.Setenv("XDG_DATA_HOME", "/root/.local/share")
 	t.Setenv("XDG_STATE_HOME", "/root/.local/state")
 	t.Setenv("XDG_RUNTIME_DIR", "")
 	t.Setenv("DBUS_SESSION_BUS_ADDRESS", "")
@@ -50,16 +54,21 @@ func TestConfigureDoctorUserResolvesSudoUserHome(t *testing.T) {
 	if got := doctorUser(); got != "desktop" {
 		t.Fatalf("doctor user = %q, want desktop", got)
 	}
+	if account, err := doctorAccount(); err != nil || account.Username != "desktop" || account.Uid != "1007" {
+		t.Fatalf("doctor account = %+v, %v; want resolved desktop uid 1007", account, err)
+	}
 }
 
 func TestConfigureDoctorUserRefusesRootOwnedRepairs(t *testing.T) {
 	oldEUID, oldLookup := doctorEffectiveUID, doctorLookupUser
+	oldResolved := resolvedDoctorUser
 	doctorEffectiveUID = func() int { return 0 }
 	doctorLookupUser = func(name string) (*user.User, error) {
 		return &user.User{Username: name, Uid: "1007", Gid: "1007", HomeDir: "/home/desktop"}, nil
 	}
 	t.Cleanup(func() {
 		doctorEffectiveUID, doctorLookupUser = oldEUID, oldLookup
+		resolvedDoctorUser = oldResolved
 	})
 	t.Setenv("SUDO_USER", "desktop")
 	t.Setenv("HOME", "/root")
@@ -72,9 +81,11 @@ func TestConfigureDoctorUserRefusesRootOwnedRepairs(t *testing.T) {
 
 func TestConfigureDoctorUserRefusesRootShell(t *testing.T) {
 	oldEUID := doctorEffectiveUID
+	oldResolved := resolvedDoctorUser
 	doctorEffectiveUID = func() int { return 0 }
 	t.Cleanup(func() {
 		doctorEffectiveUID = oldEUID
+		resolvedDoctorUser = oldResolved
 	})
 	t.Setenv("SUDO_USER", "")
 

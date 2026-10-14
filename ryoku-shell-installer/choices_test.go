@@ -57,9 +57,14 @@ func TestChoicePackageFiltering(t *testing.T) {
 				p := &plan{browser: browser, shell: shell}
 				got := packageSet(filterChoicePackages(all, p))
 				for _, candidate := range browserChoices {
+					// None has no package, so there is nothing to find or miss.
+					pkg, installs := browserPackage[candidate]
+					if !installs {
+						continue
+					}
 					want := candidate == browser
-					if got[browserPackage[candidate]] != want {
-						t.Errorf("browser package %s present=%v, want %v", browserPackage[candidate], got[browserPackage[candidate]], want)
+					if got[pkg] != want {
+						t.Errorf("browser package %s present=%v, want %v", pkg, got[pkg], want)
 					}
 				}
 				for _, candidate := range loginShellChoices {

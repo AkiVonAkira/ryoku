@@ -75,6 +75,24 @@ func TestPlanManifestLeavesProvisionedLaneToShippedApps(t *testing.T) {
 	}
 }
 
+func TestPlanManifestNeverPullsRashinOntoABoxWithoutIt(t *testing.T) {
+	// Rashin is a deliver-once app and prowl only its dependency: a box whose
+	// installer left Rashin out must not get either back from the first-party
+	// lane, on the run that records the baseline or on any run after it.
+	m := &ryokumanifest.Manifest{
+		Base:        []string{"base"},
+		FirstParty:  []string{"ryoku-desktop", "ryoku-rashin", "prowl"},
+		Provisioned: ryokumanifest.AppNames(),
+	}
+	installed := map[string]bool{"base": true, "ryoku-desktop": true}
+	plan := PlanManifest(m, installed, m, installed)
+	for _, n := range plan.Install {
+		if n == "ryoku-rashin" || n == "prowl" {
+			t.Fatalf("install = %v; an optional Rashin must not come back through the manifest", plan.Install)
+		}
+	}
+}
+
 func TestPlanManifestReportsRetiredNames(t *testing.T) {
 	prev := &ryokumanifest.Manifest{Dev: []string{"dropped-tool"}}
 	next := &ryokumanifest.Manifest{}
@@ -117,7 +135,8 @@ func TestSatisfiedByProvidersKeepsTheBoxsOwnProvider(t *testing.T) {
 func TestFedoraPackageSetsUseRPMAndDNFUserInstalled(t *testing.T) {
 	t.Setenv("RYOKU_HOST_PKGMGR", "dnf")
 	bin := t.TempDir()
-	writeExec(t, filepath.Join(bin, "rpm"), "#!/bin/sh\nprintf 'ryoku-desktop\\nquickshell\\n'\n")
+	writeExec(t, filepath.Join(bin, "rpm"), "#!/bin/sh\ncase \"$*\" in *PROVIDENAME*) ;; *) exit 2 ;; esac\n"+
+		"printf 'ryoku-desktop\\nquickshell\\npower-profiles-daemon\\nppd-service\\nfont(dejavu sans)\\n'\n")
 	writeExec(t, filepath.Join(bin, "dnf5"), "#!/bin/sh\n[ \"$1 $2\" = 'repoquery -y' ] || exit 2\nprintf 'ryoku-desktop\\n'\n")
 	t.Setenv("PATH", bin)
 
@@ -125,7 +144,8 @@ func TestFedoraPackageSetsUseRPMAndDNFUserInstalled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := map[string]bool{"ryoku-desktop": true, "quickshell": true}; !reflect.DeepEqual(installed, want) {
+	if want := map[string]bool{"ryoku-desktop": true, "quickshell": true, "power-profiles-daemon": true,
+		"ppd-service": true, "font(dejavu sans)": true}; !reflect.DeepEqual(installed, want) {
 		t.Fatalf("installed = %#v, want %#v", installed, want)
 	}
 	explicit, err := packageSet(true)
@@ -134,5 +154,17 @@ func TestFedoraPackageSetsUseRPMAndDNFUserInstalled(t *testing.T) {
 	}
 	if want := map[string]bool{"ryoku-desktop": true}; !reflect.DeepEqual(explicit, want) {
 		t.Fatalf("explicit = %#v, want %#v", explicit, want)
+	}
+}
+
+func TestPlanManifestDoesNotInstallChoiceAbsentFromNext(t *testing.T) {
+	// Older baselines named every browser, so a box that chose Chromium had
+	// never-present Firefox marked as a gap. Once choices leave the manifest,
+	// that old baseline must not make convergence install Firefox.
+	prev := &ryokumanifest.Manifest{Base: []string{"base", "firefox"}}
+	next := &ryokumanifest.Manifest{Base: []string{"base"}}
+	plan := PlanManifest(prev, map[string]bool{"base": true}, next, map[string]bool{"base": true})
+	if len(plan.Install) != 0 {
+		t.Errorf("install = %v; a package absent from the new manifest must stay absent", plan.Install)
 	}
 }

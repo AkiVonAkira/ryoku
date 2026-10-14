@@ -169,6 +169,7 @@ jobs:
         shell: bash
         run: bash tests/install-edition-parity.sh
 
+
       - name: Offline install path (no network, baked repo, refusals before the wipe)
         shell: bash
         run: bash tests/install-offline.sh

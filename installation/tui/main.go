@@ -530,9 +530,9 @@ func unavailableChoiceNotices(plan installerplan.EditionPlan, kind string) []str
 }
 
 func stepsForVariant(variant string) []step {
-	browserDesc := []string{i18n.T("Ryoku ships three browsers; pick the one you want."), i18n.T("It becomes the default and the launcher's browser role.")}
-	if len(browsersForVariant(variant)) != len(browsers()) {
-		browserDesc[0] = i18n.Tf("Ryoku ships %d browsers on this edition; pick the one you want.", len(browsersForVariant(variant)))
+	browserDesc := []string{i18n.T("Ryoku ships three browsers; pick the one you want, or none."), i18n.T("It becomes the default and the launcher's browser role.")}
+	if n := shippedBrowserCount(variant); n != shippedBrowserCount("plain") {
+		browserDesc[0] = i18n.Tf("Ryoku ships %d browsers on this edition; pick the one you want, or none.", n)
 	}
 	all := []step{
 		{key: "keyboard", title: i18n.T("Keyboard layout"), kind: kSelect, items: keymaps(),
@@ -567,7 +567,7 @@ func stepsForVariant(variant string) []step {
 		{key: "password", title: i18n.T("User password"), kind: kPass,
 			desc: []string{i18n.T("Set a password for your account.")}},
 		{key: "encryption", title: i18n.T("Disk encryption"), kind: kConfirm,
-			desc: []string{i18n.T("Encrypt the root with LUKS?"), i18n.T("Installs the -luks host variant.")}},
+			desc: []string{i18n.T("Encrypt the root with LUKS?"), i18n.T("You type its passphrase at every boot.")}},
 		{key: "review", title: i18n.T("Review"), kind: kConfirm,
 			desc: []string{i18n.T("Last safe point, nothing written yet.")}},
 	}
@@ -577,24 +577,28 @@ func stepsForVariant(variant string) []step {
 	if os.Getenv("RYOKU_KB_PRESET") != "" {
 		all = all[1:]
 	}
-	if isVoidVariant(variant) {
-		edition := installerChoicesForVariant(variant)
-		availableCompositors := edition.AvailableIDs(installerplan.Compositor)
-		notice := []string{
-			i18n.T("This Void edition is experimental."),
-			i18n.Tf("Available window managers: %s.", strings.Join(availableCompositors, ", ")),
-			i18n.T("Use ryoku update --system for base-system updates."),
-			i18n.T("XBPS has no update hooks; this keeps updates snapshotted."),
-		}
-		for _, kind := range []string{installerplan.Compositor, installerplan.Browser, installerplan.LoginShell} {
-			notice = append(notice, unavailableChoiceNotices(edition, kind)...)
-		}
-		all = append([]step{{
-			key: "void-notice", title: i18n.T("Ryoku on Void"), kind: kNotice,
-			desc: notice,
-		}}, all...)
+	if notice, ok := editionNotice(variant); ok {
+		all = append([]step{notice}, all...)
 	}
 	return all
+}
+
+// editionNotice is the short note an edition image shows before setup.
+func editionNotice(variant string) (step, bool) {
+	if !isVoidVariant(variant) {
+		return step{}, false
+	}
+	edition := installerChoicesForVariant(variant)
+	lines := []string{
+		i18n.T("This Void edition is experimental."),
+		i18n.Tf("Available window managers: %s.", strings.Join(edition.AvailableIDs(installerplan.Compositor), ", ")),
+		i18n.T("Use ryoku update --system for base-system updates."),
+		i18n.T("XBPS has no update hooks; this keeps updates snapshotted."),
+	}
+	for _, kind := range []string{installerplan.Compositor, installerplan.Browser, installerplan.LoginShell} {
+		lines = append(lines, unavailableChoiceNotices(edition, kind)...)
+	}
+	return step{key: "void-notice", title: i18n.T("Ryoku on Void"), kind: kNotice, desc: lines}, true
 }
 
 func keymaps() []item {
@@ -873,7 +877,7 @@ type model struct {
 	hwOK         bool   // hardware detected & classified
 	hwHybrid     bool   // hybrid iGPU+dGPU present → ask GPU mode
 	hwBIOS       bool   // legacy BIOS boot; Void supports whole-disk BIOS installs
-	hwSecureBoot bool   // Secure Boot on → block Review (Limine is unsigned)
+	hwSecureBoot bool   // Secure Boot on → block Review where Limine boots (it is unsigned)
 	diskHint     string // set when no installable disk was found (VMD / generic message)
 	doneSel      int    // reboot / poweroff / shell
 	exitAction   string // done screen choice: "reboot" | "poweroff" | "" (exit to shell)
@@ -925,7 +929,10 @@ type model struct {
 	reclaim []part
 	// retried is set by the failed screen's "r": the next backend run has to be
 	// allowed to clean up the debris the failed one left (see installEnv).
-	retried                    bool
+	retried bool
+	// partitioned is set once the backend reports its first install step: from
+	// then on the target disk holds this installer's own partitions.
+	partitioned                bool
 	reclaimG                   int
 	gpt                        bool   // target disk has a GPT label (alongside requires it)
 	bitlocker                  bool   // target disk carries a BitLocker partition (review warning)
@@ -1020,8 +1027,18 @@ func newModel() model {
 func (m *model) cur() step { return m.flow[m.idx] }
 
 func (m *model) resetLayoutChoices() {
-	m.espG, m.swapG = 1, 16
+	m.espG, m.swapG = layoutSizeDefaults(m.variant)
 	m.snapshots, m.sepHome, m.backups = true, true, false
+}
+
+// layoutSizeDefaults is the ESP and swap size (GiB) a fresh layout starts from.
+// The CachyOS edition matches CachyOS's own installer for Limine: a 4 GiB ESP
+// and no swap partition, because cachyos-settings already brings zram swap.
+func layoutSizeDefaults(variant string) (espG, swapG int) {
+	if variant == variantCachyOS {
+		return 4, 0
+	}
+	return 1, 16
 }
 
 func (m *model) loadStep() {
@@ -1203,7 +1220,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.tickCmd()
 	case installStepMsg:
-		m.installAt = int(msg)
+		m.installAt, m.partitioned = int(msg), true
 		if m.istream != nil {
 			return m, m.istream.wait()
 		}
@@ -1216,7 +1233,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case installDoneMsg:
 		if msg.err != nil {
-			m.failInstall(installSteps()[clamp(m.installAt, 0, len(installSteps())-1)])
+			phases := installSteps()
+			m.failInstall(phases[clamp(m.installAt, 0, len(phases)-1)])
 		} else {
 			m.installAt, m.progress, m.state = len(installSteps()), 1, "done"
 		}
@@ -2268,7 +2286,7 @@ func (m model) appsBody(inner int) string {
 }
 
 // reviewBlockReason reports why the install cannot start from Review, or "" when
-// it can. Secure Boot (Limine is unsigned) is a hard block. Connectivity is only
+// it can. Secure Boot is a hard block where Limine (unsigned) boots. Connectivity is only
 // a block when this ISO has no baked package closure: an offline ISO carries the
 // whole set in a file:// repo and installs with the network down, which is the
 // whole point of baking it. Gating on netOnline alone refused those installs at
@@ -2276,7 +2294,7 @@ func (m model) appsBody(inner int) string {
 // below (system.go: RYOKU_ONLINE=0) was already set up to do it. Fail here
 // honestly, not mid-install.
 func (m model) reviewBlockReason() string {
-	if m.hwSecureBoot {
+	if m.secureBootBlocked() {
 		return i18n.T("Secure Boot is enabled -- disable Secure Boot in firmware setup (Limine is unsigned), then reboot the installer.")
 	}
 	if !m.netOnline && !m.hasOfflineRepo() {
@@ -3241,7 +3259,7 @@ func (m model) infoBody(inner int) string {
 		lines = append(lines, "")
 		lines = append(lines, g...)
 	}
-	if m.biosBlocked() || m.hwSecureBoot {
+	if m.biosBlocked() || m.secureBootBlocked() {
 		lines = append(lines, "", fg(cDim, i18n.T("resolve the above in firmware, then reboot · esc to go back")))
 	} else {
 		lines = append(lines, "", fg(cDim, i18n.T("enter to continue, esc to go back")))
@@ -3265,6 +3283,11 @@ func (m model) biosBlocked() bool {
 	return m.hwBIOS && !isVoidVariant(m.variant)
 }
 
+// secureBootBlocked reports whether unsigned Limine makes Review unsafe.
+func (m model) secureBootBlocked() bool {
+	return m.hwSecureBoot
+}
+
 // hwGateLines explains firmware constraints. Arch and CachyOS still reject
 // legacy BIOS. Void accepts it only when the installer owns the whole disk.
 func (m model) hwGateLines() []string {
@@ -3284,7 +3307,7 @@ func (m model) hwGateLines() []string {
 			)
 		}
 	}
-	if m.hwSecureBoot {
+	if m.secureBootBlocked() {
 		out = append(out,
 			bold(cRed, i18n.T("⚠ Secure Boot is enabled -- Limine is unsigned.")),
 			fg(cText, i18n.T("  Disable Secure Boot in firmware setup, then reboot the installer.")),

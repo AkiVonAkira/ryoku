@@ -61,6 +61,11 @@ ryoku_choice_init() {
     case $record in
       choice)
         key="$kind:$id"
+        # A dash is the manifest's empty cell. Kept as one here it would split
+        # into a package literally named "-": the choice would read as
+        # unavailable on every edition, and dropping the ones not picked would
+        # try to remove it. The Go side treats the column the same way.
+        [[ $packages == - ]] && packages=
         RYOKU_CHOICE_PACKAGES[$key]=$packages
         RYOKU_CHOICE_SEEN[$key]=1
         case $kind in

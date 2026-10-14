@@ -10,10 +10,18 @@ BuildRequires:  bash
 BuildRequires:  coreutils
 BuildRequires:  findutils
 BuildRequires:  golang >= 1.26.4
+BuildRequires:  gtk3-devel
+BuildRequires:  webkit2gtk4.1-devel
+BuildRequires:  cmake
+BuildRequires:  ninja-build
+BuildRequires:  gcc-c++
 Requires:       uv
 Requires:       nodejs24
 Requires:       gcc
 Requires:       prowl
+Requires:       gtk3
+Requires:       webkit2gtk4.1
+Requires:       python3
 Suggests:       sqlite
 
 %description

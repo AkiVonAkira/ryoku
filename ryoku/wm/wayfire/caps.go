@@ -29,6 +29,13 @@ import (
 // CapSubmap, CapGlobalShortcuts, CapFocusGrab, CapScreenShader: wayfire
 // implements none of these subsystems.
 //
+// CapWindowEmbed: no plugin pins a window to a layer surface's screen and
+// corner, so the phone mirror frame shows as a plain window here.
+//
+// CapWorkspaceSlideStyle: the workspace switch animation is a config block
+// with no IPC to report the resolved style, curve and duration; the overlay
+// keeps its built-in curve.
+//
 // CapCursorSet: the cursor is a config block, so apply sets it and wayfire
 // picks it up. There is no imperative call to re-assert it after a reload.
 //

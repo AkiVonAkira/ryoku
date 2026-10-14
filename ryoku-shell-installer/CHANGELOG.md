@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **The browser step accepts None.** A machine that brings its own browser
+  installs none of the three, and the default-browser step leaves the desktop
+  role unset instead of pointing it at an absent package.
 - **Fedora is now a packaged shell-installer lane.** Mutable Fedora Workstation
   and Server systems use dnf5 or dnf, verify and import the Ryoku release key,
   configure the signed stable, testing or frozen RPM repository plus
@@ -58,6 +61,17 @@
   steps, so a stuck stable install can be finished on unstable.
 
 ### Fixed
+- **Carried keyboard settings now reach every compositor and the system
+  keymap.** The installer merges the salvaged layout, variant, and options into
+  the neutral desktop store before materialization, while keeping a later Hub
+  choice on repair runs, and puts the same layout on the console and the login
+  screen through `localectl` with the sudo it already holds. Left to the doctor,
+  that step went through polkit and stalled an unattended run on a password
+  prompt nothing could answer. The Hub, login screen, console, and boot prompt
+  now converge on the same setting.
+- **Fedora Server and spin installs bring up installed Bluetooth support.**
+  The session step enables `bluetooth.service` only when its unit is present
+  and not already enabled, and records how to disable it in the restore script.
 - **The shell installer identifies filtered Ryoku DNS.** A private, loopback,
   or known sinkhole answer for `repo.ryoku.dev` gets a direct warning and a link
   to the recovery steps instead of the generic unreachable-repository message.

@@ -74,8 +74,32 @@ func browsers() []item {
 	return choiceItems(installerplan.Browser, installerplan.ResolveSource("Arch"), true)
 }
 
+// cachyosBrowserHints replaces the shared hint of a browser the CachyOS
+// repositories serve, which that edition installs from the repo, not the AUR.
+var cachyosBrowserHints = map[string]string{"zen": "vertical tabs · CachyOS repo"}
+
 func browsersForVariant(variant string) []item {
-	return choiceItems(installerplan.Browser, installerChoicesForVariant(variant), true)
+	items := choiceItems(installerplan.Browser, installerChoicesForVariant(variant), true)
+	if variant == variantCachyOS {
+		for i := range items {
+			if hint, ok := cachyosBrowserHints[items[i].key]; ok {
+				items[i].hint = i18n.T(hint)
+			}
+		}
+	}
+	return items
+}
+
+// shippedBrowserCount is how many browsers the edition can install: the None
+// row is a choice, not a browser, so it stays out of the step's description.
+func shippedBrowserCount(variant string) int {
+	n := 0
+	for _, availability := range installerChoicesForVariant(variant).Choices(installerplan.Browser) {
+		if availability.Available && !availability.Choice.NoPackages {
+			n++
+		}
+	}
+	return n
 }
 
 // browserLabel is the display name for a browser key, for Review and the rail.
@@ -155,6 +179,8 @@ func appRows() []appRow {
 			Sub: i18n.T("feature: keyboard/mouse lighting follows the wallpaper palette")},
 		{ID: "upscale", Name: "AI upscale", Pkgs: []string{"waifu2x-ncnn-vulkan"}, Def: true,
 			Sub: i18n.T("feature: ryoshot Beautify HD and ryowalls Enhance")},
+		{ID: "rashin", Name: "Rashin", Pkgs: []string{"ryoku-rashin"}, Def: true,
+			Sub: i18n.T("feature: the AI agent (Ask, the Rashin window, the bar's AI usage pill)")},
 		{ID: "localsend", Name: "LocalSend", Pkgs: []string{"localsend-bin"}, Def: true,
 			Sub: i18n.T("feature: LAN file sharing (the pill's file stash speaks it; AUR)")},
 		{ID: "voxtype", Name: "Voxtype", Pkgs: []string{"voxtype-bin"}, Def: true,
@@ -184,17 +210,37 @@ func appRows() []appRow {
 	}
 }
 
+// unshippedApps are rows an edition never delivers, so the picker must not
+// offer them. Void omits the AUR rows, while pavucontrol stays offered because
+// the first `ryoku doctor` installs it unless the user drops it here. Its
+// desktop package still requires ryoku-rashin, so that row is hidden too.
+var unshippedApps = map[string][]string{
+	variantVoid: {"localsend", "voxtype", "rashin"},
+}
+
 func appRowsForVariant(variant string) []appRow {
 	all := appRows()
-	if !isVoidVariant(variant) {
+	hidden := map[string]bool{}
+	for _, id := range unshippedApps[variant] {
+		hidden[id] = true
+	}
+	if len(hidden) == 0 {
 		return all
 	}
-	out := make([]appRow, 0, len(all)-2)
+	out := make([]appRow, 0, len(all))
+	orphaned := ""
 	for _, row := range all {
-		switch row.ID {
-		case "localsend", "voxtype":
+		if hidden[row.ID] {
+			// A hidden row that opened its group hands the header to the next shown row.
+			if row.Group != "" {
+				orphaned = row.Group
+			}
 			continue
 		}
+		if row.Group == "" {
+			row.Group = orphaned
+		}
+		orphaned = ""
 		out = append(out, row)
 	}
 	return out

@@ -11,8 +11,12 @@ Advanced.
 
 It is:
 
-- **Optional.** The `ryoku-rashin` binary ships with the desktop but stays inert
-  until you enable it. Optional means not running, not absent.
+- **Optional.** On Arch, `ryoku-rashin` is installed by default but is not a
+  desktop dependency: untick Rashin in the installer's Apps & tools, or run
+  `sudo pacman -R ryoku-rashin`, and every AI piece (the agent, the Rashin
+  window, the bar's AI usage collectors) goes with it. The doctor delivers it
+  once and never puts it back. Fedora and Void still install it with the
+  desktop.
 - **Local.** The daemon binds `127.0.0.1` only. WebSocket upgrades verify the
   Origin host is localhost. No auth, because the surface is single-user local.
 - **Off by default.** Nothing runs, indexes, or wires until you flip the gate.
@@ -326,8 +330,8 @@ Rashin app's Ryoku sheet read the same file through the same CLI.
 ## The Rashin app
 
 The quick bar is one surface; the companion window is another. `rashin-app`
-(`ryoku/apps/rashin-app/`) is a small GTK3 + WebKitGTK window that hosts the
-Rashin console the daemon serves: it opens like a normal window
+(`ryoku/rashin/app/`, shipped by `ryoku-rashin`) is a small GTK3 + WebKitGTK
+window that hosts the Rashin console the daemon serves: it opens like a normal window
 (Super+Alt+Space, the launcher, `rashin-app`, or the Ask bar's OPEN RASHIN
 chip), is single-instance (a `GtkApplication` id plus the `ryoku-summon`
 flock), shows a paper boot page until `/api/ping` answers, and then loads
@@ -337,7 +341,7 @@ brain, and it carries no UI of its own: the console is one Svelte app
 sees on the same port. Links to other origins open in the default browser,
 notifications are granted, and the window remembers its size. Its icon is
 Rashin's own seal (`ryoku/assets/brand/rashin-mark.svg`, linked as
-`ryoku/apps/rashin-app/logo.svg` so the package and the dev deploy install the
+`ryoku/rashin/app/logo.svg` so the package and the dev deploy install the
 same file as `rashin-app` in the hicolor theme); the console's favicon and the
 Ask bar's header use the small cut of the same mark, see `docs/ui-ux.md`.
 

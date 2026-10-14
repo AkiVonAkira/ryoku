@@ -13,11 +13,11 @@ fail() {
 }
 
 # These are the only host-adapter differences accepted by the neutral contract.
-# Arch uses arch-chroot and first-login XDG autostart; Void uses chroot and does
-# the XDG initialization eagerly for Turnstile. The runit account recipe carries
-# audio and kvm as edition-specific supplemental groups; the common group set is
-# compared after removing only those two. Boot and package-manager commands are
-# outside the neutral manifest.
+# Arch uses arch-chroot and first-login XDG autostart; Void uses chroot and
+# initializes XDG directories eagerly for Turnstile. The runit account recipe
+# carries audio and kvm as edition-specific supplemental groups; the common
+# group set is compared after removing only those two. Boot and package-manager
+# commands are outside the neutral manifest.
 declare -A adapter_allowlist=(
   [arch:target-runner]=arch-chroot
   [void:target-runner]=chroot
@@ -127,7 +127,7 @@ write_contract arch
 write_contract void
 if ! cmp -s "$tmp/arch.contract" "$tmp/void.contract"; then
   diff -u "$tmp/arch.contract" "$tmp/void.contract" >&2 || true
-  fail 'Arch and Void neutral end-state contracts differ'
+  fail "Arch and void neutral end-state contracts differ"
 fi
 
 # Exercise each edition's timezone step directly so the offline check does not

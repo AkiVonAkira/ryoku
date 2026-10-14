@@ -2,7 +2,29 @@
 
 ## Unreleased
 
+### Changed
+- **The painted frame band drops four fallbacks it could never reach.** `FrameChrome`
+  is only visible while the sumi frame is active, so its per-edge reserves no
+  longer carry a border-width arm for a state in which nothing is drawn. The
+  exclusive-zone reserves above keep theirs, since a zone is claimed whether or
+  not a band is painted (`modules/bar/Frame.qml`).
+- **Every file dialog opens somewhere sensible.** "+ Browse" on a desktop
+  widget, the Stage layer pickers, the wallpaper card and the profile picture
+  used to open in the shell's working directory; the image choosers now start
+  in the picture directory and the rest at home.
+
 ### Added
+- **The ii dock design.** The dock ported from P3DROVFX's ii-p3drovfx joins the
+  shared dock store as a fourth design: pick "ii" in the Stage Editor's dock
+  page and the shell mounts the ported tray, its magnification, app groups,
+  widget tiles (media, weather, tasks, sports, live preview, phone), the
+  live-draw overlay, the alarm clock app and the design's own settings page,
+  on Hyprland and niri alike. Its options live beside the other designs' in
+  shell.json's one `dock` object, so the Hub, `ryoku-shell dock` and the stage
+  edit pages keep working unchanged (`quickshell/shell/modules/dock/ii/`,
+  `quickshell/shell/modules/dock/IiDockHost.qml`,
+  `quickshell/shell/components/WindowEmbed.qml`,
+  `quickshell/shell/components/WorkspaceSlide.qml`).
 - **A surface request can name the trigger it was opened from.**
   `ShellState.requestSurfaceActive` now forwards its context the way
   `requestSurface` already does, and a caller passing `{ ownerRect: <global
@@ -33,6 +55,19 @@
   `quickshell/shell/services/Config.qml`, `plugin/blobgroup.cpp`,
   `plugin/blobwave.cpp`, `plugin/shaders/blob.frag`,
   `../assets/rices/default/rice.json`, `../cli/internal/doctor/doctor.go`).
+- **Kairos quick settings can forget a paired Bluetooth device.** The Bluetooth
+  page offered only Connect and Disconnect, so a device paired from there could
+  not be dropped without `bluetoothctl`; Forget now sits beside Connect on any
+  device the adapter has saved, which is what a device that has gone stale on
+  the other end needs before it will pair again
+  (`modules/bar/barstyles/kairos/quicksettings/pages/BluetoothPage.qml`).
+- **A shortcut can be removed instead of only moved.** Ryoku Settings > Keybinds
+  gains a control per row that leaves an action with no chord at all, and a
+  second press gives it one back. Until now an empty value meant "back to the
+  shipped default", so a shortcut you did not want had to be parked on some
+  other key. Switched-off binds are not registered by any supported compositor,
+  are left out of the Super+K cheatsheet, and stay listed in Settings so the
+  action remains findable (`desktop.keybindDisabled`).
 - **`ryoku update` shows one bar per compilation on source boxes, with how long
   each piece usually takes.** The terminal and Hub share the per-piece view and
   first-build explanation.
@@ -630,6 +665,48 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **Picking a file no longer crashes the shell once its window has been
+  rebuilt.** Quickshell deletes the window behind a hidden layer-shell or popup
+  surface, and Qt's non-native `FileDialog` kept a bare pointer to the
+  implementation it had parented to that window, so the next "+ Browse" on a
+  desktop widget, Stage layer pick, profile-picture or subtitle chooser, VPN
+  import or dock-folder pick dereferenced freed memory (a segfault on Qt 6.12,
+  the dialog silently doing nothing before). Every site now goes through
+  `Ryoku.Ui.FileDialogHost`, which builds the dialog for the window it opens in
+  and drops it when that window goes away (#405).
+- **The dedicated microphone-mute key works again.** `XF86AudioMicMute` now
+  toggles the default PipeWire source on every supported compositor (#394).
+- **Super+T is labelled “Group windows (tabbed)”.** The clearer name distinguishes
+  the window-group toggle from the terminal shortcut older releases used (#378).
+- **Staggered launcher results no longer create binding loops.** An Entrance
+  that fills its parent no longer derives its implicit size from children that
+  fill it in turn, stopping repeated geometry warnings and memory growth (#383).
+- **A proportional system font no longer reaches the terminal.** The font
+  pipeline applies the UI and terminal families independently, defaulting kitty
+  and the desktop monospace setting to JetBrainsMono Nerd Font while the shell
+  and apps keep Space Grotesk.
+- **Monitor reconnects now trigger the shell's screen-settle handler.** The
+  `screensChanged` callback restarts its Timer by QML id instead of reading a
+  nonexistent property from `root`; without the timer, the per-monitor surface
+  model could stay stale after an output reappeared (#312).
+- **A source checkout builds the Ryogami picker without guessing at Vulkan.**
+  `ryoku track unstable && ryoku update` stopped half a minute into the picker
+  with `fatal error: vulkan/vulkan.h: No such file or directory` on a machine
+  without the Vulkan headers: the packaged builds declare them, the source build
+  never did. The build now asks for the header while configuring and names the
+  package when it is missing, and the Fedora RPM declares it like the PKGBUILD
+  and the Void template already do. `ryoku track` installs the headers with the
+  rest of the build toolchain on all three distributions, so the first source
+  build after switching channels goes through.
+- **Ask and the AI pill behave on a box without Rashin.** A quick ask
+  (Alt+Space, or the launcher's `\`) used to sit on "waking the needle"
+  forever when `ryoku-rashin` was missing, and a chat message vanished into a
+  queue that never drained. Both now answer "Not installed · install
+  ryoku-rashin", the wording the Hub's Rashin page already uses. The qsbar AI
+  pill stays hidden when the usage collectors are not installed, instead of
+  showing an empty "0%" chip whenever a coding agent is running
+  (`services/AskSession.qml`, `services/Needle.qml`,
+  `qsbar/modules/ClaudeWidget.qml`).
 - **Ryogami's Workshop tab finds your Wallpaper Engine scenes.** On the first
   run after an install the tab said "No Wallpaper Engine scenes yet" until
   ryogami restarted, because the picker never refreshed it after the first scan.
@@ -1212,6 +1289,10 @@
   the click moved (issue #276).
 
 ### Removed
+- **The unread nested frame switch is gone.** The shell keeps the live
+  top-level `frameEnabled` control as its one frame switch and no longer ships
+  a second setting that no surface reads (`ipc/settings.go`,
+  `../assets/rices/default/rice.json`).
 - **The old split panel routes are gone.** Controls, Capture, and Ask replace
   the separate frame menu and utility surfaces, with one shortcut and one clear
   home for each task.

@@ -1,9 +1,8 @@
 # Fedora edition (experimental)
 
-The experimental Fedora edition installs Ryoku on mutable Fedora 44 or 45
-Workstation, KDE Plasma, Server, and spin systems, `x86_64`, with systemd and
-either Hyprland or niri. Atomic and other rpm-ostree systems are refused. Use
-the same public installer as the other existing-system editions:
+The shell installer installs Ryoku onto existing mutable Fedora 44 or 45
+Workstation, KDE Plasma, Server, and spin systems on `x86_64`, with systemd and
+either Hyprland or niri. Atomic and other rpm-ostree systems are refused. Run:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
@@ -61,7 +60,7 @@ installed Ryoku set in place. Frozen release and testing targets are retained
 for package rollback, and the boot guard can downgrade the Ryoku set after a
 failed update.
 
-Fedora has no Ryoku ISO, snapshots, or snapshot boot menu because it keeps
-GRUB. NVIDIA stays on nouveau. Wayfire is unavailable because Fedora ships
+Fedora keeps GRUB, so it has no Ryoku snapshot boot menu or snapshot restore.
+NVIDIA stays on nouveau. Wayfire is unavailable because Fedora ships
 0.10.1 and Ryoku requires 0.11. AUR-only extras such as Zen Browser, LocalSend,
 Voxtype, Looking Glass, and SteamCMD are not shipped in the Fedora lane.

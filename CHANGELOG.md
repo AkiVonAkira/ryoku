@@ -14,6 +14,14 @@ for finer detail.
   user is no longer in a mango session.
 
 ### Fixed
+- The CachyOS edition now installs what a vanilla CachyOS install carries:
+  CachyOS's own builds of pacman, mesa, the firmware and the kernel layer, its
+  own pacman.conf with the repositories for the CPU's tier, the CachyOS LTS
+  kernel as the fallback, and the Zen browser, yay and the legacy NVIDIA
+  drivers from the CachyOS repositories rather than AUR builds. It still
+  installs on any x86-64 CPU; as with CachyOS's own offline install, the first
+  `pacman -Syu` moves a v3, v4 or Zen 4 CPU onto its optimized builds, with no
+  replacement prompts.
 - Stable Release now publishes all four edition repositories from the release
   tag and starts the Void ISO alongside the Arch and CachyOS images. Release
   documentation and installer plans identify the experimental Void, Fedora, and
@@ -30,6 +38,12 @@ for finer detail.
   audio route check) and `NetworkManager-wifi`, which Arch's `libpulse` and
   `networkmanager` already carry, so Fedora Server and minimal spins have wifi
   in the bar. Existing Fedora boxes pick them up on their next update.
+- The Fedora repository now publishes the release control manifest, so
+  `ryoku update` installs a desktop package an existing Fedora box is missing,
+  as it already does on Arch. Doctor reported "no release manifest to converge
+  to" and installed nothing. The manifest carries only the packages the Fedora
+  installer installs, never the kernel or compilers. A package removed by hand
+  before this update may come back once.
 - The doctor's reverse-PRIME warning (#270, a black panel after login on a
   hybrid-GPU laptop) now also fires when a forced or drifted GPU render pin
   coexists with a stored hybrid or passthrough choice, which previously
@@ -70,7 +84,7 @@ for finer detail.
   published list. Ryoku's signed RPM repository supplies Quickshell, Ryotunes,
   recording, wallpaper, fonts, cursors, controller support, and the Hyprland
   plugins. Both tuned-ppd and power-profiles-daemon work without provider
-  replacement. Fedora keeps GRUB, has no Ryoku ISO or snapshots, stays on
+  replacement. Fedora keeps GRUB, has no snapshot boot menu, stays on
   nouveau, and cannot offer Wayfire until Fedora ships 0.11. Thanks @aethctl for
   the original Fedora port.
 - **Void gains GlazePKG, dualsensectl, Oh My Zsh, and Ryotunes.** They install

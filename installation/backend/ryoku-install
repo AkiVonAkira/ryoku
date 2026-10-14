@@ -121,6 +121,9 @@ export RYOKU_DROP_PACKAGES
 edition=Arch
 [[ $RYOKU_VARIANT != cachyos ]] || edition=CachyOS
 ryoku_choice_apply_fresh "$edition"
+# cachyos: the base.packages names CachyOS replaces (the stock kernel) are
+# dropped like a deselected app, so they never land and updates never add them.
+[[ $RYOKU_VARIANT != cachyos ]] || ryoku_cachyos_drops
 export RYOKU_BROWSER RYOKU_LOGIN_SHELL
 : "${RYOKU_REBOOT:=}"
 : "${RYOKU_DRYRUN:=}"

@@ -1850,7 +1850,7 @@ func TestLimineDropFlat(t *testing.T) {
 	if strings.Contains(out, "kernel_path: boot():/vmlinuz-linux\n") {
 		t.Errorf("flat entry options survived:\n%s", out)
 	}
-	if !strings.Contains(out, "default_entry: 2") {
+	if !strings.Contains(out, "default_entry: Ryoku/linux (UKI)") {
 		t.Errorf("default_entry not promoted past the tree directory:\n%s", out)
 	}
 	if !strings.Contains(out, "/+Ryoku") || !strings.Contains(out, "//linux (UKI)") || !strings.Contains(out, "timeout: 3") {
@@ -1882,7 +1882,7 @@ func TestLimineDropFlatAdoptedLayout(t *testing.T) {
 	if !strings.Contains(out, "/Ryoku Linux") || !strings.Contains(out, "kernel_path: boot():/vmlinuz-linux") {
 		t.Errorf("adopted tree root must survive:\n%s", out)
 	}
-	if !strings.Contains(out, "default_entry: 2") {
+	if !strings.Contains(out, "default_entry: Ryoku Linux/linux") {
 		t.Errorf("default_entry not moved off the directory:\n%s", out)
 	}
 	if _, changed := limineDropFlat(out); changed {

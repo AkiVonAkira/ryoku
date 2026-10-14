@@ -13,23 +13,6 @@ void_kernel_packages() {
   ' | sort -u
 }
 
-void_kernel_cmdline() {
-  local root_ref cmdline
-  if [[ ${RYOKU_ENCRYPT:-} == 1 ]]; then
-    local luks_uuid
-    luks_uuid=$(dev_uuid "$LUKS_PART") || die 'could not read LUKS UUID from %s' "$LUKS_PART"
-    root_ref=/dev/mapper/root
-    cmdline="root=$root_ref rootflags=subvol=@ rw rd.luks.uuid=luks-$luks_uuid"
-  else
-    local root_uuid
-    root_uuid=$(dev_uuid "$ROOT_DEV") || die 'could not read root UUID from %s' "$ROOT_DEV"
-    root_ref=UUID=$root_uuid
-    cmdline="root=$root_ref rootflags=subvol=@ rw"
-  fi
-  [[ -z ${RYOKU_KERNEL_CMDLINE_EXTRA:-} ]] || cmdline+=" $RYOKU_KERNEL_CMDLINE_EXTRA"
-  printf '%s' "$cmdline"
-}
-
 void_seed_limine_config() {
   run mkdir -p /mnt/etc/ryoku /mnt/usr/local/bin
 
@@ -46,7 +29,7 @@ void_seed_limine_config() {
 
 void_bootloader() {
   local cmdline
-  cmdline=$(void_kernel_cmdline)
+  cmdline=$(ryoku_dracut_cmdline)
   log 'kernel cmdline: %s quiet splash' "$cmdline"
   run mkdir -p /mnt/etc/kernel
   write_file /mnt/etc/kernel/cmdline <<EOF

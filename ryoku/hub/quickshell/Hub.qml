@@ -556,7 +556,8 @@ Rectangle {
         "frameSmoothing": 8, "frameOpacity": 1, "shadowStrength": 0.63, "shadowSize": 12,
         "frameThickness": 2, "frameCorner": 8,
         "surfaceColor": "#0f1115", "osdRadius": 28, "osdOpacity": 1,
-        "fontFamily": "Space Grotesk", "fontSize": 11, "fontScale": 1.3,
+        "fontFamily": "Space Grotesk", "terminalFontFamily": "JetBrainsMono Nerd Font",
+        "fontSize": 11, "fontScale": 1.3,
         "frameBars": FrameBars.defaultConfig(),
         "weatherLocation": "", "weatherUnit": "auto", "formatLocale": "",
         "general.clock_format_24_h": false,
@@ -671,7 +672,7 @@ Rectangle {
     // against liveBaseline: the state at open, re-snapshotted on every Save.
     // Quit and Revert walk the desktop back to that baseline through the same
     // channel, so an unsaved close leaves no residue.
-    readonly property var liveKeys: ["frameBars", "frameEnabled", "frameOpacity", "frameThickness", "frameCorner", "fontFamily", "fontSize", "barStyle", "obi", "nacre", "qsbar", "dock", "clipboard.widthPercent", "clipboard.heightPercent", "clipboard.bottomPercent", "clipboard.panelRadius", "clipboard.paneRadius", "clipboard.cardRadius"]
+    readonly property var liveKeys: ["frameBars", "frameEnabled", "frameOpacity", "frameThickness", "frameCorner", "fontFamily", "terminalFontFamily", "fontSize", "barStyle", "obi", "nacre", "qsbar", "dock", "clipboard.widthPercent", "clipboard.heightPercent", "clipboard.bottomPercent", "clipboard.panelRadius", "clipboard.paneRadius", "clipboard.cardRadius"]
     property var liveBaseline: null
     property var livePending: ({})
     function captureLiveBaseline() {
@@ -1593,6 +1594,8 @@ Rectangle {
         onReset: {
             if (pageHost.shown === "controls" && pageHost.front && pageHost.front.item)
                 pageHost.front.item.resetLayout();
+            else if (pageHost.shown === "global" && pageHost.front && pageHost.front.item)
+                pageHost.front.item.resetDefaults();
             else
                 hub.resetDefaults();
         }

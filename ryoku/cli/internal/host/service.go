@@ -49,14 +49,33 @@ type runitRestartCandidate struct {
 }
 
 func (a *App) FailedServicesFor(scope string) ([]ServiceFailure, error) {
+	user := false
 	var dir string
 	switch scope {
 	case "--system":
 		dir = a.cfg.SystemLiveDir
 	case "--user":
+		user = true
 		dir = a.userServiceDir()
 	default:
 		return nil, fmt.Errorf("invalid service scope %q", scope)
+	}
+	init, err := a.Init()
+	if err != nil {
+		return nil, err
+	}
+	if init == Systemd {
+		result := a.query("systemctl", a.systemdScopeArgs(user, "--failed", "--no-legend", "--plain")...)
+		if result.Code != 0 {
+			return nil, fmt.Errorf("list failed %s services: systemctl exited %d", strings.TrimPrefix(scope, "--"), result.Code)
+		}
+		var failed []ServiceFailure
+		for _, line := range strings.Split(result.Output, "\n") {
+			if fields := strings.Fields(line); len(fields) > 0 {
+				failed = append(failed, ServiceFailure{Scope: scope, Name: fields[0]})
+			}
+		}
+		return failed, nil
 	}
 	return runitFailedServicesIn(
 		[]runitServiceSource{{scope: scope, dir: dir}},
@@ -273,11 +292,45 @@ func (a *App) Service(args []string) int {
 	return a.runitService(user, verb, now, args)
 }
 
-func (a *App) systemdService(user bool, verb string, now bool, names []string) int {
-	args := make([]string, 0, len(names)+4)
-	if user {
-		args = append(args, "--user")
+func (a *App) systemdScopeArgs(user bool, args ...string) []string {
+	if !user {
+		return args
 	}
+	if a.cfg.UID == 0 {
+		if target := a.getenv("SUDO_USER"); target != "" && target != "root" {
+			return append([]string{"--machine=" + target + "@.host", "--user"}, args...)
+		}
+	}
+	return append([]string{"--user"}, args...)
+}
+
+// ServiceProperty reads one systemd unit property without exposing native
+// systemctl argument construction to callers.
+func (a *App) ServiceProperty(scope, unit, property string) (string, error) {
+	user := false
+	switch scope {
+	case "--system":
+	case "--user":
+		user = true
+	default:
+		return "", fmt.Errorf("invalid service scope %q", scope)
+	}
+	init, err := a.Init()
+	if err != nil {
+		return "", err
+	}
+	if init != Systemd {
+		return "", fmt.Errorf("service properties are unavailable with %s", init)
+	}
+	result := a.query("systemctl", a.systemdScopeArgs(user, "show", "-p", property, "--value", unitName(unit))...)
+	if result.Code != 0 {
+		return "", fmt.Errorf("read %s for %s: systemctl exited %d", property, unit, result.Code)
+	}
+	return strings.TrimSpace(result.Output), nil
+}
+
+func (a *App) systemdService(user bool, verb string, now bool, names []string) int {
+	args := make([]string, 0, len(names)+5)
 	args = append(args, verb)
 	if now {
 		args = append(args, "--now")
@@ -288,7 +341,7 @@ func (a *App) systemdService(user bool, verb string, now bool, names []string) i
 	for _, name := range names {
 		args = append(args, unitName(name))
 	}
-	result := a.run("systemctl", args...)
+	result := a.run("systemctl", a.systemdScopeArgs(user, args...)...)
 	if result.Code == 0 {
 		return ExitOK
 	}

@@ -36,7 +36,9 @@ func TestProductStepsExistInOrder(t *testing.T) {
 
 func TestBrowserListOrderAndRecommendation(t *testing.T) {
 	bs := browsers()
-	want := []string{"firefox", "chromium", "zen"}
+	// None sits last on purpose: the three that install something are offered
+	// first, and opting out is the deliberate step past them.
+	want := []string{"firefox", "chromium", "zen", "none"}
 	if len(bs) != len(want) {
 		t.Fatalf("Ryoku ships %d browsers, got %d", len(want), len(bs))
 	}
@@ -137,6 +139,22 @@ func TestDeselectDoesNotTouchRequiredPackages(t *testing.T) {
 				t.Errorf("required package %s (%s) appears in the drop list", p, r.ID)
 			}
 		}
+	}
+}
+
+func TestRashinIsOptionalOnArchOnly(t *testing.T) {
+	row, ok := appRowByID("rashin")
+	if !ok || !row.Def || row.Req != "" {
+		t.Fatalf("rashin row = %+v (found %v), want a removable row ticked by default", row, ok)
+	}
+	keep := appDefaults()
+	keep["rashin"] = false
+	if got := strings.Join(deselectedPkgs(keep), ","); got != "ryoku-rashin" {
+		t.Fatalf("unticking Rashin drops %q, want ryoku-rashin", got)
+	}
+	// Void's desktop package still requires ryoku-rashin, so it is not offered.
+	if _, ok := appRowByIDForVariant(variantVoid, "rashin"); ok {
+		t.Fatal("the Void installer offers a Rashin row its desktop package cannot honour")
 	}
 }
 

@@ -22,7 +22,7 @@ no Go toolchain on the ISO; `iso/build.sh` ships the binary prebuilt.
   left a user stuck at the password screen with a perfectly good password.
   `password_test.go` pins it to the published vectors and to the C library's own
   `crypt(3)`, which is what verifies the hash at every later login.
-- **`apps.go` is the product-choice table**: the three browsers, the three
+- **`apps.go` is the product-choice table**: the three browsers plus None, the three
   login shells and their package stacks, the keep/remove app rows (packages,
   defaults, and the REQUIRED reason each required row refuses to drop), the
   flattened checklist rows the `apps` step renders, and the summary Review
@@ -43,7 +43,7 @@ disk (strategy) -> partitions (layout) -> hostname -> username -> password ->
 encryption -> review`
 
 `system.go` reads `/usr/share/ryoku/variant` before the wizard is built. The
-Arch flow picks Hyprland or niri, Firefox, Chromium, or Zen, and Fish, Zsh, or
+Arch flow picks Hyprland or niri, Firefox, Chromium, Zen, or none, and Fish, Zsh, or
 Bash. The Void flow opens with a short edition notice after Welcome; Arch and
 CachyOS skip it. It then keeps the same backend environment contract, but greys
 out Hyprland with its packaging reason, offers niri, Firefox or Chromium, and
@@ -68,8 +68,8 @@ that would destroy data unintentionally:
   disk, so on Void the card shows a caution, the disk step offers only the
   whole-disk strategy, and `installEnv` passes `RYOKU_FIRMWARE_MODE=bios`.
 - **Secure Boot blocks Review.** `secureBootEnabled` reads the last byte of the
-  `SecureBoot` efivar; when it is on, `reviewBlockReason` blocks the install
-  (Limine is unsigned). Mirrors the backend's preflight gate.
+  `SecureBoot` efivar. When it is on, `secureBootBlocked` prevents installation
+  because Limine is unsigned. This mirrors the backend's preflight gate.
 - **Live-medium exclusion.** `liveDisk` resolves the disk backing the archiso
   boot medium and `excludeDisk` hides it (plus zram / loop / `sr` / eMMC boot
   areas) from the target-disk picker, so the installer never offers to erase the

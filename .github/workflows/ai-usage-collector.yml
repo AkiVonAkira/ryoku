@@ -1,6 +1,6 @@
 name: AI usage collector
 
-# The QS Bar AI usage pill reads caches written by ryoku/shell/bin/opencode-usage,
+# The QS Bar AI usage pill reads caches written by ryoku/rashin/usage/opencode-usage,
 # which walks OpenCode's local session store. That store has changed shape twice
 # (file-per-message JSON, then a sqlite message table, then the 2.x
 # session_message table), and each move silently emptied the OpenCode card
@@ -12,7 +12,7 @@ name: AI usage collector
 on:
   pull_request:
     paths:
-      - 'ryoku/shell/bin/opencode-usage'
+      - 'ryoku/rashin/usage/opencode-usage'
       - 'tests/opencode-usage.sh'
       - '.github/workflows/ai-usage-collector.yml'
   push:
@@ -20,7 +20,7 @@ on:
       - main
       - unstable-dev
     paths:
-      - 'ryoku/shell/bin/opencode-usage'
+      - 'ryoku/rashin/usage/opencode-usage'
       - 'tests/opencode-usage.sh'
       - '.github/workflows/ai-usage-collector.yml'
   workflow_dispatch:

@@ -201,10 +201,11 @@ else
   # per-kernel-transaction compile (#214). Only a kernel with no prebuilt in
   # any synced repo falls to nvidia-open-dkms. Kepler is the older 470xx legacy
   # branch. Maxwell/Pascal/Volta are not covered by the open modules and use
-  # the AUR 580xx branch. The ISO bakes both legacy branches into the offline
-  # repo best-effort (they are large vendor blobs), so these usually install
-  # with no network; when a bake was skipped the card falls back to
-  # nouveau/mesa. Headers cover the DKMS build.
+  # the 580xx branch (AUR; [cachyos] on the CachyOS edition). The ISO bakes
+  # both legacy branches into the offline repo, fetched from [cachyos] where it
+  # serves them and otherwise built from the AUR best-effort (they are large
+  # vendor blobs), so these usually install with no network; when a bake was
+  # skipped the card falls back to nouveau/mesa. Headers cover the DKMS build.
   headers=()
   for kb in "${kernels[@]}"; do headers+=("${kb}-headers"); done
   multilib=0

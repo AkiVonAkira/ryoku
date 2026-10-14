@@ -20,7 +20,7 @@ RYOKU_PROFILE=amd-nvidia RYOKU_BROWSER=firefox RYOKU_LOGIN_SHELL=fish \
 It must run as root, on a UEFI machine with Secure Boot disabled, against a whole
 disk of at least 32 GiB, with a working network connection (the install is
 online-only). Set `RYOKU_ALLOW_SECUREBOOT=1` only if you have enrolled your own
-keys -- Limine ships unsigned and will not boot under enforced Secure Boot.
+keys; Limine ships unsigned and will not boot under enforced Secure Boot.
 
 ## Dry run
 
@@ -58,7 +58,7 @@ With defaults:
 |---------------------------|--------------------|------------------------------------------|
 | `RYOKU_HOSTNAME`          | `ryoku`            | Hostname.                                |
 | `RYOKU_USERNAME`          | `ryoku`            | Primary user in wheel, video, and input. |
-| `RYOKU_BROWSER`           | `firefox`          | Browser key: `firefox`, `chromium`, or `zen`. The other browser packages are dropped; xdg HTTP, HTTPS, HTML and `desktop.apps.browser` point at the pick. |
+| `RYOKU_BROWSER`           | `firefox`          | Browser key: `firefox`, `chromium`, `zen`, or `none`. The other browser packages are dropped (all of them for `none`); xdg HTTP, HTTPS, HTML and `desktop.apps.browser` point at the pick. |
 | `RYOKU_LOGIN_SHELL`       | `fish`             | Login-shell key: `fish`, `zsh`, or `bash`. The account uses `/usr/bin/<key>` and the other two shell stacks are dropped. |
 | `RYOKU_KEYMAP`            | `us`               | Console keymap (`vconsole.conf`).        |
 | `RYOKU_LOCALE`            | `en_US.UTF-8`      | Locale (`locale.gen` + `locale.conf`).   |

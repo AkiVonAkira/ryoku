@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Fixed
+- **The CachyOS edition's disk layout starts from CachyOS's sizes.** It
+  defaulted to the Arch edition's 1 GiB ESP and 16 GiB swap; it now starts at a
+  4 GiB ESP and no swap partition, as CachyOS's installer does for Limine
+  (`cachyos-settings` brings zram swap). The Zen browser hint on that edition
+  names the CachyOS repo it installs from instead of the AUR.
+- **The encryption step says what it does.** It no longer mentions a retired
+  "-luks host variant"; the passphrase is asked at every boot.
 - **Installer product choices no longer drift between editions or entry
   points.** Browser, login-shell and compositor order, labels, defaults,
   package stacks and fresh/existing shell policies now come from one shared
@@ -32,6 +39,17 @@
   Design Discord glyph included in the installer's Nerd Font.
 
 ### Added
+- **The installer can be told not to install a browser.** The browser step gains
+  a None option beside Firefox, Chromium and Zen, for a machine that brings its
+  own. Nothing is installed, no default handler is set and the desktop browser
+  role is left unset, so whatever you install afterwards can claim both.
+- **Rashin is a choice in Apps & tools.** The Arch and CachyOS installers list
+  Rashin (the AI agent, its window and the bar's AI usage pill) as a row
+  ticked by default. Unticking it leaves `ryoku-rashin` out of the install and
+  records the choice, so `ryoku doctor` never adds it later. The offline ISO
+  bakes `ryoku-rashin` so a ticked offline install still gets it. The Void
+  installer does not offer the row because its desktop package still requires
+  Rashin.
 - **The Void installer explains the edition before setup begins.** A short card
   covers niri-only support, unavailable apps, and using `ryoku update --system`
   because XBPS has no transaction hooks.

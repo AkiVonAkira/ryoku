@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Added
+- **`FileDialogHost` (`Ryoku.Ui`): the one way a surface opens the system file
+  or folder dialog.** It takes a `FileDialog`'s `title`, `nameFilters` and
+  `currentFolder`, builds the dialog for the window it opens in and drops it
+  when that window is rebuilt, which is what Quickshell does to every hidden
+  layer-shell or popup window. A `FileDialog` declared directly in a surface
+  outlives its implementation and crashes on its next open.
 - **The desktop now has a Fedora host path.** Package and service actions use
   DNF and systemd through `ryoku-host`, the Hub reflects Fedora's unavailable
   snapshot and AUR capabilities, and updates and compositor package switches
@@ -191,6 +197,12 @@
   (`ui/Singletons/Wm.qml`).
 
 ### Changed
+- **Rashin's pieces live under `rashin/`.** The AI usage collectors moved from
+  `shell/bin/` to `rashin/usage/`, the `ryoku-ai-usage` units from
+  `shell/systemd/user/` to `rashin/systemd/`, and the companion window from
+  `apps/rashin-app/` to `rashin/app/`. The dev deploy builds and installs them
+  from there, and the desktop's materialized config no longer carries the AI
+  usage units.
 - **The fast lane asks Prowl.** Quick asks post to Prowl's
   `/v1/chat/completions` on a route (`auto`, an axis such as `auto:fast`, or one
   of your sets) instead of calling a provider directly. `ryoku-rashin backend
@@ -213,6 +225,10 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Keyboard repair rebuilds Fedora and Void boot images.** The CLI still
+  prefers `mkinitcpio -P` where it is installed, then falls back to
+  `dracut --regenerate-all --force` so the boot prompt keymap converges on
+  hosts that use dracut.
 - **A failed update names the packages that conflict.** pacman reports the pair
   on a `::` line and only the `error:` summary reached the terminal, so an
   aborted transaction read as "conflicting dependencies" with nothing to act on.

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Logging out fully releases the graphical session.** When login1 removes the
+  desktop session, the power lifecycle now stops its graphical session targets
+  as well as Ryoku's services, so the next desktop can start cleanly.
+
 - **Authorization rules survive desktop package upgrades.** Arch, Fedora, and
   Void ask the running polkit daemon for a full rules reload only after their
   package transaction has finished writing Ryoku's rules, without restarting

@@ -243,6 +243,16 @@ stop_session_services() {
   done <"$roster"
 }
 
+stop_graphical_session_targets() {
+  [[ $init_system == systemd ]] || return 0
+  local target
+  for target in graphical-session.target graphical-session-pre.target; do
+    if systemctl --user is-active --quiet "$target"; then
+      systemctl --user stop "$target" || return
+    fi
+  done
+}
+
 stop_session_and_guards() {
   if [[ $init_system == systemd ]]; then
     systemctl --user stop "$session_target" "$session_guard_pattern"
@@ -2001,8 +2011,8 @@ watch_session() (
     rm -f "$(session_environment_path "$sid")"
     return 0
   fi
-  if ! stop_session_services; then
-    log "could not stop the session services for removed login1 session $sid" >&2
+  if ! stop_session_services || ! stop_graphical_session_targets; then
+    log "could not stop the session targets for removed login1 session $sid" >&2
     return 1
   fi
   if ! cleanup_removed_session_locks "$sid"; then

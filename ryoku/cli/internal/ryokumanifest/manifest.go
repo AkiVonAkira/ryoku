@@ -122,10 +122,11 @@ func (m Manifest) DeliverableOnce() []string { return m.Provisioned }
 // machine with a fingerprint reader (reconcileFingerprintModule);
 // limine-snapper-sync and limine-mkinitcpio-hook belong to a Limine box whose
 // boot Ryoku manages (the snapshot offer and the doctor's limine reconcilers);
-// ryoku-palette-bridge is a Ryogami setting the user turns on. The hook is one
-// of three conflicting builds of limine-entry-tool (CachyOS ships the plain
-// tool, dracut boxes carry limine-dracut-support), so pushing it at a box that
-// boots through another build fails the update every time.
+// ryoku-palette-bridge is a Ryogami setting the user turns on; prowl arrives
+// only as ryoku-rashin's dependency, so a box without Rashin never gets it.
+// The hook is one of three conflicting builds of limine-entry-tool (CachyOS
+// ships the plain tool, dracut boxes carry limine-dracut-support), so pushing
+// it at a box that boots through another build fails the update every time.
 // Without this list the control manifest reads every [ryoku] PKGBUILD as a
 // requirement and offers to install all of them on every machine.
 var OptIn = []string{
@@ -135,6 +136,7 @@ var OptIn = []string{
 	"limine-snapper-sync",
 	"limine-mkinitcpio-hook",
 	"ryoku-palette-bridge",
+	"prowl",
 }
 
 // IsOptIn reports whether a package name belongs to no box by default.
@@ -175,6 +177,7 @@ func Apps() []App {
 		{"nautilus", "the graphical file manager"},
 		{"nautilus-python", "the Ryoku stash actions in Nautilus' right-click menu"},
 		{"waifu2x-ncnn-vulkan", "AI upscale behind ryoshot Beautify HD and ryowalls Enhance"},
+		{"ryoku-rashin", "Rashin, the AI agent: Ask, the Rashin window and the bar's AI usage pill"},
 		{"pavucontrol", "the GUI mixer the bar's Open audio button launches"},
 		{"songrec", "Recognize Music in the launcher"},
 		{"openrgb", "keyboard and mouse lighting (Ryogami settings > Lighting)"},

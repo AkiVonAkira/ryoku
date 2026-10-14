@@ -57,6 +57,7 @@ func TestActivatorSpellings(t *testing.T) {
 	for chord, want := range map[string]string{
 		"XF86AudioRaiseVolume": "KEY_VOLUMEUP",
 		"XF86AudioPlay":        "KEY_PLAYPAUSE",
+		"XF86AudioMicMute":     "KEY_MICMUTE",
 		"XF86MonBrightnessUp":  "KEY_BRIGHTNESSUP",
 		"XF86TouchpadToggle":   "KEY_TOUCHPAD_TOGGLE",
 		"XF86AudioPrev":        "KEY_PREVIOUSSONG",
@@ -131,6 +132,7 @@ func TestResolveEmitsCatalogue(t *testing.T) {
 		"command.repeatable_binding_media_volume_up":        {activator: "KEY_VOLUMEUP", commandOpt: "command_media_volume_up", cmd: "ryoku-volume up"},
 		"command.always_binding_media_play":                 {activator: "KEY_PLAYPAUSE", commandOpt: "command_media_play", cmd: "playerctl play-pause"},
 		"command.always_binding_media_mute":                 {activator: "KEY_MUTE", commandOpt: "command_media_mute", cmd: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"},
+		"command.always_binding_media_mic_mute":             {activator: "KEY_MICMUTE", commandOpt: "command_media_mic_mute", cmd: "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"},
 		"command.repeatable_binding_hardware_brightness_up": {activator: "KEY_BRIGHTNESSUP", commandOpt: "command_hardware_brightness_up", cmd: "ryoku-cmd-brightness +5"},
 		"command.always_binding_hardware_touchpad_toggle":   {activator: "KEY_TOUCHPAD_TOGGLE", commandOpt: "command_hardware_touchpad_toggle", cmd: "ryoku-wm-wayfire act input.touchpad toggle"},
 		"command.binding_shell_screenshot_print":            {activator: "KEY_PRINT", commandOpt: "command_shell_screenshot_print"},

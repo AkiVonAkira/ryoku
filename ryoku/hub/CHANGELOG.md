@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **Keybinds can be removed and restored.** Each shipped shortcut has a control
+  that switches its action off without hiding the row, then restores it in one
+  press (`quickshell/pages/KeybindsPage.qml`).
 - **`ryoku-hub lighting follow <device>|--all on|off`.** One verb puts a device
   on the palette accent in a mode that can show it (its Static mode, else a
   Direct or Custom per-LED mode), names devices whose modes carry no colour
@@ -19,6 +22,9 @@
 - **Credits now name QS Bar's source.** Quickshell Rise by HANCORE-linux joins
   the Hub credits and root provenance notice
   (`quickshell/pages/CreditsPage.qml`, `../../NOTICE`).
+- **Credits name ii-p3drovfx as the ii dock's source too.** The row that
+  already credited the shell for the Stage Editor now names the dock design
+  beside it (`quickshell/pages/CreditsPage.qml`, `../../NOTICE`).
 - Global > Language & Region offers a 24-hour time switch for all Ryoku clocks; off selects 12-hour time with AM/PM.
 - Battery settings include low-battery alerts, independent warning and critical
   switches and percentages, and a test notification. Either reminder can run
@@ -70,6 +76,13 @@
   Hermes's model, and connecting an agent now says it routes that agent's models
   through Prowl (`quickshell/pages/RashinPage.qml`).
 ### Fixed
+- **Global resets stay on the Global page, and Save says when it applies.**
+  Reset restores only language, region, location and font choices instead of
+  also changing the bar style or other pages. The window settings page now says
+  that Save applies its changes immediately.
+- **System and terminal fonts are separate choices.** Global keeps the
+  proportional UI face independent from a terminal monospace face, defaulting
+  the latter to JetBrainsMono Nerd Font.
 - **Battery alert controls stay off battery-less machines.** The Machine page
   hides the Battery card on desktops and virtual machines unless the hardware
   exposes a battery or battery tuning controls.

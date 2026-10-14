@@ -52,7 +52,8 @@ var wayfireKeys = map[string]string{
 	"KP_Separator": "KEY_KPDOT",
 
 	"XF86AudioRaiseVolume": "KEY_VOLUMEUP", "XF86AudioLowerVolume": "KEY_VOLUMEDOWN",
-	"XF86AudioMute": "KEY_MUTE", "XF86AudioPlay": "KEY_PLAYPAUSE",
+	"XF86AudioMute": "KEY_MUTE", "XF86AudioMicMute": "KEY_MICMUTE",
+	"XF86AudioPlay": "KEY_PLAYPAUSE",
 	"XF86AudioNext": "KEY_NEXTSONG", "XF86AudioPrev": "KEY_PREVIOUSSONG",
 	"XF86MonBrightnessUp": "KEY_BRIGHTNESSUP", "XF86MonBrightnessDown": "KEY_BRIGHTNESSDOWN",
 	"XF86TouchpadToggle": "KEY_TOUCHPAD_TOGGLE",
@@ -307,6 +308,7 @@ func defaultBinds() map[string]wayfireBind {
 		"media.volumeUp":   {key: "media_volume_up", cmd: "ryoku-volume up", repeatable: true},
 		"media.volumeDown": {key: "media_volume_down", cmd: "ryoku-volume down", repeatable: true},
 		"media.mute":       {key: "media_mute", cmd: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", always: true},
+		"media.micMute":    {key: "media_mic_mute", cmd: "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle", always: true},
 		"media.play":       {key: "media_play", cmd: "playerctl play-pause", always: true},
 		"media.next":       {key: "media_next", cmd: "playerctl next", always: true},
 		"media.prev":       {key: "media_prev", cmd: "playerctl previous", always: true},
@@ -401,6 +403,19 @@ func resolveBinds(s wayfireStore) ([]outBind, []wm.Unhonored) {
 	for _, c := range s.Unbinds {
 		if c = strings.TrimSpace(c); c != "" {
 			unbind[c] = true
+		}
+	}
+	// Switched off in Settings: dropped like an import's unbind. A family carries
+	// its placeholder in the store, so spread it before the per-member lookup.
+	for _, c := range s.KeybindDisabled {
+		if c = strings.TrimSpace(c); c == "" {
+			continue
+		}
+		unbind[c] = true
+		if strings.Contains(c, "{n}") {
+			for n := 1; n <= 10; n++ {
+				unbind[wm.ExpandChord(c, n)] = true
+			}
 		}
 	}
 
@@ -640,6 +655,7 @@ func applyBinds(d *iniDoc, s wayfireStore) {
 func bindRows(s wayfireStore) []wm.BindRow {
 	defs := defaultBinds()
 	rows := make([]wm.BindRow, 0, 128)
+	off := wm.DisabledSet(s.KeybindDisabled)
 
 	for _, cb := range wm.ShippedBinds() {
 		wb := defs[cb.ID]
@@ -669,6 +685,11 @@ func bindRows(s wayfireStore) []wm.BindRow {
 			Kind:       cb.Kind,
 			Rebindable: wb.reason == "" && rebindable(cb),
 			Locked:     cb.Locked,
+			Disabled:   off[cb.Chord],
+		}
+		if row.Disabled {
+			row.Keys = nil
+			row.Chord = ""
 		}
 		if wb.reason != "" {
 			row.Unhonored = wb.reason

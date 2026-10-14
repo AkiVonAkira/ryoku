@@ -7,8 +7,8 @@ ryoku/shell/systemd/user/ryoku-idle.service	translated	void/init/user/ryoku-idle
 ryoku/shell/systemd/user/ryoku-clamshell.service	translated	void/init/user/ryoku-clamshell	same on-failure finish translation; TimeoutStopSec has no runit analogue (sv down waits for the run child)
 ryoku/shell/systemd/user/ryoku-eq.service	translated	void/init/user/ryoku-eq	PartOf=pipewire becomes a dbus-name wait plus finish downs the service when pipewire is gone
 ryoku/shell/systemd/user/ryoku-bt-agent.service	translated	void/init/user/ryoku-bt-agent	After/Wants/PartOf=bluetooth becomes a dbus-name wait for org.freedesktop.DBus plus a bluetoothd readiness check; the tail -f stdin hold is kept
-ryoku/shell/systemd/user/ryoku-ai-usage.service	translated	void/init/user/ryoku-ai-usage	loop service: the timer's schedule becomes a run loop with env-overridable delays
-ryoku/shell/systemd/user/ryoku-ai-usage.timer	translated	void/init/user/ryoku-ai-usage	OnBootSec/OnUnitActiveSec/Persistent fold into the loop service above; runit has no timer units
+ryoku/rashin/systemd/ryoku-ai-usage.service	translated	void/init/user/ryoku-ai-usage	loop service: the timer's schedule becomes a run loop with env-overridable delays
+ryoku/rashin/systemd/ryoku-ai-usage.timer	translated	void/init/user/ryoku-ai-usage	OnBootSec/OnUnitActiveSec/Persistent fold into the loop service above; runit has no timer units
 ryoku/shell/systemd/user/ryoku-bootstrap.service	translated	void/init/user/ryoku-bootstrap	oneshot: run does the work then exec sv down; ConditionPathExists markers kept; the session entrypoint restarts it before the rest of the user-service roster
 ryoku/shell/systemd/user/ryoku-session.target	translated	system/services/manifest.tsv	runit has no targets; session activation rows define the ordered roster that ryoku-host writes for each user
 ryoku/shell/systemd/user/niri.service.d/ryoku-bootstrap.conf	translated	void/init/user/ryoku-bootstrap	the drop-in's Wants/After=ryoku-bootstrap is folded into the roster ordering, where bootstrap runs first

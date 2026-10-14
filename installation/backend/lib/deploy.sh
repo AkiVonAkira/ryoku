@@ -127,6 +127,9 @@ ryoku_repo_keyring() {
 # loudly instead of booting a half-configured box.
 ryoku_deploy_packages() {
   local -a pkgs=(ryoku-keyring ryoku-desktop "ryoku-desktop-$RYOKU_COMPOSITOR")
+  # Rashin is an optional app in [ryoku], not a desktop dependency: it comes in
+  # here unless Apps & tools unticked it.
+  ryoku_drop_pkg ryoku-rashin || pkgs+=(ryoku-rashin)
   local aura="$RYOKU_REPO/system/hardware/input/ryoku-hw-asus-aura"
   if [[ -x $aura ]] && "$aura"; then
     if [[ -z ${RYOKU_DRYRUN:-} ]] && arch-chroot /mnt pacman -Qq tlp >/dev/null 2>&1; then
