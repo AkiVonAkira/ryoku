@@ -44,6 +44,7 @@ prepare_prebuilt() {
       ;;
     ryoku-rashin)
       fake_binary "$dir/ryoku-rashin"
+      fake_binary "$dir/rashin-app"
       printf '# fixture repository index\n' > "$dir/ryoku-repo.md"
       ;;
     ryoku-palette-bridge)

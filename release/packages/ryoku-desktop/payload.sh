@@ -67,7 +67,7 @@ EOF
   cp -a "$_repo/ryoku/hub/quickshell/." "$cfg/quickshell/hub/"
 
   # First-party GUI apps: a Quickshell app (ryovm, ryostore) ships its
-  # quickshell/ tree as qs -c <name>; a compiled app (rashin-app) has a
+  # quickshell/ tree as qs -c <name>; a compiled app has a
   # CMakeLists.txt and builds to a /usr/bin/<name> binary. Either way
   # its bin/ helpers, .desktop and icon are installed. Dropping in an app dir
   # ships it; see ryoku/apps/README.md for the contract a new one has to meet.
@@ -293,20 +293,8 @@ EOF
     cp -a "$_repo/ryoku/shell/systemd/user/." "$cfg/systemd/user/"
   fi
 
-  # AI-usage collectors + their timer: refresh the ~/.cache/{claude,codex,
-  # opencode}-usage.json caches the qsbar AI pill reads. The collectors are
-  # python3 stdlib-only (python is already a hard depend, for wavecap/pactl) and
-  # each no-ops when its tool/creds/db are absent. Units live in the system user
-  # generator dir so `systemctl --global enable` (the .install) can find them;
-  # the ExecStart lines already point at /usr/bin, the packaged collector path.
-  install -Dm755 "$_repo/ryoku/shell/bin/claude-usage"   "$pkgdir/usr/bin/claude-usage"
-  install -Dm755 "$_repo/ryoku/shell/bin/codex-usage"    "$pkgdir/usr/bin/codex-usage"
-  install -Dm755 "$_repo/ryoku/shell/bin/opencode-usage" "$pkgdir/usr/bin/opencode-usage"
+  # The AI-usage collectors behind the qsbar AI pill ship with ryoku-rashin.
   if [[ $RYOKU_INIT_MODE == systemd ]]; then
-    install -Dm644 "$_repo/ryoku/shell/systemd/user/ryoku-ai-usage.service" \
-      "$pkgdir/usr/lib/systemd/user/ryoku-ai-usage.service"
-    install -Dm644 "$_repo/ryoku/shell/systemd/user/ryoku-ai-usage.timer" \
-      "$pkgdir/usr/lib/systemd/user/ryoku-ai-usage.timer"
     # the config bootstrap: a package install lays nothing into ~/.config, so the
     # first login after it boots a bare compositor unless this runs first.
     install -Dm644 "$_repo/ryoku/shell/systemd/user/ryoku-bootstrap.service" \

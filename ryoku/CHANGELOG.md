@@ -191,6 +191,12 @@
   (`ui/Singletons/Wm.qml`).
 
 ### Changed
+- **Rashin's pieces live under `rashin/`.** The AI usage collectors moved from
+  `shell/bin/` to `rashin/usage/`, the `ryoku-ai-usage` units from
+  `shell/systemd/user/` to `rashin/systemd/`, and the companion window from
+  `apps/rashin-app/` to `rashin/app/`. The dev deploy builds and installs them
+  from there, and the desktop's materialized config no longer carries the AI
+  usage units.
 - **The fast lane asks Prowl.** Quick asks post to Prowl's
   `/v1/chat/completions` on a route (`auto`, an axis such as `auto:fast`, or one
   of your sets) instead of calling a provider directly. `ryoku-rashin backend
