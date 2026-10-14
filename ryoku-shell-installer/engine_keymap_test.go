@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -39,8 +40,12 @@ func TestSeedDesktopKeymapMergesNeutralStore(t *testing.T) {
 		e := &engine{f: &facts{
 			homeDir: home, kbLayout: "fr", kbVariant: "azerty", kbOptions: "ctrl:nocaps", kbSource: "GNOME",
 		}, p: &plan{}}
-		if err := seedDesktopKeymap(e); err != nil {
+		seeded, err := seedDesktopKeymap(e)
+		if err != nil {
 			t.Fatal(err)
+		}
+		if !seeded {
+			t.Fatal("a fresh store was not seeded")
 		}
 		input := desktopInput(t, desktopStore(t, home))
 		if input["kbLayout"] != "fr" || input["kbVariant"] != "azerty" || input["kbOptions"] != "ctrl:nocaps" {
@@ -59,7 +64,7 @@ func TestSeedDesktopKeymapMergesNeutralStore(t *testing.T) {
 			t.Fatal(err)
 		}
 		e := &engine{f: &facts{homeDir: home, kbLayout: "de", kbVariant: "nodeadkeys", kbSource: "KDE"}, p: &plan{}}
-		if err := seedDesktopKeymap(e); err != nil {
+		if _, err := seedDesktopKeymap(e); err != nil {
 			t.Fatal(err)
 		}
 		root := desktopStore(t, home)
@@ -89,8 +94,12 @@ func TestSeedDesktopKeymapMergesNeutralStore(t *testing.T) {
 			t.Fatal(err)
 		}
 		e := &engine{f: &facts{homeDir: home, kbLayout: "fr", kbSource: "GNOME"}, p: &plan{}}
-		if err := seedDesktopKeymap(e); err != nil {
+		seeded, err := seedDesktopKeymap(e)
+		if err != nil {
 			t.Fatal(err)
+		}
+		if seeded {
+			t.Fatal("a deliberate layout was reported as seeded, so the system keymap would be pushed over it")
 		}
 		input := desktopInput(t, desktopStore(t, home))
 		if input["kbLayout"] != "de" || input["kbVariant"] != "nodeadkeys" || input["kbOptions"] != "ctrl:nocaps" {
@@ -109,7 +118,7 @@ func TestSeedDesktopKeymapMergesNeutralStore(t *testing.T) {
 			t.Fatal(err)
 		}
 		e := &engine{f: &facts{homeDir: home, kbLayout: "de", kbSource: "KDE"}, p: &plan{azertyBE: true}}
-		if err := seedDesktopKeymap(e); err != nil {
+		if _, err := seedDesktopKeymap(e); err != nil {
 			t.Fatal(err)
 		}
 		input := desktopInput(t, desktopStore(t, home))
@@ -117,4 +126,65 @@ func TestSeedDesktopKeymapMergesNeutralStore(t *testing.T) {
 			t.Fatalf("explicit AZERTY did not override the store: %#v", input)
 		}
 	})
+}
+
+// A plain us keyboard carries nothing: the store default already says us, and
+// pushing it onto the console would only touch files for no change.
+func TestSeedDesktopKeymapSkipsPlainUS(t *testing.T) {
+	home := t.TempDir()
+	e := &engine{f: &facts{homeDir: home, kbLayout: "us", kbSource: "localectl"}, p: &plan{}}
+	seeded, err := seedDesktopKeymap(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seeded {
+		t.Fatal("a plain us layout was seeded")
+	}
+	if _, err := os.Stat(filepath.Join(home, ".config/ryoku/desktop.json")); err == nil {
+		t.Fatal("a store was written for a plain us layout")
+	}
+}
+
+// The console and login screen follow the carried layout through localectl
+// under the installer's own sudo, and the restore script puts the previous
+// X11 keymap back.
+func TestApplySystemKeymapUsesSudoAndRecordsRestore(t *testing.T) {
+	root := t.TempDir()
+	binDir := filepath.Join(root, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	logPath := filepath.Join(root, "sudo.log")
+	sudo := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$SUDO_LOG\"\n"
+	if err := os.WriteFile(filepath.Join(binDir, "sudo"), []byte(sudo), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	localectl := "#!/bin/sh\nprintf '   System Locale: LANG=en_US.UTF-8\\n       VC Keymap: us\\n      X11 Layout: us\\n     X11 Variant: intl\\n'\n"
+	if err := os.WriteFile(filepath.Join(binDir, "localectl"), []byte(localectl), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("SUDO_LOG", logPath)
+	restorePath := filepath.Join(root, "restore.sh")
+	if err := os.WriteFile(restorePath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	e := &engine{f: &facts{homeDir: root}, p: &plan{}, restorePath: restorePath}
+	if err := applySystemKeymap(e, "de", "nodeadkeys", "caps:escape"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "-n localectl set-x11-keymap de  nodeadkeys caps:escape"; strings.TrimSpace(string(got)) != want {
+		t.Fatalf("sudo call = %q, want %q", strings.TrimSpace(string(got)), want)
+	}
+	restore, err := os.ReadFile(restorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(restore), `sudo localectl set-x11-keymap "us" '' "intl" ""`) {
+		t.Fatalf("restore script does not put the previous keymap back: %q", restore)
+	}
 }

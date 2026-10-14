@@ -2283,9 +2283,12 @@ EOF`); err != nil {
 	return nil
 }
 
-func seedDesktopKeymap(e *engine) error {
-	layout, variant, options, source := e.f.kbLayout, e.f.kbVariant, e.f.kbOptions, e.f.kbSource
-	explicit := e.p != nil && (e.p.azertyFR || e.p.azertyBE)
+// seededKeymap is the layout the installer carries into the store: an explicit
+// AZERTY choice first, else what detection salvaged. Empty when there is
+// nothing to carry (no layout, or plain us).
+func seededKeymap(e *engine) (layout, variant, options, source string, explicit bool) {
+	layout, variant, options, source = e.f.kbLayout, e.f.kbVariant, e.f.kbOptions, e.f.kbSource
+	explicit = e.p != nil && (e.p.azertyFR || e.p.azertyBE)
 	if explicit {
 		layout, variant, options, source = "fr", "", "", "plan"
 		if e.p.azertyBE {
@@ -2293,10 +2296,21 @@ func seedDesktopKeymap(e *engine) error {
 		}
 	}
 	if layout == "" || (layout == "us" && variant == "" && options == "") {
-		return nil
+		return "", "", "", "", false
 	}
 	if source == "" {
 		source = "localectl"
+	}
+	return layout, variant, options, source, explicit
+}
+
+// seedDesktopKeymap writes the carried layout into the neutral store and
+// reports whether it did; a store that already holds a deliberate pick is
+// left alone unless the plan carries an explicit choice.
+func seedDesktopKeymap(e *engine) (bool, error) {
+	layout, variant, options, source, explicit := seededKeymap(e)
+	if layout == "" {
+		return false, nil
 	}
 
 	store := filepath.Join(e.f.homeDir, ".config/ryoku/desktop.json")
@@ -2305,10 +2319,10 @@ func seedDesktopKeymap(e *engine) error {
 	switch {
 	case err == nil && strings.TrimSpace(string(data)) != "":
 		if err := json.Unmarshal(data, &root); err != nil {
-			return fmt.Errorf("read keyboard settings from %s: %w", store, err)
+			return false, fmt.Errorf("read keyboard settings from %s: %w", store, err)
 		}
 	case err != nil && !os.IsNotExist(err):
-		return fmt.Errorf("read keyboard settings from %s: %w", store, err)
+		return false, fmt.Errorf("read keyboard settings from %s: %w", store, err)
 	}
 	if root == nil {
 		root = map[string]any{}
@@ -2316,7 +2330,7 @@ func seedDesktopKeymap(e *engine) error {
 	desktopNode, ok := root["desktop"].(map[string]any)
 	if !ok {
 		if _, exists := root["desktop"]; exists {
-			return fmt.Errorf("%s: desktop must be an object", store)
+			return false, fmt.Errorf("%s: desktop must be an object", store)
 		}
 		desktopNode = map[string]any{}
 		root["desktop"] = desktopNode
@@ -2324,7 +2338,7 @@ func seedDesktopKeymap(e *engine) error {
 	input, ok := desktopNode["input"].(map[string]any)
 	if !ok {
 		if _, exists := desktopNode["input"]; exists {
-			return fmt.Errorf("%s: desktop.input must be an object", store)
+			return false, fmt.Errorf("%s: desktop.input must be an object", store)
 		}
 		input = map[string]any{}
 		desktopNode["input"] = input
@@ -2332,13 +2346,13 @@ func seedDesktopKeymap(e *engine) error {
 	if current, exists := input["kbLayout"]; exists && !explicit {
 		currentLayout, stringValue := current.(string)
 		if !stringValue || (currentLayout != "" && currentLayout != "us") {
-			return nil
+			return false, nil
 		}
 	}
 	if e.dry {
 		e.sayf(i18n.T("DRYRUN: seed keyboard layout %q variant %q options %q from %s into %s"),
 			layout, variant, options, source, store)
-		return nil
+		return true, nil
 	}
 
 	input["kbLayout"] = layout
@@ -2346,16 +2360,46 @@ func seedDesktopKeymap(e *engine) error {
 	input["kbOptions"] = options
 	data, err = json.MarshalIndent(root, "", "  ")
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := os.MkdirAll(filepath.Dir(store), 0o755); err != nil {
-		return err
+		return false, err
 	}
 	if err := os.WriteFile(store, append(data, '\n'), 0o644); err != nil {
-		return err
+		return false, err
 	}
 	e.sayf(i18n.T("seeded keyboard layout %q variant %q options %q from %s into %s"),
 		layout, variant, options, source, store)
+	return true, nil
+}
+
+var x11KeymapFieldRe = regexp.MustCompile(`(?m)^\s*X11 (Layout|Variant|Options):\s*(\S+)`)
+
+// applySystemKeymap puts the carried layout on the console and the login
+// screen now, with the sudo the installer already holds. Left to the doctor,
+// the same change goes through polkit, which prompts for a password in the
+// middle of an unattended run and hangs it where no agent can answer.
+func applySystemKeymap(e *engine, layout, variant, options string) error {
+	if !has("localectl") {
+		return nil
+	}
+	previous := map[string]string{}
+	for _, m := range x11KeymapFieldRe.FindAllStringSubmatch(out("localectl", "status"), -1) {
+		if m[2] != "(unset)" && m[2] != "n/a" {
+			previous[m[1]] = m[2]
+		}
+	}
+	if err := e.sudo("localectl", "set-x11-keymap", layout, "", variant, options); err != nil {
+		return err
+	}
+	// Positional arguments, so the empty model slot has to be quoted or the
+	// variant would be read as the model.
+	restore := "us"
+	if previous["Layout"] != "" {
+		restore = fmt.Sprintf("%q '' %q %q", previous["Layout"], previous["Variant"], previous["Options"])
+	}
+	e.recordRestore("sudo localectl set-x11-keymap " + restore)
+	e.say(i18n.Tf("set the console and login screen keymap to %s", layout))
 	return nil
 }
 
@@ -2367,8 +2411,15 @@ func stepConfigs(e *engine) error {
 	if ryoku == "" {
 		ryoku = "ryoku"
 	}
-	if err := seedDesktopKeymap(e); err != nil {
+	layout, variant, options, _, _ := seededKeymap(e)
+	seeded, err := seedDesktopKeymap(e)
+	if err != nil {
 		return err
+	}
+	if seeded {
+		if err := applySystemKeymap(e, layout, variant, options); err != nil {
+			return err
+		}
 	}
 	// a source build has no packaged base tree for materialize to apply;
 	// deploy.sh in the build step already laid and overlaid the config.
@@ -2404,32 +2455,6 @@ func stepConfigs(e *engine) error {
 				}
 				e.sayf(i18n.T("carried the %s monitor layout into %s"), e.f.monSource, rel)
 			}
-		}
-	}
-
-	// console + login-screen parity for an explicit AZERTY choice: the vt
-	// keymap and SDDM's X11 greeter follow the desktop layout.
-	azerty := e.p.azertyFR || e.p.azertyBE
-	if azerty {
-		layout, keymap := "fr", "fr"
-		if e.p.azertyBE {
-			layout, keymap = "be", "be-latin1"
-		}
-		e.say(i18n.Tf("setting the console keymap to %s in /etc/vconsole.conf", keymap))
-		if err := e.sudoSh(`install -Dm644 /dev/stdin /etc/vconsole.conf <<'EOF'
-KEYMAP=` + keymap + `
-EOF`); err != nil {
-			return err
-		}
-		e.say(i18n.Tf("pointing the SDDM login screen at the %s layout via xorg.conf.d", layout))
-		if err := e.sudoSh(`install -Dm644 /dev/stdin /etc/X11/xorg.conf.d/00-keyboard.conf <<'EOF'
-Section "InputClass"
-        Identifier "system-keyboard"
-        MatchIsKeyboard "on"
-        Option "XkbLayout" "` + layout + `"
-EndSection
-EOF`); err != nil {
-			return err
 		}
 	}
 

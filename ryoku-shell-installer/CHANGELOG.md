@@ -64,8 +64,11 @@
 - **Carried keyboard settings now reach every compositor and the system
   keymap.** The installer merges the salvaged layout, variant, and options into
   the neutral desktop store before materialization, while keeping a later Hub
-  choice on repair runs. The Hub, login screen, console, and boot prompt now
-  converge on the same setting.
+  choice on repair runs, and puts the same layout on the console and the login
+  screen through `localectl` with the sudo it already holds. Left to the doctor,
+  that step went through polkit and stalled an unattended run on a password
+  prompt nothing could answer. The Hub, login screen, console, and boot prompt
+  now converge on the same setting.
 - **Fedora Server and spin installs bring up installed Bluetooth support.**
   The session step enables `bluetooth.service` only when its unit is present
   and not already enabled, and records how to disable it in the restore script.
