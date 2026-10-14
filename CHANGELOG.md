@@ -14,6 +14,14 @@ for finer detail.
   user is no longer in a mango session.
 
 ### Fixed
+- The CachyOS edition now installs what a vanilla CachyOS install carries:
+  CachyOS's own builds of pacman, mesa, the firmware and the kernel layer, its
+  own pacman.conf with the repositories for the CPU's tier, the CachyOS LTS
+  kernel as the fallback, and the Zen browser, yay and the legacy NVIDIA
+  drivers from the CachyOS repositories rather than AUR builds. It still
+  installs on any x86-64 CPU; as with CachyOS's own offline install, the first
+  `pacman -Syu` moves a v3, v4 or Zen 4 CPU onto its optimized builds, with no
+  replacement prompts.
 - Stable Release now publishes all four edition repositories from the release
   tag and starts the Void ISO alongside the Arch and CachyOS images. Release
   documentation and installer plans identify the experimental Void, Fedora, and

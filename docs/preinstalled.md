@@ -230,16 +230,25 @@ default.
 ## The CachyOS layer (CachyOS image only)
 
 Install from the CachyOS ISO and a Ryoku box *is* a CachyOS box: these are
-pacstrapped on top of everything above.
+pacstrapped on top of everything above. CachyOS's own builds replace Arch's
+wherever CachyOS forks a package (pacman, mesa, the firmware), and the stock
+`linux` kernel is left out. The first update moves a CPU with an optimized
+CachyOS tier (x86-64-v3, v4 or Zen 4) onto that tier's builds.
 
 | Package | Role |
 |---|---|
 | `linux-cachyos`, `linux-cachyos-headers` | The CachyOS-optimized kernel (booted by default) and its headers |
+| `linux-cachyos-lts`, `linux-cachyos-lts-headers` | The CachyOS LTS kernel, the fallback boot entry in place of stock `linux` |
 | `cachyos-settings` | The performance tuning (sysctl, udev, modprobe, systemd) |
 | `ananicy-cpp`, `cachyos-ananicy-rules` | The auto-nice daemon that keeps the compositor responsive under load |
 | `scx-scheds` | The sched-ext userspace schedulers |
 | `proton-cachyos-slr` | The CachyOS-tuned Proton build for Steam and Lutris |
 | `cachyos-keyring`, `cachyos-mirrorlist`, `cachyos-v3-mirrorlist`, `cachyos-v4-mirrorlist` | Trust and mirrors, so the installed system keeps updating from CachyOS |
+| `cachyos-rate-mirrors` | Ranks the Arch and CachyOS mirrors |
+| `yay` | The AUR helper, from `[cachyos]` in place of the AUR's `yay-bin` |
+| `zlib-ng-compat`, `lib32-zlib-ng-compat` | CachyOS's zlib, which it marks as replacing Arch's, so the first update has nothing to swap |
+| `cachyos-hooks`, `chwd` | CachyOS's pacman hooks and hardware detection tool |
+| `cachyos-kernel-manager`, `cachyos-packageinstaller`, `btrfs-assistant` | CachyOS's kernel manager, its package installer, and the Btrfs snapshot GUI |
 
 ## CPU microcode (per profile)
 
@@ -258,7 +267,8 @@ for the card they detect.
 
 These build in the post-install step. They need a network, so they're
 best-effort: a fresh box comes up fine without them and they arrive on the next
-pass.
+pass. On the CachyOS image, `yay` and the Zen browser come from the CachyOS
+repositories instead.
 
 | Package | Role |
 |---|---|

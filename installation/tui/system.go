@@ -26,7 +26,10 @@ import (
 	wm "ryoku-wm"
 )
 
-const variantVoid = "void"
+const (
+	variantVoid    = "void"
+	variantCachyOS = "cachyos"
+)
 
 var variantMarkerPath = "/usr/share/ryoku/variant"
 

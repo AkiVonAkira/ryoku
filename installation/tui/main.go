@@ -1020,8 +1020,18 @@ func newModel() model {
 func (m *model) cur() step { return m.flow[m.idx] }
 
 func (m *model) resetLayoutChoices() {
-	m.espG, m.swapG = 1, 16
+	m.espG, m.swapG = layoutSizeDefaults(m.variant)
 	m.snapshots, m.sepHome, m.backups = true, true, false
+}
+
+// layoutSizeDefaults is the ESP and swap size (GiB) a fresh layout starts from.
+// The CachyOS edition matches CachyOS's own installer for Limine: a 4 GiB ESP
+// and no swap partition, because cachyos-settings already brings zram swap.
+func layoutSizeDefaults(variant string) (espG, swapG int) {
+	if variant == variantCachyOS {
+		return 4, 0
+	}
+	return 1, 16
 }
 
 func (m *model) loadStep() {
