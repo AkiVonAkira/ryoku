@@ -607,7 +607,9 @@
   without the Vulkan headers: the packaged builds declare them, the source build
   never did. The build now asks for the header while configuring and names the
   package when it is missing, and the Fedora RPM declares it like the PKGBUILD
-  and the Void template already do.
+  and the Void template already do. `ryoku track` installs the headers with the
+  rest of the build toolchain on all three distributions, so the first source
+  build after switching channels goes through.
 - **Ryogami's Workshop tab finds your Wallpaper Engine scenes.** On the first
   run after an install the tab said "No Wallpaper Engine scenes yet" until
   ryogami restarted, because the picker never refreshed it after the first scan.
