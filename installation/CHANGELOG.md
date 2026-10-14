@@ -41,6 +41,13 @@
   a None option beside Firefox, Chromium and Zen, for a machine that brings its
   own. Nothing is installed, no default handler is set and the desktop browser
   role is left unset, so whatever you install afterwards can claim both.
+- **Rashin is a choice in Apps & tools.** The Arch and CachyOS installers list
+  Rashin (the AI agent, its window and the bar's AI usage pill) as a row
+  ticked by default. Unticking it leaves `ryoku-rashin` out of the install and
+  records the choice, so `ryoku doctor` never adds it later. The offline ISO
+  bakes `ryoku-rashin` so a ticked offline install still gets it. The Void
+  installer does not offer the row, because its desktop package still
+  requires Rashin.
 - **The Void installer explains the edition before setup begins.** A short card
   covers niri-only support, unavailable apps, and using `ryoku update --system`
   because XBPS has no transaction hooks.

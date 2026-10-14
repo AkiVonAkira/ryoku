@@ -1,9 +1,10 @@
 # Maintainer: Ryoku <releases@ryoku.dev>
 #
-# Ryoku Rashin backend (Go). The optional local agent OS daemon: it maintains a
-# markdown knowledge vault, serves the embedded web dashboard on 127.0.0.1, and
-# bridges the Hermes agent over ACP. Ships with the desktop but stays inert until
-# the user enables it (optional means not running, not absent).
+# Ryoku Rashin: the local agent OS daemon (Go), its companion window and the
+# collectors behind the bar's AI usage pill. The daemon maintains a markdown
+# knowledge vault, serves the embedded web dashboard on 127.0.0.1, and bridges
+# the Hermes agent over ACP. Ryoku installs it by default, but it is an optional
+# app: removing the package removes every AI piece and nothing else breaks.
 #
 # Built from the in-repo source at ryoku/rashin/backend; no tarball is fetched.
 # go build reads the committed vendor/ tree (-mod=vendor), so the signed-repo CI
@@ -21,13 +22,15 @@ license=('GPL-3.0-or-later')
 # "uv lock missing": uv is the Python project/venv manager the Hermes installer
 # and runtime use; gcc backs uv's occasional native dependency builds (the
 # installer's own build-tools helper is apt-only, useless on Arch); nodejs backs
-# its npm/npx tooling. ryoku-desktop depends on ryoku-rashin, so `pacman -Syu`
-# delivers these to existing boxes too. kitty and xdg-open ship with the desktop.
+# its npm/npx tooling. kitty and xdg-open ship with the desktop.
 # Prowl is Rashin's model gateway and code index; the package dependency keeps
-# the engine and console on the same update path.
-depends=('uv' 'nodejs' 'gcc' 'prowl')
+# the engine and console on the same update path. gtk3 and webkit2gtk-4.1 host
+# the companion window; python runs the AI usage collectors. The desktop only
+# optdepends on Rashin, so the pin runs this way: Rashin never runs against
+# another release's shell (a partial upgrade fails loudly instead of skewing).
+depends=("ryoku-desktop=$pkgver" 'uv' 'nodejs' 'gcc' 'prowl' 'gtk3' 'webkit2gtk-4.1' 'python')
 optdepends=('sqlite: sqlite3 database introspection for the rashin agent')
-makedepends=('go')
+makedepends=('go' 'cmake' 'ninja')
 source=()
 
 _repo="$startdir/../../.."

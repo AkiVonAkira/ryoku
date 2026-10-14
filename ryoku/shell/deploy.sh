@@ -742,8 +742,10 @@ install -m755 "$here/../../system/extras/ryostore-install" "$bindir/ryostore-ins
 install -m755 "$here/quickshell/plugins/ryoku-plugins-place" "$bindir/ryoku-plugins-place"
 # AI-usage collectors: refresh ~/.cache/{claude,codex,opencode}-usage.json for
 # the qsbar AI pill, driven by the ryoku-ai-usage.timer installed below. The
-# package ships them to /usr/bin; the dev loop puts the current copies on PATH.
-for s in "$here/bin"/claude-usage "$here/bin"/codex-usage "$here/bin"/opencode-usage; do
+# ryoku-rashin package ships them to /usr/bin; the dev loop puts the current
+# copies on PATH.
+for s in "$here/../rashin/usage"/claude-usage "$here/../rashin/usage"/codex-usage \
+  "$here/../rashin/usage"/opencode-usage; do
   install -m755 "$s" "$bindir/${s##*/}"
 done
 say "installed the AI-usage collectors to $bindir"
@@ -966,24 +968,30 @@ fi
 # Compile first-party Qt apps before the copy-only module and config phases.
 # Their later install loop still owns launchers, icons and Quickshell trees.
 appshare="${XDG_DATA_HOME:-$HOME/.local/share}"
+compile_app() { # compile_app <dir/> <name>: builds into <dir>/build
+  local appdir=$1 appname=$2
+  piece "app-$appname" "the $appname app"
+  if command -v cmake >/dev/null 2>&1; then
+    cmake -S "$appdir" -B "${appdir}build" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
+    if [[ -n ${RYOKU_UPDATE_PROGRESS:-} ]]; then
+      cmake --build "${appdir}build"
+    else
+      cmake --build "${appdir}build" >/dev/null
+    fi
+    piece_end
+  else
+    piece_end skipped
+  fi
+}
 for appdir in "$here"/../apps/*/; do
   appname=${appdir%/}
   appname=${appname##*/}
   if [[ -f "${appdir}CMakeLists.txt" ]]; then
-    piece "app-$appname" "the $appname app"
-    if command -v cmake >/dev/null 2>&1; then
-      cmake -S "$appdir" -B "${appdir}build" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
-      if [[ -n ${RYOKU_UPDATE_PROGRESS:-} ]]; then
-        cmake --build "${appdir}build"
-      else
-        cmake --build "${appdir}build" >/dev/null
-      fi
-      piece_end
-    else
-      piece_end skipped
-    fi
+    compile_app "$appdir" "$appname"
   fi
 done
+# The Rashin companion window ships with ryoku-rashin, not with ryoku/apps.
+compile_app "$here/../rashin/app/" rashin-app
 
 piece modules "shell and Hub modules"
 # Install the Ryoku.Ui QML module: the design system every surface imports --
@@ -1063,6 +1071,12 @@ for appdir in "$here"/../apps/*/; do
   install -Dm644 "$icon" "$appshare/icons/hicolor/scalable/apps/$appname.svg"
   say "installed app $appname"
 done
+if command -v cmake >/dev/null 2>&1; then
+  install -m755 "$here/../rashin/app/build/rashin-app" "$bindir/rashin-app"
+fi
+install -Dm644 "$here/../rashin/app/rashin-app.desktop" "$appshare/applications/rashin-app.desktop"
+install -Dm644 "$here/../rashin/app/logo.svg" "$appshare/icons/hicolor/scalable/apps/rashin-app.svg"
+say "installed app rashin-app"
 
 # Ryoku Hub (hub/): the surface is deployed above; ship a launcher entry so it
 # shows in the app launcher search too, next to the Super+comma keybind.
@@ -1387,6 +1401,9 @@ mkdir -p "$cfg/wireplumber"; cp -a "$here/../apps/wireplumber/." "$cfg/wireplumb
 mkdir -p "$cfg/environment.d"; cp -a "$here/environment.d/." "$cfg/environment.d/"
 if [ -d /run/systemd/system ]; then
   mkdir -p "$cfg/systemd/user"; cp -a "$here/systemd/user/." "$cfg/systemd/user/"
+  # the AI usage units ship with ryoku-rashin, which the dev loop always builds
+  cp -a "$here/../rashin/systemd/ryoku-ai-usage.service" \
+    "$here/../rashin/systemd/ryoku-ai-usage.timer" "$cfg/systemd/user/"
   # The dev deploy runs these units' binaries from ~/.local/bin; the package ships
   # /usr/bin. The unit stays byte-for-byte as shipped and a drop-in repoints its
   # Exec lines: an edited copy reads as a hand edit to `ryoku materialize`, which

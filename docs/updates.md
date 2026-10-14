@@ -359,7 +359,8 @@ the baseline and gone now was deleted by the user and stays gone; a name the
 release retired is reported, never uninstalled. A name another installed
 package provides (rustup for rust, tuned-ppd for power-profiles-daemon) counts
 as present, so the box's own choice is never overwritten, and the opt-in names
-(`ryokumanifest.OptIn`: hardware packages, the Limine hook and snapshot sync)
+(`ryokumanifest.OptIn`: hardware packages, the Limine hook and snapshot sync,
+and prowl, which only ever arrives as ryoku-rashin's dependency)
 belong to their gated reconcilers and are never converged. The deliver-once
 apps stay `reconcileShippedApps'` lane, so one update never runs two
 transactions over the same names. Best-effort: a box with no mirror or no

@@ -179,6 +179,8 @@ func appRows() []appRow {
 			Sub: i18n.T("feature: keyboard/mouse lighting follows the wallpaper palette")},
 		{ID: "upscale", Name: "AI upscale", Pkgs: []string{"waifu2x-ncnn-vulkan"}, Def: true,
 			Sub: i18n.T("feature: ryoshot Beautify HD and ryowalls Enhance")},
+		{ID: "rashin", Name: "Rashin", Pkgs: []string{"ryoku-rashin"}, Def: true,
+			Sub: i18n.T("feature: the AI agent (Ask, the Rashin window, the bar's AI usage pill)")},
 		{ID: "localsend", Name: "LocalSend", Pkgs: []string{"localsend-bin"}, Def: true,
 			Sub: i18n.T("feature: LAN file sharing (the pill's file stash speaks it; AUR)")},
 		{ID: "voxtype", Name: "Voxtype", Pkgs: []string{"voxtype-bin"}, Def: true,
@@ -213,10 +215,11 @@ func appRowsForVariant(variant string) []appRow {
 	if !isVoidVariant(variant) {
 		return all
 	}
-	out := make([]appRow, 0, len(all)-2)
+	out := make([]appRow, 0, len(all)-3)
 	for _, row := range all {
 		switch row.ID {
-		case "localsend", "voxtype":
+		// Void's desktop package still requires ryoku-rashin.
+		case "localsend", "voxtype", "rashin":
 			continue
 		}
 		out = append(out, row)
