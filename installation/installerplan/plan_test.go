@@ -64,9 +64,14 @@ func TestEditionChoicesDefaultsAndDrops(t *testing.T) {
 		shells      string
 		compositors string
 	}{
-		{edition: "arch", browsers: "firefox,chromium,zen", shells: "fish,zsh,bash", compositors: "hyprland,niri,wayfire"},
-		{edition: "void", shells: "fish,zsh,bash", compositors: "niri"},
-		{edition: "fedora", shells: "fish,zsh,bash", compositors: "hyprland,niri"},
+		// None installs nothing, so it is available on every edition: the
+		// availability check walks a choice's packages and there are none to miss
+		// from an edition table. The void and fedora rows were blank, which the
+		// assertion below skips, so neither edition's browser list was checked at
+		// all; they are filled in here.
+		{edition: "arch", browsers: "firefox,chromium,zen,none", shells: "fish,zsh,bash", compositors: "hyprland,niri,wayfire"},
+		{edition: "void", browsers: "firefox,chromium,none", shells: "fish,zsh,bash", compositors: "niri"},
+		{edition: "fedora", browsers: "firefox,chromium,none", shells: "fish,zsh,bash", compositors: "hyprland,niri"},
 	} {
 		t.Run(test.edition, func(t *testing.T) {
 			plan := resolvedPlan(t, test.edition)

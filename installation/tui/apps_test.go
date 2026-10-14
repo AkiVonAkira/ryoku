@@ -36,7 +36,9 @@ func TestProductStepsExistInOrder(t *testing.T) {
 
 func TestBrowserListOrderAndRecommendation(t *testing.T) {
 	bs := browsers()
-	want := []string{"firefox", "chromium", "zen"}
+	// None sits last on purpose: the three that install something are offered
+	// first, and opting out is the deliberate step past them.
+	want := []string{"firefox", "chromium", "zen", "none"}
 	if len(bs) != len(want) {
 		t.Fatalf("Ryoku ships %d browsers, got %d", len(want), len(bs))
 	}

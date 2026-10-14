@@ -33,11 +33,13 @@ func TestVariantMarkerRoutesWizard(t *testing.T) {
 
 	flow := steps()
 	browser := stepByKey(t, flow, "browser")
-	if len(browser.items) != 2 {
-		t.Fatalf("Void browsers = %v, want firefox and chromium", browser.items)
+	// Zen is an AUR build and not offered on Void; None is, since it installs
+	// nothing for an edition table to withhold.
+	if len(browser.items) != 3 {
+		t.Fatalf("Void browsers = %v, want firefox, chromium and none", browser.items)
 	}
-	if got := []string{browser.items[0].key, browser.items[1].key}; !reflect.DeepEqual(got, []string{"firefox", "chromium"}) {
-		t.Fatalf("Void browser keys = %v, want firefox and chromium", got)
+	if got := []string{browser.items[0].key, browser.items[1].key, browser.items[2].key}; !reflect.DeepEqual(got, []string{"firefox", "chromium", "none"}) {
+		t.Fatalf("Void browser keys = %v, want firefox, chromium and none", got)
 	}
 	compositor := stepByKey(t, flow, "compositor")
 	m := model{variant: variantVoid, flow: flow, idx: flowIndex(flow, "compositor"), picks: map[string]string{"compositor": wm.ProviderNiri}}

@@ -32,6 +32,10 @@
   Design Discord glyph included in the installer's Nerd Font.
 
 ### Added
+- **The installer can be told not to install a browser.** The browser step gains
+  a None option beside Firefox, Chromium and Zen, for a machine that brings its
+  own. Nothing is installed, no default handler is set and the desktop browser
+  role is left unset, so whatever you install afterwards can claim both.
 - **The Void installer explains the edition before setup begins.** A short card
   covers niri-only support, unavailable apps, and using `ryoku update --system`
   because XBPS has no transaction hooks.
