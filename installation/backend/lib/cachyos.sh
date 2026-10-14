@@ -33,11 +33,11 @@ ryoku_cachyos_drops() {
   export RYOKU_DROP_PACKAGES
 }
 
-# ryoku_cachyos_is_zen45 [CPUINFO]: a Zen 4 or Zen 5 CPU with AVX-512, the CPUs
+# ryoku_cachyos_is_zen45 CPUINFO: a Zen 4 or Zen 5 CPU with AVX-512, the CPUs
 # CachyOS gives its znver4 builds. Same family/model table as
 # detect-architecture.
 ryoku_cachyos_is_zen45() {
-  local cpuinfo=${1:-/proc/cpuinfo} family model
+  local cpuinfo=$1 family model
   grep -qw avx512f "$cpuinfo" 2>/dev/null || return 1
   family=$(awk -F: '/^cpu family/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' "$cpuinfo")
   model=$(awk -F: '/^model[[:space:]]*:/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' "$cpuinfo")
@@ -54,7 +54,7 @@ ryoku_cachyos_is_zen45() {
 ryoku_cachyos_cpu_level() {
   local isa
   isa=$(LC_ALL=C /lib/ld-linux-x86-64.so.2 --help 2>/dev/null) || isa=""
-  if ryoku_cachyos_is_zen45; then
+  if ryoku_cachyos_is_zen45 /proc/cpuinfo; then
     printf 'znver4\n'
   elif grep -qF 'x86-64-v4 (supported' <<<"$isa"; then
     printf 'v4\n'
