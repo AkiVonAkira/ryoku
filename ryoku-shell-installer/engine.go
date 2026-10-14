@@ -2565,16 +2565,16 @@ func browserRoleCommand(browser string) string {
 
 func (e *engine) setDefaultBrowser() error {
 	store := filepath.Join(e.f.homeDir, ".config/ryoku/desktop.json")
-	if e.dry {
-		e.say(i18n.Tf("DRYRUN: set %s as the default browser for http, https and html", e.p.browser))
-		e.say(i18n.Tf("DRYRUN: write desktop.apps.browser=%s to %s", browserRoleCommand(e.p.browser), store))
-		return nil
-	}
 	// "none" is the user declining a browser, not one that failed to land.
 	// Returning here keeps the log honest and leaves desktop.apps.browser unset,
 	// which browserRoleCommand would otherwise fill with the literal "none".
 	if e.p.browser == "none" {
 		e.say(i18n.T("no browser chosen; leaving the browser defaults and the desktop role unset"))
+		return nil
+	}
+	if e.dry {
+		e.say(i18n.Tf("DRYRUN: set %s as the default browser for http, https and html", e.p.browser))
+		e.say(i18n.Tf("DRYRUN: write desktop.apps.browser=%s to %s", browserRoleCommand(e.p.browser), store))
 		return nil
 	}
 	desktop := ""

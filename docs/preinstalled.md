@@ -132,7 +132,7 @@ The small daemons and utilities the desktop leans on every session.
 
 | Package | Role |
 |---|---|
-| `firefox` / `chromium` / Zen (`zen-browser-bin`) | The web browser: the installer picks exactly one of the three, with Firefox recommended |
+| `firefox` / `chromium` / Zen (`zen-browser-bin`) | The web browser: the installer picks exactly one of the three, with Firefox recommended, or none at all |
 | `kitty` | The default terminal |
 | `mpv`, `mpv-mpris` | The media player, wired onto the players bus |
 | `nautilus`, `nautilus-python` | The file manager and its "Install / Compress / Send with Ryoku" right-click actions |

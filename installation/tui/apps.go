@@ -78,6 +78,18 @@ func browsersForVariant(variant string) []item {
 	return choiceItems(installerplan.Browser, installerChoicesForVariant(variant), true)
 }
 
+// shippedBrowserCount is how many browsers the edition can install: the None
+// row is a choice, not a browser, so it stays out of the step's description.
+func shippedBrowserCount(variant string) int {
+	n := 0
+	for _, availability := range installerChoicesForVariant(variant).Choices(installerplan.Browser) {
+		if availability.Available && !availability.Choice.NoPackages {
+			n++
+		}
+	}
+	return n
+}
+
 // browserLabel is the display name for a browser key, for Review and the rail.
 func browserLabel(key string) string {
 	for _, b := range browsers() {

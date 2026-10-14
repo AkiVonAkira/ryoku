@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **The browser step accepts None.** A machine that brings its own browser
+  installs none of the three, and the default-browser step leaves the desktop
+  role unset instead of pointing it at an absent package.
 - **Fedora is now a packaged shell-installer lane.** Mutable Fedora Workstation
   and Server systems use dnf5 or dnf, verify and import the Ryoku release key,
   configure the signed stable, testing or frozen RPM repository plus

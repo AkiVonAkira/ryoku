@@ -530,9 +530,9 @@ func unavailableChoiceNotices(plan installerplan.EditionPlan, kind string) []str
 }
 
 func stepsForVariant(variant string) []step {
-	browserDesc := []string{i18n.T("Ryoku ships three browsers; pick the one you want."), i18n.T("It becomes the default and the launcher's browser role.")}
-	if len(browsersForVariant(variant)) != len(browsers()) {
-		browserDesc[0] = i18n.Tf("Ryoku ships %d browsers on this edition; pick the one you want.", len(browsersForVariant(variant)))
+	browserDesc := []string{i18n.T("Ryoku ships three browsers; pick the one you want, or none."), i18n.T("It becomes the default and the launcher's browser role.")}
+	if n := shippedBrowserCount(variant); n != shippedBrowserCount("plain") {
+		browserDesc[0] = i18n.Tf("Ryoku ships %d browsers on this edition; pick the one you want, or none.", n)
 	}
 	all := []step{
 		{key: "keyboard", title: i18n.T("Keyboard layout"), kind: kSelect, items: keymaps(),
