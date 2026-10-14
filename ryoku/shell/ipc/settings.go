@@ -193,7 +193,6 @@ type barsSettings struct {
 }
 
 type frameConfig struct {
-	EnableFrame   bool     `json:"enable_frame"`
 	MonitorFilter []string `json:"monitor_filter"`
 }
 
@@ -332,7 +331,7 @@ func defaultSettings() *settings {
 			},
 		},
 		Bars: barsSettings{
-			Frame:     frameConfig{EnableFrame: true, MonitorFilter: []string{}},
+			Frame:     frameConfig{MonitorFilter: []string{}},
 			Widgets:   barWidgetsConfig{QuickSettings: quickSettingsWidget{Icon: "Arch"}},
 			TopBar:    horizontalBar{MinimumHeight: 0, RevealByDefault: true, LeftWidgets: []string{}, CenterWidgets: []string{}, RightWidgets: []string{}},
 			BottomBar: horizontalBar{MinimumHeight: 0, RevealByDefault: true, LeftWidgets: []string{}, CenterWidgets: []string{}, RightWidgets: []string{}},

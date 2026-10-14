@@ -11,6 +11,11 @@
   it already treated it; an image that fails to stat for any other reason is
   still a warning (`internal/doctor/reconcile_limine_images.go`).
 
+### Removed
+- **`ryoku doctor` removes the unread nested frame switch.** Existing
+  `shell.json` files shed the retired key while preserving every sibling
+  setting (`internal/doctor/doctor.go`).
+
 ### Added
 - **`ryoku update` shows one bar per compilation on source boxes, with how long
   each piece usually takes.** The terminal and Hub share the per-piece view and

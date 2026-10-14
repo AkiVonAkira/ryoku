@@ -2382,6 +2382,28 @@ var retiredShellKeys = []string{
 	"washiVariant",
 }
 
+func removeRetiredShellFrameKey(cfg map[string]any) bool {
+	bars, ok := cfg["bars"].(map[string]any)
+	if !ok {
+		return false
+	}
+	frame, ok := bars["frame"].(map[string]any)
+	if !ok {
+		return false
+	}
+	if _, present := frame["enable_frame"]; !present {
+		return false
+	}
+	delete(frame, "enable_frame")
+	if len(frame) == 0 {
+		delete(bars, "frame")
+	}
+	if len(bars) == 0 {
+		delete(cfg, "bars")
+	}
+	return true
+}
+
 func migrateOrpheusGain(raw []byte) ([]byte, bool, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &top); err != nil {
@@ -2469,6 +2491,9 @@ func migrateShellConfig(raw []byte) ([]byte, []string, error) {
 	}
 	if removed {
 		changes = append(changes, i18n.T("removed retired settings"))
+	}
+	if removeRetiredShellFrameKey(cfg) {
+		changes = append(changes, i18n.T("removed retired bars.frame.enable_frame setting"))
 	}
 	if len(changes) == 0 {
 		return nil, nil, nil

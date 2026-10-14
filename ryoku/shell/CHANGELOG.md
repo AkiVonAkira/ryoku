@@ -1235,6 +1235,10 @@
   the click moved (issue #276).
 
 ### Removed
+- **The unread nested frame switch is gone.** The shell keeps the live
+  top-level `frameEnabled` control as its one frame switch and no longer ships
+  a second setting that no surface reads (`ipc/settings.go`,
+  `../assets/rices/default/rice.json`).
 - **The old split panel routes are gone.** Controls, Capture, and Ask replace
   the separate frame menu and utility surfaces, with one shortcut and one clear
   home for each task.
