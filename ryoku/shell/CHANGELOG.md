@@ -641,6 +641,15 @@
   `screensChanged` callback restarts its Timer by QML id instead of reading a
   nonexistent property from `root`; without the timer, the per-monitor surface
   model could stay stale after an output reappeared (#312).
+- **A source checkout builds the Ryogami picker without guessing at Vulkan.**
+  `ryoku track unstable && ryoku update` stopped half a minute into the picker
+  with `fatal error: vulkan/vulkan.h: No such file or directory` on a machine
+  without the Vulkan headers: the packaged builds declare them, the source build
+  never did. The build now asks for the header while configuring and names the
+  package when it is missing, and the Fedora RPM declares it like the PKGBUILD
+  and the Void template already do. `ryoku track` installs the headers with the
+  rest of the build toolchain on all three distributions, so the first source
+  build after switching channels goes through.
 - **Ryogami's Workshop tab finds your Wallpaper Engine scenes.** On the first
   run after an install the tab said "No Wallpaper Engine scenes yet" until
   ryogami restarted, because the picker never refreshed it after the first scan.

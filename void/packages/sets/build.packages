@@ -13,6 +13,7 @@ qt6-qt5compat-devel
 qt6-wayland-devel
 wayland-devel
 wayland-protocols
+Vulkan-Headers
 ffmpeg6-devel
 gtk+3-devel
 libwebkit2gtk41-devel
