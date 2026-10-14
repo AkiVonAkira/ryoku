@@ -11,8 +11,12 @@ Advanced.
 
 It is:
 
-- **Optional.** The `ryoku-rashin` binary ships with the desktop but stays inert
-  until you enable it. Optional means not running, not absent.
+- **Optional.** On Arch, `ryoku-rashin` is installed by default but is not a
+  desktop dependency: untick Rashin in the installer's Apps & tools, or run
+  `sudo pacman -R ryoku-rashin`, and every AI piece (the agent, the Rashin
+  window, the bar's AI usage collectors) goes with it. The doctor delivers it
+  once and never puts it back. Fedora and Void still install it with the
+  desktop.
 - **Local.** The daemon binds `127.0.0.1` only. WebSocket upgrades verify the
   Origin host is localhost. No auth, because the surface is single-user local.
 - **Off by default.** Nothing runs, indexes, or wires until you flip the gate.

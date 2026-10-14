@@ -201,6 +201,11 @@
   ensures `ryogami` instead of `awww` when it puts the wallpaper daemon back.
 
 ### Changed
+- **`ryoku-desktop` no longer requires Rashin on Arch.** `ryoku-rashin` moves
+  from `depends` to `optdepends`, so `sudo pacman -R ryoku-rashin` removes
+  every AI piece without touching the desktop. The version pin moves into
+  `ryoku-rashin`, which now depends on the matching `ryoku-desktop`, so the
+  two still never run from different releases.
 - **`ryoku-rashin` carries every AI piece.** The AI usage collectors
   (`claude-usage`, `codex-usage`, `opencode-usage`), their `ryoku-ai-usage`
   timer and service, and the `rashin-app` companion window move from

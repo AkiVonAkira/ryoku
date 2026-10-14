@@ -145,6 +145,12 @@
   (`internal/doctor/reconcile_boot_rw.go`).
 
 ### Changed
+- **Rashin is a deliver-once app.** `ryoku-rashin` joins the manifest's apps
+  table, so the doctor installs it once on a box that never had it, marks an
+  existing install as explicit (it stays when the desktop stops depending on
+  it), and leaves a removal alone. `prowl` joins the opt-in list: it only ever
+  arrives as Rashin's dependency, so a box without Rashin never gets it back
+  from the first-party lane.
 - **`bin/ryoku-track` prepares one compositor-neutral source checkout.** It
   clones `https://github.com/ryoku-dev/ryoku.git`, installs the toolchain
   through the host package manager, and no longer writes a compositor config

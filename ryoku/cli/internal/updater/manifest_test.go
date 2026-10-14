@@ -75,6 +75,24 @@ func TestPlanManifestLeavesProvisionedLaneToShippedApps(t *testing.T) {
 	}
 }
 
+func TestPlanManifestNeverPullsRashinOntoABoxWithoutIt(t *testing.T) {
+	// Rashin is a deliver-once app and prowl only its dependency: a box whose
+	// installer left Rashin out must not get either back from the first-party
+	// lane, on the run that records the baseline or on any run after it.
+	m := &ryokumanifest.Manifest{
+		Base:        []string{"base"},
+		FirstParty:  []string{"ryoku-desktop", "ryoku-rashin", "prowl"},
+		Provisioned: ryokumanifest.AppNames(),
+	}
+	installed := map[string]bool{"base": true, "ryoku-desktop": true}
+	plan := PlanManifest(m, installed, m, installed)
+	for _, n := range plan.Install {
+		if n == "ryoku-rashin" || n == "prowl" {
+			t.Fatalf("install = %v; an optional Rashin must not come back through the manifest", plan.Install)
+		}
+	}
+}
+
 func TestPlanManifestReportsRetiredNames(t *testing.T) {
 	prev := &ryokumanifest.Manifest{Dev: []string{"dropped-tool"}}
 	next := &ryokumanifest.Manifest{}
