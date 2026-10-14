@@ -264,7 +264,10 @@ type wayfireStore struct {
 	// the catalogue's own default; resolveBinds folds them into the emission.
 	KeybindRebinds map[string]string `json:"keybindRebinds,omitempty"`
 	Unbinds        []string          `json:"unbinds,omitempty"`
-	Wayfire        Wayfire           `json:"-"`
+	// Shipped chords the user switched off in Settings, honoured like Unbinds but
+	// kept apart from it so an import cannot undo the choice.
+	KeybindDisabled []string `json:"keybindDisabled,omitempty"`
+	Wayfire         Wayfire  `json:"-"`
 }
 
 // neutralStore is desktop.json on disk: { "desktop": {...}, "wm": { "<name>":

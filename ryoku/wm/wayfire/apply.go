@@ -552,7 +552,7 @@ func unhonored(storePath string) []wm.Unhonored {
 var desktopHandled = map[string]bool{
 	"appearance": true, "input": true, "cursor": true,
 	"windowRules": true, "appOverrides": true, "autostart": true,
-	"keybinds": true, "keybindRebinds": true, "unbinds": true,
+	"keybinds": true, "keybindRebinds": true, "unbinds": true, "keybindDisabled": true,
 	"env": true, "apps": true,
 }
 

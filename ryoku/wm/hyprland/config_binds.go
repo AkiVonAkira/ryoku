@@ -52,11 +52,48 @@ func genKeybind(k Keybind) string {
 // binds.lua registered the shipped chord and before the imported bind re-adds it.
 func genUnbinds(o Overrides) string {
 	var b strings.Builder
+	seen := map[string]bool{}
+	drop := func(c string) {
+		if c = strings.TrimSpace(c); c == "" || seen[c] {
+			return
+		}
+		seen[c] = true
+		fmt.Fprintf(&b, "hl.unbind(%s)\n", luaStr(c))
+	}
 	for _, c := range o.Unbinds {
-		if c = strings.TrimSpace(c); c == "" {
+		drop(c)
+	}
+	// A switched-off bind is released at the chord it actually holds: K() already
+	// swapped a rebound one, so unbinding the shipped default would miss it and
+	// leave the bind live on the chord the user moved it to.
+	for _, c := range o.KeybindDisabled {
+		c = strings.TrimSpace(c)
+		if c == "" {
 			continue
 		}
-		fmt.Fprintf(&b, "hl.unbind(%s)\n", luaStr(c))
+		// Resolve to the chord the bind actually holds first: a family through its
+		// family-level rebind, a plain one through its own. FamilyRebind reports
+		// false for a family nobody moved, so the placeholder decides whether to
+		// spread, not that bool.
+		if eff, ok := wm.FamilyRebind(c, o.KeybindRebinds); ok {
+			c = eff
+		} else if to := strings.TrimSpace(o.KeybindRebinds[c]); to != "" {
+			c = to
+		}
+		if strings.Contains(c, "{n}") {
+			for n := 1; n <= 10; n++ {
+				member := wm.ExpandChord(c, n)
+				drop(member)
+				for _, twin := range wm.NumpadAliases(member) {
+					drop(twin)
+				}
+			}
+			continue
+		}
+		drop(c)
+		for _, twin := range wm.NumpadAliases(c) {
+			drop(twin)
+		}
 	}
 	return b.String()
 }

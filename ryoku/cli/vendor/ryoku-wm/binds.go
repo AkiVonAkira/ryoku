@@ -49,6 +49,25 @@ type BindRow struct {
 	// The row is still listed so the sheet reads honestly rather than silently
 	// dropping a bind the user expects to see.
 	Unhonored string `json:"unhonored,omitempty"`
+	// Disabled is the user's own decision that this bind should hold no chord at
+	// all. Distinct from Unhonored, which is the compositor's refusal, and from an
+	// absent rebind, which means the shipped chord stands. The row stays listed so
+	// the action remains findable and can be given a chord again.
+	Disabled bool `json:"disabled,omitempty"`
+}
+
+// DisabledSet turns the stored list of switched-off chords into a lookup. The
+// stored key is always the shipped default, the stable id a rebind is recorded
+// over, so a bind that is both moved and switched off is found by the same key
+// either way.
+func DisabledSet(list []string) map[string]bool {
+	out := make(map[string]bool, len(list))
+	for _, c := range list {
+		if c = strings.TrimSpace(c); c != "" {
+			out[c] = true
+		}
+	}
+	return out
 }
 
 // CatalogBind is one shipped Ryoku bind, compositor-neutral. It is the raw

@@ -403,6 +403,19 @@ func resolveBinds(s wayfireStore) ([]outBind, []wm.Unhonored) {
 			unbind[c] = true
 		}
 	}
+	// Switched off in Settings: dropped like an import's unbind. A family carries
+	// its placeholder in the store, so spread it before the per-member lookup.
+	for _, c := range s.KeybindDisabled {
+		if c = strings.TrimSpace(c); c == "" {
+			continue
+		}
+		unbind[c] = true
+		if strings.Contains(c, "{n}") {
+			for n := 1; n <= 10; n++ {
+				unbind[wm.ExpandChord(c, n)] = true
+			}
+		}
+	}
 
 	claimed := map[string]string{}
 	for _, ex := range wayfireExclusives() {

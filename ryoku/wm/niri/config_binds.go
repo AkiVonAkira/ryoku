@@ -208,6 +208,20 @@ func resolveBinds(s niriStore) ([]outBind, []wm.Unhonored) {
 			unbind[c] = true
 		}
 	}
+	// A bind the user switched off is dropped the same way an imported config
+	// drops one. The check below reads the shipped chord, so a family has to be
+	// spread into its ten members here or only the placeholder would match.
+	for _, c := range s.KeybindDisabled {
+		if c = strings.TrimSpace(c); c == "" {
+			continue
+		}
+		unbind[c] = true
+		if strings.Contains(c, "{n}") {
+			for n := 1; n <= 10; n++ {
+				unbind[wm.ExpandChord(c, n)] = true
+			}
+		}
+	}
 
 	defs := defaultBinds()
 	var report []wm.Unhonored

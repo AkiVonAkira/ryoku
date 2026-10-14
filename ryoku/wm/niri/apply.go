@@ -144,6 +144,7 @@ var desktopHandled = map[string]bool{
 	"appearance": true, "input": true, "cursor": true, "env": true,
 	"windowRules": true, "appOverrides": true, "autostart": true,
 	"keybinds": true, "keybindRebinds": true, "unbinds": true, "apps": true,
+	"keybindDisabled": true,
 	"windows": true,
 }
 

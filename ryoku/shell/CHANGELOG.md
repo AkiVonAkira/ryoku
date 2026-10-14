@@ -34,6 +34,13 @@
   `quickshell/shell/services/Config.qml`, `plugin/blobgroup.cpp`,
   `plugin/blobwave.cpp`, `plugin/shaders/blob.frag`,
   `../assets/rices/default/rice.json`, `../cli/internal/doctor/doctor.go`).
+- **A shortcut can be removed instead of only moved.** Ryoku Settings > Keybinds
+  gains a control per row that leaves an action with no chord at all, and a
+  second press gives it one back. Until now an empty value meant "back to the
+  shipped default", so a shortcut you did not want had to be parked on some
+  other key. Switched-off binds are released on every compositor Ryoku supports,
+  are left out of the Super+K cheatsheet, and stay listed in Settings so the
+  action remains findable (`desktop.keybindDisabled`).
 - **`ryoku update` shows one bar per compilation on source boxes, with how long
   each piece usually takes.** The terminal and Hub share the per-piece view and
   first-build explanation.
