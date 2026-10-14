@@ -12,11 +12,17 @@ Advanced.
 It is:
 
 - **Optional.** On Arch, `ryoku-rashin` is installed by default but is not a
-  desktop dependency: untick Rashin in the installer's Apps & tools, or run
-  `sudo pacman -R ryoku-rashin`, and every AI piece (the agent, the Rashin
-  window, the bar's AI usage collectors) goes with it. The doctor delivers it
-  once and never puts it back. Fedora and Void still install it with the
-  desktop.
+  desktop dependency. The switch on Ryoku Hub's Rashin page owns it: off stops
+  the agent and removes the package, on installs it again and starts it with
+  the desktop. Every AI piece goes with the package (the agent, the Rashin
+  window, the bar's AI usage collectors) and so do its shortcuts: the Ask bar
+  (Alt+Space) and the Rashin window (Super+Alt+Space) are catalogue binds that
+  need `ryoku-rashin`, so the compositor registers no chord for them while it
+  is absent and the cheatsheet lists them as not installed. Unticking Rashin
+  in the installer's Apps & tools or `sudo pacman -R ryoku-rashin` reach the
+  same state; the doctor delivers it once and never puts it back. The Fedora
+  and Void desktops still require it, so there the switch only stops and
+  starts the agent.
 - **Local.** The daemon binds `127.0.0.1` only. WebSocket upgrades verify the
   Origin host is localhost. No auth, because the surface is single-user local.
 - **Off by default.** Nothing runs, indexes, or wires until you flip the gate.
