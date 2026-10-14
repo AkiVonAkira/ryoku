@@ -228,10 +228,7 @@ func (a *App) systemdManifestUnitExists(user bool, unit string) bool {
 }
 
 func (a *App) systemdManifestArgs(user bool, args ...string) []string {
-	if !user {
-		return args
-	}
-	return append([]string{"--user"}, args...)
+	return a.systemdScopeArgs(user, args...)
 }
 
 func (a *App) systemdManifestUnitEnabled(user bool, unit string) bool {

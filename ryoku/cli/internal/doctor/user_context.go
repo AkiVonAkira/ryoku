@@ -14,12 +14,22 @@ import (
 var (
 	doctorEffectiveUID = os.Geteuid
 	doctorLookupUser   = user.Lookup
+	doctorCurrentUser  = user.Current
+	resolvedDoctorUser *user.User
 )
+
+func doctorAccount() (*user.User, error) {
+	if resolvedDoctorUser != nil {
+		return resolvedDoctorUser, nil
+	}
+	return doctorCurrentUser()
+}
 
 // configureDoctorUser keeps read-only sudo runs pointed at the desktop account.
 // A repairing doctor must run as that account so files it creates remain owned
 // by the user; individual system repairs ask for sudo themselves.
 func configureDoctorUser(readOnly bool) error {
+	resolvedDoctorUser = nil
 	if doctorEffectiveUID() != 0 {
 		return nil
 	}
@@ -37,6 +47,8 @@ func configureDoctorUser(readOnly bool) error {
 	if !readOnly {
 		return errors.New(fmt.Sprintf(i18n.T("run `ryoku doctor` without sudo so user repairs stay owned by %s; it asks for sudo when a system repair needs it"), name))
 	}
+	resolved := *account
+	resolvedDoctorUser = &resolved
 
 	rootHome := os.Getenv("HOME")
 	_ = os.Setenv("HOME", account.HomeDir)

@@ -9,6 +9,10 @@
 - **`ryoku doctor` adopts the buttonless-touchpad click default once.** Saved
   desktop settings that still carry the old disabled clickfinger default move
   to the new enabled default, while a later explicit choice remains untouched.
+- **Privileged doctor checks stay on the desktop user's session and boot path.**
+  User services and the login shell now target the resolved sudo account,
+  Limine migrations write a nested kernel entry path instead of a numeric
+  default, and stale unloaded app scopes no longer produce reset-failed noise.
 - **`ryoku update` stops ending on a health warning you cannot act on.** On a box
   where /boot is root-only, the kernel-image reconciler could not stat the boot
   images and reported a warning, so every unprivileged update finished with "the

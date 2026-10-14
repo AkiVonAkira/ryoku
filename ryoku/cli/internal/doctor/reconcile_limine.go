@@ -886,12 +886,10 @@ func limineHasUKITree(conf string) bool {
 }
 
 // limineDropFlat promotes the menu past the install placeholder, mirroring the
-// installer's finalize. with a standalone "/+" tree the flat "/Ryoku Linux..."
+// installer's finalize. With a standalone "/+" tree the flat "/Ryoku Linux..."
 // entries (entry line plus indented options) are clutter and go; in the
-// adopted layout the placeholder IS the tree root, so entries stay untouched.
-// either way default_entry: 1 points at a directory that can't autoboot and
-// moves to 2 (the first UKI inside). pure, so it is unit-testable;
-// changed=false when there is nothing to do.
+// adopted layout the placeholder is the tree root, so entries stay untouched.
+// A nested kernel is addressed by path; a flat menu keeps entry 1.
 func limineDropFlat(conf string) (string, bool) {
 	dropFlat := false
 	for _, l := range strings.Split(conf, "\n") {
@@ -911,14 +909,26 @@ func limineDropFlat(conf string) (string, bool) {
 			continue
 		}
 		skip = false
-		if l == "default_entry: 1" {
-			out = append(out, "default_entry: 2")
-			changed = true
-			continue
-		}
 		out = append(out, l)
 	}
-	return strings.Join(out, "\n"), changed
+	promoted := strings.Join(out, "\n")
+	// Entry 1 is the directory the placeholder left behind and cannot autoboot;
+	// point it at the kernel inside by path. Any other value is the autoboot
+	// reconciler's business.
+	if strings.TrimSpace(limineDefaultEntry(promoted)) == "1" {
+		if path := limineDefaultKernelPath(promoted); path != "" {
+			lines := strings.Split(promoted, "\n")
+			for i, line := range lines {
+				if strings.HasPrefix(strings.TrimSpace(line), "default_entry:") {
+					lines[i] = "default_entry: " + path
+					break
+				}
+			}
+			promoted = strings.Join(lines, "\n")
+			changed = true
+		}
+	}
+	return promoted, changed
 }
 
 func reconcileLimineOSName(checkOnly bool) recResult {

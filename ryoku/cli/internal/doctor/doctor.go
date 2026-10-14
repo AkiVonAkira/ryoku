@@ -4270,7 +4270,8 @@ func reconcileFailedUnits(checkOnly bool) recResult {
 	var reset int
 	if !checkOnly {
 		for _, u := range failedUnits("--user") {
-			if transientAppScope(u) && sys.Run("systemctl", "--user", "reset-failed", u) == nil {
+			if transientAppScope(u) && userUnitLoaded(u) &&
+				doctorService("--user", "reset-failed", u) == host.ExitOK {
 				reset++
 			}
 		}
@@ -4763,15 +4764,24 @@ func transientAppScope(unit string) bool {
 	return strings.HasPrefix(unit, "app-") && strings.HasSuffix(unit, ".scope")
 }
 
-// failedUnits lists failed unit names from `systemctl [extra] --failed`.
+func userUnitLoaded(unit string) bool {
+	state, err := host.Default().ServiceProperty("--user", unit, "LoadState")
+	return err == nil && state == "loaded"
+}
+
+// failedUnits lists failed unit names through the host service seam.
 func failedUnits(extra ...string) []string {
-	args := append(append([]string{}, extra...), "--failed", "--no-legend", "--plain")
-	out, _ := sys.RunOut("systemctl", args...)
-	var names []string
-	for _, l := range nonEmptyLines(out) {
-		if f := strings.Fields(l); len(f) > 0 {
-			names = append(names, f[0])
-		}
+	scope := "--system"
+	if len(extra) > 0 {
+		scope = extra[0]
+	}
+	failures, err := host.Default().FailedServicesFor(scope)
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(failures))
+	for _, failure := range failures {
+		names = append(names, failure.Name)
 	}
 	return names
 }
