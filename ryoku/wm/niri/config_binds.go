@@ -168,6 +168,7 @@ func defaultBinds() map[string]niriBind {
 		"media.volumeUp":   {action: spawnArgs("ryoku-volume", "up")},
 		"media.volumeDown": {action: spawnArgs("ryoku-volume", "down")},
 		"media.mute":       {action: spawnArgs("wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle")},
+		"media.micMute":    {action: spawnArgs("wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle")},
 		"media.play":       {action: spawnArgs("playerctl", "play-pause")},
 		"media.next":       {action: spawnArgs("playerctl", "next")},
 		"media.prev":       {action: spawnArgs("playerctl", "previous")},

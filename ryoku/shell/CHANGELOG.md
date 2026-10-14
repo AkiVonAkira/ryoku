@@ -644,6 +644,10 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **The dedicated microphone-mute key works again.** `XF86AudioMicMute` now
+  toggles the default PipeWire source on every supported compositor (#394).
+- **Super+T is labelled “Group windows (tabbed)”.** The clearer name distinguishes
+  the window-group toggle from the terminal shortcut older releases used (#378).
 - **Staggered launcher results no longer create binding loops.** An Entrance
   that fills its parent no longer derives its implicit size from children that
   fill it in turn, stopping repeated geometry warnings and memory growth (#383).
