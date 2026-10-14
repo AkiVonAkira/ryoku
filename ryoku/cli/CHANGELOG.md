@@ -20,6 +20,10 @@
   setting (`internal/doctor/doctor.go`).
 
 ### Added
+- **Doctor now gates the 0.75.5 shell-settings jump with a real fixture.** The
+  test runs every shell-store migration, checks preserved choices and
+  idempotency, and rejects any retired key drop that is not explicitly listed
+  (`internal/doctor/shell_migration_fixture_test.go`).
 - **`ryoku update` shows one bar per compilation on source boxes, with how long
   each piece usually takes.** The terminal and Hub share the per-piece view and
   first-build explanation.

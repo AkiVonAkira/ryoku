@@ -304,6 +304,16 @@ can't state declaratively (disk, boot, session, and the user-owned
 migration ledger: each is idempotent and safe on every update, and is retired
 once every supported install has run it. `reconcileShellConfig` migrates a stale
 `shell.json` (drops retired keys, revives the bar, clamps geometry).
+
+### 0.75.5 shell migration gate
+
+`TestShellMigrationFrom0755Fixture` runs the shipped 0.75.5 shell fixture
+through every registered shell-store migration and then runs the chain again.
+Every key the chain removes must be named in the test's documented-drop table;
+an unlisted removal fails with the key name. This gate covers `shell.json`
+only. It does not prove per-provider config trees, `user_edits` forks, or the
+rollback path across the whole release jump.
+
 `reconcileLauncherLocalFrostDefault` moves only the launcher's retired shipped
 `bgBlur: 12` to the new 2 px local-frost default, then records a marker so a
 later deliberate 12 remains a user choice.
