@@ -3,7 +3,6 @@ name: "Publish Ryoku Fedora RPM repos"
 # Publishes one signed RPM repository for every release in fedora/releases.
 # A tag writes an immutable release and then moves that Fedora release's stable
 # head. A push to unstable-dev moves testing and also freezes the tested build.
-# No Fedora ISO is built or dispatched.
 on:
   push:
     branches:

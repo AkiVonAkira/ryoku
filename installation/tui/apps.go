@@ -29,17 +29,16 @@ func flowIndex(flow []step, key string) int {
 }
 
 func installerChoicesForVariant(variant string) installerplan.EditionPlan {
-	if !hasEditionTable(variant) {
+	if !isVoidVariant(variant) {
 		return installerplan.ResolveSource(variant)
 	}
-	table := filepath.Join(variant, "packages", "translations.tsv")
 	var paths []string
 	if root := os.Getenv("RYOKU_REPO"); root != "" {
-		paths = append(paths, filepath.Join(root, table))
+		paths = append(paths, filepath.Join(root, "void/packages/translations.tsv"))
 	}
 	paths = append(paths,
-		filepath.Join("/usr/share/ryoku", table),
-		filepath.Join("..", "..", table),
+		"/usr/share/ryoku/void/packages/translations.tsv",
+		filepath.Join("..", "..", "void", "packages", "translations.tsv"),
 	)
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
@@ -52,7 +51,7 @@ func installerChoicesForVariant(variant string) installerplan.EditionPlan {
 		}
 		return plan
 	}
-	panic(fmt.Sprintf("%s package table not found in %s", variant, strings.Join(paths, ", ")))
+	panic(fmt.Sprintf("Void package table not found in %s", strings.Join(paths, ", ")))
 }
 
 func choiceItems(kind string, plan installerplan.EditionPlan, availableOnly bool) []item {
@@ -212,15 +211,11 @@ func appRows() []appRow {
 }
 
 // unshippedApps are rows an edition never delivers, so the picker must not
-// offer them. Void installs the table's desktop and dev lanes, Fedora only its
-// desktop lane, and neither has the AUR rows. The doctor's shipped apps
-// (pavucontrol) stay offered: the first `ryoku doctor` installs them unless the
-// user dropped them here, which seeds its ledger.
-// Void's and Fedora's desktop packages still require ryoku-rashin, so neither
-// edition offers the Rashin row.
+// offer them. Void omits the AUR rows, while pavucontrol stays offered because
+// the first `ryoku doctor` installs it unless the user drops it here. Its
+// desktop package still requires ryoku-rashin, so that row is hidden too.
 var unshippedApps = map[string][]string{
-	variantVoid:   {"localsend", "voxtype", "rashin"},
-	variantFedora: {"localsend", "voxtype", "rashin", "go", "node", "pytools", "mise"},
+	variantVoid: {"localsend", "voxtype", "rashin"},
 }
 
 func appRowsForVariant(variant string) []appRow {

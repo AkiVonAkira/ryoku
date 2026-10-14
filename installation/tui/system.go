@@ -29,7 +29,6 @@ import (
 const (
 	variantVoid    = "void"
 	variantCachyOS = "cachyos"
-	variantFedora  = "fedora"
 )
 
 var variantMarkerPath = "/usr/share/ryoku/variant"
@@ -48,16 +47,6 @@ func sysVariant() string {
 
 func isVoidVariant(variant string) bool {
 	return variant == variantVoid
-}
-
-func isFedoraVariant(variant string) bool {
-	return variant == variantFedora
-}
-
-// hasEditionTable reports whether the live image installs from its own
-// edition's package table rather than Arch's package sets.
-func hasEditionTable(variant string) bool {
-	return isVoidVariant(variant) || isFedoraVariant(variant)
 }
 
 // run executes a command and returns its trimmed stdout, plus whether it worked.
@@ -1189,12 +1178,12 @@ func (m model) installEnv() []string {
 		// package source (RYOKU_ONLINE / RYOKU_OFFLINE_REPO) is appended after the
 		// literal, since it depends on whether this ISO baked an offline repo.
 	}
-	if hasEditionTable(m.variant) {
+	if isVoidVariant(m.variant) {
 		firmware := "uefi"
 		if m.hwBIOS {
 			firmware = "bios"
 		}
-		// The edition backends normally derive this from the same sysfs path. Send
+		// The Void backend normally derives this from the same sysfs path. Send
 		// the detected value so an inherited override cannot disagree with the
 		// hardware card and select the wrong bootloader path.
 		env = append(env, "RYOKU_FIRMWARE_MODE="+firmware)
@@ -1450,9 +1439,6 @@ var (
 // offlineRepo reports whether this live image carries a usable package
 // repository and returns the path handed to either backend.
 func offlineRepo(variant string) (string, bool) {
-	if isFedoraVariant(variant) {
-		return "", false // the Fedora image installs online only
-	}
 	path := archOfflineRepoPath
 	if isVoidVariant(variant) {
 		path = voidOfflineRepoPath

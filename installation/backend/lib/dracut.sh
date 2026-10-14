@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Root unlock for the backends whose target builds its initramfs with dracut
-# (Void, Fedora): the kernel cmdline and the crypttab dracut bakes in.
+# Root unlock for an edition backend whose target uses dracut: the kernel
+# cmdline and the crypttab dracut bakes in.
 
 ryoku_dracut_cmdline() {
   local root_ref cmdline

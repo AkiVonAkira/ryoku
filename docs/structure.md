@@ -268,10 +268,10 @@ serves them with no release infrastructure.
   tested unstable builds, then rebuilds their ledgers with
   `bin/ryoku-release-ledger`.
 - `r2-retention/` is the scheduled Cloudflare Worker for the shared `ryoku-iso`
-  bucket. Its planner keeps ten stable releases and unstable builds per edition
-  and Fedora release, and ten ISOs per variant and channel where an edition
-  publishes images. It removes incomplete frozen uploads after 48 hours and
-  preserves moving heads, current pointers, and protected bucket objects.
+  bucket. Its planner keeps ten stable releases and unstable builds per package
+  edition and Fedora release. For editions that publish images, it keeps ten
+  ISOs per variant and channel. It removes incomplete frozen uploads after 48
+  hours and preserves moving heads, current pointers, and protected objects.
 
 ## `void/` the Void Linux port
 
@@ -323,15 +323,12 @@ are supported; Atomic and other rpm-ostree systems are refused.
   supported Fedora release, then publishes moving stable and testing heads,
   frozen releases and unstable builds, and their ledgers below
   `stable/fedora/<N>/`.
-- `iso/` builds an experimental console live ISO with kiwi-ng in a container:
-  `build.sh` stages the shared live session, the TUI, and the Fedora backend
-  (`iso/backend/`, the Fedora install steps on the shared backend libraries)
-  into the `kiwi/` image description. It is not published.
 
-Fedora is installed through the shell installer, or experimentally from the
-unpublished `iso/` image. It leaves NVIDIA on nouveau, keeps GRUB, and does not
-provide Ryoku snapshots or a snapshot boot menu. Wayfire is unavailable because Fedora ships 0.10.1 and Ryoku requires
-0.11. Package rollback and the boot guard use DNF downgrades.
+Fedora is installed by the shell installer onto an existing supported Fedora
+system. It leaves NVIDIA on nouveau, keeps GRUB, and does not provide Ryoku
+snapshots or a snapshot boot menu. Wayfire is unavailable because Fedora ships
+0.10.1 and Ryoku requires 0.11. Package rollback and the boot guard use DNF
+downgrades.
 
 ## Tooling
 

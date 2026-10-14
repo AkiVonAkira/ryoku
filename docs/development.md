@@ -167,9 +167,9 @@ every supported install has run it, so the set stays small instead of piling up.
 - The desktop ships as native signed packages. Arch and CachyOS use the
   `[ryoku]` pacman repository built from `release/packages/`; Void uses the XBPS
   repository built from `void/packages/srcpkgs/`; Fedora uses the RPM repository
-  built from `fedora/packages/rpm/`. The live ISOs prebuild the installer TUI,
-  while installed desktop binaries come from the package repository, so never
-  assume `go` exists at install time.
+  built from `fedora/packages/rpm/`. The Arch, CachyOS, and Void live ISOs
+  prebuild the installer TUI, while installed desktop binaries come from the
+  package repository, so never assume `go` exists at install time.
 - On Arch and CachyOS, AUR packages install in the post-install step
   (`installation/backend/lib/aur.sh`), not via pacstrap.
 - User-level package managers install without root, into `~/.local/bin` (`npm`,
@@ -274,11 +274,11 @@ signature, and `release.json`. SRPMs stay in the build artifact and are not
 published. `.github/workflows/publish-repo-fedora.yml` builds and tests each
 supported Fedora release in its own container, publishes stable or testing
 heads and their frozen targets, uploads `fedora/releases`, and rebuilds the
-ledgers. Stable Release dispatches it on the release tag. No workflow builds
-the experimental Fedora ISO; build it locally with `fedora/iso/build.sh`
-(see `fedora/iso/README.md`). See `fedora/packages/rpm/README.md` for the spec, checksum, vendoring,
-fetch-hook, and local-build details. The release-day order and verification
-endpoints are in `docs/updates.md`, "Release-day checklist".
+ledgers. Stable Release dispatches it on the release tag. Ryoku reaches Fedora
+through the shell installer on an existing system; there is no Fedora ISO. See
+`fedora/packages/rpm/README.md` for the spec, checksum, vendoring, fetch-hook,
+and local-build details. The release-day order and verification endpoints are
+in `docs/updates.md`, "Release-day checklist".
 
 ### Test ISOs from `unstable-dev`
 

@@ -13,12 +13,11 @@ fail() {
 }
 
 # These are the only host-adapter differences accepted by the neutral contract.
-# Arch uses arch-chroot and first-login XDG autostart; Void uses chroot and does
-# the XDG initialization eagerly for Turnstile; Fedora uses chroot and, on
-# systemd like Arch, first-login XDG autostart. The runit account recipe carries
-# audio and kvm as edition-specific supplemental groups; the common group set is
-# compared after removing only those two. Boot and package-manager commands are
-# outside the neutral manifest.
+# Arch uses arch-chroot and first-login XDG autostart; Void uses chroot and
+# initializes XDG directories eagerly for Turnstile. The runit account recipe
+# carries audio and kvm as edition-specific supplemental groups; the common
+# group set is compared after removing only those two. Boot and package-manager
+# commands are outside the neutral manifest.
 declare -A adapter_allowlist=(
   [arch:target-runner]=arch-chroot
   [void:target-runner]=chroot
@@ -26,9 +25,6 @@ declare -A adapter_allowlist=(
   [void:xdg-driver]=installer
   [arch:extra-groups]=''
   [void:extra-groups]='audio kvm'
-  [fedora:target-runner]=chroot
-  [fedora:xdg-driver]=first-login
-  [fedora:extra-groups]=''
 )
 
 answers=(
@@ -44,15 +40,12 @@ answers=(
   RYOKU_LOCALE=en_US.UTF-8
   RYOKU_TIMEZONE=auto
   RYOKU_ONLINE=1
-  # The Fedora backend reads the release from the host otherwise, which an Arch
-  # dev box does not carry.
-  RYOKU_FEDORA_RELEASEVER=44
   RYOKU_FIRMWARE_MODE=uefi
   RYOKU_ESP_MODE=shared
   RYOKU_SUBVOL_SNAPSHOTS=1
 )
 
-for edition in arch void fedora; do
+for edition in arch void; do
   install_dryrun_run "$edition" "$tmp/$edition.out" "${answers[@]}" \
     || fail "$edition niri dry run failed"
 done
@@ -131,13 +124,11 @@ write_contract() {
 }
 
 write_contract arch
-for edition in void fedora; do
-  write_contract "$edition"
-  if ! cmp -s "$tmp/arch.contract" "$tmp/$edition.contract"; then
-    diff -u "$tmp/arch.contract" "$tmp/$edition.contract" >&2 || true
-    fail "Arch and $edition neutral end-state contracts differ"
-  fi
-done
+write_contract void
+if ! cmp -s "$tmp/arch.contract" "$tmp/void.contract"; then
+  diff -u "$tmp/arch.contract" "$tmp/void.contract" >&2 || true
+  fail "Arch and void neutral end-state contracts differ"
+fi
 
 # Exercise each edition's timezone step directly so the offline check does not
 # depend on a baked package repository being present in the source checkout.

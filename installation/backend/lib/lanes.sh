@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Translation-table lanes and drops for the ISO backends that resolve their
-# package plan through system/packages/resolve (Void, Fedora).
+# Translation-table lanes and drops for an edition backend that resolves its
+# package plan through system/packages/resolve.
 
 ryoku_profile_lanes() {
   case $RYOKU_PROFILE in

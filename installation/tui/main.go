@@ -583,39 +583,22 @@ func stepsForVariant(variant string) []step {
 	return all
 }
 
-// editionNotice is the short note an edition image shows before setup: what is
-// experimental, which window managers it offers, and what it cannot install.
+// editionNotice is the short note an edition image shows before setup.
 func editionNotice(variant string) (step, bool) {
-	var key, title string
-	var lines []string
-	edition := installerChoicesForVariant(variant)
-	available := i18n.Tf("Available window managers: %s.", strings.Join(edition.AvailableIDs(installerplan.Compositor), ", "))
-	switch {
-	case isVoidVariant(variant):
-		key, title = "void-notice", i18n.T("Ryoku on Void")
-		lines = []string{
-			i18n.T("This Void edition is experimental."),
-			available,
-			i18n.T("Use ryoku update --system for base-system updates."),
-			i18n.T("XBPS has no update hooks; this keeps updates snapshotted."),
-		}
-	case isFedoraVariant(variant):
-		key, title = "fedora-notice", i18n.T("Ryoku on Fedora")
-		lines = []string{
-			i18n.T("This Fedora edition is experimental."),
-			available,
-			i18n.T("Installs need a network connection; this image carries no packages."),
-			i18n.T("It boots with GRUB through Fedora's signed shim, so Secure Boot can stay on."),
-			i18n.T("NVIDIA GPUs use the open nouveau driver."),
-			i18n.T("Snapshots are not set up yet: no snapper, no snapshot boot menu."),
-		}
-	default:
+	if !isVoidVariant(variant) {
 		return step{}, false
+	}
+	edition := installerChoicesForVariant(variant)
+	lines := []string{
+		i18n.T("This Void edition is experimental."),
+		i18n.Tf("Available window managers: %s.", strings.Join(edition.AvailableIDs(installerplan.Compositor), ", ")),
+		i18n.T("Use ryoku update --system for base-system updates."),
+		i18n.T("XBPS has no update hooks; this keeps updates snapshotted."),
 	}
 	for _, kind := range []string{installerplan.Compositor, installerplan.Browser, installerplan.LoginShell} {
 		lines = append(lines, unavailableChoiceNotices(edition, kind)...)
 	}
-	return step{key: key, title: title, kind: kNotice, desc: lines}, true
+	return step{key: "void-notice", title: i18n.T("Ryoku on Void"), kind: kNotice, desc: lines}, true
 }
 
 func keymaps() []item {
@@ -996,15 +979,11 @@ var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"
 // installSteps names the backend's install phases for the progress panel. It is
 // a function, not a package-level var, so the names resolve in the language
 // main() picked (a var initializer would run before i18n.Use).
-func installSteps(variant string) []string {
-	bootloader := i18n.T("Installing the Limine bootloader")
-	if isFedoraVariant(variant) {
-		bootloader = i18n.T("Installing the GRUB bootloader")
-	}
+func installSteps() []string {
 	return []string{
 		i18n.T("Partitioning the disk"), i18n.T("Creating filesystems and btrfs subvolumes"),
 		i18n.T("Mounting the target"), i18n.T("Installing the base system"),
-		i18n.T("Configuring the system"), bootloader,
+		i18n.T("Configuring the system"), i18n.T("Installing the Limine bootloader"),
 	}
 }
 
@@ -1237,7 +1216,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sAnim, m.sVel = m.sSpr.Update(m.sAnim, m.sVel, tgt)
 			}
 		case "install":
-			m.progress, m.progVel = m.progSpr.Update(m.progress, m.progVel, float64(m.installAt)/float64(len(installSteps(m.variant))))
+			m.progress, m.progVel = m.progSpr.Update(m.progress, m.progVel, float64(m.installAt)/float64(len(installSteps())))
 		}
 		return m, m.tickCmd()
 	case installStepMsg:
@@ -1254,10 +1233,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case installDoneMsg:
 		if msg.err != nil {
-			phases := installSteps(m.variant)
+			phases := installSteps()
 			m.failInstall(phases[clamp(m.installAt, 0, len(phases)-1)])
 		} else {
-			m.installAt, m.progress, m.state = len(installSteps(m.variant)), 1, "done"
+			m.installAt, m.progress, m.state = len(installSteps()), 1, "done"
 		}
 		return m, nil
 	case tea.KeyPressMsg:
@@ -1866,9 +1845,6 @@ func (m model) espMode() string {
 	if m.picks["disk"] != "alongside" {
 		return "auto"
 	}
-	if isFedoraVariant(m.variant) {
-		return "dedicated" // Fedora's shim and GRUB packages would overwrite a shared ESP's loaders
-	}
 	if m.probeVerdict == "create-esp" {
 		return "dedicated" // no existing ESP; Ryoku creates its own in the free space
 	}
@@ -1960,11 +1936,7 @@ func (m model) layoutRows() []lrow {
 		rows = append(rows, lrow{"size", "esp", i18n.T("ESP size"), "/boot · fat32", "required"}) // alongside boot is fixed at 2 GiB
 	}
 	rows = append(rows, lrow{"size", "swap", i18n.T("Swap (swapfile)"), i18n.T("@swap · 0 = none · carved from root"), "optional"})
-	if isFedoraVariant(m.variant) {
-		rows = append(rows, lrow{"toggle", "snap", i18n.T("Snapshots subvolume"), i18n.T("@snapshots → /.snapshots · no rollback yet"), "optional"})
-	} else {
-		rows = append(rows, lrow{"toggle", "snap", i18n.T("Snapshots & rollback"), "@snapshots → /.snapshots", "recommended"})
-	}
+	rows = append(rows, lrow{"toggle", "snap", i18n.T("Snapshots & rollback"), "@snapshots → /.snapshots", "recommended"})
 	rows = append(rows,
 		lrow{"toggle", "home", i18n.T("Separate /home"), "@home → /home", "optional"},
 		lrow{"toggle", "backups", i18n.T("Backups"), "@backups → /.backups", "optional"},
@@ -2759,11 +2731,8 @@ func (m *model) ensureSocialQR() {
 func (m model) welcomeFrame() string {
 	logo := lipgloss.JoinVertical(lipgloss.Center, faintBig(m.phase)...)
 	liveImageLine := i18n.T("the live Arch image now, and this installer turns it into")
-	switch {
-	case isVoidVariant(m.variant):
+	if isVoidVariant(m.variant) {
 		liveImageLine = i18n.T("the live Void image now, and this installer turns it into")
-	case isFedoraVariant(m.variant):
-		liveImageLine = i18n.T("the live Fedora image now, and this installer turns it into")
 	}
 	card := sty().Border(border()).BorderForeground(cBlue).Padding(1, 3).Render(
 		bold(cBrand, i18n.T("Thank you for installing Ryoku")) + "\n\n" +
@@ -2952,12 +2921,8 @@ func (m model) partBody(inner int) string {
 	if m.diskBytes <= 0 {
 		size = fmt.Sprintf("%d GiB", m.diskG)
 	}
-	bootloader := "Limine"
-	if isFedoraVariant(m.variant) {
-		bootloader = "GRUB"
-	}
 	b.WriteString(fg(cSub, fmt.Sprintf("%s · %s · UEFI · ", m.diskDev, size)) +
-		fg(cText, bootloader) + "\n")
+		fg(cText, "Limine") + "\n")
 	segs, sel := m.layoutSegs(), m.selSeg()
 	barLabel := ""
 	if m.carveUI() {
@@ -3318,10 +3283,9 @@ func (m model) biosBlocked() bool {
 	return m.hwBIOS && !isVoidVariant(m.variant)
 }
 
-// secureBootBlocked: Limine is unsigned on Arch and Void; Fedora boots through
-// its signed shim and GRUB.
+// secureBootBlocked reports whether unsigned Limine makes Review unsafe.
 func (m model) secureBootBlocked() bool {
-	return m.hwSecureBoot && !isFedoraVariant(m.variant)
+	return m.hwSecureBoot
 }
 
 // hwGateLines explains firmware constraints. Arch and CachyOS still reject
@@ -3660,7 +3624,7 @@ func (m model) viewCentered() string {
 	var b strings.Builder
 	b.WriteString(bold(cBrand, i18n.T("Installing Ryoku")) + "\n\n")
 	b.WriteString(bar + "\n\n")
-	names := installSteps(m.variant)
+	names := installSteps()
 	for i := range names {
 		switch {
 		case i < m.installAt:
@@ -3692,9 +3656,6 @@ func (m model) viewDone() string {
 		user = "you"
 	}
 	next := i18n.T("snapshots and rollback from the Limine boot menu")
-	if isFedoraVariant(m.variant) {
-		next = i18n.T("snapshots are not set up yet; there is no snapshot boot menu")
-	}
 	card := sty().Border(borderDouble()).BorderForeground(cGreen).Padding(1, 3).Align(lipgloss.Center).
 		Render(bold(cGreen, gCheck+"  "+i18n.T("Ryoku installed")) + "\n\n" +
 			fg(cText, m.picks["hostname"]+" · "+m.picks["username"]+" · "+m.picks["profile"]) + "\n" +

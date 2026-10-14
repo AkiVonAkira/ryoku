@@ -10,7 +10,7 @@ import (
 )
 
 func TestTUIFrontendMatchesSharedEditionPlan(t *testing.T) {
-	for _, edition := range []string{"arch", "void", "fedora"} {
+	for _, edition := range []string{"arch", "void"} {
 		t.Run(edition, func(t *testing.T) {
 			var plan installerplan.EditionPlan
 			if edition == "arch" {
@@ -47,7 +47,7 @@ func TestTUIFrontendMatchesSharedEditionPlan(t *testing.T) {
 }
 
 func TestUnavailableChoiceNoticeUsesEditionTableReason(t *testing.T) {
-	for _, edition := range []string{"void", "fedora"} {
+	for _, edition := range []string{"void"} {
 		t.Run(edition, func(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join("..", "..", edition, "packages", "translations.tsv"))
 			if err != nil {

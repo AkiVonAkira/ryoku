@@ -345,3 +345,11 @@ func TestCachyOSZenHintNamesTheRepo(t *testing.T) {
 		t.Fatalf("Arch Zen hint = %q, want the AUR build", got)
 	}
 }
+
+func TestLocaleAListUsesSupportedSpelling(t *testing.T) {
+	got := utf8Locales("C\nC.utf8\nPOSIX\nde_DE.utf8\nen_US.utf8\nja_JP.eucjp\nsr_RS.utf8@latin\nsr_RS@latin\n")
+	want := []string{"C.UTF-8", "de_DE.UTF-8", "en_US.UTF-8", "sr_RS.UTF-8@latin"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("utf8Locales = %v, want %v", got, want)
+	}
+}

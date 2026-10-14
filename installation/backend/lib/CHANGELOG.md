@@ -3,11 +3,10 @@
 ## Unreleased
 
 ### Added
-- `lanes`/`dracut`: **profile lanes and the dracut cmdline are shared.** Moved
-  from the Void backend so the Fedora backend uses the same code; Void's
-  dry-run output is unchanged. `filesystem` gained the shared fstab subvolume
-  and target API-mount helpers, and `drivers`/`chroot` run through
-  `$RYOKU_TARGET_CHROOT`.
+- `lanes`/`dracut`: **profile lanes and the dracut cmdline are shared.** The
+  helpers moved out of the Void backend without changing its dry-run output.
+  `filesystem` gained the shared fstab subvolume and target API-mount helpers,
+  and `drivers`/`chroot` run through `$RYOKU_TARGET_CHROOT`.
 - `choices`: **browser, login-shell and compositor policy is resolved once.**
   Both ISO backends read the shared manifest and edition translation table
   through this helper, including defaults, package drops and unavailable-choice

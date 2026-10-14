@@ -430,9 +430,9 @@ root with their `.sha256`, `.sig`, `.json`, and `.js` sidecars. The
 `latest*.json` files point to current images.
 
 A box can move between the ten retained frozen targets in its channel, on any
-edition. The stable ledger's `images` map names the Arch, CachyOS, or Void ISO
-for each release, derived from the per-ISO manifests in the bucket. The Fedora
-ISO is experimental and unpublished, so Fedora ledger entries carry no images. Each build carries a strictly
+edition. The stable ledger's `images` map names the Arch, CachyOS, or Void
+image for each release, derived from the per-ISO manifests in the bucket.
+Fedora ledger entries carry packages only. Each build carries a strictly
 increasing package version (`core.r<commit-count>.g<sha>` for pacman and the
 corresponding native version for XBPS or RPM) that the Ryoku upgrade moves to.
 The `ryoku-desktop` package writes `/etc/ryoku-release` (`RELEASE=`,
@@ -467,9 +467,8 @@ tag-push workflows, Stable Release explicitly dispatches the pacman, Void, and
 Fedora publishers on that tag. Each publisher writes its frozen
 `releases/<tag>/` repository, moves its stable pointer, and rebuilds its ledger.
 The pacman publisher then dispatches the plain Arch and CachyOS ISOs; the Void
-publisher dispatches the Void ISO from its frozen repository. The experimental
-Fedora ISO is built locally only.
-Arch itself keeps rolling between releases; only the Ryoku set is frozen.
+publisher dispatches the Void ISO from its frozen repository. Arch itself keeps
+rolling between releases; only the Ryoku set is frozen.
 
 **Work on `unstable-dev` reaches source testers when the Testing gate passes,
 and stable only when a release is tagged.** The packaged testing repository is
@@ -516,7 +515,7 @@ rebuilds one edition and channel from its frozen repository
 directories. Arch writes `releases/index.json` and
 `channels/testing/index.json`; Void writes the same paths below `void/`;
 Fedora release `N` writes them below `fedora/N/`. Stable Arch and Void ledgers
-include matching ISO images. Fedora ledgers contain packages only. The publish
+include matching images; Fedora ledgers contain packages only. The publish
 workflows upload `release.json` last as the frozen build's completion marker,
 then rebuild the matching ledger. `release-ledger.yml` rebuilds every Arch,
 Void, and supported Fedora ledger on demand. `RYOKU_RELEASE_BASE` overrides the
@@ -557,16 +556,16 @@ on one origin.
    publisher installs both desktop variants for every supported Fedora release
    and power-profile scenario. The Void ISO workflow runs its installer
    preflight and image-content checks, but release day has no automated Void VM
-   install, and the experimental Fedora ISO is not built or tested by CI.
+   install.
 6. Verify `release-notes.yml` published the tag's GitHub release. It is
    dispatched by Stable Release and does not prove that repositories or images
    finished, so the endpoint checks above remain required.
 
 The scheduled Cloudflare Worker in `release/r2-retention/` runs every six hours.
-It keeps the newest ten stable releases and unstable builds per edition and
-Fedora release, plus the newest ten ISOs for editions that publish them. An ISO
-and all its sidecars are deleted together. Incomplete frozen directories
-without `release.json` are removed after 48 hours.
+It keeps the newest ten stable releases and unstable builds per package edition
+and Fedora release. For editions that publish images, it also keeps the newest
+ten ISOs. An ISO and all its sidecars are deleted together. Incomplete frozen
+directories without `release.json` are removed after 48 hours.
 
 Retention never touches the moving repository heads, `latest*.json` pointers or
 the ISOs they name, the ledgers except to remove deleted entries, the signing
@@ -755,8 +754,8 @@ island (when the channel serves the next line) and the Hub's Updates page.
   with the XBPS artifact in a clean Void container.
 - `publish-repo-fedora.yml` installs each exact RPM artifact on every supported
   Fedora release, for both desktops and all supported power-profile providers,
-  before publishing. The experimental Fedora ISO has no workflow; the Void ISO
-  workflow has preflight and image-content gates but no full VM-install job.
+  before publishing. The Void ISO workflow has preflight and image-content
+  gates but no full VM-install job.
 - `bin/ryoku-dev-lint-qml <config-root>...` fails on QML that cannot load. The
   publish gate (`installation/tests/container-install.sh`) runs it over the
   materialized shell and Hub trees against the installed Qt modules, the same

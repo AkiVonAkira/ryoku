@@ -1,8 +1,6 @@
 # Build outputs
 /installation/iso/work/
 /installation/iso/out/
-/fedora/iso/work/
-/fedora/iso/out/
 /installation/iso/staging/
 /installation/tests/cache/
 /installation/tui/ryoku-tui
@@ -31,8 +29,7 @@
 *.iso
 __pycache__/
 *.pyc
-# Compiler caches the package publishers restore into the checkout. Ignored so
-# the Fedora source step's clean-checkout check does not refuse them.
+# Compiler caches the package publishers restore into the checkout.
 /.ccache*/
 /.gocache*/
 /.gomod*/

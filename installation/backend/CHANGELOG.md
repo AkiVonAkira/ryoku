@@ -3,11 +3,6 @@
 ## Unreleased
 
 ### Added
-- **A Fedora backend for the experimental Fedora ISO.** `fedora/iso/backend/`
-  installs with `dnf5 --installroot` (`@core`, kernel, shim, GRUB, then the
-  shell installer's desktop-lane plan), boots through Fedora's signed shim with
-  Secure Boot allowed, refuses legacy BIOS and a shared ESP, and is covered by
-  `tests/install-fedora-dryrun-matrix.sh` and the edition parity check.
 - **Direct backend calls enforce edition package availability.** Both ISO
   backends read the shared installer manifest through one resolver, compute the
   same browser and login-shell drops, and reject an unavailable browser, shell

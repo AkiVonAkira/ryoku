@@ -78,12 +78,6 @@ for finer detail.
   flags) or gofmt problems on the added lines. Replayed over the last 400
   commits, it stopped seven, each for ShellCheck warnings CI's own flags
   raise or for gofmt slips, and raised no false blocks.
-- **An experimental Fedora live ISO (not published yet).** `fedora/iso/build.sh`
-  builds a Fedora 44 image that boots the same graphical installer as Arch and
-  Void. It installs online with GRUB and Fedora's signed shim, so Secure Boot
-  can stay on, creates the Btrfs layout with `@snapshots`, and gives Ryoku its
-  own ESP when installing alongside another system. Snapshot rollback, CI
-  publishing and an offline package repository come later.
 - **Fedora 44 and 45 now carry the complete Fedora-compatible Ryoku desktop.**
   The shell installer supports mutable Workstation, KDE Plasma, Server, and
   spin systems, refuses unpublished releases before sudo, and names the
