@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import QtQuick.Dialogs
 import "Singletons"
@@ -487,6 +488,7 @@ Item {
                         }
                         FileDialog {
                             id: imgFileDlg
+                            currentFolder: "file://" + Quickshell.env("HOME") + "/Pictures"
                             title: I18n.tr("Choose an image")
                             nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.gif *.bmp)", "All files (*)"]
                             onAccepted: menu.set(fieldWrap.f.key, "" + imgFileDlg.selectedFile)

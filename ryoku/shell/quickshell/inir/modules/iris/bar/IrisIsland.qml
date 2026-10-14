@@ -308,6 +308,7 @@ Item {
     }
     FileDialog {
         id: avatarDialog
+        currentFolder: "file://" + Directories.homePath
         title: Translation.tr("Profile picture")
         fileMode: FileDialog.OpenFile
         nameFilters: [Translation.tr("Images") + " (*.png *.jpg *.jpeg *.webp *.bmp *.avif)"]

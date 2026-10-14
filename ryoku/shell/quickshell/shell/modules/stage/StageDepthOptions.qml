@@ -988,6 +988,7 @@ Column {
 
     FileDialog {
         id: cutDialog
+        currentFolder: "file://" + Quickshell.env("HOME") + "/Pictures"
         title: I18n.tr("Cut a layer from a picture")
         nameFilters: [
             I18n.tr("Pictures (*.png *.jpg *.jpeg *.webp *.bmp)"),
@@ -998,6 +999,7 @@ Column {
 
     FileDialog {
         id: pngDialog
+        currentFolder: "file://" + Quickshell.env("HOME") + "/Pictures"
         title: I18n.tr("Add a PNG layer")
         nameFilters: [
             I18n.tr("PNG images (*.png)"),

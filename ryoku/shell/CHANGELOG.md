@@ -8,6 +8,10 @@
   longer carry a border-width arm for a state in which nothing is drawn. The
   exclusive-zone reserves above keep theirs, since a zone is claimed whether or
   not a band is painted (`modules/bar/Frame.qml`).
+- **Every file dialog opens somewhere sensible.** "+ Browse" on a desktop
+  widget, the Stage layer pickers, the wallpaper card and the profile picture
+  used to open in the shell's working directory; the image choosers now start
+  in the picture directory and the rest at home.
 
 ### Added
 - **The ii dock design.** The dock ported from P3DROVFX's ii-p3drovfx joins the
