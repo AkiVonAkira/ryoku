@@ -117,7 +117,7 @@ Suggests:       mangohud
 Suggests:       chromium
 Suggests:       kdialog
 Suggests:       plasma-integration
-Suggests:       qemu
+Suggests:       qemu-kvm
 Suggests:       libvirt
 Suggests:       edk2-ovmf
 Suggests:       swtpm

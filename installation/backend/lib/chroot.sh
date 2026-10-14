@@ -3,7 +3,10 @@
 # configure the freshly installed system: locale, console keymap, timezone,
 # hostname, primary user, sudo, initramfs HOOKS, and (if encrypting) crypttab.
 # files under /mnt are written directly; anything that must run in the target
-# goes through arch-chroot.
+# goes through arch-chroot, or $RYOKU_TARGET_CHROOT for the steps another
+# edition reuses.
+
+: "${RYOKU_TARGET_CHROOT:=arch-chroot}"
 
 ryoku_configure() {
   ryoku_cfg_locale
@@ -95,16 +98,16 @@ ryoku_cfg_user() {
   log 'user: %s (wheel,video,input; shell %s)' "$RYOKU_USERNAME" "$login_shell"
   # video -> write panel backlight (with 90-ryoku-backlight.rules); input ->
   # read game controllers / input devices without a per-login logind grant.
-  run arch-chroot /mnt useradd -m -G wheel,video,input -s "$login_shell" "$RYOKU_USERNAME"
+  run "$RYOKU_TARGET_CHROOT" /mnt useradd -m -G wheel,video,input -s "$login_shell" "$RYOKU_USERNAME"
   # same password on the user + root, so sudo (wheel) and su both work
   # with what the installer collected. hashes go in on stdin (chpasswd -e
   # reads name:hash) and never hit the logs.
   printf '%s:%s\n' "$RYOKU_USERNAME" "$RYOKU_PASSWORD_HASH" | run_secret \
-    "arch-chroot /mnt chpasswd -e (user:hash via stdin)" \
-    arch-chroot /mnt chpasswd -e
+    "$RYOKU_TARGET_CHROOT /mnt chpasswd -e (user:hash via stdin)" \
+    "$RYOKU_TARGET_CHROOT" /mnt chpasswd -e
   printf 'root:%s\n' "$RYOKU_PASSWORD_HASH" | run_secret \
-    "arch-chroot /mnt chpasswd -e (root:hash via stdin)" \
-    arch-chroot /mnt chpasswd -e
+    "$RYOKU_TARGET_CHROOT /mnt chpasswd -e (root:hash via stdin)" \
+    "$RYOKU_TARGET_CHROOT" /mnt chpasswd -e
 }
 
 ryoku_cfg_sudo() {

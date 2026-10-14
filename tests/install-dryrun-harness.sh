@@ -7,11 +7,12 @@ install_dryrun_backend_path() {
   case $1 in
     arch) printf '%s/installation/backend/ryoku-install\n' "$INSTALL_DRYRUN_ROOT" ;;
     void) printf '%s/void/iso/backend/ryoku-install\n' "$INSTALL_DRYRUN_ROOT" ;;
+    fedora) printf '%s/fedora/iso/backend/ryoku-install\n' "$INSTALL_DRYRUN_ROOT" ;;
     *) printf 'unknown installer edition: %s\n' "$1" >&2; return 2 ;;
   esac
 }
 
-# install_dryrun_run <arch|void> <output-file> [NAME=VALUE ...]
+# install_dryrun_run <arch|void|fedora> <output-file> [NAME=VALUE ...]
 install_dryrun_run() {
   local edition=$1 output=$2 backend
   shift 2

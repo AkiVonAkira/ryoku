@@ -162,7 +162,7 @@ prowl	prowl	desktop	Ryoku-owned RPM.
 python	python3	desktop,dev	
 python-pip	python3-pip	dev	
 python-pipx	pipx	dev	
-qemu-desktop	qemu	desktop	
+qemu-desktop	qemu-kvm	desktop	
 qmk_hid	ryoku-extras	optional	Bundled by the Ryoku extras RPM.
 qrencode	qrencode	desktop	
 qt5-wayland	qt5-qtwayland	desktop	

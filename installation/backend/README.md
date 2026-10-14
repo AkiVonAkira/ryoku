@@ -20,7 +20,9 @@ RYOKU_PROFILE=amd-nvidia RYOKU_BROWSER=firefox RYOKU_LOGIN_SHELL=fish \
 It must run as root, on a UEFI machine with Secure Boot disabled, against a whole
 disk of at least 32 GiB, with a working network connection (the install is
 online-only). Set `RYOKU_ALLOW_SECUREBOOT=1` only if you have enrolled your own
-keys -- Limine ships unsigned and will not boot under enforced Secure Boot.
+keys -- Limine ships unsigned and will not boot under enforced Secure Boot. The
+Fedora backend (`fedora/iso/backend/`) boots through Fedora's signed shim and
+GRUB, so it sets `RYOKU_ALLOW_SECUREBOOT=1` itself.
 
 ## Dry run
 
@@ -65,7 +67,7 @@ With defaults:
 | `RYOKU_TIMEZONE`          | `UTC`              | `Region/City`, or `auto` (ipinfo.io).    |
 | `RYOKU_PROFILE`           | `vm`               | `amd-nvidia` \| `amd` \| `intel` \| `vm`. |
 | `RYOKU_ESP_GIB`           | `1`                | Whole-disk ESP size in GiB (alongside boot is a fixed 2 GiB). |
-| `RYOKU_ESP_MODE`          | `auto`             | Alongside boot target: `auto`, `shared`, or `dedicated`. Auto uses dedicated when the existing ESP has less than 8 MiB free. |
+| `RYOKU_ESP_MODE`          | `auto`             | Alongside boot target: `auto`, `shared`, or `dedicated`. Auto uses dedicated when the existing ESP has less than 8 MiB free. The Fedora backend accepts only `dedicated` (`auto` resolves to it). |
 | `RYOKU_SWAP_GIB`          | `0`                | Swapfile size in GiB (0 disables it).    |
 | `RYOKU_SUBVOL_SNAPSHOTS`  | `1`                | Create `@snapshots` -> `/.snapshots`.    |
 | `RYOKU_SUBVOL_HOME`       | `1`                | Create `@home` -> `/home`.               |

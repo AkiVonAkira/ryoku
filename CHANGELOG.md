@@ -78,13 +78,19 @@ for finer detail.
   flags) or gofmt problems on the added lines. Replayed over the last 400
   commits, it stopped seven, each for ShellCheck warnings CI's own flags
   raise or for gofmt slips, and raised no false blocks.
+- **An experimental Fedora live ISO (not published yet).** `fedora/iso/build.sh`
+  builds a Fedora 44 image that boots the same graphical installer as Arch and
+  Void. It installs online with GRUB and Fedora's signed shim, so Secure Boot
+  can stay on, creates the Btrfs layout with `@snapshots`, and gives Ryoku its
+  own ESP when installing alongside another system. Snapshot rollback, CI
+  publishing and an offline package repository come later.
 - **Fedora 44 and 45 now carry the complete Fedora-compatible Ryoku desktop.**
   The shell installer supports mutable Workstation, KDE Plasma, Server, and
   spin systems, refuses unpublished releases before sudo, and names the
   published list. Ryoku's signed RPM repository supplies Quickshell, Ryotunes,
   recording, wallpaper, fonts, cursors, controller support, and the Hyprland
   plugins. Both tuned-ppd and power-profiles-daemon work without provider
-  replacement. Fedora keeps GRUB, has no Ryoku ISO or snapshots, stays on
+  replacement. Fedora keeps GRUB, has no snapshot boot menu, stays on
   nouveau, and cannot offer Wayfire until Fedora ships 0.11. Thanks @aethctl for
   the original Fedora port.
 - **Void gains GlazePKG, dualsensectl, Oh My Zsh, and Ryotunes.** They install

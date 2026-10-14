@@ -8,6 +8,12 @@
   4 GiB ESP and no swap partition, as CachyOS's installer does for Limine
   (`cachyos-settings` brings zram swap). The Zen browser hint on that edition
   names the CachyOS repo it installs from instead of the AUR.
+- **The Fedora ISO offers every locale.** The live image carries all glibc
+  langpacks, and the installer reads `locale -a` in the `de_DE.UTF-8` spelling,
+  so the locale step is no longer limited to English and `en_US` leads again.
+- **The encryption step says what it does.** It no longer mentions a retired
+  "-luks host variant"; the passphrase is asked at every boot. On Fedora the
+  layout row reads "Snapshots subvolume", since rollback is not set up yet.
 - **Installer product choices no longer drift between editions or entry
   points.** Browser, login-shell and compositor order, labels, defaults,
   package stacks and fresh/existing shell policies now come from one shared
@@ -45,9 +51,16 @@
   Rashin (the AI agent, its window and the bar's AI usage pill) as a row
   ticked by default. Unticking it leaves `ryoku-rashin` out of the install and
   records the choice, so `ryoku doctor` never adds it later. The offline ISO
-  bakes `ryoku-rashin` so a ticked offline install still gets it. The Void
-  installer does not offer the row, because its desktop package still
-  requires Rashin.
+  bakes `ryoku-rashin` so a ticked offline install still gets it. The Void and
+  Fedora installers do not offer the row, because their desktop packages still
+  require Rashin.
+- **The installer supports the experimental Fedora live ISO.** It reads its
+  choices from Fedora's package table, explains the edition in a short
+  `Ryoku on Fedora` card, installs online only, lets Secure Boot stay on, keeps
+  legacy BIOS blocked, names GRUB instead of Limine, and always gives Ryoku its
+  own ESP alongside another OS. Apps the edition never delivers are hidden;
+  the PulseAudio GUI stays offered, since `ryoku doctor` installs it unless it
+  is unticked here.
 - **The Void installer explains the edition before setup begins.** A short card
   covers niri-only support, unavailable apps, and using `ryoku update --system`
   because XBPS has no transaction hooks.

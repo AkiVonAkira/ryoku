@@ -91,9 +91,10 @@ locked behind a text editor.
   (GPU/driver/display/power helper scripts), and the package sets.
 - **The installers** share one desktop contract. `installation/` and
   `void/iso/` build the ISO paths and carry their packages offline.
-  `ryoku-shell-installer/` converts an existing supported system and is the
-  Fedora path; Fedora keeps GRUB and has no Ryoku ISO or snapshots. Atomic and
-  other rpm-ostree editions are refused.
+  `ryoku-shell-installer/` converts an existing supported system, the main
+  Fedora path. `fedora/iso/` builds an experimental, unpublished Fedora live
+  ISO that installs online with GRUB and Fedora's signed shim; Fedora has no
+  snapshot boot menu. Atomic and other rpm-ostree editions are refused.
 - **Rashin** (`ryoku/rashin/`, optional and off by default) is the agent OS: a
   machine-generated knowledge vault, a local daemon with a web dashboard, and a
   one-click Hermes setup, so any coding agent starts with an exact map of the

@@ -274,8 +274,9 @@ signature, and `release.json`. SRPMs stay in the build artifact and are not
 published. `.github/workflows/publish-repo-fedora.yml` builds and tests each
 supported Fedora release in its own container, publishes stable or testing
 heads and their frozen targets, uploads `fedora/releases`, and rebuilds the
-ledgers. Stable Release dispatches it on the release tag. Fedora has no ISO
-workflow. See `fedora/packages/rpm/README.md` for the spec, checksum, vendoring,
+ledgers. Stable Release dispatches it on the release tag. No workflow builds
+the experimental Fedora ISO; build it locally with `fedora/iso/build.sh`
+(see `fedora/iso/README.md`). See `fedora/packages/rpm/README.md` for the spec, checksum, vendoring,
 fetch-hook, and local-build details. The release-day order and verification
 endpoints are in `docs/updates.md`, "Release-day checklist".
 
