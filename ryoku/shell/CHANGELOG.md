@@ -601,6 +601,15 @@
   `../../apps/ryostore/backend/provider_bars.go`, `../../wm/niri/config_binds.go`,
   `../../hyprland/modules/binds.lua`).
 ### Fixed
+- **Ask and the AI pill behave on a box without Rashin.** A quick ask
+  (Alt+Space, or the launcher's `\`) used to sit on "waking the needle"
+  forever when `ryoku-rashin` was missing, and a chat message vanished into a
+  queue that never drained. Both now answer "Not installed · install
+  ryoku-rashin", the wording the Hub's Rashin page already uses. The qsbar AI
+  pill stays hidden when the usage collectors are not installed, instead of
+  showing an empty "0%" chip whenever a coding agent is running
+  (`services/AskSession.qml`, `services/Needle.qml`,
+  `qsbar/modules/ClaudeWidget.qml`).
 - **Ryogami's Workshop tab finds your Wallpaper Engine scenes.** On the first
   run after an install the tab said "No Wallpaper Engine scenes yet" until
   ryogami restarted, because the picker never refreshed it after the first scan.
