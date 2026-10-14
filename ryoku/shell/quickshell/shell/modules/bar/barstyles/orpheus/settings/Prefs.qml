@@ -59,7 +59,7 @@ Singleton {
             ? value : fallback;
     }
 
-    function boolean(value, fallback) {
+    function flag(value, fallback) {
         return typeof value === "boolean" ? value : fallback;
     }
 
@@ -170,25 +170,25 @@ Singleton {
         case "form": return choice(value, ["liquid", "square"], "liquid");
         case "scale": return clamp(value, 0.85, 1.3, 1);
         case "opacity": return clamp(value, 0.6, 1, 0.94);
-        case "rim": return boolean(value, true);
+        case "rim": return flag(value, true);
         case "autoHide": return choice(value, ["off", "smart", "always"], "off");
-        case "hoverOpen": return boolean(value, false);
-        case "hoverSwitch": return boolean(value, true);
+        case "hoverOpen": return flag(value, false);
+        case "hoverSwitch": return flag(value, true);
         case "layout": return normaliseLayout(value);
         case "gain": return clamp(value, 0, 3, 1);
         case "depth": return clamp(value, 8, 40, 22);
-        case "mirror": return boolean(value, true);
+        case "mirror": return flag(value, true);
         case "feel": return choice(value, ["fluid", "tight"], "fluid");
         case "workspaceStyle": return choice(value,
             ["dots", "numbers", "kanji", "greek", "dashes", "icons"], "dots");
-        case "workspaceShowEmpty": return boolean(value, true);
-        case "showDate": return boolean(value, true);
-        case "seconds": return boolean(value, false);
-        case "voiceWeather": return boolean(value, true);
+        case "workspaceShowEmpty": return flag(value, true);
+        case "showDate": return flag(value, true);
+        case "seconds": return flag(value, false);
+        case "voiceWeather": return flag(value, true);
         case "mediaWidth": return clamp(value, 120, 320, 220);
-        case "coverSpin": return boolean(value, true);
-        case "wavy": return boolean(value, true);
-        case "spectrum": return boolean(value, true);
+        case "coverSpin": return flag(value, true);
+        case "wavy": return flag(value, true);
+        case "spectrum": return flag(value, true);
         case "windowWidth": return clamp(value, 120, 420, 240);
         case "sysmonItems": return subset(value,
             ["cpu", "mem", "temp", "gpu", "net"], ["cpu", "mem", "temp"]);
