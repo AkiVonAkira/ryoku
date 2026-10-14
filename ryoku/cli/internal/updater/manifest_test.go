@@ -138,3 +138,15 @@ func TestFedoraPackageSetsUseRPMAndDNFUserInstalled(t *testing.T) {
 		t.Fatalf("explicit = %#v, want %#v", explicit, want)
 	}
 }
+
+func TestPlanManifestDoesNotInstallChoiceAbsentFromNext(t *testing.T) {
+	// Older baselines named every browser, so a box that chose Chromium had
+	// never-present Firefox marked as a gap. Once choices leave the manifest,
+	// that old baseline must not make convergence install Firefox.
+	prev := &ryokumanifest.Manifest{Base: []string{"base", "firefox"}}
+	next := &ryokumanifest.Manifest{Base: []string{"base"}}
+	plan := PlanManifest(prev, map[string]bool{"base": true}, next, map[string]bool{"base": true})
+	if len(plan.Install) != 0 {
+		t.Errorf("install = %v; a package absent from the new manifest must stay absent", plan.Install)
+	}
+}

@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Fixed
+- **Updates preserve installer package choices.** Control-manifest convergence
+  now excludes browser, login-shell, and compositor packages selected per box,
+  so it cannot install alternatives the user did not choose.
 - **`ryoku update` stops ending on a health warning you cannot act on.** On a box
   where /boot is root-only, the kernel-image reconciler could not stat the boot
   images and reported a warning, so every unprivileged update finished with "the

@@ -118,6 +118,8 @@ type Inputs struct {
 	Dev      string // system/packages/dev.packages
 	Hardware string // system/packages/hardware.packages
 	AUR      string // system/packages/aur.packages
+	// Choices names packages selected per box by the installer.
+	Choices map[string]bool
 	// FirstParty maps a release/packages/<dir> name to its PKGBUILD contents.
 	FirstParty map[string]string
 	// Compositor maps a provider name to its caps.go contents.
@@ -144,10 +146,10 @@ func Build(in Inputs) Manifest {
 		Commit:      in.Commit,
 		Channel:     in.Channel,
 		Date:        in.Date,
-		Base:        PackageSet(in.Base),
-		Dev:         PackageSet(in.Dev),
+		Base:        withoutPackages(PackageSet(in.Base), in.Choices),
+		Dev:         withoutPackages(PackageSet(in.Dev), in.Choices),
 		Hardware:    HardwareSets(in.Hardware),
-		AUR:         PackageSet(in.AUR),
+		AUR:         withoutPackages(PackageSet(in.AUR), in.Choices),
 		Compositor:  compositorPackages(in.Compositor),
 		Provisioned: AppNames(),
 	}
@@ -159,13 +161,26 @@ func Build(in Inputs) Manifest {
 	}
 	for _, body := range in.FirstParty {
 		n := Pkgname(body)
-		if n == "" || declared[n] || IsOptIn(n) {
+		if n == "" || declared[n] || IsOptIn(n) || in.Choices[n] {
 			continue
 		}
 		m.FirstParty = append(m.FirstParty, n)
 	}
 	sort.Strings(m.FirstParty)
 	return m
+}
+
+func withoutPackages(names []string, excluded map[string]bool) []string {
+	if len(excluded) == 0 {
+		return names
+	}
+	out := names[:0]
+	for _, name := range names {
+		if !excluded[name] {
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
 func compositorPackages(caps map[string]string) map[string][]string {

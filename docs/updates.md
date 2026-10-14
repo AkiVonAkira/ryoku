@@ -609,12 +609,14 @@ island (when the channel serves the next line) and the Hub's Updates page.
   `translations.tsv`) generates `manifest.json` at publish time and the
   doctor's `reconcileManifest` converges
   each box to it on `ryoku update`, so adding a package to a set needs no hard
-  depend and no per-box install step. A box's own removals are respected (a name
-  present when its baseline was saved and gone now stays gone), and `ryoku
-  verify` reports the box-vs-release diff so two machines can be proved the same
-  one. The container-install gate (and the Fedora publish) fails a publish
-  whose channel serves no manifest, because a reconciler with nothing to
-  converge to is inert, not delivered.
+  depend and no per-box install step. Per-box picks from the installer never
+  appear in the control manifest's convergence lanes, so convergence cannot
+  undo them. A box's own removals are respected (a name present when its
+  baseline was saved and gone now stays gone), and `ryoku verify` reports the
+  box-vs-release diff so two machines can be proved the same one. The
+  container-install gate (and the Fedora publish) fails a publish whose channel
+  serves no manifest, because a reconciler with nothing to converge to is inert,
+  not delivered.
 - **A removed or renamed `shell.json` key, or a changed default that must reach
   existing users, needs a `doctor` reconciler** (materialize never edits a user's
   `shell.json`). An additive key needs nothing.

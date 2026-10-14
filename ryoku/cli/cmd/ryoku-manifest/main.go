@@ -5,7 +5,8 @@
 //
 // Usage: ryoku-manifest -repo <checkout> -release <str> -version <pkgver>
 //
-//	-commit <sha> -channel <stable|testing|v<tag>> [-edition fedora] -out <file>
+//	-commit <sha> -channel <stable|testing|v<tag>> [-edition fedora]
+//	[-choices <path>] -out <file>
 package main
 
 import (
@@ -30,14 +31,25 @@ func main() {
 	commit := flag.String("commit", "unknown", "full commit SHA")
 	channel := flag.String("channel", "stable", "channel this manifest is published to")
 	edition := flag.String("edition", "", "translate for an edition's own repository (fedora); empty for Arch")
+	choices := flag.String("choices", "", "installer choices TSV (default: <repo>/installation/installerplan/choices.tsv)")
 	out := flag.String("out", "", "manifest.json to write (default: stdout)")
 	flag.Parse()
 
+	choicesPath := *choices
+	if choicesPath == "" {
+		choicesPath = filepath.Join(*repo, "installation/installerplan/choices.tsv")
+	}
+	choicePackages, err := ryokumanifest.ChoicePackages(choicesPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "ryoku-manifest:", err)
+		os.Exit(1)
+	}
 	in, err := readInputs(*repo, *release, *version, *commit, *channel)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ryoku-manifest:", err)
 		os.Exit(1)
 	}
+	in.Choices = choicePackages
 	m := ryokumanifest.Build(in)
 	if *edition != "" {
 		if m, err = translate(m, *repo, *edition); err != nil {
