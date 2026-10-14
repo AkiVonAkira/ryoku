@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+- **The painted frame band drops four fallbacks it could never reach.** `FrameChrome`
+  is only visible while the sumi frame is active, so its per-edge reserves no
+  longer carry a border-width arm for a state in which nothing is drawn. The
+  exclusive-zone reserves above keep theirs, since a zone is claimed whether or
+  not a band is painted (`modules/bar/Frame.qml`).
+
 ### Added
 - **Orpheus is Ryoku's default bar.** `Ryoku.Blobs` drops hang from the top
   edge with a voice in the middle that shows the time, the track, a fresh
