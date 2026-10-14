@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+- **The painted frame band drops four fallbacks it could never reach.** `FrameChrome`
+  is only visible while the sumi frame is active, so its per-edge reserves no
+  longer carry a border-width arm for a state in which nothing is drawn. The
+  exclusive-zone reserves above keep theirs, since a zone is claimed whether or
+  not a band is painted (`modules/bar/Frame.qml`).
+
 ### Added
 - **The ii dock design.** The dock ported from P3DROVFX's ii-p3drovfx joins the
   shared dock store as a fourth design: pick "ii" in the Stage Editor's dock
