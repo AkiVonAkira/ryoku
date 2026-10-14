@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **Keybinds can be removed and restored.** Each shipped shortcut has a control
+  that switches its action off without hiding the row, then restores it in one
+  press (`quickshell/pages/KeybindsPage.qml`).
 - **`ryoku-hub lighting follow <device>|--all on|off`.** One verb puts a device
   on the palette accent in a mode that can show it (its Static mode, else a
   Direct or Custom per-LED mode), names devices whose modes carry no colour

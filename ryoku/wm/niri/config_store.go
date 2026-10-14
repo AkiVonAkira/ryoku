@@ -300,7 +300,10 @@ type niriStore struct {
 	Apps           map[string]string `json:"apps,omitempty"`
 	KeybindRebinds map[string]string `json:"keybindRebinds,omitempty"`
 	Unbinds        []string          `json:"unbinds,omitempty"`
-	Niri           Niri              `json:"-"`
+	// Shipped chords the user switched off in Settings. Separate from Unbinds,
+	// which an import writes for its own reasons; both are honoured the same way.
+	KeybindDisabled []string `json:"keybindDisabled,omitempty"`
+	Niri            Niri     `json:"-"`
 }
 
 // neutralStore is desktop.json on disk: { "desktop": {...}, "wm": { "<name>":
