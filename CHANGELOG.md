@@ -30,6 +30,12 @@ for finer detail.
   audio route check) and `NetworkManager-wifi`, which Arch's `libpulse` and
   `networkmanager` already carry, so Fedora Server and minimal spins have wifi
   in the bar. Existing Fedora boxes pick them up on their next update.
+- The Fedora repository now publishes the release control manifest, so
+  `ryoku update` installs a desktop package an existing Fedora box is missing,
+  as it already does on Arch. Doctor reported "no release manifest to converge
+  to" and installed nothing. The manifest carries only the packages the Fedora
+  installer installs, never the kernel or compilers. A package removed by hand
+  before this update may come back once.
 - The doctor's reverse-PRIME warning (#270, a black panel after login on a
   hybrid-GPU laptop) now also fires when a forced or drifted GPU render pin
   coexists with a stored hybrid or passthrough choice, which previously

@@ -1,10 +1,11 @@
 // Command ryoku-manifest generates the release control manifest from a Ryoku
-// checkout. build-repo.sh runs it at publish time and serves the result beside
-// the channel's release.json; nothing else writes it, and no one edits it.
+// checkout. build-repo.sh and fedora's build-rpm-repo.sh run it at publish time
+// and serve the result beside the channel's release.json; nothing else writes
+// it, and no one edits it.
 //
 // Usage: ryoku-manifest -repo <checkout> -release <str> -version <pkgver>
 //
-//	-commit <sha> -channel <stable|testing|v<tag>> -out <file>
+//	-commit <sha> -channel <stable|testing|v<tag>> [-edition fedora] -out <file>
 package main
 
 import (
@@ -16,8 +17,11 @@ import (
 	"strings"
 	"time"
 
+	"ryoku-cli/internal/host"
 	"ryoku-cli/internal/ryokumanifest"
 )
+
+const installerLane = "desktop"
 
 func main() {
 	repo := flag.String("repo", ".", "ryoku checkout to read")
@@ -25,6 +29,7 @@ func main() {
 	version := flag.String("version", "", "shared RYOKU_PKGVER the first-party set is pinned to")
 	commit := flag.String("commit", "unknown", "full commit SHA")
 	channel := flag.String("channel", "stable", "channel this manifest is published to")
+	edition := flag.String("edition", "", "translate for an edition's own repository (fedora); empty for Arch")
 	out := flag.String("out", "", "manifest.json to write (default: stdout)")
 	flag.Parse()
 
@@ -34,6 +39,12 @@ func main() {
 		os.Exit(1)
 	}
 	m := ryokumanifest.Build(in)
+	if *edition != "" {
+		if m, err = translate(m, *repo, *edition); err != nil {
+			fmt.Fprintln(os.Stderr, "ryoku-manifest:", err)
+			os.Exit(1)
+		}
+	}
 	b, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ryoku-manifest:", err)
@@ -83,6 +94,23 @@ func readInputs(repo, release, version, commit, channel string) (ryokumanifest.I
 		return in, fmt.Errorf("ryoku/wm: %w", err)
 	}
 	return in, nil
+}
+
+func translate(m ryokumanifest.Manifest, repo, edition string) (ryokumanifest.Manifest, error) {
+	path := filepath.Join(repo, edition, "packages", "translations.tsv")
+	rows, err := host.ReadPackageTranslations(path, edition)
+	if err != nil {
+		return m, err
+	}
+	table := make(map[string]ryokumanifest.Translation, len(rows))
+	for name, row := range rows {
+		table[name] = ryokumanifest.Translation{Names: row.Names, Lanes: row.Lanes}
+	}
+	m, err = ryokumanifest.Translate(m, table, installerLane)
+	if err != nil {
+		return m, fmt.Errorf("%s: %w", path, err)
+	}
+	return m, nil
 }
 
 // readDirBodies reads <dir>/<entry>/<name> for every subdirectory, skipping

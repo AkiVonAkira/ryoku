@@ -532,6 +532,8 @@ jobs:
           src="$artifact/x86_64"
           [[ -s $src/release.json ]] || { echo '::error::Tested repository has no release.json'; exit 1; }
           [[ -f $src/upstream-inputs.tsv ]] || { echo '::error::Tested repository has no upstream-inputs.tsv'; exit 1; }
+          jq -e '.schema and (.base | length > 0)' "$src/manifest.json" >/dev/null \
+            || { echo '::error::Tested repository has no valid manifest.json'; exit 1; }
           shopt -s nullglob
           rpms=("$src"/*.rpm)
           ((${#rpms[@]})) || { echo '::error::Tested repository has no RPMs'; exit 1; }
@@ -567,6 +569,7 @@ jobs:
             rclone copy "$source/" "$destination/" --filter '+ *.rpm' --filter '- *' -P
             rclone sync "$source/repodata/" "$destination/repodata/" -P
             rclone copyto "$source/upstream-inputs.tsv" "$destination/upstream-inputs.tsv" -P
+            rclone copyto "$source/manifest.json" "$destination/manifest.json" -P
             rclone sync "$source/" "$destination/" --filter '+ *.rpm' --filter '- *' -P
             rclone check "$source/" "$destination/" --one-way --exclude 'release.json'
             rclone copyto "$source/release.json" "$destination/release.json" -P

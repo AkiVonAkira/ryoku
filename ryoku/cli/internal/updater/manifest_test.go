@@ -117,7 +117,8 @@ func TestSatisfiedByProvidersKeepsTheBoxsOwnProvider(t *testing.T) {
 func TestFedoraPackageSetsUseRPMAndDNFUserInstalled(t *testing.T) {
 	t.Setenv("RYOKU_HOST_PKGMGR", "dnf")
 	bin := t.TempDir()
-	writeExec(t, filepath.Join(bin, "rpm"), "#!/bin/sh\nprintf 'ryoku-desktop\\nquickshell\\n'\n")
+	writeExec(t, filepath.Join(bin, "rpm"), "#!/bin/sh\ncase \"$*\" in *PROVIDENAME*) ;; *) exit 2 ;; esac\n"+
+		"printf 'ryoku-desktop\\nquickshell\\npower-profiles-daemon\\nppd-service\\nfont(dejavu sans)\\n'\n")
 	writeExec(t, filepath.Join(bin, "dnf5"), "#!/bin/sh\n[ \"$1 $2\" = 'repoquery -y' ] || exit 2\nprintf 'ryoku-desktop\\n'\n")
 	t.Setenv("PATH", bin)
 
@@ -125,7 +126,8 @@ func TestFedoraPackageSetsUseRPMAndDNFUserInstalled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := map[string]bool{"ryoku-desktop": true, "quickshell": true}; !reflect.DeepEqual(installed, want) {
+	if want := map[string]bool{"ryoku-desktop": true, "quickshell": true, "power-profiles-daemon": true,
+		"ppd-service": true, "font(dejavu sans)": true}; !reflect.DeepEqual(installed, want) {
 		t.Fatalf("installed = %#v, want %#v", installed, want)
 	}
 	explicit, err := packageSet(true)
