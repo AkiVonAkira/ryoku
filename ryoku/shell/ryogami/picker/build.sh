@@ -20,8 +20,10 @@ done
 # packaged builds carry it; a source tree is on its own.
 # `ryoku-host pkg advice` only answers for packages inside the installed closure,
 # and a build dependency sits outside it, so name the package here instead.
+# CXX may carry a wrapper or flags ("ccache g++"), as cmake accepts below.
+read -r -a cxx <<<"${CXX:-c++}"
 if ! printf '#include <vulkan/vulkan.h>\nint main(void){return 0;}\n' \
-  | "${CXX:-c++}" -fsyntax-only -x c++ - >/dev/null 2>&1; then
+  | "${cxx[@]}" -fsyntax-only -x c++ - >/dev/null 2>&1; then
   printf 'build.sh: error: the Vulkan headers are required (vulkan-headers on Arch and Fedora, Vulkan-Headers on Void)\n' >&2
   exit 1
 fi
