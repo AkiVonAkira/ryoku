@@ -225,6 +225,10 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **Keyboard repair rebuilds Fedora and Void boot images.** The CLI still
+  prefers `mkinitcpio -P` where it is installed, then falls back to
+  `dracut --regenerate-all --force` so the boot prompt keymap converges on
+  hosts that use dracut.
 - **A failed update names the packages that conflict.** pacman reports the pair
   on a `::` line and only the `error:` summary reached the terminal, so an
   aborted transaction read as "conflicting dependencies" with nothing to act on.

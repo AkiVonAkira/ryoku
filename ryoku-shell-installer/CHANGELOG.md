@@ -61,6 +61,14 @@
   steps, so a stuck stable install can be finished on unstable.
 
 ### Fixed
+- **Carried keyboard settings now reach every compositor and the system
+  keymap.** The installer merges the salvaged layout, variant, and options into
+  the neutral desktop store before materialization, while keeping a later Hub
+  choice on repair runs. The Hub, login screen, console, and boot prompt now
+  converge on the same setting.
+- **Fedora Server and spin installs bring up installed Bluetooth support.**
+  The session step enables `bluetooth.service` only when its unit is present
+  and not already enabled, and records how to disable it in the restore script.
 - **The shell installer identifies filtered Ryoku DNS.** A private, loopback,
   or known sinkhole answer for `repo.ryoku.dev` gets a direct warning and a link
   to the recovery steps instead of the generic unreachable-repository message.

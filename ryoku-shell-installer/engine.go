@@ -2103,6 +2103,26 @@ func enableFedoraPowerProfiles(e *engine, unitDirs ...string) error {
 	return nil
 }
 
+func enableFedoraBluetooth(e *engine, unitDirs ...string) error {
+	if len(unitDirs) == 0 {
+		unitDirs = []string{"/usr/lib/systemd/system", "/lib/systemd/system"}
+	}
+	for _, dir := range unitDirs {
+		if _, err := os.Stat(filepath.Join(dir, "bluetooth.service")); err != nil {
+			continue
+		}
+		if unitEnabled("system", "bluetooth.service") {
+			return nil
+		}
+		if err := e.sudo("systemctl", "enable", "bluetooth.service"); err != nil {
+			return err
+		}
+		e.recordRestore("sudo systemctl disable bluetooth.service")
+		return nil
+	}
+	return nil
+}
+
 func stepSession(e *engine) error {
 	if e.usesRunit() {
 		if err := wireRunitServices(e); err != nil {
@@ -2117,6 +2137,9 @@ func stepSession(e *engine) error {
 			return err
 		}
 		if err := enableFedoraPowerProfiles(e); err != nil {
+			return err
+		}
+		if err := enableFedoraBluetooth(e); err != nil {
 			return err
 		}
 	}
@@ -2260,6 +2283,82 @@ EOF`); err != nil {
 	return nil
 }
 
+func seedDesktopKeymap(e *engine) error {
+	layout, variant, options, source := e.f.kbLayout, e.f.kbVariant, e.f.kbOptions, e.f.kbSource
+	explicit := e.p != nil && (e.p.azertyFR || e.p.azertyBE)
+	if explicit {
+		layout, variant, options, source = "fr", "", "", "plan"
+		if e.p.azertyBE {
+			layout = "be"
+		}
+	}
+	if layout == "" || (layout == "us" && variant == "" && options == "") {
+		return nil
+	}
+	if source == "" {
+		source = "localectl"
+	}
+
+	store := filepath.Join(e.f.homeDir, ".config/ryoku/desktop.json")
+	root := map[string]any{}
+	data, err := os.ReadFile(store)
+	switch {
+	case err == nil && strings.TrimSpace(string(data)) != "":
+		if err := json.Unmarshal(data, &root); err != nil {
+			return fmt.Errorf("read keyboard settings from %s: %w", store, err)
+		}
+	case err != nil && !os.IsNotExist(err):
+		return fmt.Errorf("read keyboard settings from %s: %w", store, err)
+	}
+	if root == nil {
+		root = map[string]any{}
+	}
+	desktopNode, ok := root["desktop"].(map[string]any)
+	if !ok {
+		if _, exists := root["desktop"]; exists {
+			return fmt.Errorf("%s: desktop must be an object", store)
+		}
+		desktopNode = map[string]any{}
+		root["desktop"] = desktopNode
+	}
+	input, ok := desktopNode["input"].(map[string]any)
+	if !ok {
+		if _, exists := desktopNode["input"]; exists {
+			return fmt.Errorf("%s: desktop.input must be an object", store)
+		}
+		input = map[string]any{}
+		desktopNode["input"] = input
+	}
+	if current, exists := input["kbLayout"]; exists && !explicit {
+		currentLayout, stringValue := current.(string)
+		if !stringValue || (currentLayout != "" && currentLayout != "us") {
+			return nil
+		}
+	}
+	if e.dry {
+		e.sayf(i18n.T("DRYRUN: seed keyboard layout %q variant %q options %q from %s into %s"),
+			layout, variant, options, source, store)
+		return nil
+	}
+
+	input["kbLayout"] = layout
+	input["kbVariant"] = variant
+	input["kbOptions"] = options
+	data, err = json.MarshalIndent(root, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(store), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(store, append(data, '\n'), 0o644); err != nil {
+		return err
+	}
+	e.sayf(i18n.T("seeded keyboard layout %q variant %q options %q from %s into %s"),
+		layout, variant, options, source, store)
+	return nil
+}
+
 func stepConfigs(e *engine) error {
 	ryoku := e.ryokuBin()
 	if !e.dry && ryoku == "" {
@@ -2267,6 +2366,9 @@ func stepConfigs(e *engine) error {
 	}
 	if ryoku == "" {
 		ryoku = "ryoku"
+	}
+	if err := seedDesktopKeymap(e); err != nil {
+		return err
 	}
 	// a source build has no packaged base tree for materialize to apply;
 	// deploy.sh in the build step already laid and overlaid the config.
@@ -2276,13 +2378,9 @@ func stepConfigs(e *engine) error {
 		}
 	}
 
-	// salvaged monitor pins go in before the stub pass, real pins beat a
-	// comment stub. only the hyprland dialect supports desc: names.
-	//
-	// The file and the dialect both follow the compositor being installed: the
-	// seam names the hand-pin file, and its extension picks the emitter. A
-	// hardcoded Lua path would drop a file niri never reads, and the salvaged
-	// layout would vanish with no error.
+	// Salvaged monitor pins go in before the stub pass, so real pins beat a
+	// comment stub. The provider seam names the hand-pin file, and its extension
+	// selects the emitter.
 	if rel := monitorPinFile(e.p.compositor); e.p.monPins && len(e.f.monOutputs) > 0 && rel != "" {
 		render := renderPins
 		if filepath.Ext(rel) == ".kdl" {
@@ -2309,45 +2407,9 @@ func stepConfigs(e *engine) error {
 		}
 	}
 
-	// an explicit AZERTY choice in the plan beats any salvaged layout.
-	azerty := e.p.azertyFR || e.p.azertyBE
-	if azerty {
-		layout := "fr"
-		if e.p.azertyBE {
-			layout = "be"
-		}
-		e.f.kbLayout, e.f.kbVariant, e.f.kbOptions, e.f.kbSource = layout, "", "", "plan"
-	}
-
-	// keyboard.lua is user-owned: seeded once, never touched by updates.
-	lua := func(s string) string { return strings.NewReplacer(`"`, ``, `\`, ``).Replace(s) }
-	if e.f.kbLayout != "" && (e.f.kbLayout != "us" || e.f.kbVariant != "" || e.f.kbOptions != "") {
-		src := e.f.kbSource
-		if src == "" {
-			src = "localectl"
-		}
-		kb := filepath.Join(e.f.homeDir, ".config/hypr/keyboard.lua")
-		// a salvaged layout never clobbers an existing file (a repair run
-		// keeps hand edits); an explicit AZERTY choice always writes.
-		if _, err := os.Lstat(kb); err == nil && !azerty {
-			e.say(i18n.T("hypr/keyboard.lua already exists, keeping it"))
-		} else {
-			e.sayf(i18n.T("seeding keyboard layout %q variant %q options %q (from %s) into hypr/keyboard.lua"),
-				e.f.kbLayout, e.f.kbVariant, e.f.kbOptions, src)
-			if !e.dry {
-				content := "-- keyboard layout, carried over by the installer. edits here stick.\n" +
-					"hl.config({\n    input = {\n        kb_layout = \"" + lua(e.f.kbLayout) + "\",\n" +
-					"        kb_variant = \"" + lua(e.f.kbVariant) + "\",\n" +
-					"        kb_options = \"" + lua(e.f.kbOptions) + "\",\n    },\n})\n"
-				if err := os.WriteFile(kb, []byte(content), 0o644); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
 	// console + login-screen parity for an explicit AZERTY choice: the vt
 	// keymap and SDDM's X11 greeter follow the desktop layout.
+	azerty := e.p.azertyFR || e.p.azertyBE
 	if azerty {
 		layout, keymap := "fr", "fr"
 		if e.p.azertyBE {

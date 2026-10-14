@@ -425,3 +425,85 @@ func TestFedoraSessionHandlesGDMKDEAndPowerProfiles(t *testing.T) {
 		t.Fatalf("installed power-profiles-daemon unit was not enabled:\n%s", output)
 	}
 }
+
+func TestEnableFedoraBluetooth(t *testing.T) {
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "systemctl"), []byte("#!/bin/sh\nprintf '%s\\n' \"$UNIT_STATE\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "sudo"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+
+	collect := func(events chan any) string {
+		close(events)
+		var lines []string
+		for event := range events {
+			if line, ok := event.(evLine); ok {
+				lines = append(lines, line.line)
+			}
+		}
+		return strings.Join(lines, "\n")
+	}
+
+	t.Run("missing unit is silent", func(t *testing.T) {
+		events := make(chan any, 4)
+		e := &engine{dry: true, events: events}
+		if err := enableFedoraBluetooth(e, t.TempDir()); err != nil {
+			t.Fatal(err)
+		}
+		if output := collect(events); output != "" {
+			t.Fatalf("missing bluetooth unit produced output: %s", output)
+		}
+	})
+
+	unitDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(unitDir, "bluetooth.service"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("already enabled is silent", func(t *testing.T) {
+		t.Setenv("UNIT_STATE", "enabled")
+		events := make(chan any, 4)
+		e := &engine{dry: true, events: events}
+		if err := enableFedoraBluetooth(e, unitDir); err != nil {
+			t.Fatal(err)
+		}
+		if output := collect(events); output != "" {
+			t.Fatalf("enabled bluetooth unit produced output: %s", output)
+		}
+	})
+
+	t.Run("installed disabled unit is enabled", func(t *testing.T) {
+		t.Setenv("UNIT_STATE", "disabled")
+		events := make(chan any, 4)
+		e := &engine{dry: true, events: events}
+		if err := enableFedoraBluetooth(e, unitDir); err != nil {
+			t.Fatal(err)
+		}
+		if output := collect(events); !strings.Contains(output, "systemctl enable bluetooth.service") {
+			t.Fatalf("disabled bluetooth unit was not enabled:\n%s", output)
+		}
+	})
+
+	t.Run("enable records restore", func(t *testing.T) {
+		t.Setenv("UNIT_STATE", "disabled")
+		restorePath := filepath.Join(t.TempDir(), "restore.sh")
+		if err := os.WriteFile(restorePath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		events := make(chan any, 4)
+		e := &engine{events: events, restorePath: restorePath}
+		if err := enableFedoraBluetooth(e, unitDir); err != nil {
+			t.Fatal(err)
+		}
+		collect(events)
+		restore, err := os.ReadFile(restorePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(restore), "sudo systemctl disable bluetooth.service") {
+			t.Fatalf("bluetooth restore was not recorded:\n%s", restore)
+		}
+	})
+}

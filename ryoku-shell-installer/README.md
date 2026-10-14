@@ -21,53 +21,53 @@ to keep the snapshot safety net.
 
 ## Fedora (experimental)
 
-Fedora KDE Plasma and Workstation use the same public installer command. The
-installer supports published mutable x86_64 Fedora 44 and 45 systems with
-systemd and either dnf5 or dnf. Before sudo or any system change, it checks that
-the selected Ryoku channel publishes repository metadata for the running Fedora
-release. An unpublished release is refused with the current supported list;
-`RYOKU_RPM_REPO` skips that public-repository check for local repository tests.
-rpm-ostree editions are refused.
+The public installer supports mutable x86_64 Fedora 44 and 45 Workstation,
+KDE Plasma, Server, and spin systems with systemd and either dnf5 or dnf. It
+refuses rpm-ostree editions. Before sudo or any system change, it checks that
+the selected Ryoku channel publishes repository metadata for the running
+release. `RYOKU_RPM_REPO` skips that check for local repository tests.
 
 The installer imports the verified Ryoku release key, writes
-`/etc/yum.repos.d/ryoku.repo`, adds only the package-restricted COPRs listed by
-the release payload, and offers the compositor variants present in Fedora's
-package table. Fedora currently offers Hyprland and niri; Wayfire is omitted
-because Fedora's 0.10.1 build is older than Ryoku's required 0.11. The same
-table resolves the desktop, optional developer, detected hardware and Hyprland
-package lanes. Fedora has no Ryoku ISO.
+`/etc/yum.repos.d/ryoku.repo`, adds the package-restricted COPRs from the
+release payload, and installs the selected compositor variant. The payload ref
+selects the RPM channel: `main` uses stable, `unstable-dev` uses testing, and a
+release tag uses that frozen release.
 
-The payload ref selects the RPM channel: `main` uses stable, `unstable-dev`
-uses testing, and a release tag uses that frozen release. Fedora updates,
-channel moves and rollback then use `ryoku update`, `ryoku track` and
-`ryoku rollback` like the other packaged editions. NVIDIA stays on nouveau in
-this release. Workstation's GDM is changed to SDDM. Fedora KDE's Breeze theme
-is detected in `/usr/lib/sddm/sddm.conf.d/kde_settings.conf`, so the plan keeps
-it by default. Toggling Ryoku's greeter on selects its administrator drop-in;
-only an active theme in the higher-precedence `/etc/sddm.conf` needs a managed
-selection there. Toggling it off removes Ryoku's selections and keeps KDE's
-theme.
+The session conversion follows the Fedora edition:
+
+- Workstation disables GDM, enables SDDM with the Ryoku greeter, leaves GNOME
+  in the session list, and keeps the GNOME login keyring unlocking through
+  SDDM.
+- KDE Plasma keeps SDDM. Its current greeter theme stays selected unless the
+  Ryoku greeter toggle is turned on; that writes an administrator drop-in that
+  sorts after KDE's, and a managed block in `/etc/sddm.conf` only when an
+  active theme there would otherwise win.
+- Server and other spins enable SDDM and the graphical target. Bluetooth is
+  enabled when its service is installed and was not already enabled.
+
+Keyboard and monitor layouts are carried from GNOME, KDE, or existing
+compositor configuration into Ryoku's settings, so they appear in the Hub.
+The login screen, console, and boot prompt then follow the desktop keyboard
+layout.
+
+Fedora stays on the nouveau NVIDIA driver. The conversion creates no
+snapshots, does not offer Wayfire, and has no Fedora ISO.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
 ```
 
-Headless / unattended:
+For an unattended install, choose the compositor, browser, and login shell:
 
 ```bash
-curl -fsSL .../install.sh | bash -s -- --yes
+curl -fsSL .../install.sh | bash -s -- --yes --compositor niri --browser chromium --shell zsh
 ```
 
-Choose a browser and login shell in the interactive plan, or pass the same
-choices to an unattended install:
-
-```bash
-curl -fsSL .../install.sh | bash -s -- --yes --browser chromium --shell zsh
-```
-
-`--browser` accepts `firefox` (recommended and the default), `chromium`, or
-`zen`. `--shell` accepts `fish` (recommended), `zsh`, or `bash`. With no shell
-flag, the installer keeps the account's current login shell when it is one of
+`--compositor` accepts `hyprland` or `niri`. `--browser` accepts `firefox`
+(recommended and the default), `chromium`, `zen`, or `none`; Zen is
+unavailable on Fedora. `--shell` accepts `fish` (recommended), `zsh`, or
+`bash`. With no shell flag, the installer keeps the account's current login
+shell when it is one of
 those three, and otherwise chooses Fish. `RYOKU_BROWSER` and
 `RYOKU_LOGIN_SHELL` provide the flag defaults for scripted runs.
 
