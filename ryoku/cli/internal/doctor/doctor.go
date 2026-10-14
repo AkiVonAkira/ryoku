@@ -2066,14 +2066,14 @@ func stripLegacyStyleKnobs(raw []byte) ([]byte, bool, error) {
 
 // ---- reconciler: sumi bar simplification -------------------------------------
 
-// reconcileSumiBar defaults a persisted shell.json's bar to the shipped QS Bar
-// (barStyle "qsbar") when it is absent -- a store older than the pluggable
-// bar-style system, which renders nothing until a default -- or still names a
-// retired Atoll-era style, so an existing box lands on the current default look
-// on update. Only the built-in Sumi rail keeps its left-only simplification (its
-// top/bottom/right rails ship disabled). Surgical and idempotent: a current or
-// installed store style, every zone widget array, and other keys survive
-// untouched, and a store already on a valid style is left alone.
+// reconcileSumiBar defaults a persisted shell.json's bar to the shipped Orpheus
+// bar (barStyle "orpheus") when it is absent, meaning a store older than the
+// pluggable bar-style system, which renders nothing until a default, or still
+// names a retired Atoll-era style. This puts an existing box on the current
+// default look after an update. Only the built-in Sumi rail keeps its left-only
+// simplification because its top, bottom, and right rails ship disabled.
+// Surgical and idempotent: a current or installed store style, every zone widget
+// array, and other keys survive untouched.
 func reconcileSumiBar(checkOnly bool) recResult {
 	path := filepath.Join(sys.ConfigHome(), "ryoku", "shell.json")
 	raw, err := os.ReadFile(path)
@@ -2090,7 +2090,7 @@ func reconcileSumiBar(checkOnly bool) recResult {
 	}
 	if checkOnly {
 		return wouldRes(i18n.T("shell.json is missing barStyle or names a retired bar style (or a Sumi frame still has extra rails)")).
-			withFix(i18n.T("ryoku doctor converges it to the qsbar default in place"))
+			withFix(i18n.T("ryoku doctor converges it to the Orpheus default in place"))
 	}
 	tmp := path + ".ryoku-tmp"
 	if err := os.WriteFile(tmp, migrated, 0o644); err != nil {
@@ -2100,7 +2100,7 @@ func reconcileSumiBar(checkOnly bool) recResult {
 		os.Remove(tmp)
 		return failRes(i18n.T("could not replace %s: %v"), path, err)
 	}
-	return fixedRes(i18n.T("defaulted the bar to qsbar / reduced any Sumi frame to left-only"))
+	return fixedRes(i18n.T("defaulted the bar to Orpheus / reduced any Sumi frame to left-only"))
 }
 
 // retiredBarStyles are old top-level barStyle values from the pre-pluggable
@@ -2108,12 +2108,12 @@ func reconcileSumiBar(checkOnly bool) recResult {
 // empty Sumi rail), so they migrate to the current default instead.
 var retiredBarStyles = map[string]bool{"atoll": true, "washi": true, "dyad": true, "ilyamiro": true}
 
-// migrateSumiBar defaults a shell store's bar to the shipped QS Bar when barStyle
-// is absent (a store older than the pluggable bar-style system) or names a
-// retired Atoll-era style, and -- only for the built-in Sumi rail -- reduces the
-// frame to its left rail. A current or installed store style, its zone widget
-// arrays, and every other key are preserved as raw bytes, so a store already on
-// a valid style comes back unchanged.
+// migrateSumiBar defaults a shell store's bar to the shipped Orpheus bar when
+// barStyle is absent (a store older than the pluggable bar-style system) or
+// names a retired Atoll-era style, and only for the built-in Sumi rail reduces
+// the frame to its left rail. A current or installed store style, its zone
+// widget arrays, and every other key are preserved as raw bytes, so a store
+// already on a valid style comes back unchanged.
 func migrateSumiBar(raw []byte) ([]byte, bool, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &top); err != nil {
@@ -2125,12 +2125,12 @@ func migrateSumiBar(raw []byte) ([]byte, bool, error) {
 		_ = json.Unmarshal(b, &style)
 	}
 	if _, ok := top["barStyle"]; !ok || retiredBarStyles[style] {
-		next, err := json.Marshal("qsbar")
+		next, err := json.Marshal("orpheus")
 		if err != nil {
 			return nil, false, err
 		}
 		top["barStyle"] = next
-		style = "qsbar"
+		style = "orpheus"
 		changed = true
 	}
 	// Only the built-in Sumi rail keeps the left-only simplification; every other
@@ -2382,12 +2382,67 @@ var retiredShellKeys = []string{
 	"washiVariant",
 }
 
+func migrateOrpheusGain(raw []byte) ([]byte, bool, error) {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &top); err != nil {
+		return nil, false, err
+	}
+	orpheusRaw, ok := top["orpheus"]
+	if !ok {
+		return nil, false, nil
+	}
+	var orpheus map[string]json.RawMessage
+	if err := json.Unmarshal(orpheusRaw, &orpheus); err != nil || orpheus == nil {
+		return nil, false, nil
+	}
+	if _, ok := orpheus["gain"]; ok {
+		return nil, false, nil
+	}
+	reactionRaw, ok := orpheus["reaction"]
+	if !ok {
+		return nil, false, nil
+	}
+	var reaction string
+	_ = json.Unmarshal(reactionRaw, &reaction)
+	gain := 1.0
+	switch reaction {
+	case "calm":
+		gain = 0.55
+	case "still":
+		gain = 0
+	}
+	gainRaw, err := json.Marshal(gain)
+	if err != nil {
+		return nil, false, err
+	}
+	delete(orpheus, "reaction")
+	orpheus["gain"] = gainRaw
+	orpheusRaw, err = json.Marshal(orpheus)
+	if err != nil {
+		return nil, false, err
+	}
+	top["orpheus"] = orpheusRaw
+	out, err := json.MarshalIndent(top, "", "  ")
+	if err != nil {
+		return nil, false, err
+	}
+	return append(out, '\n'), true, nil
+}
+
 func migrateShellConfig(raw []byte) ([]byte, []string, error) {
+	var changes []string
+	migrated, changed, err := migrateOrpheusGain(raw)
+	if err != nil {
+		return nil, nil, err
+	}
+	if changed {
+		raw = migrated
+		changes = append(changes, i18n.T("orpheus.reaction became orpheus.gain"))
+	}
 	var cfg map[string]any
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return nil, nil, err
 	}
-	var changes []string
 	if _, present := cfg["frameBars"]; !present {
 		cfg["frameBars"] = defaultFrameBarsFromLegacy(cfg)
 		changes = append(changes, i18n.T("migrated Atoll settings to frame bars"))

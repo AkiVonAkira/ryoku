@@ -1560,12 +1560,81 @@ func TestMigrateShellConfigDropsEveryRetiredKey(t *testing.T) {
 	}
 }
 
+func TestMigrateOrpheusGain(t *testing.T) {
+	cases := []struct {
+		name     string
+		in       string
+		changed  bool
+		wantGain float64
+	}{
+		{"lively", `{"keep":true,"orpheus":{"reaction":"lively","depth":24}}`, true, 1},
+		{"calm", `{"keep":true,"orpheus":{"reaction":"calm","depth":24}}`, true, 0.55},
+		{"still", `{"keep":true,"orpheus":{"reaction":"still","depth":24}}`, true, 0},
+		{"unknown value", `{"keep":true,"orpheus":{"reaction":42,"depth":24}}`, true, 1},
+		{"gain already present", `{"orpheus":{"reaction":"still","gain":1.7}}`, false, 0},
+		{"no orpheus key", `{"keep":true}`, false, 0},
+		{"non-object orpheus", `{"orpheus":"lively"}`, false, 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out, changed, err := migrateOrpheusGain([]byte(c.in))
+			if err != nil {
+				t.Fatalf("migrateOrpheusGain: %v", err)
+			}
+			if changed != c.changed {
+				t.Fatalf("changed = %v, want %v", changed, c.changed)
+			}
+			if !changed {
+				if out != nil {
+					t.Fatalf("unchanged migration returned output: %s", out)
+				}
+				return
+			}
+			var got map[string]any
+			if err := json.Unmarshal(out, &got); err != nil {
+				t.Fatalf("output does not parse: %v", err)
+			}
+			if got["keep"] != true {
+				t.Errorf("unrelated top-level key changed: keep = %#v", got["keep"])
+			}
+			orpheus, ok := got["orpheus"].(map[string]any)
+			if !ok {
+				t.Fatalf("orpheus = %#v, want object", got["orpheus"])
+			}
+			if gain, ok := orpheus["gain"].(float64); !ok || gain != c.wantGain {
+				t.Errorf("gain = %#v, want %v", orpheus["gain"], c.wantGain)
+			}
+			if _, ok := orpheus["reaction"]; ok {
+				t.Error("reaction was not deleted")
+			}
+			if orpheus["depth"] != float64(24) {
+				t.Errorf("unrelated Orpheus key changed: depth = %#v", orpheus["depth"])
+			}
+		})
+	}
+
+	_, changes, err := migrateShellConfig([]byte(`{"orpheus":{"reaction":"calm"}}`))
+	if err != nil {
+		t.Fatalf("migrateShellConfig: %v", err)
+	}
+	found := false
+	for _, change := range changes {
+		if change == "orpheus.reaction became orpheus.gain" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("migration change is not reported: %v", changes)
+	}
+}
+
 // The pluggable bar-style selector must survive migration and default to the
-// shipped QS Bar: reconcileShellConfig no longer strips the live barStyle, and
-// reconcileSumiBar defaults an absent or retired Atoll-era style to "qsbar" (not
-// the old "sumi"), so an existing box lands on the current default bar on update
-// while an explicit sumi/store choice is kept.
-func TestBarStyleDefaultsToQsbar(t *testing.T) {
+// shipped Orpheus bar: reconcileShellConfig no longer strips the live barStyle,
+// and reconcileSumiBar defaults an absent or retired Atoll-era style to
+// "orpheus" (not the old "sumi"). This puts an existing box on the current
+// default bar after an update while explicit Sumi and store choices are kept.
+func TestBarStyleDefaultsToOrpheus(t *testing.T) {
 	barStyleOf := func(raw []byte) string {
 		var m map[string]any
 		if err := json.Unmarshal(raw, &m); err != nil {
@@ -1583,11 +1652,12 @@ func TestBarStyleDefaultsToQsbar(t *testing.T) {
 		t.Errorf("migrateShellConfig dropped the live barStyle: got %q, want qsbar", got)
 	}
 	cases := []struct{ name, in, want string }{
+		{"orpheus kept", `{"barStyle":"orpheus"}`, "orpheus"},
 		{"qsbar kept", `{"barStyle":"qsbar"}`, "qsbar"},
 		{"sumi kept", `{"barStyle":"sumi"}`, "sumi"},
-		{"absent defaults to qsbar", `{"fontScale":1.3}`, "qsbar"},
-		{"retired atoll to qsbar", `{"barStyle":"atoll"}`, "qsbar"},
-		{"retired washi to qsbar", `{"barStyle":"washi"}`, "qsbar"},
+		{"absent defaults to orpheus", `{"fontScale":1.3}`, "orpheus"},
+		{"retired atoll to orpheus", `{"barStyle":"atoll"}`, "orpheus"},
+		{"retired washi to orpheus", `{"barStyle":"washi"}`, "orpheus"},
 	}
 	for _, c := range cases {
 		got, changed, err := migrateSumiBar([]byte(c.in))

@@ -432,7 +432,7 @@ Rectangle {
         onFileChanged: reload()
         JsonAdapter {
             id: shellSettings
-            property string barStyle: "qsbar"
+            property string barStyle: "orpheus"
         }
     }
 
