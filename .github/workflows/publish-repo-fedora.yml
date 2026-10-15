@@ -141,6 +141,13 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      # the container runs as root over a checkout the runner user owns; git
+      # refuses that as dubious ownership, and `go build` of the manifest tool
+      # then dies on "error obtaining VCS status" (the Arch publish does the
+      # same before its first git call).
+      - name: Trust the checkout inside the container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Mark the channel build as running
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
