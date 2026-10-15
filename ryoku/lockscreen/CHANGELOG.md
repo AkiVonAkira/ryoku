@@ -6,6 +6,14 @@
 - The built-in in-session clockwork lockscreen follows the global 12/24-hour preference, including AM/PM.
 
 ### Fixed
+- **A login whose home has no Ryoku tree lays it before the compositor starts.**
+  `ryoku-wayland-session` runs `ryoku materialize` as the user when
+  `~/.config/ryoku` or the shell's `shell.qml` is missing, the condition
+  `ryoku-bootstrap` uses, so a user account created after install or a plain
+  package install no longer boots a bare compositor with nothing of Ryoku in
+  it. On Void this is the only place that can order the tree before niri reads
+  its config, since the runit bootstrap service only starts once the session
+  does. A home that has its tree pays nothing (`tests/wayland-session-settle.sh`).
 - **A failed Wayland desktop login returns to the sign-in screen instead of
   leaving a black display.** The SDDM session wrapper now supervises the chosen
   desktop, preserves its stdout in the session log, and reports compositor

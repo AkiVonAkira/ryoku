@@ -265,6 +265,15 @@ So the QML and the `Config.qml` defaults reach users on every update. A **new**
 `shell.json` key is safe: the user's file lacks it, and the shell reads the new
 `Config.qml` default.
 
+Who runs it: the installer for the first user, `ryoku update` on every box that
+has a config, and every graphical login whose home has no tree yet. The SDDM
+session wrapper (`ryoku/lockscreen/sddm/ryoku-wayland-session`) lays the tree
+as the user before the compositor reads its config, on systemd and runit alike,
+so a user account created later or a package install never boots a bare
+compositor; `ryoku-bootstrap` (a systemd user unit ordered before niri, a runit
+user service on Void) covers the same condition for sessions that start without
+the wrapper.
+
 ## user_edits: your edits, kept apart
 
 Ryoku-owned config and user edits live in separate trees, so an update refreshes

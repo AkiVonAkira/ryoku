@@ -305,4 +305,30 @@ RYOKU_NVIDIA_VERSION_PATH="$nvidia_version" \
 [[ ! -s $tmp/logger-log ]] ||
   fail "matching NVIDIA versions emitted a warning"
 
+# ---- a home without the Ryoku tree is laid before the session starts --------
+# fake ryoku: records the call and the state of the tree at that moment, and
+# lays the tree the way materialize would, so the order is observable.
+cat >"$bin/ryoku" <<EOF
+#!/bin/sh
+printf '%s\n' "\$*" >>"$tmp/ryoku-log"
+[ -e "$tmp/session-ran" ] && printf 'late\n' >>"$tmp/ryoku-log"
+mkdir -p "\$XDG_CONFIG_HOME/ryoku" "\$XDG_CONFIG_HOME/quickshell/shell"
+: >"\$XDG_CONFIG_HOME/quickshell/shell/shell.qml"
+EOF
+chmod +x "$bin/ryoku"
+reset
+rm -rf "${tmp:?}/home"; mkdir -p "$tmp/home"
+echo 0 >"$tmp/pglimit"
+HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/home/.config" "$wrapper" test-desktop
+[[ -e $tmp/session-ran ]] || fail "a home without the tree blocked the session"
+[[ $(cat "$tmp/ryoku-log" 2>/dev/null) == materialize ]] ||
+  fail "a home without the tree was not materialized before the session: '$(cat "$tmp/ryoku-log" 2>/dev/null)'"
+
+reset
+rm -f "$tmp/ryoku-log"
+echo 0 >"$tmp/pglimit"
+HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/home/.config" "$wrapper" test-desktop
+[[ -e $tmp/session-ran ]] || fail "a home with the tree blocked the session"
+[[ ! -e $tmp/ryoku-log ]] || fail "a home that has its tree was materialized again"
+
 echo "wayland-session-settle: all checks passed"
