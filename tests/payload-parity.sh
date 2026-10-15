@@ -275,7 +275,8 @@ adapter_entry() {
     *:etc/sudoers.d/ryoku-service-health)
       return 1
       ;;
-    *:usr/share/libalpm/*|*:usr/share/ryoku/packages/void.tsv|*:usr/share/ryoku/packages/fedora.tsv)
+    *:usr/share/libalpm/*|*:usr/share/ryoku/packages/void.tsv|*:usr/share/ryoku/packages/fedora.tsv|\
+    fedora:etc/dnf/libdnf5-plugins/*|fedora:usr/libexec/ryoku/ryoku-dnf-snapshot)
       return 1
       ;;
     *:etc/boot/*|*:etc/kernel.d/*|*:usr/lib/initcpio/*|*:usr/share/ryoku/boot/*|\
