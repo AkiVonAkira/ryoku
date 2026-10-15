@@ -193,24 +193,27 @@ func TestRestoreReadsTheLookBootAndTheRootSubvolume(t *testing.T) {
 	}
 }
 
-func TestBLSKernelsSkipsRescueAndTwins(t *testing.T) {
+func TestBLSKernelsReadTheVersionWhateverTheToken(t *testing.T) {
 	dir := t.TempDir()
-	mid := "0123456789abcdef"
-	for _, name := range []string{
-		mid + "-6.17.1-300.fc44.x86_64.conf",
-		mid + "-6.17.1-300.fc44.x86_64~debug.conf",
-		mid + "-0-rescue-" + mid + ".conf",
-		mid + "-6.16.9-200.fc44.x86_64.conf",
-		"otherid-6.1.0.conf",
-	} {
-		if err := os.WriteFile(filepath.Join(dir, name), nil, 0o644); err != nil {
+	entries := map[string]string{
+		"0879-7.2.9-201.fc44.x86_64.conf":       "7.2.9-201.fc44.x86_64",
+		"b208-6.19.10-300.fc44.x86_64.conf":     "6.19.10-300.fc44.x86_64",
+		"0879-7.2.9-201.fc44.x86_64~debug.conf": "7.2.9-201.fc44.x86_64+debug",
+		"0879-0-rescue-0879.conf":               "0-rescue-0879",
+	}
+	for name, version := range entries {
+		body := "title Fedora Linux\nversion " + version + "\nlinux /vmlinuz\n"
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	got := blsKernels(dir, mid)
-	want := []string{"6.16.9-200.fc44.x86_64", "6.17.1-300.fc44.x86_64"}
+	got := blsKernels(dir)
+	want := map[string]string{
+		"7.2.9-201.fc44.x86_64":   "0879-7.2.9-201.fc44.x86_64",
+		"6.19.10-300.fc44.x86_64": "b208-6.19.10-300.fc44.x86_64",
+	}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("kernels = %q, want %q", got, want)
+		t.Fatalf("kernels = %v, want %v", got, want)
 	}
 }
 

@@ -124,8 +124,7 @@ func snapshotRestored() error {
 		return nil
 	}
 	fmt.Printf(i18n.T("boot menu: this root was restored from %s; the one it replaced is %s\n"), what[0], what[1])
-	mid := strings.TrimSpace(readText("/etc/machine-id"))
-	for _, kver := range blsKernels(blsDir, mid) {
+	for kver := range blsKernels(blsDir) {
 		if !sys.Exists(filepath.Join(modulesDir, kver)) {
 			_ = sys.Run("kernel-install", "remove", kver)
 		}
@@ -134,13 +133,13 @@ func snapshotRestored() error {
 	for _, m := range modules {
 		kver := m.Name()
 		img := filepath.Join(modulesDir, kver, "vmlinuz")
-		if sys.Exists(img) && !sys.Exists(filepath.Join(blsDir, mid+"-"+kver+".conf")) {
+		if _, listed := blsKernels(blsDir)[kver]; sys.Exists(img) && !listed {
 			_ = sys.Run("kernel-install", "add", kver, img)
 		}
 	}
 	if out, err := sys.RunOut("uname", "-r"); err == nil {
-		if img := filepath.Join(bootDir, "vmlinuz-"+strings.TrimSpace(out)); sys.Exists(img) {
-			_ = sys.Run("grubby", "--set-default", img)
+		if id, ok := blsKernels(blsDir)[strings.TrimSpace(out)]; ok {
+			_ = sys.Run("grub2-set-default", id)
 		}
 	}
 	_ = os.Remove(restoredFlag)
@@ -150,17 +149,28 @@ func snapshotRestored() error {
 	return syncSnapshotMenu()
 }
 
-// blsKernels lists the kernel versions that have a plain Fedora BLS entry:
-// no rescue image, and no debug or other variant twins.
-func blsKernels(dir, mid string) []string {
-	var out []string
-	matches, _ := filepath.Glob(filepath.Join(dir, mid+"-*.conf"))
+// blsKernels maps each kernel version with a plain Fedora BLS entry to that
+// entry's id: no rescue image, and no debug or other variant twins. The
+// version comes from the entry itself: the token naming the files is the
+// machine id the kernel was installed under, which a cloud image's first boot
+// changes, so entries from before it carry another one.
+func blsKernels(dir string) map[string]string {
+	out := map[string]string{}
+	matches, _ := filepath.Glob(filepath.Join(dir, "*.conf"))
+	sort.Strings(matches)
 	for _, m := range matches {
-		kver := strings.TrimSuffix(strings.TrimPrefix(filepath.Base(m), mid+"-"), ".conf")
-		if strings.HasPrefix(kver, "0-rescue") || strings.Contains(kver, "~") {
+		id := strings.TrimSuffix(filepath.Base(m), ".conf")
+		if strings.Contains(id, "~") || strings.Contains(id, "-0-rescue-") {
 			continue
 		}
-		out = append(out, kver)
+		for _, line := range strings.Split(readText(m), "\n") {
+			if f := strings.Fields(line); len(f) == 2 && f[0] == "version" {
+				if _, seen := out[f[1]]; !seen {
+					out[f[1]] = id
+				}
+				break
+			}
+		}
 	}
 	return out
 }
