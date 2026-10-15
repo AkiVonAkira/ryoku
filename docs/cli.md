@@ -172,8 +172,9 @@ back to the previous frozen version. Snapshot-capable Arch and Void installs
 can escalate a third failure to the complete
 `Ryoku Linux/Snapshots/<snapshot>/<kernel>` Limine path. Void runs the guard
 through the `ryoku-boot-guard` runit service. Fedora uses the systemd service
-and stops after the DNF package downgrade, because its boot menu does not list
-snapshots yet; the notice points at `ryoku rollback <id>`.
+and, on a third failure, sends the next boot once to the pre-update snapshot's
+read-only entry under **Ryoku snapshots** (`grub2-reboot`); it never restores
+unattended.
 
 `ryoku rollback <id>` explains the whole-system restore path on a
 snapshot-capable host. Ryoku boots the `@` subvolume directly
@@ -184,10 +185,22 @@ limine-snapper-restore`, then reboot into the restored system. The restore hook
 resets Limine to the first kernel under **Ryoku Linux** and clears the remembered
 snapshot entry.
 
-Fedora's GRUB menu does not list snapshots yet, so there `ryoku rollback <id>`
-guides a restore on the running system instead: `snapper -c root status <id>..0`
-shows what changed since the snapshot and `snapper -c root undochange <id>..0`
-puts those files back. Kernels on `/boot` are not part of the snapshot.
+On Fedora the snapshots are under **Ryoku snapshots** in GRUB (hold Shift or press
+Esc while booting, or `sudo grub2-reboot 'ryoku-snapshots>ryoku-snapshot-<id>'`).
+Each one boots read-only with its writes in RAM. Run `sudo ryoku boot-menu
+restore` in that boot to make it the system: the current root subvolume is kept
+as `<root>.broken-<time>` for two weeks, and the next boot starts the restored
+root and brings Fedora's kernel entries in line with it. When the menu lists no
+snapshots, `ryoku rollback <id>` falls back to `snapper -c root undochange
+<id>..0` on the running system.
+
+### `ryoku boot-menu`
+
+Fedora only, as root. `sync` rewrites the **Ryoku snapshots** GRUB submenu and
+keeps one kernel and initramfs copy on `/boot` per kernel version the snapshots
+need; `ryoku-snapshot-menu.path` runs it after every snapshot. `restore` makes
+the snapshot a look boot runs the root again. `restored` runs once on the
+first boot after that (`ryoku-snapshot-restored.service`).
 
 On a host without Ryoku's snapshot stack, bare `rollback` still lists releases
 and explains that snapshots are unavailable. Supplying a snapshot id returns

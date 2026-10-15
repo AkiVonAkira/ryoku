@@ -236,8 +236,8 @@ Ryoku set back in one native package transaction, re-materializes every user's
 config, and leaves the distribution base and kernel untouched. On
 snapshot-capable Arch and Void installs, a third failed boot selects the full
 pre-update snapshot path and clears Limine's remembered EFI entry so the
-fallback wins. Fedora's boot menu does not list snapshots yet, so it keeps the
-package downgrade and points the notice at `ryoku rollback <id>`.
+fallback wins. Fedora sends the next boot once to the pre-update snapshot's
+read-only GRUB entry and leaves keeping it to `sudo ryoku boot-menu restore`.
 `sudo ryoku boot-guard --disarm` clears a pending marker by hand.
 
 Doctor enables the host's service and prepares its state directory, so older

@@ -562,8 +562,11 @@ func TestBootGuardDNFSnapshotEscalationStopsWithoutLimine(t *testing.T) {
 	bootOKDir = filepath.Join(dir, "boot")
 	noticeFile = filepath.Join(bootOKDir, "notice.json")
 	effectiveUID = func() int { return 0 }
+	oldBoot := bootDir
+	bootDir = filepath.Join(dir, "esp")
 	t.Cleanup(func() {
 		pendingFile, bootOKDir, noticeFile, effectiveUID = oldPending, oldBootOK, oldNotice, oldUID
+		bootDir = oldBoot
 	})
 	if err := os.MkdirAll(bootOKDir, 0o777); err != nil {
 		t.Fatal(err)
@@ -585,7 +588,7 @@ func TestBootGuardDNFSnapshotEscalationStopsWithoutLimine(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(raw)
-	if !strings.Contains(text, `"action": "revert-failed"`) || !strings.Contains(text, "Fedora") {
+	if !strings.Contains(text, `"action": "revert-failed"`) || !strings.Contains(text, "not in the boot menu") {
 		t.Fatalf("Fedora escalation notice = %s", raw)
 	}
 	if !strings.Contains(text, "`ryoku rollback 42`") {

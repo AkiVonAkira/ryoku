@@ -1681,7 +1681,7 @@ func Rollback(args []string) error {
 		case host.XBPS:
 			fmt.Println(i18n.T("  the whole system (Void included) to a snapshot, from the boot menu."))
 		case host.DNF:
-			fmt.Println(i18n.T("  the whole system (Fedora included) to a snapshot, file by file with snapper."))
+			fmt.Println(i18n.T("  the whole system (Fedora included) to a snapshot, from the boot menu."))
 		default:
 			fmt.Println(i18n.T("  the whole system (Arch included) to a snapshot, from the boot menu."))
 		}
@@ -1818,16 +1818,25 @@ func restoreGuide(id string) error {
 	return nil
 }
 
-// fedoraRestoreGuide is the Fedora restore until its boot menu lists snapshots:
-// snapper reverts the files that changed since the snapshot on the running
-// system. /boot is not in the snapshot, so the kernels stay as they are.
+// fedoraRestoreGuide is the Fedora restore: look at the snapshot from the
+// "Ryoku snapshots" GRUB submenu, then make it the system from inside that boot.
+// With no snapshot in the menu, snapper reverts the changed files on the
+// running system instead.
 func fedoraRestoreGuide(id string) {
-	fmt.Println(i18n.T("Fedora's boot menu does not list snapshots yet, so the restore runs on the"))
-	fmt.Println(i18n.T("running system with snapper:"))
-	fmt.Printf(i18n.T("  1. See what changed since then:  sudo snapper -c root status %s..0\n"), id)
-	fmt.Printf(i18n.T("  2. Put those files back:         sudo snapper -c root undochange %s..0\n"), id)
-	fmt.Println(i18n.T("  3. Reboot."))
-	fmt.Println(i18n.T("Kernels on /boot are not part of the snapshot and stay as they are."))
+	if !snapshotsListed() {
+		fmt.Println(i18n.T("The boot menu lists no snapshots (`journalctl -u ryoku-snapshot-menu` says"))
+		fmt.Println(i18n.T("why), so the restore runs on the running system with snapper:"))
+		fmt.Printf(i18n.T("  1. See what changed since then:  sudo snapper -c root status %s..0\n"), id)
+		fmt.Printf(i18n.T("  2. Put those files back:         sudo snapper -c root undochange %s..0\n"), id)
+		fmt.Println(i18n.T("  3. Reboot."))
+		fmt.Println(i18n.T("Kernels on /boot are not part of the snapshot and stay as they are."))
+		return
+	}
+	fmt.Println(i18n.T("The restore runs from the boot menu:"))
+	fmt.Printf(i18n.T("  1. Boot the snapshot: hold Shift (or press Esc) while the machine starts and\n     pick Ryoku snapshots -> Snapshot %s, or send only the next boot there:\n       sudo grub2-reboot '%s'\n"), id, snapshotEntryID(id))
+	fmt.Println(i18n.T("     It runs read-only with changes kept in RAM; nothing on disk changes."))
+	fmt.Println(i18n.T("  2. If it is the one, make it the system:  sudo ryoku boot-menu restore"))
+	fmt.Println(i18n.T("  3. Reboot into the restored system. The one it replaced is kept for two weeks."))
 }
 
 // Snapshots prints the root snapshot table when this host provides it.
@@ -1940,9 +1949,12 @@ func printSnapshotTable(rows []snapshotRow) {
 	if free := rootFree(); free != "" {
 		summary += ", " + free + i18n.T(" free on /")
 	}
-	if snapshotsInBootMenu() {
+	switch {
+	case updatePackageManager() == host.DNF && snapshotsListed():
+		summary += i18n.T(", listed in the GRUB boot menu")
+	case snapshotsInBootMenu():
 		summary += i18n.T(", listed in the Limine boot menu")
-	} else {
+	default:
 		summary += i18n.T(", NOT in the boot menu (ryoku doctor fixes that)")
 	}
 	fmt.Println(summary)

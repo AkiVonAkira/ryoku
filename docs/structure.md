@@ -319,14 +319,18 @@ are supported; Atomic and other rpm-ostree systems are refused.
   `prepare-srpms.sh` vendors Go and Cargo dependencies for offline rebuilds.
   The repository build can reuse an identical trusted upstream RPM already
   published for the same Fedora release.
+- `system/` holds what only Fedora's boot and package manager run: `boot/` is
+  the **Ryoku snapshots** GRUB submenu (the `grub.d` snippet and its helper,
+  the look-boot dracut module, the snapper plugin and the menu units), and
+  `snapshots/` is the libdnf5 hook that snapshots every dnf transaction.
 - `.github/workflows/publish-repo-fedora.yml` builds and install-tests every
   supported Fedora release, then publishes moving stable and testing heads,
   frozen releases and unstable builds, and their ledgers below
   `stable/fedora/<N>/`.
 
 Fedora is installed by the shell installer onto an existing supported Fedora
-system. It leaves NVIDIA on nouveau, keeps GRUB, and takes Ryoku's snapper
-snapshots without a snapshot boot menu yet. Wayfire is unavailable because Fedora ships
+system. It leaves NVIDIA on nouveau and keeps GRUB, adding a submenu that boots
+Ryoku's snapper snapshots. Wayfire is unavailable because Fedora ships
 0.10.1 and Ryoku requires 0.11. Package rollback and the boot guard use DNF
 downgrades.
 

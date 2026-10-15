@@ -28,6 +28,13 @@
   boot, makes the snapshot the root again, keeping the replaced root for two
   weeks. The first boot after a restore brings Fedora's kernel entries in line
   with the restored root. Fedora's `grub-boot-success.timer` is left alone.
+- **`ryoku rollback` and the boot guard use Fedora's snapshot menu.**
+  `ryoku rollback <id>` walks through booting the snapshot (or
+  `grub2-reboot` to it) and `sudo ryoku boot-menu restore`, falling back to
+  `snapper undochange` while the menu lists nothing. `ryoku snapshots` says the
+  GRUB menu lists them. After three failed boots, the boot guard sends the next
+  boot once to the pre-update snapshot's read-only entry; it never restores on
+  its own.
 
 ### Fixed
 - **Updates preserve installer package choices.** Control-manifest convergence
