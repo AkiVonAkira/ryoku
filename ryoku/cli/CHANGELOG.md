@@ -8,6 +8,12 @@
   around each `dnf` run, the way snap-pac does for pacman. `ryoku update` marks
   its own pair in `/run/ryoku/update-snapshot`, so the hook does not nest a
   second pair inside it.
+- **`ryoku doctor` lays out Fedora snapshots.** On a btrfs Fedora root it
+  creates `/.snapshots` as a top-level subvolume with its own `/etc/fstab`
+  entry (copied from the root's, with its own `subvol=`), so a whole-system
+  restore that swaps the root subvolume keeps the snapshots. An existing
+  subvolume or fstab entry is adopted. `SNAPPER_CONFIGS` goes to
+  `/etc/sysconfig/snapper`, where Fedora's snapper units read it.
 
 ### Fixed
 - **Updates preserve installer package choices.** Control-manifest convergence

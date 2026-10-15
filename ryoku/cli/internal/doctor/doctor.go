@@ -658,6 +658,15 @@ const snapperConfdRoot = `## Path: System/Snapper
 SNAPPER_CONFIGS="root"
 `
 
+// snapperConfdPath is where snapper's units read SNAPPER_CONFIGS: Fedora keeps
+// it under /etc/sysconfig.
+func snapperConfdPath(manager host.PackageManager) string {
+	if manager == host.DNF {
+		return "/etc/sysconfig/snapper"
+	}
+	return "/etc/conf.d/snapper"
+}
+
 // snapperOutcome: what planSnapper hands to reconcileSnapper. ok = leave the
 // box alone; the two warn variants surface as-is; create writes the canonical
 // layout.
@@ -724,7 +733,7 @@ func planSnapper(s snapperState) (snapperOutcome, []string) {
 		problems = append(problems, fmt.Sprintf(i18n.T("/.snapshots is mode %04o, expected 0750"), s.snapshotsMode))
 	}
 	if s.confdExists && !strings.Contains(s.confdContents, "root") {
-		problems = append(problems, i18n.T("/etc/conf.d/snapper does not list the root config (timers and hooks will skip it)"))
+		problems = append(problems, fmt.Sprintf(i18n.T("%s does not list the root config (timers and hooks will skip it)"), snapperConfdPath(manager)))
 	}
 	if !s.snapperInstalled {
 		problems = append(problems, fmt.Sprintf(i18n.T("snapper is not installed; the root config exists but cannot be used (%s)"), doctorInstallAdvice("snapper")))
@@ -772,7 +781,7 @@ func gatherSnapperState() snapperState {
 		s.snapshotsMode = fi.Mode().Perm()
 		s.snapshotsIsSubvol = sys.IsBtrfsSubvolumeRoot("/.snapshots")
 	}
-	if b, err := os.ReadFile("/etc/conf.d/snapper"); err == nil {
+	if b, err := os.ReadFile(snapperConfdPath(manager)); err == nil {
 		s.confdExists = true
 		s.confdContents = string(b)
 	}
@@ -804,8 +813,11 @@ func reconcileSnapper(checkOnly bool) recResult {
 		return createSnapperRootConfig(st)
 	case snapperWarnInconsistent:
 		remedy := i18n.T("see https://wiki.archlinux.org/title/Snapper")
-		if st.manager == host.XBPS {
+		switch st.manager {
+		case host.XBPS:
 			remedy = i18n.T("run `ryoku doctor`; use `ryoku-host pkg advice <package>` for a missing snapshot package")
+		case host.DNF:
+			remedy = i18n.T("see https://docs.fedoraproject.org/en-US/quick-docs/snapper/")
 		}
 		return warnRes("%s", strings.Join(problems, "; ")).withFix(remedy)
 	}
@@ -868,9 +880,11 @@ func snapperReadableUnprivileged() bool {
 
 // createSnapperRootConfig lays the installer's layout down on a live box.
 // mirrors installation/backend/lib/snapshots.sh:
-//   - /.snapshots = btrfs subvolume, owned root:root, mode 0750.
+//   - /.snapshots = btrfs subvolume, owned root:root, mode 0750. On Fedora it
+//     is a top-level subvolume with its own fstab entry (snapshots_toplevel.go).
 //   - write /etc/snapper/configs/root.
-//   - register "root" in /etc/conf.d/snapper without dropping siblings.
+//   - register "root" in /etc/conf.d/snapper (Fedora: /etc/sysconfig/snapper)
+//     without dropping siblings.
 //   - best-effort enable snapper-cleanup.timer (+ limine-snapper-sync.service
 //     when its unit is present).
 //
@@ -881,6 +895,12 @@ func createSnapperRootConfig(st snapperState) recResult {
 	var actions []string
 
 	switch {
+	case !st.snapshotsExists && st.manager == host.DNF:
+		if err := createTopLevelSnapshots(); err != nil {
+			return failRes(i18n.T("setting up /.snapshots: %v"), err).
+				withFix(i18n.T("give /.snapshots its own top-level btrfs subvolume in /etc/fstab, then re-run ryoku doctor"))
+		}
+		actions = append(actions, "/.snapshots subvolume")
 	case !st.snapshotsExists:
 		if err := sys.Run("sudo", "btrfs", "subvolume", "create", "/.snapshots"); err != nil {
 			return failRes(i18n.T("creating /.snapshots subvolume: %v"), err).
@@ -906,10 +926,11 @@ func createSnapperRootConfig(st snapperState) recResult {
 
 	newConfd, changed := mergedConfdRoot(st.confdExists, st.confdContents)
 	if changed {
-		if err := writeRootFile("/etc/conf.d/snapper", newConfd, "0644"); err != nil {
-			return failRes(i18n.T("writing /etc/conf.d/snapper: %v"), err)
+		confd := snapperConfdPath(st.manager)
+		if err := writeRootFile(confd, newConfd, "0644"); err != nil {
+			return failRes(i18n.T("writing %s: %v"), confd, err)
 		}
-		actions = append(actions, "/etc/conf.d/snapper")
+		actions = append(actions, confd)
 	}
 
 	// Service enablement is best-effort. A healthy install has both; a package
