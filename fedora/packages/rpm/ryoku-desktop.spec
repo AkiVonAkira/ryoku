@@ -87,6 +87,11 @@ Requires:       ppd-service
 Requires:       ddcutil
 Requires:       hypridle
 Requires:       hyprpicker
+Requires:       plymouth
+Requires:       plymouth-scripts
+Requires:       plymouth-plugin-script
+Requires:       plymouth-plugin-label
+Requires:       dracut
 Requires:       kernel-devel
 Requires:       kernel-headers
 Requires:       dkms
@@ -174,6 +179,9 @@ RYOKU_HOST_INIT=systemd /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>
 /usr/bin/ryoku-wifi-regdom apply >/dev/null 2>&1 || :
 
 %posttrans
+# The splash theme is in place now; make it the default and rebuild the dracut
+# images that carry it.
+/usr/bin/ryoku-plymouth-apply apply >/dev/null 2>&1 || :
 if [ -x /usr/bin/ryoku-polkit-reload ] &&
    ! /usr/bin/ryoku-polkit-reload; then
   logger -t ryoku-polkit \
@@ -192,6 +200,7 @@ exit 0
 
 %preun
 [ "$1" -eq 0 ] || exit 0
+/usr/bin/ryoku-plymouth-apply reset >/dev/null 2>&1 || :
 [ -d /run/systemd/system ] || exit 0
 systemd-detect-virt --quiet --chroot && exit 0
 [ -x /usr/bin/ryoku-power-cutover ] || exit 0

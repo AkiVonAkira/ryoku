@@ -26,4 +26,6 @@ package() {
 
   install -Dm644 "$_repo/fedora/system/hardware/network/ryoku-wifi-regdom.service" \
     "$pkgdir/usr/lib/systemd/system/ryoku-wifi-regdom.service"
+  install -Dm755 "$_repo/fedora/system/boot/ryoku-plymouth-apply" \
+    "$pkgdir/usr/bin/ryoku-plymouth-apply"
 }

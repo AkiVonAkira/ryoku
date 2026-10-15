@@ -61,6 +61,10 @@ for package rollback, and the boot guard can downgrade the Ryoku set after a
 failed update.
 
 Fedora keeps GRUB, so it has no Ryoku snapshot boot menu or snapshot restore.
+The Ryoku Plymouth splash does carry over: `ryoku-desktop` pulls in the script
+and label plugins it draws with, and `ryoku-plymouth-apply`
+(`system/boot/ryoku-plymouth-apply`) makes it the default and rebuilds the dracut
+images on install. Later updates rebuild only while it is still the default.
 NVIDIA stays on nouveau. Wayfire is unavailable because Fedora ships
 0.10.1 and Ryoku requires 0.11. AUR-only extras such as Zen Browser, LocalSend,
 Voxtype, Looking Glass, and SteamCMD are not shipped in the Fedora lane.
