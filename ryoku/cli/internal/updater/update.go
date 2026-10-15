@@ -299,7 +299,7 @@ func Update(args []string) (err error) {
 					case host.XBPS:
 						hint = i18n.T("no pre-update snapshot exists (snapper was unavailable), so `ryoku rollback` cannot revert this; recover with XBPS directly")
 					case host.DNF:
-						hint = i18n.T("snapshots are unavailable on Fedora; recover with DNF directly")
+						hint = i18n.T("no pre-update snapshot exists (snapper was unavailable), so `ryoku rollback` cannot revert this; recover with DNF directly")
 					}
 					if pre != "" {
 						hint = i18n.T("see `ryoku rollback` (pre-update snapshot ") + pre + ")"
@@ -1677,9 +1677,12 @@ func Rollback(args []string) error {
 	if supported {
 		fmt.Println(i18n.T("Two ways back:"))
 		fmt.Println(i18n.T("  the Ryoku set (its packages and config) to a published release, live;"))
-		if updatePackageManager() == host.XBPS {
+		switch updatePackageManager() {
+		case host.XBPS:
 			fmt.Println(i18n.T("  the whole system (Void included) to a snapshot, from the boot menu."))
-		} else {
+		case host.DNF:
+			fmt.Println(i18n.T("  the whole system (Fedora included) to a snapshot, file by file with snapper."))
+		default:
 			fmt.Println(i18n.T("  the whole system (Arch included) to a snapshot, from the boot menu."))
 		}
 	} else {
@@ -1790,6 +1793,10 @@ func restoreGuide(id string) error {
 		}
 	}
 	fmt.Printf(i18n.T("Restoring snapshot %s\n\n"), label)
+	if updatePackageManager() == host.DNF {
+		fedoraRestoreGuide(id)
+		return nil
+	}
 	fmt.Println(i18n.T("Ryoku boots the @ subvolume directly, so a live `snapper rollback` cannot"))
 	fmt.Println(i18n.T("restore the system; the restore runs from the boot menu:"))
 	fmt.Printf(i18n.T("  1. Reboot, and in the Limine menu open Snapshots -> %s.\n"), id)
@@ -1809,6 +1816,18 @@ func restoreGuide(id string) error {
 		}
 	}
 	return nil
+}
+
+// fedoraRestoreGuide is the Fedora restore until its boot menu lists snapshots:
+// snapper reverts the files that changed since the snapshot on the running
+// system. /boot is not in the snapshot, so the kernels stay as they are.
+func fedoraRestoreGuide(id string) {
+	fmt.Println(i18n.T("Fedora's boot menu does not list snapshots yet, so the restore runs on the"))
+	fmt.Println(i18n.T("running system with snapper:"))
+	fmt.Printf(i18n.T("  1. See what changed since then:  sudo snapper -c root status %s..0\n"), id)
+	fmt.Printf(i18n.T("  2. Put those files back:         sudo snapper -c root undochange %s..0\n"), id)
+	fmt.Println(i18n.T("  3. Reboot."))
+	fmt.Println(i18n.T("Kernels on /boot are not part of the snapshot and stay as they are."))
 }
 
 // Snapshots prints the root snapshot table when this host provides it.

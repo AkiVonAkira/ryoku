@@ -8,19 +8,13 @@ import (
 	i18n "ryoku-i18n"
 )
 
-const (
-	snapshotsUnavailableReason       = "Snapshots are not available on this host, so updates cannot be rolled back."
-	fedoraSnapshotsUnavailableReason = "Snapshots are not available on Fedora: it boots through GRUB, which Ryoku's snapshot boot menu does not drive."
-)
+const snapshotsUnavailableReason = "Snapshots are not available on this host, so updates cannot be rolled back."
 
 // Snapshots reports whether this host provides Ryoku's snapper-based safety net.
 func (a *App) Snapshots() (supported bool, reason string) {
 	manager, err := a.PackageManager()
-	if err == nil && (manager == Pacman || manager == XBPS) {
+	if err == nil && (manager == Pacman || manager == XBPS || manager == DNF) {
 		return true, ""
-	}
-	if err == nil && manager == DNF {
-		return false, i18n.T(fedoraSnapshotsUnavailableReason)
 	}
 	return false, i18n.T(snapshotsUnavailableReason)
 }

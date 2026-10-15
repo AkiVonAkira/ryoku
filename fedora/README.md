@@ -60,7 +60,12 @@ installed Ryoku set in place. Frozen release and testing targets are retained
 for package rollback, and the boot guard can downgrade the Ryoku set after a
 failed update.
 
-Fedora keeps GRUB, so it has no Ryoku snapshot boot menu or snapshot restore.
+Fedora keeps GRUB. Snapper snapshots are on: `ryoku doctor` gives `/.snapshots`
+its own top-level btrfs subvolume and fstab entry, `ryoku update` takes a
+pre/post pair, and a libdnf5 actions hook (`system/snapshots/`) takes one around
+every other dnf transaction. The boot menu does not list snapshots yet, so
+`ryoku rollback <id>` restores the changed files on the running system with
+`snapper undochange`.
 NVIDIA stays on nouveau. Wayfire is unavailable because Fedora ships
 0.10.1 and Ryoku requires 0.11. AUR-only extras such as Zen Browser, LocalSend,
 Voxtype, Looking Glass, and SteamCMD are not shipped in the Fedora lane.

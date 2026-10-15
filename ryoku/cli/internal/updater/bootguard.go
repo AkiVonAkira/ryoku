@@ -237,13 +237,13 @@ func rematerializeUsers() {
 func pointBootMenuAtSnapshot(p pendingUpdate) error {
 	if updatePackageManager() == host.DNF {
 		_ = os.Remove(pendingFile)
-		_, reason := snapshotCapability()
-		if reason == "" {
-			reason = i18n.T("Snapshots are not available on Fedora; recover the system by hand.")
+		detail := i18n.T("Fedora's boot menu does not list snapshots yet, so the boot guard cannot boot one; `ryoku rollback` shows how to recover.")
+		if p.Snapshot != "" {
+			detail = fmt.Sprintf(i18n.T("Fedora's boot menu does not list snapshots yet, so the boot guard cannot boot pre-update snapshot %s; `ryoku rollback %s` shows how to recover."), p.Snapshot, p.Snapshot)
 		}
 		return writeNotice(bootNotice{
 			Action: "revert-failed", From: p.From, To: p.To, Channel: p.Channel,
-			Snapshot: p.Snapshot, Detail: reason, At: now(),
+			Snapshot: p.Snapshot, Detail: detail, At: now(),
 		})
 	}
 	if p.Snapshot == "" {

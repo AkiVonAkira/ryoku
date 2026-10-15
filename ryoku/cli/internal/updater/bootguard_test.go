@@ -570,7 +570,7 @@ func TestBootGuardDNFSnapshotEscalationStopsWithoutLimine(t *testing.T) {
 	}
 	p := pendingUpdate{
 		From: olderUnstableBuild, To: newerUnstableBuild, Channel: sys.ChannelTesting,
-		ArmedBoot: "earlier-boot", Boots: 2,
+		ArmedBoot: "earlier-boot", Boots: 2, Snapshot: "42",
 	}
 	body, _ := json.Marshal(p)
 	if err := os.WriteFile(pendingFile, body, 0o644); err != nil {
@@ -587,6 +587,9 @@ func TestBootGuardDNFSnapshotEscalationStopsWithoutLimine(t *testing.T) {
 	text := string(raw)
 	if !strings.Contains(text, `"action": "revert-failed"`) || !strings.Contains(text, "Fedora") {
 		t.Fatalf("Fedora escalation notice = %s", raw)
+	}
+	if !strings.Contains(text, "`ryoku rollback 42`") {
+		t.Fatalf("Fedora escalation does not point at the snapshot restore: %s", raw)
 	}
 	if strings.Contains(strings.ToLower(text), "limine") {
 		t.Fatalf("Fedora escalation names Limine: %s", raw)

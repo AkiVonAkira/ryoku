@@ -14,6 +14,12 @@
   restore that swaps the root subvolume keeps the snapshots. An existing
   subvolume or fstab entry is adopted. `SNAPPER_CONFIGS` goes to
   `/etc/sysconfig/snapper`, where Fedora's snapper units read it.
+- **Fedora gets snapshots.** The host now reports snapshots as supported on
+  Fedora, so `ryoku update` takes its pre/post pair, `ryoku snapshots` lists
+  them, and the doctor sets them up. Fedora's boot menu does not list snapshots
+  yet, so `ryoku rollback <id>` guides a restore of the changed files with
+  `snapper undochange`, and the boot guard's third step points at that instead
+  of booting a snapshot.
 
 ### Fixed
 - **Updates preserve installer package choices.** Control-manifest convergence

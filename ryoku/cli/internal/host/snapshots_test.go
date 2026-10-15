@@ -16,7 +16,7 @@ func TestSnapshotsCapabilityAndCommand(t *testing.T) {
 	}{
 		{name: "pacman", manager: "pacman", supported: true, exit: ExitOK},
 		{name: "xbps", manager: "xbps", supported: true, exit: ExitOK},
-		{name: "dnf", manager: "dnf", supported: false, exit: ExitNotProvided, wantOutput: fedoraSnapshotsUnavailableReason + "\n"},
+		{name: "dnf", manager: "dnf", supported: true, exit: ExitOK},
 		{name: "unknown", manager: "other", supported: false, exit: ExitNotProvided, wantOutput: snapshotsUnavailableReason + "\n"},
 	}
 	for _, tt := range tests {
@@ -29,12 +29,8 @@ func TestSnapshotsCapabilityAndCommand(t *testing.T) {
 			if tt.supported && reason != "" {
 				t.Fatalf("supported host reason = %q, want empty", reason)
 			}
-			wantReason := snapshotsUnavailableReason
-			if tt.manager == "dnf" {
-				wantReason = fedoraSnapshotsUnavailableReason
-			}
-			if !tt.supported && reason != wantReason {
-				t.Fatalf("unsupported host reason = %q, want %q", reason, wantReason)
+			if !tt.supported && reason != snapshotsUnavailableReason {
+				t.Fatalf("unsupported host reason = %q, want %q", reason, snapshotsUnavailableReason)
 			}
 			if code := app.Execute([]string{"snapshots"}); code != tt.exit {
 				t.Fatalf("snapshots exit = %d, want %d", code, tt.exit)
@@ -133,11 +129,11 @@ func TestSnapshotCreateRequiresToolAndRootConfig(t *testing.T) {
 
 func TestSnapshotCreateKeepsUnsupportedReason(t *testing.T) {
 	runner := &fakeRunner{paths: map[string]bool{"snapper": true}}
-	app, stdout, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+	app, stdout, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "other"})
 	if code := app.Execute([]string{"snapshots", "create", "before change"}); code != ExitNotProvided {
 		t.Fatalf("unsupported snapshot exit = %d, want %d", code, ExitNotProvided)
 	}
-	if stdout.String() != fedoraSnapshotsUnavailableReason+"\n" {
+	if stdout.String() != snapshotsUnavailableReason+"\n" {
 		t.Fatalf("unsupported snapshot output = %q", stdout.String())
 	}
 	if len(runner.commands) != 0 {

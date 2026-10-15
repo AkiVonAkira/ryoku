@@ -47,12 +47,12 @@ These are user-facing and work on any install.
 
 ### `ryoku update`
 
-On snapshot-capable Ryoku hosts, including Arch/CachyOS and Void, the full safe
+On snapshot-capable Ryoku hosts, Arch/CachyOS, Void and Fedora, the full safe
 update is wrapped in a best-effort snapper pre/post pair: an unconfigured
 snapper never blocks the update, but a failed step aborts before anything else
-changes. Fedora deliberately reports snapshots unavailable because it boots
-through GRUB, which Ryoku's snapshot menu does not drive; its update continues
-without invoking snapper. What the update runs next depends on the world:
+changes. On Fedora the pair is marked in `/run/ryoku/update-snapshot`, so the
+dnf snapshot hook does not nest a second pair inside it. What the update runs
+next depends on the world:
 
 - **Dev checkout:** updates through the git channel. It fetches the channel
   branch (`main` for everyone), fast-forwards the checkout when it is sitting
@@ -172,7 +172,8 @@ back to the previous frozen version. Snapshot-capable Arch and Void installs
 can escalate a third failure to the complete
 `Ryoku Linux/Snapshots/<snapshot>/<kernel>` Limine path. Void runs the guard
 through the `ryoku-boot-guard` runit service. Fedora uses the systemd service
-and stops after the DNF package downgrade because it has no snapshot boot path.
+and stops after the DNF package downgrade, because its boot menu does not list
+snapshots yet; the notice points at `ryoku rollback <id>`.
 
 `ryoku rollback <id>` explains the whole-system restore path on a
 snapshot-capable host. Ryoku boots the `@` subvolume directly
@@ -183,15 +184,20 @@ limine-snapper-restore`, then reboot into the restored system. The restore hook
 resets Limine to the first kernel under **Ryoku Linux** and clears the remembered
 snapshot entry.
 
-On a host without Ryoku's snapshot stack, including Fedora, bare `rollback`
-still lists releases and explains that snapshots are unavailable. Supplying a
-snapshot id returns that explanation as an error without invoking snapper.
+Fedora's GRUB menu does not list snapshots yet, so there `ryoku rollback <id>`
+guides a restore on the running system instead: `snapper -c root status <id>..0`
+shows what changed since the snapshot and `snapper -c root undochange <id>..0`
+puts those files back. Kernels on `/boot` are not part of the snapshot.
+
+On a host without Ryoku's snapshot stack, bare `rollback` still lists releases
+and explains that snapshots are unavailable. Supplying a snapshot id returns
+that explanation as an error without invoking snapper.
 
 ### `ryoku snapshots`
 
-List the root snapper snapshots on supported pacman and XBPS hosts. Fedora
-prints that snapshots are unavailable because Ryoku does not drive its GRUB
-boot menu. The command exits with an error without invoking snapper.
+List the root snapper snapshots on supported pacman, XBPS and DNF hosts. On
+any other host it prints that snapshots are unavailable and exits with an
+error without invoking snapper.
 
 ### `ryoku reload`
 
