@@ -61,6 +61,15 @@
   naming `RYOKU_ESP_MODE=dedicated` as the way around it (`lib/bootloader.sh`).
 
 ### Fixed
+- **Void installs carry the firmware Arch installs carry.** Arch's
+  `linux-firmware` pulls every vendor set; Void's depends only on the AMD and
+  network sets, so a Void box had no Intel GPU firmware (i915 and xe), no
+  nouveau GSP firmware (an NVIDIA card newer than Turing never initialises
+  without it: no DRM device, no greeter, a blinking cursor) and no Broadcom
+  Wi-Fi or Bluetooth firmware. The translation now names
+  `linux-firmware-intel`, `linux-firmware-nvidia` and `linux-firmware-broadcom`
+  beside `linux-firmware`, so the ISO closure and every install ship them
+  (`void/packages/translations.tsv`).
 - **Wi-Fi works on a Void install.** The target pins NetworkManager to iwd,
   but NetworkManager can only D-Bus-activate iwd where an activation file
   exists (systemd); Void's iwd ships none, so every Void install came up with

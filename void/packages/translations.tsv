@@ -113,7 +113,7 @@ limine	limine	system
 limine-mkinitcpio-hook	-	system	Void uses dracut; Ryoku's kernel hook writes Limine entries.
 limine-snapper-sync	limine-snapper-sync	system	repo=ryoku
 linux	linux	system	
-linux-firmware	linux-firmware	system	
+linux-firmware	linux-firmware linux-firmware-intel linux-firmware-nvidia linux-firmware-broadcom	system	
 linux-headers	linux-headers	desktop	
 localsend-bin	localsend-bin	extra	repo=ryoku
 looking-glass	-	optional	No Void repository package.
