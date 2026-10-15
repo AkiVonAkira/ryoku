@@ -1,9 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import stage.modules.ii.background.widgets
-import stage.modules.common as StageCommon
 import "../Singletons"
 
 // One desktop widget kind for the whole vendored ii roster. The slot content
@@ -24,10 +22,6 @@ Item {
     // them into its generic bare-widget layer, which clips effects to the face's
     // implicit box before they can extend over the wallpaper.
     readonly property bool managesOwnEffects: true
-    readonly property var faceOptions: StageCommon.Config.options.background.widgets[adapter.faceId] ?? null
-    readonly property bool faceShadowEnabled: adapter.faceOptions?.enableShadows !== undefined
-        ? adapter.faceOptions.enableShadows
-        : (StageCommon.Config.options.background.widgets.enableShadows ?? true)
 
     readonly property url faceUrl: WidgetsRegistry.getQmlPath(faceId)
     // Compiled off the main thread: a face pulls in a deep tree of its own
@@ -41,18 +35,6 @@ Item {
 
     readonly property int _screenW: adapter.screen ? adapter.screen.width : 1920
     readonly property int _screenH: adapter.screen ? adapter.screen.height : 1080
-    MultiEffect {
-        source: adapter.faceItem
-        anchors.fill: adapter.faceItem
-        z: -1
-        visible: adapter.faceItem !== null && adapter.faceShadowEnabled
-        shadowEnabled: true
-        shadowColor: StageCommon.Appearance.colors.colShadow
-        shadowBlur: 0.7
-        shadowVerticalOffset: 4
-        blurMax: 24
-        autoPaddingEnabled: true
-    }
 
     // isPreview is an initial value, so the widget never runs a frame in the
     // stage's placement mode. The face's root is the stage's own draggable
@@ -61,11 +43,15 @@ Item {
     // while the face's own controls keep their clicks.
     function create() {
         const comp = adapter.faceComp;
+        if (comp !== null && comp.status === Component.Error) {
+            console.warn("ii face", adapter.faceId, "failed to load:", comp.errorString());
+            return;
+        }
         if (comp === null || comp.status !== Component.Ready)
             return;
         if (adapter.faceItem !== null)
             adapter.faceItem.destroy();
-        adapter.faceItem = comp.createObject(adapter, {
+        const props = {
             "isPreview": true,
             "draggable": false,
             "acceptedButtons": Qt.NoButton,
@@ -74,7 +60,13 @@ Item {
             "screenHeight": adapter._screenH,
             "scaledScreenWidth": adapter._screenW,
             "scaledScreenHeight": adapter._screenH
-        });
+        };
+        // The landscape EasyEffects preset is the portrait face lying down.
+        if (adapter.faceId === "easyeffects_preset_landscape")
+            props.landscape = true;
+        adapter.faceItem = comp.createObject(adapter, props);
+        if (adapter.faceItem === null)
+            console.warn("ii face", adapter.faceId, "could not be created:", comp.errorString());
     }
 
     Component.onCompleted: create()

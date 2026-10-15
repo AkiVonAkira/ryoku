@@ -113,11 +113,11 @@ ContentPage {
             ContentSubsectionLabel { text: Translation.tr("AI Chat Logo") }
 
             ConfigSelectionArray {
-                currentValue: Config.options.background.widgets.search_pill.aiLogo ?? "gemini"
+                currentValue: Config.options.background.widgets.search_pill.aiLogo ?? "rashin"
                 onSelected: value => Config.options.background.widgets.search_pill.aiLogo = value
                 options: [
+                    { displayName: Translation.tr("Rashin"), icon: "neurology", value: "rashin" },
                     { displayName: Translation.tr("Gemini"), icon: "auto_awesome", value: "gemini" },
-                    { displayName: Translation.tr("Google"), icon: "google", value: "google" },
                     { displayName: Translation.tr("OpenAI"), icon: "neurology", value: "openai" },
                     { displayName: Translation.tr("Claude"), icon: "psychology", value: "claude" },
                     { displayName: Translation.tr("DeepSeek"), icon: "smart_toy", value: "deepseek" },
@@ -134,8 +134,7 @@ ContentPage {
                     { displayName: Translation.tr("Gentoo"), icon: "computer", value: "gentoo" },
                     { displayName: Translation.tr("NixOS"), icon: "computer", value: "nixos" },
                     { displayName: Translation.tr("Ubuntu"), icon: "computer", value: "ubuntu" },
-                    { displayName: Translation.tr("Linux"), icon: "computer", value: "linux" },
-                    { displayName: Translation.tr("Active Provider"), icon: "sync", value: "auto" }
+                    { displayName: Translation.tr("Linux"), icon: "computer", value: "linux" }
                 ]
             }
 

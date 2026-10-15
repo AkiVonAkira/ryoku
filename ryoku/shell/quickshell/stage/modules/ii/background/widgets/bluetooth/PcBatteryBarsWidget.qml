@@ -11,6 +11,8 @@ AbstractBackgroundWidget {
     id: root
 
     configEntryName: "pc_battery_bars"
+    readonly property bool showPercentage: Config.options.background.widgets.pc_battery_bars.showPercentage ?? true
+    readonly property bool showStatus: Config.options.background.widgets.pc_battery_bars.showStatus ?? true
 
     implicitWidth: 240
     implicitHeight: 240
@@ -35,13 +37,14 @@ AbstractBackgroundWidget {
         return Translation.tr("Calculating...");
     }
 
-    // Color definitions per spec:
-    // Charging background: Hardcoded light green (#c4f3a6) per request.
-    // All accents, text, and bars use strict Appearance design tokens.
+    // Charging turns the card a fixed light green, so its bars and text take a
+    // fixed dark green: a palette accent is light on a dark theme and vanished
+    // against it.
     readonly property color lightGreenCharging: "#c4f3a6"
+    readonly property color darkGreenOnCharging: "#1f3a10"
 
     readonly property color activeCardBg: root.isCharging ? root.lightGreenCharging : WidgetColorScheme.cardBgColor
-    readonly property color activeAccentColor: root.isCharging ? Appearance.colors.colPrimary : WidgetColorScheme.accentColor
+    readonly property color activeAccentColor: root.isCharging ? root.darkGreenOnCharging : WidgetColorScheme.accentColor
 
     StyledRectangularShadow {
         id: bgShadow
@@ -73,6 +76,7 @@ AbstractBackgroundWidget {
                 }
 
                 Text {
+                    visible: root.showPercentage
                     text: root.batteryPct + "%"
                     color: root.activeAccentColor
                     font {
@@ -149,6 +153,7 @@ AbstractBackgroundWidget {
 
             // Bottom Estimated Time Text
             Text {
+                visible: root.showStatus
                 Layout.alignment: Qt.AlignHCenter
                 text: root.batteryStatus
                 color: ColorUtils.applyAlpha(root.activeAccentColor, 0.70)

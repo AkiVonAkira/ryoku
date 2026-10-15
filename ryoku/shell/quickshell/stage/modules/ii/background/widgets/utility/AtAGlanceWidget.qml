@@ -118,7 +118,7 @@ AbstractBackgroundWidget {
                 StyledText {
                     anchors.centerIn: parent
                     text: Translation.tr("Drop files to share via LocalSend / KDE Connect")
-                    color: Appearance.colors.colOnLayer0
+                    color: WidgetColorScheme.colors.colOnLayer0
                     font.pixelSize: Math.round(14 * root.contentScale)
                     font.weight: Font.Bold
                 }
@@ -204,7 +204,7 @@ AbstractBackgroundWidget {
                     Text {
                         Layout.fillWidth: true
                         text: root.currentData.title
-                        color: Appearance.colors.colOnLayer0
+                        color: WidgetColorScheme.colors.colOnLayer0
                         font.family: Appearance.font.family.main
                         font.pixelSize: Math.round(19 * root.contentScale)
                         font.weight: Font.Bold
@@ -234,14 +234,14 @@ AbstractBackgroundWidget {
                                 visible: !(root.currentData.service === "fallback" && AtAGlanceService.weatherAvailable)
                                 text: root.currentData.icon
                                 iconSize: Math.round(16 * root.contentScale)
-                                color: Appearance.colors.colOnLayer0
+                                color: WidgetColorScheme.colors.colOnLayer0
                             }
                         }
 
                         Text {
                             Layout.fillWidth: true
                             text: root.currentData.subtitle
-                            color: Appearance.colors.colOnLayer0
+                            color: WidgetColorScheme.colors.colOnLayer0
                             font.family: Appearance.font.family.main
                             font.pixelSize: Math.round(15 * root.contentScale)
                             font.weight: Font.DemiBold
@@ -263,7 +263,7 @@ AbstractBackgroundWidget {
                 Rectangle {
                     implicitWidth: 1
                     implicitHeight: 36 * root.contentScale
-                    color: Appearance.colors.colOnLayer0
+                    color: WidgetColorScheme.colors.colOnLayer0
                     opacity: 0.25
                     Layout.alignment: Qt.AlignVCenter
                 }
@@ -277,7 +277,7 @@ AbstractBackgroundWidget {
                     Text {
                         Layout.fillWidth: true
                         text: root.dualData.title
-                        color: Appearance.colors.colOnLayer0
+                        color: WidgetColorScheme.colors.colOnLayer0
                         font.family: Appearance.font.family.main
                         font.pixelSize: Math.round(19 * root.contentScale)
                         font.weight: Font.Bold
@@ -291,13 +291,13 @@ AbstractBackgroundWidget {
                         MaterialSymbol {
                             text: root.dualData.icon
                             iconSize: Math.round(16 * root.contentScale)
-                            color: Appearance.colors.colOnLayer0
+                            color: WidgetColorScheme.colors.colOnLayer0
                         }
 
                         Text {
                             Layout.fillWidth: true
                             text: root.dualData.subtitle
-                            color: Appearance.colors.colOnLayer0
+                            color: WidgetColorScheme.colors.colOnLayer0
                             font.family: Appearance.font.family.main
                             font.pixelSize: Math.round(15 * root.contentScale)
                             font.weight: Font.DemiBold
@@ -329,7 +329,7 @@ AbstractBackgroundWidget {
                         anchors.centerIn: parent
                         text: "chevron_left"
                         iconSize: Math.round(16 * root.contentScale)
-                        color: Appearance.colors.colOnLayer0
+                        color: WidgetColorScheme.colors.colOnLayer0
                     }
 
                     onClicked: {
@@ -352,7 +352,7 @@ AbstractBackgroundWidget {
                         anchors.centerIn: parent
                         text: "chevron_right"
                         iconSize: Math.round(16 * root.contentScale)
-                        color: Appearance.colors.colOnLayer0
+                        color: WidgetColorScheme.colors.colOnLayer0
                     }
 
                     onClicked: {

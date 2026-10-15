@@ -11,6 +11,8 @@ AbstractBackgroundWidget {
     id: root
 
     configEntryName: "bluetooth_earbuds_stem"
+    readonly property bool showDeviceName: Config.options.background.widgets.bluetooth_earbuds_stem.showDeviceName ?? true
+    readonly property bool showPercentage: Config.options.background.widgets.bluetooth_earbuds_stem.showPercentage ?? true
 
     implicitWidth: 240
     implicitHeight: 240
@@ -28,11 +30,13 @@ AbstractBackgroundWidget {
         }
         return connectedDevices.length > 0 ? connectedDevices[0] : null;
     }
+    readonly property var deviceBattery: root.earbudDevice ? EarbudsControlService.batteryInfo(root.earbudDevice) : null
 
     readonly property bool isConnected: earbudDevice !== null
     readonly property real batteryLevel: (earbudDevice && earbudDevice.batteryAvailable) ? (earbudDevice.battery ?? 1.0) : 1.0
     readonly property int batteryPercent: Math.round(batteryLevel * 100)
-    readonly property int primaryPercent: batteryPercent
+    readonly property int primaryPercent: (root.deviceBattery && root.deviceBattery.available && root.deviceBattery.aggregate !== null)
+        ? root.deviceBattery.aggregate : batteryPercent
     readonly property string fullName: earbudDevice ? (earbudDevice.name ?? Translation.tr("Bluetooth Earbuds")) : ""
 
     // Separate Title line 1 and line 2 for pixel match
@@ -87,6 +91,7 @@ AbstractBackgroundWidget {
 
             // Top-Left Device Name Title / Disconnected Status
             ColumnLayout {
+                visible: root.showDeviceName
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.leftMargin: 4
@@ -194,7 +199,7 @@ AbstractBackgroundWidget {
                 anchors.bottom: parent.bottom
                 anchors.rightMargin: 4
                 anchors.bottomMargin: 4
-                visible: root.isConnected
+                visible: root.isConnected && root.showPercentage
                 text: root.primaryPercent + "%"
                 color: root.colPrimaryText
                 font {

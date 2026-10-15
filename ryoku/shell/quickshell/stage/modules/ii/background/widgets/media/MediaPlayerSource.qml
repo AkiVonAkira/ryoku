@@ -126,9 +126,9 @@ Item {
 
     readonly property color artDominantColor: {
         if (!root.useAlbumColors)
-            return Appearance.colors.colPrimary;
-        const raw = colorQuantizer?.colors[0] ?? Appearance.colors.colPrimary;
-        return ColorUtils.mix(raw, Appearance.colors.colPrimaryContainer, 0.8) || Appearance.m3colors.m3secondaryContainer;
+            return WidgetColorScheme.colors.colPrimary;
+        const raw = colorQuantizer?.colors[0] ?? WidgetColorScheme.colors.colPrimary;
+        return ColorUtils.mix(raw, WidgetColorScheme.colors.colPrimaryContainer, 0.8) || WidgetColorScheme.m3colors.m3secondaryContainer;
     }
 
     property QtObject albumScheme: AdaptedMaterialScheme {

@@ -1,8 +1,8 @@
 import QtQuick
 import "Singletons"
 
-// The rule keeps a fixed landing strip, so long section names elide before
-// they can consume the eyebrow or spill into the next control.
+// The rule yields all available width to the section name before collapsing,
+// so translated labels stay readable in a narrow docked inspector.
 Item {
     id: sec
 
@@ -58,7 +58,7 @@ Item {
         visible: sec.label.length > 0
         x: gl.visible ? gl.x + gl.width + 7 : tick.x + tick.width + 7
         width: visible ? Math.min(labelMetrics.advanceWidth,
-            Math.max(0, sec.width - x - 7 - 20)) : 0
+            Math.max(0, sec.width - x - 7)) : 0
         anchors.verticalCenter: parent.verticalCenter
         text: sec.label.toUpperCase()
         color: Qt.rgba(Theme.ink.r, Theme.ink.g, Theme.ink.b, 0.78)

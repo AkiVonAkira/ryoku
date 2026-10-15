@@ -33,7 +33,7 @@ AbstractBackgroundWidget {
     readonly property string action1Key: options.action1 ?? "ai_chat"
     readonly property string action2Key: options.action2 ?? "music_rec"
     readonly property string action3Key: options.action3 ?? "search"
-    readonly property string aiLogo: options.aiLogo ?? "gemini"
+    readonly property string aiLogo: options.aiLogo ?? "rashin"
     readonly property string outerLeftIcon: options.outerLeftIcon ?? "spark"
     readonly property bool useMaterialSymbolForOuterLeftIcon: options.useMaterialSymbolForOuterLeftIcon ?? false
     readonly property string outerLeftIconSource: {

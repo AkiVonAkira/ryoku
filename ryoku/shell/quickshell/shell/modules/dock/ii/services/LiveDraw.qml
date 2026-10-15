@@ -6,7 +6,7 @@ import Quickshell
 import Ryoku.Ui.Singletons
 
 import stage.modules.common
-import "../draw/StrokeGeometry.js" as StrokeGeometry
+import stage.modules.common.draw as StageDraw
 import ".."
 
 /**
@@ -482,7 +482,7 @@ Singleton {
         const existing = root.sheets[key] ?? [];
         if (existing.length === 0)
             return 0;
-        const kept = existing.filter(stroke => !StrokeGeometry.strokeHitBy(stroke, x, y, radius));
+        const kept = existing.filter(stroke => !StageDraw.StrokeGeometry.strokeHitBy(stroke, x, y, radius));
         if (kept.length === existing.length)
             return 0;
         root._remember(key);

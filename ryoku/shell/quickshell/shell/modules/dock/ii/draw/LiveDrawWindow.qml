@@ -9,7 +9,7 @@ import Quickshell.Wayland
 import stage.modules.common.functions
 import stage.modules.common.widgets
 import stage.services
-import "StrokeGeometry.js" as StrokeGeometry
+import stage.modules.common.draw as StageDraw
 import ".."
 import Ryoku.Ui.Singletons
 
@@ -270,7 +270,7 @@ PanelWindow {
             root.statusFor(Translation.tr("Nothing drawn yet."));
             return;
         }
-        const bounds = StrokeGeometry.boundsOf(root.strokes);
+        const bounds = StageDraw.StrokeGeometry.boundsOf(root.strokes);
         if (!bounds)
             return;
         let dir;
@@ -351,7 +351,7 @@ PanelWindow {
             root.statusFor(Translation.tr("Nothing drawn yet."));
             return;
         }
-        const svg = StrokeGeometry.documentSvg(root.strokes);
+        const svg = StageDraw.StrokeGeometry.documentSvg(root.strokes);
         const path = `${root.drawingsDir}/Drawing_${root.stamp()}.svg`;
         dirMaker.then = () => {
             svgFile.path = path;

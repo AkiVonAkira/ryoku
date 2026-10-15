@@ -52,7 +52,7 @@ AbstractBackgroundWidget {
         const own = root.instanceImagePath !== undefined ? root.instanceImagePath : root.options?.imagePath;
         if (own && own !== "")
             return root.fileUrl(own);
-        return root.fileUrl(Config.options?.background?.wallpaperPath ?? "");
+        return root.fileUrl(Config.wallpaperStill);
     }
 
     readonly property bool isAnimated: {

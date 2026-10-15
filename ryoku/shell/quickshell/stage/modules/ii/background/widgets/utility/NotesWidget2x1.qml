@@ -44,6 +44,13 @@ AbstractBackgroundWidget {
             NotesService.reload();
     }
 
+    Connections {
+        target: NotesService
+
+        function onDataChanged() {
+            root.notesData = NotesService.tabsData.tabs;
+        }
+    }
 
     function loadNotesFromDisk() {
         root.notesData = NotesService.tabsData.tabs;
@@ -328,7 +335,7 @@ AbstractBackgroundWidget {
                     anchors.centerIn: parent
                     width: Math.min(680, parent.width * 0.9)
                     height: Math.min(560, parent.height * 0.85)
-                    color: Appearance.colors.colSurfaceContainerHigh
+                    color: WidgetColorScheme.colors.colSurfaceContainerHigh
                     radius: Appearance.rounding.windowRounding
 
                     // Stop click propagation to backdrop
@@ -355,14 +362,14 @@ AbstractBackgroundWidget {
                             MaterialSymbol {
                                 text: "note_stack"
                                 iconSize: 22
-                                color: Appearance.colors.colPrimary
+                                color: WidgetColorScheme.colors.colPrimary
                             }
 
                             StyledText {
                                 text: Translation.tr("Notes")
                                 font.pixelSize: Appearance.font.pixelSize.large
                                 font.weight: Font.DemiBold
-                                color: Appearance.colors.colOnSurface
+                                color: WidgetColorScheme.colors.colOnSurface
                                 Layout.fillWidth: true
                             }
 
@@ -371,13 +378,13 @@ AbstractBackgroundWidget {
                                 implicitHeight: 32
                                 buttonRadius: Appearance.rounding.full
                                 colBackground: "transparent"
-                                colBackgroundHover: Appearance.colors.colSurfaceContainerHighest
+                                colBackgroundHover: WidgetColorScheme.colors.colSurfaceContainerHighest
 
                                 MaterialSymbol {
                                     anchors.centerIn: parent
                                     text: "close"
                                     iconSize: 18
-                                    color: Appearance.colors.colOnSurfaceVariant
+                                    color: WidgetColorScheme.colors.colOnSurfaceVariant
                                 }
 
                                 onClicked: root.notesWindowOpen = false

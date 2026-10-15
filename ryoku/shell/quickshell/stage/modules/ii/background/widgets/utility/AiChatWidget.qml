@@ -24,6 +24,10 @@ AbstractBackgroundWidget {
     readonly property color onAccentColor: WidgetColorScheme.onAccentColor
     readonly property color innerShapeColor: WidgetColorScheme.innerShapeColor
 
+    readonly property var options: Config.options.background.widgets.ai_chat
+    readonly property string topIcon: options.topIcon ?? "spark"
+    readonly property bool useMaterialSymbol: options.useMaterialSymbol ?? false
+
     StyledRectangularShadow {
         id: bgShadow
         target: bgRect
@@ -73,18 +77,18 @@ AbstractBackgroundWidget {
 
                     CustomIcon {
                         anchors.centerIn: parent
-                        visible: !Config.options.bar.useMaterialSymbolForTopLeftIcon
+                        visible: !root.useMaterialSymbol
                         width: 56
                         height: 56
-                        source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`
+                        source: root.topIcon === "distro" ? SystemInfo.distroIcon : `${root.topIcon}-symbolic`
                         colorize: true
                         color: root.accentColor
                     }
 
                     MaterialSymbol {
                         anchors.centerIn: parent
-                        visible: Config.options.bar.useMaterialSymbolForTopLeftIcon
-                        text: Config.options.bar.topLeftIcon ?? "spark"
+                        visible: root.useMaterialSymbol
+                        text: root.topIcon
                         iconSize: 56
                         fill: 1
                         color: root.accentColor

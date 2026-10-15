@@ -24,58 +24,27 @@ AbstractBackgroundWidget {
     readonly property color onAccentColor: WidgetColorScheme.onAccentColor
     readonly property color innerShapeColor: WidgetColorScheme.innerShapeColor
 
-    // Sidebar Policies tabs (same order as SidebarPoliciesContent.qml).
-    // Read the policy mirror instead of constructing the AI service graph.
-    readonly property var policiesTabs: [
-        { "name": "Intelligence", "enabled": Config.options.policies.ai !== 0 },
-        { "name": "Translator", "enabled": Config.options.policies.translator !== 0 },
-        { "name": "Media", "enabled": Config.options.policies.player !== 0 },
-        { "name": "Wallpapers", "enabled": Config.options.policies.wallpapers !== 0 },
-        { "name": "Anime", "enabled": Config.options.policies.weeb !== 0 && Config.options.policies.weeb !== 2 },
-        { "name": "Phone", "enabled": Config.options.policies.phone !== 0 }
-    ]
-    readonly property var activePoliciesTabs: policiesTabs.filter(t => t.enabled)
-
-    function findActiveTabIndex(tabName) {
-        for (let i = 0; i < activePoliciesTabs.length; i++) {
-            if (activePoliciesTabs[i].name === tabName) return i;
-        }
-        return 0;
-    }
-
-    function openPoliciesTab(tabName) {
-        if (tabName === "Intelligence") {
-            Spawn.run(["ryoku-shell", "ask", "chat"]);
-        } else if (tabName === "Phone") {
-            Spawn.run(["ryoku-kit", "phone"]);
-        } else if (tabName === "Wallpapers") {
-            Spawn.run(["ryogami", "wallpaper", "ui"]);
-        } else {
-            Spawn.run(["ryoku-shell", "quicksettings"]);
-        }
-    }
-
     // Module definitions for configurable bottom buttons
     readonly property var moduleMap: ({
         "translator": {
             "icon": "translate",
             "label": Translation.tr("Translator"),
-            "action": function() { root.openPoliciesTab("Translator"); }
+            "action": function() { Spawn.run(["ryoku-shell", "quicksettings"]); }
         },
         "phone": {
             "icon": "smartphone",
             "label": Translation.tr("Phone"),
-            "action": function() { root.openPoliciesTab("Phone"); }
+            "action": function() { Spawn.run(["ryoku-kit", "phone"]); }
         },
         "wallpapers": {
             "icon": "wallpaper",
             "label": Translation.tr("Wallpapers"),
-            "action": function() { root.openPoliciesTab("Wallpapers"); }
+            "action": function() { Spawn.run(["ryogami", "wallpaper", "ui"]); }
         },
         "media": {
             "icon": "play_circle",
             "label": Translation.tr("Media"),
-            "action": function() { root.openPoliciesTab("Media"); }
+            "action": function() { Spawn.run(["ryoku-shell", "quicksettings"]); }
         },
         "sidebar_dashboard": {
             "icon": "dashboard",
@@ -177,7 +146,7 @@ AbstractBackgroundWidget {
                         }
                     }
 
-                    onClicked: root.openPoliciesTab("Intelligence")
+                    onClicked: Spawn.run(["ryoku-shell", "ask", "chat"])
                 }
 
                 // Bottom row: two configurable action buttons

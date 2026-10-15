@@ -182,7 +182,6 @@ AbstractBackgroundWidget {
                                         : Translation.tr("Add a Google OAuth Client ID and Client Secret in Email Widget settings.")
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             color: root.subtextColorOnBg
-                            opacity: 0.8
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.Wrap
                         }

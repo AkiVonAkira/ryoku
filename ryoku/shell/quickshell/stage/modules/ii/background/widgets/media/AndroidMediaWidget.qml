@@ -27,7 +27,10 @@ AbstractBackgroundWidget {
     implicitHeight: contentItem.implicitHeight
 
     readonly property MprisPlayer player: MprisController.activePlayer
-    property bool showShadow: true
+    readonly property bool showShadow: Config.options.background.widgets.media.enableShadows ?? true
+    readonly property bool showLyrics: Config.options.background.widgets.media.showLyrics ?? true
+    readonly property bool showControls: Config.options.background.widgets.media.showControls ?? true
+    readonly property bool showDevicePill: Config.options.background.widgets.media.showDevicePill ?? true
     property list<real> visualizerPoints: []
 
     readonly property bool playing: player ? player.playbackState === MprisPlaybackState.Playing : false
@@ -85,7 +88,7 @@ AbstractBackgroundWidget {
     property real titleYOffset: 0.0
 
 
-    readonly property bool useDynamicColors: Config.options.media.dynamicAlbumColors && root.artSource !== ""
+    readonly property bool useDynamicColors: (Config.options.background.widgets.media.dynamicAlbumColors ?? false) && root.artSource !== ""
 
     ColorQuantizer {
         id: colorQuantizer
@@ -95,9 +98,9 @@ AbstractBackgroundWidget {
     }
 
     property color artDominantColor: ColorUtils.mix(
-        (colorQuantizer?.colors[0] ?? Appearance.colors.colPrimary),
-        Appearance.colors.colPrimaryContainer, 0.8
-    ) || Appearance.m3colors.m3secondaryContainer
+        (colorQuantizer?.colors[0] ?? WidgetColorScheme.colors.colPrimary),
+        WidgetColorScheme.colors.colPrimaryContainer, 0.8
+    ) || WidgetColorScheme.m3colors.m3secondaryContainer
 
     property QtObject blendedColors: AdaptedMaterialScheme {
         color: root.artDominantColor
@@ -118,6 +121,8 @@ AbstractBackgroundWidget {
 
 
     readonly property string displaySongText: {
+        if (!root.showLyrics)
+            return root.trackTitle;
         if (LyricsService.hasSyncedLines && LyricsService.statusText !== "") {
             return LyricsService.statusText;
         }
@@ -306,6 +311,7 @@ AbstractBackgroundWidget {
 
                     RippleButton {
                         id: audioPill
+                        visible: root.showDevicePill
                         implicitHeight: 32
                         leftPadding: 12
                         rightPadding: 12
@@ -370,7 +376,7 @@ AbstractBackgroundWidget {
                                 width: parent.width
                                 spacing: 0
                                 y: lyricsContainer.baseY - lyricsContainer.rowHeight - lyricsContainer.scrollOffset
-                                visible: LyricsService.hasSyncedLines
+                                visible: root.showLyrics && LyricsService.hasSyncedLines
 
                                 readonly property int rowHeight: Math.floor(parent.height / 2.5)
                                 readonly property real baseY: (parent.height - rowHeight) / 2
@@ -452,7 +458,7 @@ AbstractBackgroundWidget {
                             }
 
                             StyledText {
-                                visible: !LyricsService.hasSyncedLines
+                                visible: !root.showLyrics || !LyricsService.hasSyncedLines
                                 anchors.fill: parent
                                 font.family: Appearance.font.family.main
                                 font.pixelSize: 24
@@ -531,7 +537,7 @@ AbstractBackgroundWidget {
 
                     RippleButton {
                         id: playBtn
-                        visible: root.hasTrack
+                        visible: root.hasTrack && root.showControls
                         implicitWidth: 64
                         implicitHeight: 64
                         buttonRadius: 22
@@ -564,6 +570,7 @@ AbstractBackgroundWidget {
                 }
 
                 RowLayout {
+                    visible: root.showControls
                     Layout.fillWidth: true
                     Layout.preferredHeight: 32
                     spacing: 16

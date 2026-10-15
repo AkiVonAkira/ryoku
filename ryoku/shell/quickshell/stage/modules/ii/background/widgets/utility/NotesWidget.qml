@@ -44,6 +44,13 @@ AbstractBackgroundWidget {
             NotesService.reload();
     }
 
+    Connections {
+        target: NotesService
+
+        function onDataChanged() {
+            root.notesData = NotesService.tabsData.tabs;
+        }
+    }
 
     function loadNotesFromDisk() {
         root.notesData = NotesService.tabsData.tabs;

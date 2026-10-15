@@ -17,6 +17,7 @@ Item {
     property string widget: ""
     readonly property var face: IiRoster.byPrefix(opts.widget)
     readonly property url pageUrl: opts.face ? WidgetsRegistry.getConfigPagePath(opts.face.id) : ""
+    readonly property string widgetId: opts.face ? opts.face.id : ""
     property var previousWidgetCountProvider: null
 
     QtObject {
@@ -74,5 +75,24 @@ Item {
             if (item.hasOwnProperty("bottomContentPadding"))
                 item.bottomContentPadding = 8;
         }
+    }
+
+    Binding {
+        target: pageLoader.item
+        property: "widget"
+        value: opts.widget
+        when: pageLoader.item !== null && pageLoader.item.hasOwnProperty("widget")
+    }
+    Binding {
+        target: pageLoader.item
+        property: "widgetId"
+        value: opts.widgetId
+        when: pageLoader.item !== null && pageLoader.item.hasOwnProperty("widgetId")
+    }
+    Binding {
+        target: pageLoader.item
+        property: "faceId"
+        value: opts.widgetId
+        when: pageLoader.item !== null && pageLoader.item.hasOwnProperty("faceId")
     }
 }

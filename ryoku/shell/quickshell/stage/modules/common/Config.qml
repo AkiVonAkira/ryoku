@@ -706,6 +706,17 @@ Singleton {
     // full editor provider. Floating hosted-widget inspectors use this seam
     // while the Stage Editor is closed.
     property var widgetCountProvider: null
+    // A still of the picture the host's desktop shows, a video wallpaper's
+    // poster frame included. Ryoku's shell sets it from its daemon; the island
+    // alone falls back to its own wallpaper option.
+    property string hostWallpaperStill: ""
+    readonly property string wallpaperStill: {
+        if (root.hostWallpaperStill !== "")
+            return root.hostWallpaperStill;
+        const path = String(root.options.background.wallpaperPath ?? "");
+        return /\.(mp4|webm|mkv|avi|mov)$/i.test(path)
+            ? String(root.options.background.thumbnailPath ?? "") : path;
+    }
 
     // Catalogues the provider adds beside Widgets, Wallpaper and Style: the
     // editors Ryoku folds into this mode (the visualiser, the depth stage).
@@ -3382,7 +3393,6 @@ Singleton {
                         property real x: 1518.98
                         property real y: 168.8
                         property bool aiStyling: false
-                        property string aiStylingModel: "gemini"
                         property int sides: 14
                         property string backgroundStyle: "cookie"
                         property string backgroundShape: "Arch"
@@ -3393,7 +3403,6 @@ Singleton {
                         property string dateStyle: "bubble"
                         property bool timeIndicators: true
                         property bool hourMarks: false
-                        property bool dateInClock: true
                         property bool constantlyRotate: false
                         property bool quoteEnable: false
                         property string quoteText: ""
@@ -3412,7 +3421,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property int widgetSize: 100
-                        property bool useAltColors: true
+                        property bool useAltColors: false
                     }
                     property JsonObject clock_digital: JsonObject {
                         property bool enable: false
@@ -3426,6 +3435,7 @@ Singleton {
                         property real lineSpacing: 0
                         property bool colorful: false
                         property bool showColon: true
+                        property bool showSeconds: false
                         property JsonObject font: JsonObject {
                             property real weight: 350
                             property real width: 100
@@ -3458,14 +3468,13 @@ Singleton {
                         property real y: 200
                         property bool showTicks: true
                         property bool showMinuteHand: true
-                        property bool enableShadows: false
-                        property bool enableInnerShadow: false
+                        property bool enableShadows: true
+                        property bool enableInnerShadow: true
                         property string hourHandStyle: "fill"
                         property string minuteHandStyle: "medium"
                         property bool showSecondHand: false
                         property string secondHandStyle: "dot"
                         property bool showNumberRing: false
-                        property bool expressiveColors: false
                     }
                     property JsonObject nagasaki_text: JsonObject {
                         property bool enable: false
@@ -3473,6 +3482,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property int size: 200
+                        property string colorStyle: "surface"
                     }
                     property JsonObject clock_hori: JsonObject {
                         property bool enable: false
@@ -3481,6 +3491,7 @@ Singleton {
                         property real y: 200
                         property int widgetSize: 100
                         property bool useAltColors: false
+                        property bool showColon: true
                     }
                     property JsonObject clock_ios: JsonObject {
                         property bool enable: false
@@ -3488,9 +3499,10 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool showDate: true
-                        property real dateSpacing: -8
+                        property real dateSpacing: 0
                         property string clockFontVariant: "bold"
                         property string dateFontVariant: "medium"
+                        property string timeFormat: "system"
                     }
                     property JsonObject clock_nothing: JsonObject {
                         property bool enable: false
@@ -3508,7 +3520,10 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 200
                         property real y: 200
-                        property bool expressiveColors: false
+                        property string timeFormat: "system"
+                        property bool showDateHeader: true
+                        property bool showMinuteNeighbors: true
+                        property bool accentMinute: true
                     }
                     property JsonObject media: JsonObject {
                         property bool enable: true
@@ -3526,6 +3541,10 @@ Singleton {
                         property bool showArtist: true
                         property bool showProgressSlider: true
                         property bool dynamicAlbumColors: false
+                        property bool showLyrics: true
+                        property bool showControls: true
+                        property bool showDevicePill: true
+                        property bool enableShadows: true
                         property JsonObject glow: JsonObject {
                             property bool enable: true
                             property real brightness: 10
@@ -3544,11 +3563,10 @@ Singleton {
                         property real y: 612.92
                         property bool useAlbumColors: true
                         property bool enableGlassReflection: true
-                        property bool enableShadows: false
+                        property bool enableShadows: true
                         property bool showPrevButton: true
                         property bool showNextButton: true
                         property bool showDevicePill: true
-                        property string progressShape: "Cookie9Sided"
                         property int widgetSize: 100
                     }
                     property JsonObject wearos_clock: JsonObject {
@@ -3556,7 +3574,6 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 400
                         property real y: 100
-                        property bool useAlbumColors: true
                         property bool enableGlassReflection: true
                         property bool showDistroLogo: true
                         property bool showSunsetComplication: true
@@ -3570,7 +3587,7 @@ Singleton {
                         property bool showOuterNumbers: true
                         property bool showInnerNumbers: true
                         property bool showBezelRing: true
-                        property bool enableShadows: false
+                        property bool enableShadows: true
                         property int widgetSize: 100
                     }
                     property JsonObject wearos_arc_clock: JsonObject {
@@ -3619,7 +3636,7 @@ Singleton {
                         property int hourFontRound: 100
                         property bool useBlackBg: false
                         property bool enableGlassReflection: false
-                        property bool enableShadows: false
+                        property bool enableShadows: true
                     }
                     property JsonObject month_clock: JsonObject {
                         property bool enable: false
@@ -3637,8 +3654,8 @@ Singleton {
                         property bool boldFont: true
                         property bool useBlackBg: true
                         property bool enableGlassReflection: false
-                        property string hourHandStyle: "fill"
-                        property string minuteHandStyle: "medium"
+                        property string hourHandStyle: "hollow"
+                        property string minuteHandStyle: "bold"
                         property string secondHandStyle: "line"
                     }
                     property JsonObject scallop_dot_clock: JsonObject {
@@ -3648,7 +3665,7 @@ Singleton {
                         property real y: 100
                         property int widgetSize: 100
                         property bool boldFont: true
-                        property bool useBlackBg: false
+                        property bool useBlackBg: true
                         property bool enableGlassReflection: false
                         property bool showHourHand: true
                         property bool showMinuteBubble: true
@@ -3661,7 +3678,7 @@ Singleton {
                         property real y: 100
                         property int widgetSize: 100
                         property bool boldFont: true
-                        property bool useBlackBg: false
+                        property bool useBlackBg: true
                         property bool enableGlassReflection: false
                         property bool showHourHand: true
                         property bool showMinuteBubble: true
@@ -3674,7 +3691,7 @@ Singleton {
                         property real y: 100
                         property int widgetSize: 100
                         property bool boldFont: true
-                        property bool useBlackBg: false
+                        property bool useBlackBg: true
                         property bool enableGlassReflection: false
                         property bool showDots: true
                     }
@@ -3685,7 +3702,7 @@ Singleton {
                         property real y: 100
                         property int widgetSize: 100
                         property bool boldFont: true
-                        property bool useBlackBg: false
+                        property bool useBlackBg: true
                         property bool enableGlassReflection: false
                     }
                     property JsonObject photo_1x1: JsonObject {
@@ -3696,6 +3713,7 @@ Singleton {
                         property int widgetSize: 100
                         property string backgroundShape: "Cookie9Sided"
                         property string imagePath: ""
+                        property string fitMode: "crop"
                     }
                     property JsonObject android_search_bar: JsonObject {
                         property bool enable: false
@@ -3707,6 +3725,9 @@ Singleton {
                         property string action1: "music_rec"
                         property string action2: "ai_chat"
                         property string action3: "search"
+                        property string icon1: ""
+                        property string icon2: ""
+                        property string icon3: ""
                     }
                     property JsonObject search_pill: JsonObject {
                         property bool enable: false
@@ -3718,7 +3739,7 @@ Singleton {
                         property string action1: "ai_chat"
                         property string action2: "music_rec"
                         property string action3: "search"
-                        property string aiLogo: "gemini"
+                        property string aiLogo: "rashin"
                         property string outerLeftIcon: "spark"
                         property bool useMaterialSymbolForOuterLeftIcon: false
                     }
@@ -3760,6 +3781,30 @@ Singleton {
                         property bool enableRam: true
                         property bool enableDisk: true
                     }
+                    property JsonObject resource_nothing_disk: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property int widgetSize: 100
+                        property bool useAccentColor: false
+                    }
+                    property JsonObject resource_nothing_cpu: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property int widgetSize: 100
+                        property bool useAccentColor: false
+                    }
+                    property JsonObject resource_nothing_ram: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 400
+                        property real y: 100
+                        property int widgetSize: 100
+                        property bool useAccentColor: false
+                    }
                     property JsonObject grid_card_clock: JsonObject {
                         property bool enable: false
                         property string placementStrategy: "free"
@@ -3775,21 +3820,15 @@ Singleton {
                         property int widgetSize: 100
                         property int widthCells: 3
                         property bool dualColumnMode: false
-                        property list<string> servicePriority: ["media", "calendar", "sports", "todo", "email", "localsend", "kdeconnect", "fallback"]
+                        property list<string> servicePriority: ["media", "calendar", "todo", "email", "localsend", "kdeconnect", "fallback"]
                         property bool enableMedia: true
                         property bool enableCalendar: true
-                        property bool enableSports: true
                         property bool enableTodo: true
                         property bool enableEmail: true
                         property bool enableLocalSend: true
                         property bool enableKdeConnect: true
                         property bool enableWeather: true
                         property int calendarWindowMinutes: 60
-                        property int sportsWindowHours: 12
-                        property bool showLocation: true
-                        property bool showServiceLabel: false
-                        property bool showSeparators: true
-                        property bool animateContent: true
                     }
                     property JsonObject weather: JsonObject {
                         property bool enable: false
@@ -3799,6 +3838,8 @@ Singleton {
                         property real x: 400
                         property real y: 100
                         property bool expressiveColors: false
+                        property bool showTemperature: true
+                        property bool showIcon: true
                     }
                     property JsonObject weather_forecast: JsonObject {
                         property bool enable: false
@@ -3806,6 +3847,9 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: true
+                        property bool showForecast: true
+                        property bool showLocation: true
+                        property bool showRefresh: true
                     }
                     property JsonObject weather_card: JsonObject {
                         property bool enable: false
@@ -3813,14 +3857,17 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: true
+                        property bool showForecast: true
+                        property bool showLocation: true
                     }
                     property JsonObject weather_icon: JsonObject {
                         property bool enable: false
-                        property string backgroundShape: "Cookie9Sided"
+                        property string backgroundShape: "Cookie12Sided"
                         property string placementStrategy: "free"
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: true
+                        property bool showBackground: true
                     }
                     property JsonObject weather_pill: JsonObject {
                         property bool enable: false
@@ -3828,6 +3875,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: true
+                        property bool showTemperature: true
+                        property bool showIcon: true
                     }
                     property JsonObject weather_circle: JsonObject {
                         property bool enable: false
@@ -3835,6 +3884,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: true
+                        property bool showTemperature: true
+                        property bool showLocation: true
                     }
                     property JsonObject nothing_weather_circle: JsonObject {
                         property bool enable: false
@@ -3842,6 +3893,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property bool showTemperature: false
                     }
                     // The EasyEffects preset hero as a desktop widget, in two shapes. What
                     // each one shows is shared (Config.options.easyEffects.widget).
@@ -3914,6 +3966,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property bool enableShadows: true
                     }
                     property JsonObject weather_typography: JsonObject {
                         property bool enable: false
@@ -3921,6 +3974,9 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: true
+                        property bool showLocation: true
+                        property bool showFeelsLike: true
+                        property bool showCondition: true
                     }
                     property JsonObject weather_hourly: JsonObject {
                         property bool enable: false
@@ -3928,6 +3984,9 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: true
+                        property bool showHourly: true
+                        property bool showForecast: true
+                        property bool showLocation: true
                     }
                     property JsonObject date: JsonObject {
                         property bool enable: false
@@ -3935,6 +3994,7 @@ Singleton {
                         property real x: 100
                         property real y: 100
                         property bool expressiveColors: false
+                        property bool uppercaseMonth: true
                     }
                     property JsonObject calendar_minimal: JsonObject {
                         property bool enable: false
@@ -3942,6 +4002,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property string weekdayFormat: "dddd"
+                        property string monthFormat: "MMMM"
                     }
                     property JsonObject calendar_grid: JsonObject {
                         property bool enable: false
@@ -3949,6 +4011,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property string weekStart: "monday"
                     }
                     property JsonObject calendar_agenda: JsonObject {
                         property bool enable: false
@@ -3956,6 +4019,9 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property string weekStart: "monday"
+                        property int maxEvents: 0
+                        property bool showEventDots: true
                     }
                     property JsonObject calendar_next_event: JsonObject {
                         property bool enable: false
@@ -3963,6 +4029,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property int maxEvents: 0
+                        property bool showAddButton: true
                     }
                     property JsonObject calendar_pill: JsonObject {
                         property bool enable: false
@@ -3970,6 +4038,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property string weekdayFormat: "dddd"
                     }
                     property JsonObject calendar_upcoming_3days: JsonObject {
                         property bool enable: false
@@ -3977,6 +4046,9 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property int daysShown: 3
+                        property int maxEventsPerDay: 0
+                        property bool showAddButton: true
                     }
                     property JsonObject photo: JsonObject {
                         property bool enable: false
@@ -3984,6 +4056,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property string imagePath: ""
+                        property string fitMode: "crop"
                         property bool expressiveColors: false
                     }
                     property JsonObject photo_weather_2x1: JsonObject {
@@ -3992,6 +4065,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property string imagePath: ""
+                        property string fitMode: "crop"
                         property bool showOverlay: true
                         property bool expressiveColors: false
                     }
@@ -4001,6 +4075,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property string imagePath: ""
+                        property string fitMode: "crop"
                         property bool showOverlay: true
                         property bool expressiveColors: false
                     }
@@ -4010,6 +4085,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property string imagePath: ""
+                        property string fitMode: "crop"
                         property bool showOverlay: true
                         property bool expressiveColors: false
                     }
@@ -4019,6 +4095,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property bool showPercentage: true
                     }
                     property JsonObject bluetooth_headphone: JsonObject {
                         property bool enable: false
@@ -4027,6 +4104,7 @@ Singleton {
                         property real y: 200
                         property bool halfSize: true
                         property bool expressiveColors: false
+                        property bool showPercentage: true
                     }
                     property JsonObject mobile_battery: JsonObject {
                         property bool enable: false
@@ -4034,6 +4112,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property bool showPercentage: true
                     }
                     property JsonObject bluetooth_headphone_cookie: JsonObject {
                         property bool enable: false
@@ -4042,6 +4121,7 @@ Singleton {
                         property real y: 200
                         property string materialShape: "Cookie12Sided"
                         property bool expressiveColors: false
+                        property bool showPercentage: true
                     }
                     property JsonObject bluetooth_fill_cards: JsonObject {
                         property bool enable: false
@@ -4049,6 +4129,9 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property int maxDevices: 4
+                        property bool showDeviceName: true
+                        property bool showPercentage: true
                     }
                     property JsonObject pc_battery_bars: JsonObject {
                         property bool enable: false
@@ -4056,6 +4139,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property bool showPercentage: true
+                        property bool showStatus: true
                     }
                     property JsonObject pc_battery_cable: JsonObject {
                         property bool enable: false
@@ -4063,6 +4148,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property bool showPercentage: true
+                        property bool showChargingIcon: true
                     }
                     property JsonObject devices_battery_list: JsonObject {
                         property bool enable: false
@@ -4070,6 +4157,9 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property int maxDevices: 4
+                        property bool showDeviceName: true
+                        property bool showPercentage: true
                     }
                     property JsonObject devices_battery_list_1x1: JsonObject {
                         property bool enable: false
@@ -4077,6 +4167,9 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property int maxDevices: 4
+                        property bool showDeviceName: true
+                        property bool showPercentage: true
                     }
                     property JsonObject bluetooth_earbuds_stem: JsonObject {
                         property bool enable: false
@@ -4084,6 +4177,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property bool showDeviceName: true
+                        property bool showPercentage: true
                     }
                     property JsonObject email_inbox: JsonObject {
                         property bool enable: false
@@ -4123,6 +4218,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool expressiveColors: false
+                        property string topIcon: "spark"
+                        property bool useMaterialSymbol: false
                     }
                     property JsonObject notes_widget: JsonObject {
                         property bool enable: false
@@ -4144,8 +4241,8 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool dynamicAlbumColors: false
-                        property bool enableShadows: false
-                        property bool enableInnerShadow: false
+                        property bool enableShadows: true
+                        property bool enableInnerShadow: true
                         property int widgetSize: 100
                     }
                     property JsonObject compact_media: JsonObject {
@@ -4154,9 +4251,7 @@ Singleton {
                         property real x: 200
                         property real y: 200
                         property bool dynamicAlbumColors: false
-                        property string backgroundShape: "Rectangle"
-                        property bool enableShadows: false
-                        property bool enableInnerShadow: false
+                        property bool enableShadows: true
                         property int widgetSize: 100
                     }
                     property JsonObject water_reminder: JsonObject {

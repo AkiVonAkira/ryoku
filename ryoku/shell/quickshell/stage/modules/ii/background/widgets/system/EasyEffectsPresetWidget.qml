@@ -11,12 +11,9 @@ import stage.modules.ii.easyEffects.tabs
 /**
  * The EasyEffects app's preset hero on the desktop: the same card (texture, shape, name,
  * chain, buttons), standing (portrait) or lying (landscape). The buttons work: "Edit
- * effects" opens the app on its Effects page, "Bypass" switches the effects off or on.
+ * effects" opens EasyEffects, while "Bypass" switches the effects off or on.
  *
- * What it shows is in Config.options.easyEffects.widget and shared by both shapes, down to
- * the texture alone for a quiet desktop. The texture drifts (and follows the music) only
- * while nothing covers it: a program open on the workspace being shown stops it, since
- * nobody is looking and the shader would run for nothing.
+ * Both shapes use the shared EasyEffects widget options, matching the app's preset hero.
  */
 AbstractBackgroundWidget {
     id: root

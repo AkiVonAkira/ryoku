@@ -128,8 +128,8 @@ AbstractBackgroundWidget {
 
                     // Ryoku does not redistribute Google's logo.
                     MaterialSymbol {
-                        implicitWidth: 24 * root.contentScale
-                        implicitHeight: 24 * root.contentScale
+                        Layout.preferredWidth: 24 * root.contentScale
+                        Layout.preferredHeight: 24 * root.contentScale
                         Layout.alignment: Qt.AlignVCenter
                         text: "search"
                         iconSize: Math.round(24 * root.contentScale)

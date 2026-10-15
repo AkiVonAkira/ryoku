@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import stage.modules.common.widgets
 import stage.services
 import shell.modules.phone
-import "./reminders"
+import "../reminders"
 import "../.."
 
 /**
