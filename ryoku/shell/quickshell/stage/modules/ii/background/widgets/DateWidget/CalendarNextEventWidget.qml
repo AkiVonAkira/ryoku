@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
-import Quickshell.Io
+import Ryoku.Ui.Singletons
 import stage
 import stage.services
 import stage.modules.common
@@ -26,11 +26,6 @@ AbstractBackgroundWidget {
 
     readonly property color normalCardBg: WidgetColorScheme.innerShapeColor
 
-    // Process for IPC toggle to open cheatsheet timetable
-    Process {
-        id: cheatsheetIpcProcess
-        command: ["qs", "ipc", "-c", "ii", "call", "cheatsheet", "toggle"]
-    }
 
     // Current system date & time
     readonly property date currDate: DateTime.clock.date
@@ -321,7 +316,7 @@ AbstractBackgroundWidget {
                 }
             }
 
-            // Floating Circular Add Button (+) opening cheatsheet timetable via IPC
+            // Floating add button opening the user's web calendar.
             RippleButton {
                 id: addButton
                 anchors.right: parent.right
@@ -346,9 +341,7 @@ AbstractBackgroundWidget {
                     color: Appearance.colors.colOnTertiaryContainer
                 }
 
-                onClicked: {
-                    cheatsheetIpcProcess.start();
-                }
+                onClicked: Spawn.run(["xdg-open", "https://calendar.google.com/calendar/u/0/r/eventedit"])
             }
         }
 

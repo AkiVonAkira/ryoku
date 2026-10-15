@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Ryoku.Ui.Singletons
 import stage
 import stage.modules.common
 import stage.modules.common.widgets
@@ -47,6 +48,13 @@ AbstractWidget {
     // without hiding it; `live` gates the per-second work the faces share.
     property bool paused: false
     readonly property bool live: !root.paused && root.visible && root.opacity > 0
+    readonly property string windowPresenceOutput: root.monitorName || Wm.focusedOutput
+    readonly property var activeWorkspaceForOutput: (Wm.workspaces ?? []).find(workspace =>
+        workspace.active === true
+            && (!root.windowPresenceOutput
+                || String(workspace.output ?? workspace.outputName ?? "") === root.windowPresenceOutput)) ?? null
+    readonly property bool activeWorkspaceHasWindows: root.activeWorkspaceForOutput !== null
+        && (Wm.windowsOnWorkspace(root.activeWorkspaceForOutput.id) ?? []).length > 0
     readonly property var instanceImagePath: {
         if (!root.widgetInstance)
             return undefined;

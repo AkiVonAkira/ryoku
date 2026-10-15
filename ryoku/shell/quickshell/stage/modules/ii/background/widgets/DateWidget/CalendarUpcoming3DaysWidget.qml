@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
-import Quickshell.Io
+import Ryoku.Ui.Singletons
 import stage
 import stage.services
 import stage.modules.common
@@ -21,11 +21,6 @@ AbstractBackgroundWidget {
 
     readonly property color createButtonBgColor: WidgetColorScheme.innerShapeColor
 
-    // Process for IPC toggle to open cheatsheet timetable
-    Process {
-        id: cheatsheetIpcProcess
-        command: ["qs", "ipc", "-c", "ii", "call", "cheatsheet", "toggle"]
-    }
 
     // Stable date calculation without re-triggering model on clock seconds or events updates
     readonly property date todayDate: DateTime.clock.date
@@ -167,9 +162,7 @@ AbstractBackgroundWidget {
                                 color: root.expressive ? Appearance.colors.colOnPrimary : root.textColorOnBg
                             }
 
-                            onClicked: {
-                                cheatsheetIpcProcess.start();
-                            }
+                            onClicked: Spawn.run(["xdg-open", "https://calendar.google.com/calendar/u/0/r"])
                         }
                     }
 

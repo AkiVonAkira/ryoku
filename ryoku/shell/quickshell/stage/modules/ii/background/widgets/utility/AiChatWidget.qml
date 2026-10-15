@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import Ryoku.Ui.Singletons
 import Qt5Compat.GraphicalEffects
 import stage
 import stage.services
@@ -138,12 +139,7 @@ AbstractBackgroundWidget {
                         }
                     }
 
-                    onClicked: {
-                        Ai.surfaceRouter.open({
-                            surface: "sidebar",
-                            focusIntent: "composer"
-                        });
-                    }
+                    onClicked: Spawn.run(["ryoku-shell", "ask", "chat"])
                 }
             }
         }

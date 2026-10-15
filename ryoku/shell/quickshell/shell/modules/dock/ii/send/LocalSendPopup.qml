@@ -13,8 +13,6 @@ Scope {
 
     LazyLoader {
         id: popupLoader
-        // The island draws the request itself when it owns it; see
-        // IslandPolicy.ownsLocalSendRequest.
         active: GlobalStates.localSendPopupOpen
 
         component: PanelWindow {
@@ -50,9 +48,7 @@ Scope {
                 id: popupContent
                 transfer: GlobalStates.localSendPopupTransfer
 
-                onDismissed: {
-                    GlobalStates.localSendPopupOpen = false;
-                }
+                onDismissed: LocalSend.denyTransfer()
                 onAcceptRequested: {
                     LocalSend.acceptTransfer();
                 }

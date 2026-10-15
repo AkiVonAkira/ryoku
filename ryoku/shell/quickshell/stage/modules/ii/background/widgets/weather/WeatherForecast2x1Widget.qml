@@ -220,9 +220,7 @@ AbstractBackgroundWidget {
                         color: root.textColorOnBg
                     }
 
-                    onClicked: {
-                        Weather.getData(true);
-                    }
+                    onClicked: Weather.getData(true)
                 }
             }
         }

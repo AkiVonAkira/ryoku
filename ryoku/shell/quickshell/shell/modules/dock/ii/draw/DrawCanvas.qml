@@ -396,7 +396,7 @@ Item {
                 }
                 NumberAnimation {
                     to: 0
-                    duration: root.laserFadeMs
+                    duration: Appearance.reducedMotion ? 0 : root.laserFadeMs
                     easing.type: Easing.InCubic
                 }
                 // Gone once invisible. The oldest goes first, and every stroke fades for

@@ -29,16 +29,10 @@ AbstractBackgroundWidget {
         return connectedDevices.length > 0 ? connectedDevices[0] : null;
     }
 
-    readonly property var devBattery: root.earbudDevice ? EarbudsControlService.batteryInfo(root.earbudDevice) : null
-    readonly property var leftComp: devBattery ? devBattery.left : null
-    readonly property var rightComp: devBattery ? devBattery.right : null
-    readonly property var caseComp: devBattery ? devBattery.case : null
-    readonly property bool hasIndividualBatteries: devBattery && devBattery.available && (leftComp !== null && leftComp.available) && (rightComp !== null && rightComp.available)
-
     readonly property bool isConnected: earbudDevice !== null
     readonly property real batteryLevel: (earbudDevice && earbudDevice.batteryAvailable) ? (earbudDevice.battery ?? 1.0) : 1.0
     readonly property int batteryPercent: Math.round(batteryLevel * 100)
-    readonly property int primaryPercent: (devBattery && devBattery.available && devBattery.aggregate !== null) ? devBattery.aggregate : batteryPercent
+    readonly property int primaryPercent: batteryPercent
     readonly property string fullName: earbudDevice ? (earbudDevice.name ?? Translation.tr("Bluetooth Earbuds")) : ""
 
     // Separate Title line 1 and line 2 for pixel match

@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import stage as Stage
+import inir as Inir
 import shell.services
 import shell.modules.phone
 import "../../../stage/Singletons" as StageCfg
@@ -21,7 +22,7 @@ import ".."
  */
 Singleton {
     id: root
-    readonly property ClockApp clockAppHost: ClockApp {}
+    readonly property var clockAppHost: ClockApp
     readonly property ReminderAlertPopup reminderAlertHost: ReminderAlertPopup {}
     readonly property LocalSendPopup localSendPopupHost: LocalSendPopup {}
 
@@ -34,14 +35,61 @@ Singleton {
     readonly property bool presetBarHidden: Stage.GlobalStates.presetBarHidden
     readonly property bool barOpen: Stage.GlobalStates.barOpen
     readonly property bool overviewOpen: Stage.GlobalStates.overviewOpen
-    property bool mediaControlsOpen: Stage.GlobalStates.mediaControlsOpen
-    onMediaControlsOpenChanged: if (Stage.GlobalStates.mediaControlsOpen !== root.mediaControlsOpen)
-        Stage.GlobalStates.mediaControlsOpen = root.mediaControlsOpen
+    property bool mediaControlsOpen: Inir.GlobalStates.mediaControlsOpen
+    onMediaControlsOpenChanged: {
+        if (Inir.GlobalStates.mediaControlsOpen !== root.mediaControlsOpen)
+            Inir.GlobalStates.mediaControlsOpen = root.mediaControlsOpen;
+        if (Stage.GlobalStates.mediaControlsOpen !== root.mediaControlsOpen)
+            Stage.GlobalStates.mediaControlsOpen = root.mediaControlsOpen;
+    }
+    Connections {
+        target: Inir.GlobalStates
+        function onMediaControlsOpenChanged() {
+            if (root.mediaControlsOpen !== Inir.GlobalStates.mediaControlsOpen)
+                root.mediaControlsOpen = Inir.GlobalStates.mediaControlsOpen;
+        }
+    }
+    Connections {
+        target: Stage.GlobalStates
+        function onMediaControlsOpenChanged() {
+            if (root.mediaControlsOpen !== Stage.GlobalStates.mediaControlsOpen)
+                root.mediaControlsOpen = Stage.GlobalStates.mediaControlsOpen;
+        }
+    }
+    function openMediaControlsFromDock(anchorRect, dockSide, screenName) {
+        Stage.GlobalStates.mediaControlsDockAnchor = {
+            "x": Number(anchorRect?.x ?? 0),
+            "y": Number(anchorRect?.y ?? 0),
+            "width": Number(anchorRect?.width ?? 0),
+            "height": Number(anchorRect?.height ?? 0),
+            "screen": String(screenName ?? ""),
+            "side": String(dockSide ?? "bottom"),
+            "requestedAt": Date.now()
+        };
+        root.mediaControlsOpen = true;
+    }
+    property bool localSendPopupOpen: Stage.GlobalStates.localSendPopupOpen
+    onLocalSendPopupOpenChanged: if (Stage.GlobalStates.localSendPopupOpen !== root.localSendPopupOpen)
+        Stage.GlobalStates.localSendPopupOpen = root.localSendPopupOpen
+    property var localSendPopupTransfer: Stage.GlobalStates.localSendPopupTransfer
+    onLocalSendPopupTransferChanged: if (Stage.GlobalStates.localSendPopupTransfer !== root.localSendPopupTransfer)
+        Stage.GlobalStates.localSendPopupTransfer = root.localSendPopupTransfer
+    Connections {
+        target: Stage.GlobalStates
+        function onLocalSendPopupOpenChanged() {
+            if (root.localSendPopupOpen !== Stage.GlobalStates.localSendPopupOpen)
+                root.localSendPopupOpen = Stage.GlobalStates.localSendPopupOpen;
+        }
+        function onLocalSendPopupTransferChanged() {
+            if (root.localSendPopupTransfer !== Stage.GlobalStates.localSendPopupTransfer)
+                root.localSendPopupTransfer = Stage.GlobalStates.localSendPopupTransfer;
+        }
+    }
     // The wallpaper tile flips this flag to ask for Ryoku's picker
     // (ryogami's full-screen browser); rising launches it.
     property bool wallpaperSelectorOpen: false
     onWallpaperSelectorOpenChanged: if (root.wallpaperSelectorOpen)
-        Quickshell.execDetached(["ryogami", "wallpaper", "ui"]);
+        Spawn.run(["ryogami", "wallpaper", "ui"]);
     readonly property bool editBarMenuOpen: Stage.GlobalStates.editBarMenuOpen
     readonly property bool editWidgetMenuOpen: Stage.GlobalStates.editWidgetMenuOpen
     property bool modesOpen: Stage.GlobalStates.modesOpen
@@ -78,7 +126,7 @@ Singleton {
     function openEditCatalogue(section, screenName, page) { Stage.GlobalStates.openEditCatalogue(section, screenName ?? "", page ?? ""); }
     function editHistoryPush(entry) { Stage.GlobalStates.editHistoryPush(entry); }
     function toggleOverview(monitorName) { Stage.GlobalStates.toggleOverview(monitorName); }
-    function launchColorPicker() { Quickshell.execDetached(["ryoku-cmd-color-picker"]); }
+    function launchColorPicker() { Spawn.run(["ryoku-cmd-color-picker"]); }
     // The dock's settings live in the Stage Editor's dock pages: the design
     // page for the dock as a whole, its widgets page for any one item on it.
     // Opened through the session, exactly as the editor's IPC opens a
@@ -86,6 +134,10 @@ Singleton {
     readonly property bool settingsOpen: Stage.GlobalStates.settingsOpen
     function openSettingsPage(pageId, subPageId, sectionId) {
         const section = "dock/" + (String(subPageId ?? "") !== "" ? "iiWidgets" : "appearance");
+        if (section === "dock/iiWidgets") {
+            Stage.GlobalStates.iiDockWidgetSettingsTarget = "";
+            Stage.GlobalStates.iiDockWidgetSettingsTarget = String(sectionId ?? "");
+        }
         const active = ShellState.forActive();
         let monitor = active?.modelData?.name ?? "";
         if (monitor === "")
@@ -102,6 +154,18 @@ Singleton {
         root.dockInsets = next;
     }
 
+
+    // Stage owns this pointer so relative and module imports share one popup.
+    readonly property var dockPopup: Stage.GlobalStates.iiDockPopup
+    function claimDockPopup(popup) {
+        Stage.GlobalStates.claimIiDockPopup(popup);
+    }
+    function releaseDockPopup(popup) {
+        Stage.GlobalStates.releaseIiDockPopup(popup);
+    }
+    function dismissDockPopup() {
+        Stage.GlobalStates.dismissIiDockPopup();
+    }
     // ── the dock's own session state ─────────────────────────────────────────
     property var dockInsets: ({})
     property var barIslands: ({})
@@ -112,9 +176,6 @@ Singleton {
     property var oledSaverMonitors: []
     property string clockAppPendingTab: ""
     property string reminderToOpen: ""
-    property bool localSendPopupOpen: false
-    property var localSendPopupTransfer: null
-    property int liveDrawSaveRequest: 0
     property color colorPickerPopupColor: "#00000000"
     property var dockContents: []
 
@@ -131,8 +192,7 @@ Singleton {
 
     // The dock's clock tile: open the clock app, optionally landing on a tab.
     function openClockApp(tab) {
-        root.clockAppPendingTab = String(tab ?? "");
-        root.clockAppOpen = true;
+        root.clockAppHost.requestOpen(String(tab ?? ""));
     }
 
     // The search tile opens Ryoku's launcher.

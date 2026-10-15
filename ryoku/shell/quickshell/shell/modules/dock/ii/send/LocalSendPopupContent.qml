@@ -35,14 +35,12 @@ Item {
         if (!isHovered) dismissTimer.start();
     }
 
-    // Auto-dismiss timer — stays open for 8 seconds unless hovered
+    // Do not strand the receiver at its Y/N prompt when this surface times out.
     Timer {
         id: dismissTimer
-        interval: 8000
+        interval: 30000
         repeat: false
-        // Hosted, the activity owns the lifetime: the transfer is still pending after
-        // eight seconds, so nothing should take the face away.
-        onTriggered: if (!root.hosted) root.dismissed()
+        onTriggered: if (!root.hosted) root.rejectRequested()
     }
 
     // Expose contentBackground for mask in parent PanelWindow
@@ -124,7 +122,7 @@ Item {
                 target: contentBackground
                 property: "opacity"
                 from: 0; to: 1
-                duration: 350
+                duration: Appearance.reducedMotion ? 0 : 350
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
             }
@@ -132,7 +130,7 @@ Item {
                 target: contentBackground
                 property: "scale"
                 from: 0.85; to: 1
-                duration: 400
+                duration: Appearance.reducedMotion ? 0 : 400
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
             }
@@ -205,12 +203,13 @@ Item {
                         from: 0; to: 360
                         duration: 15000
                         loops: Animation.Infinite
-                        running: true
+                        running: !Appearance.reducedMotion && root.visible
                     }
 
                     NumberAnimation on scale {
-                        from: 0; to: 1
-                        duration: 650
+                        from: Appearance.reducedMotion ? 1 : 0
+                        to: 1
+                        duration: Appearance.reducedMotion ? 0 : 650
                         easing.type: Easing.OutBack
                         easing.overshoot: 2.5
                     }
@@ -224,8 +223,9 @@ Item {
                     color: Appearance.colors.colOnPrimaryContainer
 
                     NumberAnimation on scale {
-                        from: 0; to: 1
-                        duration: 750
+                        from: Appearance.reducedMotion ? 1 : 0
+                        to: 1
+                        duration: Appearance.reducedMotion ? 0 : 750
                         easing.type: Easing.OutBack
                         easing.overshoot: 1.5
                     }
@@ -297,10 +297,12 @@ Item {
                     scale: rejectMa.pressed ? 0.92 : (rejectMa.containsMouse ? 1.05 : 1.0)
 
                     Behavior on color {
+                        enabled: !Appearance.reducedMotion
                         animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
 
                     Behavior on scale {
+                        enabled: !Appearance.reducedMotion
                         NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
                     }
 
@@ -334,10 +336,12 @@ Item {
                     scale: acceptMa.pressed ? 0.96 : (acceptMa.containsMouse ? 1.02 : 1.0)
 
                     Behavior on color {
+                        enabled: !Appearance.reducedMotion
                         animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
 
                     Behavior on scale {
+                        enabled: !Appearance.reducedMotion
                         NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
                     }
 

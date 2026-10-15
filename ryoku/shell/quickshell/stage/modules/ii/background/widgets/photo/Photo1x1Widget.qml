@@ -62,7 +62,7 @@ AbstractBackgroundWidget {
     readonly property bool shouldPlay: {
         return root.visible && root.opacity > 0 && root.isAnimated
             && !GlobalStates.screenLocked
-            && !GlobalStates.activeWorkspaceHasWindows;
+            && !root.activeWorkspaceHasWindows;
     }
 
     // The photo is minified straight down to the widget box by the GPU's 2x2 tap,

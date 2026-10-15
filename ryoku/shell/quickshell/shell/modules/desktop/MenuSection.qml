@@ -23,11 +23,27 @@ Item {
         color: Theme.ink
     }
 
+    TextMetrics {
+        id: glossMetrics
+        text: sec.gloss
+        font.family: Theme.fontJp
+        font.pixelSize: 9
+    }
+
+    TextMetrics {
+        id: labelMetrics
+        text: sec.label.toUpperCase()
+        font.family: Theme.font
+        font.pixelSize: 9
+        font.weight: Font.DemiBold
+        font.letterSpacing: 1.6
+    }
+
     Text {
         id: gl
         visible: sec.gloss.length > 0 && sec.label.length > 0
         x: tick.x + tick.width + 7
-        width: visible ? Math.min(implicitWidth, Math.max(0, sec.width * 0.2)) : 0
+        width: visible ? glossMetrics.advanceWidth : 0
         anchors.verticalCenter: parent.verticalCenter
         text: sec.gloss
         color: Theme.faint
@@ -41,7 +57,7 @@ Item {
         id: cap
         visible: sec.label.length > 0
         x: gl.visible ? gl.x + gl.width + 7 : tick.x + tick.width + 7
-        width: visible ? Math.min(implicitWidth,
+        width: visible ? Math.min(labelMetrics.advanceWidth,
             Math.max(0, sec.width - x - 7 - 20)) : 0
         anchors.verticalCenter: parent.verticalCenter
         text: sec.label.toUpperCase()

@@ -263,9 +263,18 @@ Item {
     // ── dock geometry: the side of the widget with more room ──────────────
     readonly property int pad: Theme.s4
     readonly property int gap: Theme.s3
-    readonly property int sheetW: 384
     readonly property int dockGap: Theme.s3
+    readonly property int edgeMargin: Theme.s2
     readonly property bool dockRight: insp.slot ? (insp.width - (insp.wx + insp.ww) >= insp.wx) : true
+    readonly property real dockRoom: !insp.slot ? insp.width - insp.edgeMargin * 2
+        : insp.dockRight
+            ? insp.width - (insp.wx + insp.ww) - insp.dockGap - insp.edgeMargin
+            : insp.wx - insp.dockGap - insp.edgeMargin
+    // The source pages normally have an 870px content viewport. Give ii pages
+    // enough width for their row controls while yielding to the widget and the
+    // monitor edge when either side is tighter.
+    readonly property int sheetW: Math.max(1, Math.floor(Math.min(
+        insp.isIi ? 520 : 384, Math.max(1, insp.dockRoom))))
 
     MultiEffect {
         source: sheet
@@ -297,13 +306,12 @@ Item {
         x: {
             if (insp.embedded)
                 return 0;
-            const mx = Theme.s2;
+            const mx = insp.edgeMargin;
             if (!insp.slot)
                 return Math.max(mx, (insp.width - width) / 2);
             const rx = insp.wx + insp.ww + insp.dockGap;
             const lx = insp.wx - insp.dockGap - width;
-            const tx = insp.dockRight ? rx : lx;
-            return Math.max(mx, Math.min(tx, insp.width - width - mx));
+            return insp.dockRight ? rx : lx;
         }
         y: {
             if (insp.embedded)

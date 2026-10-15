@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Ryoku.Ui.Singletons
 import stage.modules.common.functions
 import stage.modules.common.widgets
 import stage.services
@@ -21,7 +22,7 @@ UtilityTile {
 
     readonly property var colors: Persistent.ready ? Array.from(Persistent.states.dockUtilities.colors ?? []) : []
     readonly property string latest: tile.colors.length > 0 ? tile.colors[0] : ""
-    readonly property bool picking: picker.running
+    readonly property bool picking: pickDelay.running || picker.running
     property string copied: ""
 
     function remember(hex) {
@@ -32,7 +33,7 @@ UtilityTile {
     }
     function pick() {
         picker.running = false;
-        Qt.callLater(() => picker.running = true);
+        pickDelay.restart();
     }
     function copy(hex) {
         Quickshell.clipboardText = hex;
@@ -48,9 +49,15 @@ UtilityTile {
 
     // The pointer is still on the dock when the click lands; give the
     // release a moment before the picker grabs the screen.
+    Timer {
+        id: pickDelay
+        interval: 200
+        onTriggered: picker.running = true
+    }
     Process {
         id: picker
-        command: ["bash", "-c", "sleep 0.2; ryoku-cmd-color-picker"]
+        command: ["ryoku-cmd-color-picker"]
+        environment: Spawn.env
         stdout: SplitParser {
             onRead: data => tile.remember(data)
         }
@@ -59,6 +66,12 @@ UtilityTile {
         target: GlobalStates
         function onColorPickerPopupColorChanged() {
             tile.remember(GlobalStates.colorPickerPopupColor);
+        }
+    }
+    Connections {
+        target: Quickshell
+        function onClipboardTextChanged() {
+            tile.remember(Quickshell.clipboardText);
         }
     }
     Timer {

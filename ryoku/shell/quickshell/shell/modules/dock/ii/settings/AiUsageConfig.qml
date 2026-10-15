@@ -5,6 +5,8 @@ import ".."
 
 UtilityConfigPage {
     id: page
+    Component.onCompleted: AiPlanUsage.retain()
+    Component.onDestruction: AiPlanUsage.release()
     title: Translation.tr("AI usage")
 
     readonly property var cfg: Config.options.dock.utilities.aiUsage

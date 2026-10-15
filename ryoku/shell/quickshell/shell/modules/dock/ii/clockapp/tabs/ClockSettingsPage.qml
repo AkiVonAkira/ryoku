@@ -311,8 +311,8 @@ Rectangle {
                 }
                 ClockSettingsRow {
                     symbol: "calendar_month"
-                    title: Translation.tr("Timetable suggestions")
-                    description: Translation.tr("Offer upcoming timetable events as alarms")
+                    title: Translation.tr("Calendar suggestions")
+                    description: Translation.tr("Offer upcoming calendar events as alarms")
                     Toggle {
                         target: root.app
                         key: "showTimetableEvents"

@@ -10,6 +10,7 @@ import Ryoku.Ui.Singletons
 import Quickshell.Services.Mpris
 import stage
 import stage.services
+import shell.services as ShellServices
 import stage.modules.common
 import stage.modules.common.widgets
 import stage.modules.common.functions
@@ -37,20 +38,18 @@ AbstractBackgroundWidget {
     readonly property bool hasTrack: (player?.trackTitle ?? "").length > 0
 
     readonly property bool hasActiveWindows: {
-        const monName = Wm.focusedOutput ?? "";
-        var activeWsId = 0;
-        if (GlobalStates.screenLocked && GlobalStates.lockSavedWorkspaces?.[monName])
-            activeWsId = GlobalStates.lockSavedWorkspaces[monName];
-        else if (GlobalStates.editMode && GlobalStates.editModeMonitor === monName && GlobalStates._editSavedWorkspace > 0)
-            activeWsId = GlobalStates._editSavedWorkspace;
-        else {
-            activeWsId = HyprlandData.activeWorkspace ? HyprlandData.activeWorkspace.id : 1;
-            if (activeWsId > 1000000)
-                activeWsId = 2147483647 - activeWsId;
+        const output = root.monitorName || Wm.focusedOutput || "";
+        const workspaces = Wm.workspaces ?? [];
+        let active = null;
+        for (let i = 0; i < workspaces.length; i++) {
+            if (workspaces[i].active === true && (output === "" || workspaces[i].output === output)) {
+                active = workspaces[i];
+                break;
+            }
         }
-        if (!HyprlandData || !HyprlandData.windowList)
-            return false;
-        return HyprlandData.windowList.some(w => w.workspace && w.workspace.id === activeWsId);
+        if (!active)
+            active = Wm.focusedWorkspace;
+        return active ? Wm.windowsOnWorkspace(active.id).length > 0 : false;
     }
 
     readonly property string artCachePath: `${Directories.coverArt}/${Qt.md5(root.artUrl)}`
@@ -316,7 +315,7 @@ AbstractBackgroundWidget {
                         colRipple: root.pillFillColorActive
                         buttonRadius: Appearance.rounding.full
 
-                        readonly property string activeAudioDeviceName: Audio.sink ? (Audio.sink.description || "") : ""
+                        readonly property string activeAudioDeviceName: ShellServices.Audio.sink ? (ShellServices.Audio.sink.description || "") : ""
                         readonly property string audioDeviceIcon: {
                             let desc = activeAudioDeviceName.toLowerCase();
                             if (desc.includes("headphone") || desc.includes("headset") || desc.includes("wired")) {
@@ -325,7 +324,7 @@ AbstractBackgroundWidget {
                             return "volume_up";
                         }
 
-                        onClicked: GlobalStates.openAudioOutputSettings()
+                        onClicked: Spawn.run(["sh", "-c", Config.options.apps.volumeMixer])
 
                         contentItem: RowLayout {
                             id: audioPillLayout

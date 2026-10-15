@@ -4,9 +4,10 @@
 When a Google refresh token expires or is revoked (causing 'invalid_grant'
 during vdirsyncer sync), this script provides a zero-terminal browser login.
 It extracts credentials from vdirsyncer's configuration (falling back to
-ii/.env), spins up a local loopback server, prompts the user in their default
-browser via xdg-open, exchanges the authorization code for fresh tokens,
-and atomically updates vdirsyncer's token file with safe permissions (0600).
+Ryoku's Google OAuth environment), spins up a local loopback server, prompts
+the user in their default browser via xdg-open, exchanges the authorization
+code for fresh tokens, and atomically updates vdirsyncer's token file with safe
+permissions (0600).
 """
 
 from __future__ import annotations
@@ -65,22 +66,35 @@ def parse_vdirsyncer_sections(path: Path) -> dict[str, dict[str, str]]:
 
 
 def read_env_credentials() -> tuple[str, str]:
-    env_path = Path(__file__).resolve().parents[2] / ".env"
-    if not env_path.is_file():
-        return "", ""
-    client_id = ""
-    client_secret = ""
-    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+    client_id = os.environ.get("GOOGLE_CLIENT_ID") or os.environ.get("GMAIL_CLIENT_ID") or ""
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET") or os.environ.get("GMAIL_CLIENT_SECRET") or ""
+    candidates: list[Path] = []
+    override = os.environ.get("RYOKU_GOOGLE_ENV", "").strip()
+    if override:
+        candidates.append(Path(override).expanduser())
+    shell_dir = os.environ.get("RYOKU_SHELL_DIR", "").strip()
+    if shell_dir:
+        candidates.append(Path(shell_dir).expanduser() / ".env")
+    candidates.extend([
+        Path("~/.config/quickshell/shell/.env").expanduser(),
+        Path(__file__).resolve().parents[2] / ".env",
+    ])
+    for env_path in candidates:
+        if not env_path.is_file():
             continue
-        key, val = line.split("=", 1)
-        k = key.strip()
-        v = val.strip().strip('"').strip("'")
-        if k in ("GOOGLE_CLIENT_ID", "GMAIL_CLIENT_ID") and not client_id:
-            client_id = v
-        elif k in ("GOOGLE_CLIENT_SECRET", "GMAIL_CLIENT_SECRET") and not client_secret:
-            client_secret = v
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key = key.strip()
+            value = val.strip().strip('"').strip("'")
+            if key in ("GOOGLE_CLIENT_ID", "GMAIL_CLIENT_ID") and not client_id:
+                client_id = value
+            elif key in ("GOOGLE_CLIENT_SECRET", "GMAIL_CLIENT_SECRET") and not client_secret:
+                client_secret = value
+        if client_id and client_secret:
+            break
     return client_id, client_secret
 
 
@@ -235,10 +249,9 @@ def _error_html(msg: str) -> bytes:
 
 
 def notify_quickshell_ipc() -> None:
-    shell_dir = Path(__file__).resolve().parents[2]
     try:
         subprocess.run(
-            ["qs", "-c", str(shell_dir), "ipc", "call", "calendar", "onGoogleAuthComplete"],
+            ["qs", "-c", "shell", "ipc", "call", "calendar", "onGoogleAuthComplete"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             timeout=3,
@@ -259,7 +272,7 @@ def run_reauth(
         return {
             "ok": False,
             "code": "missing_credentials",
-            "error": "Google Client ID or Client Secret not found in vdirsyncer config or ii/.env",
+            "error": "Google Client ID or Client Secret not found in vdirsyncer config or Ryoku's Google OAuth environment",
         }
 
     redirect_uri = f"http://127.0.0.1:{port}/callback"

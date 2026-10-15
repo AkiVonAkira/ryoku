@@ -683,6 +683,29 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **Every ii dock widget works on Hyprland and niri.** A panel or menu now
+  opens one at a time, switches straight to another tile's panel, takes typing
+  in its fields, and closes on Escape, a click on the desktop or an app, or a
+  second click on its tile. The Clipboard panel lists its history again
+  (it failed to load and collapsed to a thin bar) and says when it is still
+  loading. AI usage shows the provider that has data instead of "?", explains a
+  signed-out or stale provider, and offers sign-in only where it applies. Water
+  keeps its week, Tasks opens a panel to add and finish tasks, Weather opens its
+  forecast, Media opens its controls above the widget, Phone and Send reach the
+  paired phone, the Clock opens one window, and "Widget settings" lands on that
+  widget's row in the Stage Editor. Live preview says it is unavailable where
+  the compositor cannot capture windows (`quickshell/shell/modules/dock/ii/`,
+  `quickshell/shell/modules/dock/IiDockHost.qml`).
+- **Customize on an ii desktop widget opens beside it with its own settings.**
+  The inspector docked to the middle of the screen and every widget's page
+  said it was disabled with its text cut off at both edges. It now opens next
+  to the widget, shows the widget's real settings, and those settings reach the
+  widget, its shadow included. All 87 ii widgets load: the services they share
+  with the dock (tasks, notes, timers, water, calendar, weather, LocalSend) run
+  once instead of twice, and the missing ones (at a glance, translator, earbuds,
+  email, lyrics, the audio spectrum) are in place (`quickshell/stage/services/`,
+  `quickshell/stage/modules/ii/background/widgets/`,
+  `quickshell/shell/modules/desktop/`).
 - **Picking a file no longer crashes the shell once its window has been
   rebuilt.** Quickshell deletes the window behind a hidden layer-shell or popup
   surface, and Qt's non-native `FileDialog` kept a bare pointer to the

@@ -61,7 +61,7 @@ AbstractBackgroundWidget {
     }
     readonly property bool shouldPlay: root.visible && root.opacity > 0 && root.isAnimated
                                      && !GlobalStates.screenLocked
-                                     && !GlobalStates.activeWorkspaceHasWindows
+                                     && !root.activeWorkspaceHasWindows
 
     // Decode box: the shown size times the window's DPR (high-water mark - it
     // churns while the window is set up) and the render scale, quantised so

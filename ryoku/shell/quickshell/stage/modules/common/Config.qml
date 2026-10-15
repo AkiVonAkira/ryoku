@@ -702,6 +702,10 @@ Singleton {
     // edits the desktop the user actually has. Without a provider the island
     // is self-contained (the verbatim reference behaviour).
     property var widgetProvider: null
+    // A lightweight host can supply only widget counts without replacing the
+    // full editor provider. Floating hosted-widget inspectors use this seam
+    // while the Stage Editor is closed.
+    property var widgetCountProvider: null
 
     // Catalogues the provider adds beside Widgets, Wallpaper and Style: the
     // editors Ryoku folds into this mode (the visualiser, the depth stage).
@@ -746,6 +750,11 @@ Singleton {
     function countWidgetInstances(widgetId) {
         if (root.widgetProvider)
             return root.widgetProvider.count(widgetId);
+        if (root.widgetCountProvider) {
+            const provided = root.widgetCountProvider.count(widgetId);
+            if (provided !== undefined && provided !== null && provided >= 0)
+                return provided;
+        }
         let list = root.options.background.activeWidgets || [];
         let count = 0;
         for (let i = 0; i < list.length; i++) {
@@ -3216,7 +3225,7 @@ Singleton {
                 property string taskManager: "plasma-systemmonitor --page-name Processes"
                 property string terminal: "kitty -1" // This is only for shell actions
                 property string update: "kitty -1 --hold=yes fish -i -c 'ryoku update --system'"
-                property string volumeMixer: `~/.config/hypr/hyprland/scripts/launch_first_available.sh "pavucontrol-qt" "pavucontrol"`
+                property string volumeMixer: "command -v pavucontrol-qt >/dev/null 2>&1 && exec pavucontrol-qt || exec pavucontrol"
             }
 
             // Per-app usage and energy history. The sampler is a separate process

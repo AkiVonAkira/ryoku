@@ -151,7 +151,7 @@ ContentPage {
                     { displayName: Translation.tr("Search Overlay"), icon: "search", value: "search" },
                     { displayName: Translation.tr("Wallpapers"), icon: "wallpaper", value: "wallpapers" },
                     { displayName: Translation.tr("Phone / KDE Connect"), icon: "smartphone", value: "phone" },
-                    { displayName: Translation.tr("Cheatsheet"), icon: "help", value: "cheatsheet" },
+                    { displayName: Translation.tr("Kit"), icon: "apps", value: "cheatsheet" },
                     { displayName: Translation.tr("Clipboard"), icon: "content_paste", value: "clipboard" },
                     { displayName: Translation.tr("Color Picker"), icon: "colorize", value: "color_picker" },
                     { displayName: Translation.tr("Screenshot"), icon: "crop", value: "screenshot" }
@@ -170,7 +170,7 @@ ContentPage {
                     { displayName: Translation.tr("Search Overlay"), icon: "search", value: "search" },
                     { displayName: Translation.tr("Wallpapers"), icon: "wallpaper", value: "wallpapers" },
                     { displayName: Translation.tr("Phone / KDE Connect"), icon: "smartphone", value: "phone" },
-                    { displayName: Translation.tr("Cheatsheet"), icon: "help", value: "cheatsheet" },
+                    { displayName: Translation.tr("Kit"), icon: "apps", value: "cheatsheet" },
                     { displayName: Translation.tr("Clipboard"), icon: "content_paste", value: "clipboard" },
                     { displayName: Translation.tr("Color Picker"), icon: "colorize", value: "color_picker" },
                     { displayName: Translation.tr("Screenshot"), icon: "crop", value: "screenshot" }
@@ -189,7 +189,7 @@ ContentPage {
                     { displayName: Translation.tr("Translator"), icon: "translate", value: "translator" },
                     { displayName: Translation.tr("Wallpapers"), icon: "wallpaper", value: "wallpapers" },
                     { displayName: Translation.tr("Phone / KDE Connect"), icon: "smartphone", value: "phone" },
-                    { displayName: Translation.tr("Cheatsheet"), icon: "help", value: "cheatsheet" },
+                    { displayName: Translation.tr("Kit"), icon: "apps", value: "cheatsheet" },
                     { displayName: Translation.tr("Clipboard"), icon: "content_paste", value: "clipboard" },
                     { displayName: Translation.tr("Color Picker"), icon: "colorize", value: "color_picker" },
                     { displayName: Translation.tr("Screenshot"), icon: "crop", value: "screenshot" }

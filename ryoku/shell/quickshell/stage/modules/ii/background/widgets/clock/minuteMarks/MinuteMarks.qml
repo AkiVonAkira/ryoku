@@ -1,3 +1,4 @@
+import stage.services
 import stage.modules.common
 import stage.modules.common.widgets
 import QtQuick

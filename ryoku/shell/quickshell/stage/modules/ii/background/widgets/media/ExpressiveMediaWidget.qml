@@ -48,20 +48,18 @@ AbstractBackgroundWidget {
     // the user. The active workspace is read with the lock/edit-mode detours the
     // other media surfaces already need.
     readonly property bool hasActiveWindows: {
-        const monName = Wm.focusedOutput ?? "";
-        var activeWsId = 0;
-        if (GlobalStates.screenLocked && GlobalStates.lockSavedWorkspaces?.[monName])
-            activeWsId = GlobalStates.lockSavedWorkspaces[monName];
-        else if (GlobalStates.editMode && GlobalStates.editModeMonitor === monName && GlobalStates._editSavedWorkspace > 0)
-            activeWsId = GlobalStates._editSavedWorkspace;
-        else {
-            activeWsId = HyprlandData.activeWorkspace ? HyprlandData.activeWorkspace.id : 1;
-            if (activeWsId > 1000000)
-                activeWsId = 2147483647 - activeWsId;
+        const output = root.monitorName || Wm.focusedOutput || "";
+        const workspaces = Wm.workspaces ?? [];
+        let active = null;
+        for (let i = 0; i < workspaces.length; i++) {
+            if (workspaces[i].active === true && (output === "" || workspaces[i].output === output)) {
+                active = workspaces[i];
+                break;
+            }
         }
-        if (!HyprlandData || !HyprlandData.windowList)
-            return false;
-        return HyprlandData.windowList.some(w => w.workspace && w.workspace.id === activeWsId);
+        if (!active)
+            active = Wm.focusedWorkspace;
+        return active ? Wm.windowsOnWorkspace(active.id).length > 0 : false;
     }
 
     readonly property bool useDynamicColors: (Config.options.background.widgets.media.dynamicAlbumColors ?? false) && root.artSource !== ""

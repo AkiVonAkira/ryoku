@@ -1,4 +1,5 @@
 import QtQuick
+import Ryoku.Ui.Singletons
 import stage
 import stage.services
 import stage.modules.common
@@ -30,18 +31,17 @@ AbstractBackgroundWidget {
     implicitWidth: root.landscape ? 720 : 360
     implicitHeight: root.landscape ? 320 : 640
 
-    // ── Is anything on top of it? ───────────────────────────────────────
-    // The monitor this copy is drawn on, and the workspaces it is showing now (the normal
-    // one, plus a special one pulled over it). A window that is mapped on any of them
-    // covers the desktop; a preview in the widget catalogue never counts as covered.
-    readonly property var monitor: HyprlandData.monitors.find(candidate => candidate?.name === root.monitorName)
-        ?? HyprlandData.monitors.find(candidate => candidate?.focused === true) ?? null
-    readonly property var shownWorkspaces: root.monitor
-        ? [root.monitor.activeWorkspace?.id, root.monitor.specialWorkspace?.id]
-            .map(id => Number(id ?? NaN)).filter(id => isFinite(id) && id !== 0) : []
+    // Pause the shader while an application covers this widget's active workspace.
+    readonly property var shownWorkspaces: {
+        const output = root.monitorName || Wm.focusedOutput || "";
+        return (Wm.workspaces ?? [])
+            .filter(workspace => workspace.active === true
+                && (output === "" || workspace.output === output))
+            .map(workspace => String(workspace.id));
+    }
     readonly property bool covered: !root.isPreview && (root.options.pauseOnWindows ?? true)
-        && HyprlandData.windowList.some(win => win && win.mapped !== false && win.hidden !== true
-            && root.shownWorkspaces.includes(Number(win.workspace?.id ?? NaN)))
+        && (Wm.windows ?? []).some(window => root.shownWorkspaces.includes(String(window.workspace))
+            && (!window.toplevel || window.toplevel.minimized !== true))
 
     readonly property string holdKey: `presetWidget:${root.widgetInstance?.id ?? (root.landscape ? "landscape" : "portrait")}:${root.isPreview ? "preview" : "desktop"}`
 
@@ -78,11 +78,6 @@ AbstractBackgroundWidget {
         showEffects: root.options.showEffects ?? true
         showButtons: root.options.showButtons ?? true
 
-        onEditRequested: {
-            if (Config.options.easyEffects?.appEnable ?? true)
-                GlobalStates.openEasyEffectsApp("effects");
-            else
-                EasyEffects.openNativeWindow();
-        }
+        onEditRequested: EasyEffects.openNativeWindow()
     }
 }

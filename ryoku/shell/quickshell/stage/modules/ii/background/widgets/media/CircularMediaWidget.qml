@@ -7,8 +7,10 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import QtQuick.Shapes as Shapes
+import Ryoku.Ui.Singletons
 import stage
 import stage.services
+import shell.services as ShellServices
 import stage.modules.common
 import stage.modules.common.models
 import stage.modules.common.functions
@@ -126,11 +128,9 @@ AbstractBackgroundWidget {
 
     readonly property real progressValue: MprisController.trackProgressOf(root.player)
 
-    // This widget shares the desktop canvas' compositor surface with other widgets,
-    // so it cannot override Hyprland's ignore_alpha rule by itself. When the user
-    // chooses its problematic low range, omit only this widget's translucent blur
-    // textures while leaving the canvas and every other widget's blur untouched.
-    readonly property bool blurredEffectsSafe: Appearance.ignoreAlpha > 0.3
+    // Every effect is clipped to this widget's own texture, so it is safe on the
+    // shared desktop surface.
+    readonly property bool blurredEffectsSafe: true
 
     // Outer bezel shadow support
     StyledDropShadow {
@@ -474,7 +474,7 @@ AbstractBackgroundWidget {
                         colRipple: ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHighestActive, 0.55)
                         buttonRadius: Appearance.rounding.full
 
-                        readonly property string activeAudioDeviceName: Audio.sink ? (Audio.sink.description || "") : ""
+                        readonly property string activeAudioDeviceName: ShellServices.Audio.sink ? (ShellServices.Audio.sink.description || "") : ""
                         readonly property string audioDeviceIcon: {
                             let desc = activeAudioDeviceName.toLowerCase();
                             if (desc.includes("headphone") || desc.includes("headset") || desc.includes("wired")) {
@@ -483,7 +483,7 @@ AbstractBackgroundWidget {
                             return "volume_up";
                         }
 
-                        onClicked: GlobalStates.openAudioOutputSettings()
+                        onClicked: Spawn.run(["sh", "-c", Config.options.apps.volumeMixer])
 
                         contentItem: Item {
                             implicitWidth: deviceRowLayout.implicitWidth
