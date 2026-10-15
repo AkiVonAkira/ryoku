@@ -52,7 +52,7 @@ UtilityConfigPage {
             buttonIcon: "tune"
             title: Translation.tr("AI plan usage")
             description: Translation.tr("Enabled services, refresh interval and low-quota threshold, shared with the bar widget")
-            configPage: Qt.resolvedUrl("../widgets/AiPlanUsageConfig.qml")
+            configPage: Qt.resolvedUrl("widgets/AiPlanUsageConfig.qml")
         }
     }
 }

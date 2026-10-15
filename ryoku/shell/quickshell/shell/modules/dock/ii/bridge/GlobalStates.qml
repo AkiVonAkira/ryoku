@@ -5,8 +5,10 @@ import QtQuick
 import Quickshell
 import stage as Stage
 import shell.services
+import shell.modules.phone
 import "../../../stage/Singletons" as StageCfg
 import Ryoku.Ui.Singletons
+import ".."
 
 /**
  * The ii dock's window to the shell's global state.
@@ -19,6 +21,10 @@ import Ryoku.Ui.Singletons
  */
 Singleton {
     id: root
+    readonly property ClockApp clockAppHost: ClockApp {}
+    readonly property ReminderAlertPopup reminderAlertHost: ReminderAlertPopup {}
+    readonly property LocalSendPopup localSendPopupHost: LocalSendPopup {}
+
 
     // ── forwarded from the Stage Editor ──────────────────────────────────────
     readonly property bool editMode: Stage.GlobalStates.editMode
@@ -43,6 +49,7 @@ Singleton {
         Stage.GlobalStates.modesOpen = root.modesOpen
     readonly property bool phoneCameraRunning: Stage.GlobalStates.phoneCameraRunning
     readonly property bool phoneMicRunning: Stage.GlobalStates.phoneMicRunning
+    readonly property bool phoneMirrorRunning: PhoneScrcpyService.mirrorRunning || KdeConnectService.scrcpyRunning
     property bool clockAppOpen: Stage.GlobalStates.clockAppOpen
     onClockAppOpenChanged: if (Stage.GlobalStates.clockAppOpen !== root.clockAppOpen)
         Stage.GlobalStates.clockAppOpen = root.clockAppOpen
@@ -71,7 +78,7 @@ Singleton {
     function openEditCatalogue(section, screenName, page) { Stage.GlobalStates.openEditCatalogue(section, screenName ?? "", page ?? ""); }
     function editHistoryPush(entry) { Stage.GlobalStates.editHistoryPush(entry); }
     function toggleOverview(monitorName) { Stage.GlobalStates.toggleOverview(monitorName); }
-    function launchColorPicker() { Stage.GlobalStates.launchColorPicker(); }
+    function launchColorPicker() { Quickshell.execDetached(["ryoku-cmd-color-picker"]); }
     // The dock's settings live in the Stage Editor's dock pages: the design
     // page for the dock as a whole, its widgets page for any one item on it.
     // Opened through the session, exactly as the editor's IPC opens a
@@ -101,6 +108,7 @@ Singleton {
     property bool fileDragActive: false
     property bool alarmRinging: false
     property bool islandOwnsAlarm: false
+    property bool islandOwnsReminder: false
     property var oledSaverMonitors: []
     property string clockAppPendingTab: ""
     property string reminderToOpen: ""

@@ -30,3 +30,4 @@ singleton WidgetColorScheme 1.0 WidgetColorScheme.qml
 singleton WidgetExtensionManager 1.0 WidgetExtensionManager.qml
 singleton SearchRegistry 1.0 SearchRegistry.qml
 singleton MprisController 1.0 MprisController.qml
+singleton SystemInfo 1.0 SystemInfo.qml

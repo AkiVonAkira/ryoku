@@ -166,6 +166,8 @@ LiveDrawSettings 1.0 draw/LiveDrawSettings.qml
 LiveDrawTile 1.0 utilities/LiveDrawTile.qml
 LiveDrawWindow 1.0 draw/LiveDrawWindow.qml
 singleton LocalSend 1.0 services/LocalSend.qml
+LocalSendPopup 1.0 send/LocalSendPopup.qml
+LocalSendPopupContent 1.0 send/LocalSendPopupContent.qml
 MaterialLoadingIndicator 1.0 settings/MaterialLoadingIndicator.qml
 MaterialTextField 1.0 settings/MaterialTextField.qml
 Notch 1.0 common/Notch.qml
@@ -184,6 +186,7 @@ PomodoroTab 1.0 clockapp/tabs/PomodoroTab.qml
 PomodoroTile 1.0 utilities/PomodoroTile.qml
 singleton ProgressService 1.0 services/ProgressService.qml
 ReminderCategoriesSheet 1.0 clockapp/reminders/ReminderCategoriesSheet.qml
+ReminderAlertPopup 1.0 alarm/ReminderAlertPopup.qml
 ReminderCategorySheet 1.0 clockapp/reminders/ReminderCategorySheet.qml
 ReminderCheck 1.0 clockapp/reminders/ReminderCheck.qml
 ReminderEditorSheet 1.0 clockapp/reminders/ReminderEditorSheet.qml
@@ -224,7 +227,6 @@ StopwatchTile 1.0 utilities/StopwatchTile.qml
 StyledSlider 1.0 settings/StyledSlider.qml
 StyledSpinBox 1.0 settings/StyledSpinBox.qml
 StyledTextArea 1.0 common/StyledTextArea.qml
-singleton SystemInfo 1.0 services/SystemInfo.qml
 TaskShortcutContent 1.0 common/TaskShortcutContent.qml
 singleton TaskbarApps 1.0 services/TaskbarApps.qml
 TileBadge 1.0 utilities/TileBadge.qml

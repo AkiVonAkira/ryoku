@@ -9,12 +9,12 @@ import "../clock"
 import ".."
 
 /**
- * Color picker: a click picks any colour on screen (hyprpicker), the code goes
- * to the clipboard and the last ones stay on the tile. Square: the newest
- * colour IS the tile's swatch — a nine-sided cookie with the dropper inked in
- * contrast. Wide: the dropper, the newest colour as a wide swatch carrying its
- * code, and the two before it; every swatch copies its code again. Colours
- * picked with the shortcut land in the same history.
+ * Color picker: a click picks any colour on screen, the code goes to the
+ * clipboard and the last ones stay on the tile. Square: the newest colour IS
+ * the tile's swatch — a nine-sided cookie with the dropper inked in contrast.
+ * Wide: the dropper, the newest colour as a wide swatch carrying its code, and
+ * the two before it; every swatch copies its code again. Colours picked with
+ * the shortcut land in the same history.
  */
 UtilityTile {
     id: tile
@@ -50,7 +50,7 @@ UtilityTile {
     // release a moment before the picker grabs the screen.
     Process {
         id: picker
-        command: ["bash", "-c", "sleep 0.2; hyprpicker -a -f hex"]
+        command: ["bash", "-c", "sleep 0.2; ryoku-cmd-color-picker"]
         stdout: SplitParser {
             onRead: data => tile.remember(data)
         }
