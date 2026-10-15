@@ -91,6 +91,7 @@ iwd	iwd	desktop
 jq	jq	desktop	
 kdialog	kdialog	optional	
 kdeconnect	kde-connect	optional	
+khal	khal	desktop	
 kitty	kitty	desktop	
 lazygit	lazygit	desktop	Provided by a restricted COPR.
 lib32-nvidia-utils	-	hardware:nvidia	Fedora NVIDIA drivers require RPM Fusion and hardware-specific selection.
@@ -224,6 +225,7 @@ syntax-highlighting	kf6-syntax-highlighting	desktop
 tesseract	tesseract	desktop	
 tesseract-data-eng	tesseract-langpack-eng	desktop	
 tigervnc	tigervnc	optional	
+translate-shell	translate-shell	desktop	
 ttf-firacode-nerd	ttf-firacode-nerd	desktop	Ryoku-owned RPM.
 ttf-fraunces-variable	ttf-fraunces-variable	extra	Ryoku-owned RPM.
 ttf-hack-nerd	ttf-hack-nerd	desktop	Ryoku-owned RPM.
@@ -236,6 +238,7 @@ udev	systemd-udev	desktop
 upower	upower	desktop	
 uv	uv	desktop	
 v4l2loopback-dkms	v4l2loopback v4l2loopback-dkms	optional	Provided by a restricted COPR.
+vdirsyncer	vdirsyncer	desktop	
 vimix-cursors	vimix-cursors	desktop	Ryoku-owned RPM.
 virglrenderer	virglrenderer	desktop	
 voxtype-bin	voxtype	extra	Ryoku-owned RPM.

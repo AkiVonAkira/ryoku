@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- `base.packages`: **khal, vdirsyncer and translate-shell.** The dock's
+  calendar reads and syncs calendars through khal and vdirsyncer, and the
+  translator desktop widget runs translate-shell; existing boxes receive them
+  on their next update.
 - `phone.packages`: **the phone feature's packages, installed on demand.** The
   Hub's Phone switch installs and removes this set; nothing in it joins a
   default install.

@@ -91,6 +91,7 @@ iwd	iwd	desktop
 jq	jq	desktop	
 kdialog	kdialog	optional	
 kdeconnect	kdeconnect	optional	
+khal	khal	desktop	
 kitty	kitty	desktop	
 lazygit	lazygit	desktop	
 lib32-nvidia-utils	-	hardware:nvidia	Deferred with nvidia-utils: the 32-bit libraries follow the proprietary driver.
@@ -224,6 +225,7 @@ syntax-highlighting	syntax-highlighting	desktop
 tesseract	tesseract-ocr	desktop	
 tesseract-data-eng	tesseract-ocr-eng	desktop	
 tigervnc	tigervnc	optional	
+translate-shell	translate-shell	desktop	
 ttf-firacode-nerd	ttf-firacode-nerd	desktop	repo=ryoku
 ttf-fraunces-variable	ttf-fraunces-variable	extra	repo=ryoku
 ttf-hack-nerd	ttf-hack-nerd	desktop	repo=ryoku
@@ -236,6 +238,7 @@ udev	eudev	desktop
 upower	upower	desktop	
 uv	uv	desktop	
 v4l2loopback-dkms	v4l2loopback	optional	
+vdirsyncer	vdirsyncer	desktop	
 vimix-cursors	vimix-cursors	desktop	repo=ryoku
 virglrenderer	virglrenderer	desktop	
 voxtype-bin	voxtype	extra	repo=ryoku
