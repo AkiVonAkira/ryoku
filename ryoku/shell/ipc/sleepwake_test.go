@@ -1238,6 +1238,68 @@ func TestSessionActivationReacquiresGlobalBlock(t *testing.T) {
 	<-done
 }
 
+// An idle session must not pay for this watcher. Both questions it asks cost
+// a process, and on a fixed 100 ms tick that was twenty forks a second from
+// the first suspend until logout (#411). The numbers here are the point: at
+// the old rate a second and a half is fifteen rounds, so anything near that
+// means the easing off is gone.
+func TestUnlockFallbackGuardStopsAskingWhileNothingHappens(t *testing.T) {
+	t.Setenv("XDG_SESSION_ID", "session-c")
+	cycle := &sleepCycle{
+		block: &fakeSleepInhibitor{heldState: true},
+		delay: &fakeSleepInhibitor{heldState: true},
+	}
+	cycle.setSessionActive(true)
+	d := &daemon{quit: make(chan struct{})}
+	d.setSleepCycle(cycle)
+
+	oldActive, oldStop := qylockUnlockGuardActive, qylockUnlockGuardStop
+	oldRunning := lockProcessRunning
+	defer func() {
+		qylockUnlockGuardActive, qylockUnlockGuardStop = oldActive, oldStop
+		lockProcessRunning = oldRunning
+	}()
+
+	var mu sync.Mutex
+	asked := 0
+	looked := 0
+	// The steady state of a session that has resumed once and been unlocked:
+	// no lock screen, no guard, and nothing that will ever change on its own.
+	lockProcessRunning = func() bool {
+		mu.Lock()
+		looked++
+		mu.Unlock()
+		return false
+	}
+	qylockUnlockGuardActive = func(string) bool {
+		mu.Lock()
+		asked++
+		mu.Unlock()
+		return false
+	}
+	qylockUnlockGuardStop = func(string) error {
+		t.Error("released a guard that was never there")
+		return nil
+	}
+
+	go d.releaseQylockUnlockGuardWhenReady()
+	defer close(d.quit)
+	time.Sleep(1500 * time.Millisecond)
+
+	mu.Lock()
+	gotLooked, gotAsked := looked, asked
+	mu.Unlock()
+	if gotLooked > 8 {
+		t.Fatalf("ran pgrep %d times in 1.5s; a fixed 100ms tick is 15 and the point is to be far under it", gotLooked)
+	}
+	if gotAsked > 8 {
+		t.Fatalf("ran ryoku-host %d times in 1.5s; the watcher is still asking on every tick", gotAsked)
+	}
+	if gotLooked == 0 {
+		t.Fatal("never looked at all; the watcher has to keep a slow eye out for a guard that reappears")
+	}
+}
+
 func TestUnlockFallbackGuardReleasedOnlyByReadyOwningSession(t *testing.T) {
 	t.Setenv("XDG_SESSION_ID", "session-b")
 	cycle := &sleepCycle{
