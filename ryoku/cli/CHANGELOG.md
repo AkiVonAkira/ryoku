@@ -28,6 +28,13 @@
   boot, makes the snapshot the root again, keeping the replaced root for two
   weeks. The first boot after a restore brings Fedora's kernel entries in line
   with the restored root. Fedora's `grub-boot-success.timer` is left alone.
+- **Fedora's GRUB wears the Ryoku theme.** The Limine menu's layout (the
+  "Ryoku Bootloader" title, the key help, the centred list with a burnt-orange
+  selection bar, the countdown) drawn on the Ryoku wallpaper, which moves from
+  `system/boot/limine/`, where nothing used it, to `fedora/system/boot/grub/theme/`.
+  `ryoku-grub-menu install` builds the "Ryoku Mono" fonts onto `/boot` (SpaceMono,
+  else Noto Sans Mono, else GRUB's Unifont), so an encrypted root never has to
+  be read for them; a serial terminal is kept as it is.
 - **`ryoku rollback` and the boot guard use Fedora's snapshot menu.**
   `ryoku rollback <id>` walks through booting the snapshot (or
   `grub2-reboot` to it) and `sudo ryoku boot-menu restore`, falling back to

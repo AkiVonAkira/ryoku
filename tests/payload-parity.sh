@@ -281,7 +281,7 @@ adapter_entry() {
       ;;
     *:etc/boot/*|*:etc/kernel.d/*|*:usr/lib/initcpio/*|*:usr/share/ryoku/boot/*|\
     *:usr/bin/ryoku-boot-apply|*:usr/bin/ryoku-windows-entry|\
-    fedora:etc/grub.d/42_ryoku_snapshots|fedora:usr/bin/ryoku-grub-menu|\
+    fedora:etc/grub.d/42_ryoku_snapshots|fedora:usr/bin/ryoku-grub-menu|fedora:usr/share/ryoku/grub/*|\
     fedora:usr/libexec/snapper/plugins/50-ryoku-boot-menu|fedora:usr/lib/dracut/modules.d/90ryoku-snapshot/*)
       return 1
       ;;

@@ -88,6 +88,8 @@ Requires:       ddcutil
 Requires:       hypridle
 Requires:       hyprpicker
 Requires:       grub2-tools
+Requires:       grub2-tools-extra
+Requires:       fontconfig
 Requires:       grubby
 Requires:       btrfs-progs
 Requires:       snapper
@@ -179,7 +181,7 @@ RYOKU_HOST_INIT=systemd /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>
 /usr/bin/ryoku-wifi-regdom apply >/dev/null 2>&1 || :
 
 %posttrans
-# Render the snapshot submenu's snippet into grub.cfg, then, on a running
+# Theme GRUB and render the snapshot submenu's snippet into grub.cfg, then, on a running
 # system, list the snapshots already on disk in the background: a kernel image
 # is built per kernel version they need.
 /usr/bin/ryoku-grub-menu install >/dev/null 2>&1 || :

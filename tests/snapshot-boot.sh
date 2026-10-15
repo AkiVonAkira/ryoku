@@ -6,8 +6,8 @@
 #         snapshot is created or deleted.
 # case 2: the initramfs look hook stacks a RAM overlay on the snapshot and
 #         masks systemd-remount-fs for that boot.
-# case 3: ryoku-grub-menu renders the snippet into grub.cfg once, and purge
-#         drops the menu and its kernel copies.
+# case 3: ryoku-grub-menu themes GRUB and renders the snippet into grub.cfg
+#         idempotently, and purge undoes it.
 # shellcheck disable=SC2329 # stubs and predicates run indirectly
 # shellcheck disable=SC2016 # single-quoted patterns are literal file text
 
@@ -45,7 +45,8 @@ for unit in ryoku-snapshot-menu.service ryoku-snapshot-menu.path ryoku-snapshot-
   check "$unit exists" test -f "$bm/$unit"
 done
 check "ryoku-desktop ships the dracut module" has "$payload" '"$pkgdir/usr/lib/dracut/modules.d/90ryoku-snapshot/$mod"'
-check "%posttrans renders the snippet" has "$spec" "/usr/bin/ryoku-grub-menu install"
+check "%posttrans themes GRUB and renders the snippet" has "$spec" "/usr/bin/ryoku-grub-menu install"
+check "ryoku-desktop ships the theme" has "$payload" '"$pkgdir/usr/share/ryoku/grub/theme/${file##*/}"'
 check "%posttrans lists the snapshots on disk and watches for more" has "$spec" \
   "systemctl start --no-block ryoku-snapshot-menu.path ryoku-snapshot-menu.service"
 check "%preun disables the menu trigger" has "$spec" \
@@ -53,7 +54,7 @@ check "%preun disables the menu trigger" has "$spec" \
 check "%preun drops the menu" has "$spec" "/usr/bin/ryoku-grub-menu purge"
 check "%postun drops it from grub.cfg" has "$spec" "grub2-mkconfig -o /boot/grub2/grub.cfg"
 check "Fedora's boot-success timer is left alone" test -z "$(grep -n 'grub-boot-success' "$spec")"
-for dep in grub2-tools grubby btrfs-progs snapper dracut; do
+for dep in grub2-tools grub2-tools-extra fontconfig grubby btrfs-progs snapper dracut; do
   check "ryoku-desktop requires $dep" grep -qE "^Requires: +$dep\$" "$spec"
 done
 check "the manifest enables the menu trigger at boot" grep -qP '^snapshot-menu\tsystem\tboot\tryoku-snapshot-menu\.path\t' "$manifest"
@@ -138,32 +139,94 @@ check "look refuses a path outside the filesystem" absent "$work/mount.log"
 
 # case 3
 grub="$work/boot/grub2"
-mkdir -p "$grub"
+theme="$grub/themes/ryoku"
+mkdir -p "$grub" "$work/etc"
+printf 'GRUB_TIMEOUT=1\nGRUB_DEFAULT=saved\nGRUB_TERMINAL_OUTPUT="console"\nGRUB_ENABLE_BLSCFG=true\n' >"$work/etc/grub"
+printf 'PFF2' >"$work/unicode.pf2"
+printf 'face' >"$work/face.ttf"
 cat >"$stubs/mkconfig" <<EOF_STUB
 #!/bin/sh
 echo run >>"$work/mkconfig.log"
 sh "$bm/grub/42_ryoku_snapshots" >"\$2"
 EOF_STUB
-chmod +x "$stubs/mkconfig"
-menu() { RYOKU_GRUB_DIR="$grub" RYOKU_GRUB_MKCONFIG="$stubs/mkconfig" bash "$bm/grub/ryoku-grub-menu" "$@"; }
+cat >"$stubs/mkfont" <<'EOF_STUB'
+#!/bin/sh
+out=
+size=
+name=
+while [ $# -gt 1 ]; do
+  case "$1" in
+    -o) out=$2; shift ;;
+    -s) size=$2; shift ;;
+    -n) name=$2; shift ;;
+  esac
+  shift
+done
+printf 'PFF2 %s %s\n' "$name" "$size" >"$out"
+EOF_STUB
+chmod +x "$stubs/mkconfig" "$stubs/mkfont"
+menu() {
+  RYOKU_GRUB_DIR="$grub" RYOKU_GRUB_DEFAULTS="$work/etc/grub" RYOKU_GRUB_THEME_SRC="$bm/grub/theme" \
+    RYOKU_GRUB_FONT_SRC="$work/unicode.pf2" RYOKU_GRUB_MKCONFIG="$stubs/mkconfig" \
+    RYOKU_GRUB_MKFONT="$stubs/mkfont" RYOKU_GRUB_FONT_FACE="${FACE-$work/face.ttf}" \
+    bash "$bm/grub/ryoku-grub-menu" "$@"
+}
 runs() { test "$(wc -l <"$work/mkconfig.log" 2>/dev/null || echo 0)" = "$1"; }
 
+check "the theme draws the wallpaper" line "$bm/grub/theme/theme.txt" 'desktop-image: "ryoku-wall.png"'
+check "the theme ships its wallpaper" test -f "$bm/grub/theme/ryoku-wall.png"
+check "the theme ships its selection bar" test -f "$bm/grub/theme/select_c.png"
+for size in 16 20 24; do
+  check "the theme's $size px font is one install builds" grep -q "\"Ryoku Mono Regular $size\"" "$bm/grub/theme/theme.txt"
+done
+check "the theme names only fonts install builds" \
+  test -z "$(grep -o '"[A-Za-z ]* [0-9][0-9]*"' "$bm/grub/theme/theme.txt" | grep -vE '"Ryoku Mono Regular (16|20|24)"')"
+
 menu install
+check "install copies the theme onto /boot" test -f "$theme/theme.txt" -a -f "$theme/ryoku-wall.png" -a -f "$theme/select_c.png"
+for size in 16 20 24; do
+  check "install builds Ryoku Mono at $size px" line "$theme/ryoku-mono-$size.pf2" "PFF2 Ryoku Mono $size"
+done
+check "install turns on the graphical terminal" line "$work/etc/grub" 'GRUB_TERMINAL_OUTPUT="gfxterm"'
+check "install points GRUB at the theme" line "$work/etc/grub" "GRUB_THEME=\"$theme/theme.txt\""
+check "install takes the font from /boot, not the root filesystem" line "$work/etc/grub" "GRUB_FONT=\"$theme/ryoku-mono-20.pf2\""
+check "install keeps the rest of the defaults" line "$work/etc/grub" "GRUB_ENABLE_BLSCFG=true"
 check "install rebuilds grub.cfg with the snapshot menu" has "$grub/grub.cfg" "ryoku-snapshots.cfg"
 menu install
-check "a second install does not rebuild" runs 1
+check "a second install changes nothing and does not rebuild" runs 1
+check "a second install does not repeat a key" test "$(grep -c '^GRUB_THEME=' "$work/etc/grub")" = 1
+check "a second install leaves no staging files" test -z "$(find "$theme" -name '*.new')"
 : >"$grub/grub.cfg"
 menu install
 check "install rebuilds a grub.cfg that lost the snapshot menu" runs 2
+echo stale >>"$theme/theme.txt"
+menu install
+check "install rebuilds grub.cfg for a changed theme" runs 3
+check "install puts the shipped theme back" cmp -s "$bm/grub/theme/theme.txt" "$theme/theme.txt"
 
 mkdir -p "$work/boot/ryoku/snapshots/k" && : >"$grub/ryoku-snapshots.cfg"
 menu purge
-check "purge removes the menu and the kernel copies" \
-  test ! -e "$grub/ryoku-snapshots.cfg" -a ! -e "$work/boot/ryoku"
+check "purge restores the text terminal" line "$work/etc/grub" 'GRUB_TERMINAL_OUTPUT="console"'
+check "purge drops the theme keys" test -z "$(grep -E '^GRUB_(THEME|FONT)=' "$work/etc/grub")"
+check "purge removes the theme, the menu and the kernel copies" \
+  test ! -e "$theme" -a ! -e "$grub/ryoku-snapshots.cfg" -a ! -e "$work/boot/ryoku"
 check "purge leaves grub.cfg to %postun" test -f "$grub/grub.cfg"
 
-rm -rf "$grub"
+FACE=$work/missing.ttf menu install
+check "without a font face, GRUB's Unifont stands in" cmp -s "$work/unicode.pf2" "$theme/unicode.pf2"
+check "and GRUB_FONT names it" line "$work/etc/grub" "GRUB_FONT=\"$theme/unicode.pf2\""
+menu purge
+
+printf 'GRUB_TERMINAL_OUTPUT="serial console"\n' >"$work/etc/grub"
 menu install
-check "install does nothing without a GRUB directory" runs 2
+check "install keeps a serial terminal" line "$work/etc/grub" 'GRUB_TERMINAL_OUTPUT="serial console"'
+check "install still themes the graphical menu there" grep -q '^GRUB_THEME=' "$work/etc/grub"
+menu purge
+check "purge leaves a serial terminal alone" line "$work/etc/grub" 'GRUB_TERMINAL_OUTPUT="serial console"'
+
+rm -rf "$grub"
+before=$(wc -l <"$work/mkconfig.log")
+menu install
+check "install does nothing without a GRUB directory" runs "$before"
 
 exit "$fail"

@@ -69,6 +69,10 @@ Each one boots read-only with its writes in RAM, and `sudo ryoku boot-menu
 restore` in that boot makes it the system again; `ryoku rollback <id>` walks
 through it. Shim, GRUB and Fedora's kernels stay as Fedora signs them: the
 snapshot entries boot copies of those kernels from `/boot/ryoku/snapshots`.
+The menu wears the Ryoku theme (`system/boot/grub/theme/`): the Limine menu's
+layout on the Ryoku wallpaper, with "Ryoku Mono" fonts `ryoku-grub-menu` builds
+onto `/boot` from SpaceMono when `ryoku-extras` installed it, else Noto Sans
+Mono.
 NVIDIA stays on nouveau. Wayfire is unavailable because Fedora ships
 0.10.1 and Ryoku requires 0.11. AUR-only extras such as Zen Browser, LocalSend,
 Voxtype, Looking Glass, and SteamCMD are not shipped in the Fedora lane.

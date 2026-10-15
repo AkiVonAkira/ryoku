@@ -320,7 +320,8 @@ are supported; Atomic and other rpm-ostree systems are refused.
   The repository build can reuse an identical trusted upstream RPM already
   published for the same Fedora release.
 - `system/` holds what only Fedora's boot and package manager run: `boot/` is
-  the **Ryoku snapshots** GRUB submenu (the `grub.d` snippet and its helper,
+  the Ryoku GRUB theme and the **Ryoku snapshots** submenu (the `grub.d`
+  snippet and its helper,
   the look-boot dracut module, the snapper plugin and the menu units), and
   `snapshots/` is the libdnf5 hook that snapshots every dnf transaction.
 - `.github/workflows/publish-repo-fedora.yml` builds and install-tests every
