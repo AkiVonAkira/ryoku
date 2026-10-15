@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- **Phone windows float on every compositor.** The scrcpy mirror and app
+  windows (`ryoku-phone-*`) open floating at a phone's proportions on Hyprland,
+  niri and Wayfire, and the Super+K bind is listed as Kit
+  (`wm/binds.go`, `wm/niri/config_rules.go`, `wm/wayfire/config_rules.go`,
+  `hyprland/modules/window_rules.lua`).
 - **A catalogue bind can need a program.** `wm.CatalogBind.Needs` names the
   optional app a bind launches; while that program is not on PATH every
   provider registers no chord for it (the Hyprland K() table carries `false`,

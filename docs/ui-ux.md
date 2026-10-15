@@ -552,6 +552,7 @@ and per-monitor visibility from `ShellState`.
 |**launcher**|`Super+Space`|the app launcher and command palette|
 |**overview**|`Super+Tab`|the full-screen workspace expo|
 |**Controls**|`Super+Escape`|live system activity, connections, levels, and session actions|
+|**Kit**|`Super+K`|shortcuts, command references, phone controls, quick tools, and a typing test|
 |**ryoshot capture bar**|`Super+Shift+S`|Shot, Edit, OCR, Search, Record, and capture options in one floating bar|
 |**Ask**|`Alt+Space`|quick Rashin answers, chat, tools, web search, and the optional desktop bubble|
 |**clipboard**|`Super+V`|clipboard history at the bottom edge, with fuzzy search and a starred pane|
@@ -559,6 +560,17 @@ and per-monitor visibility from `ShellState`.
 |**visualiser placement**|`Super+Alt+M`|open the Stage Editor's Visualizer catalogue|
 |**voice**|`Super+grave`|speech to text with a live mic wave|
 |**Ryoku Settings**|`Super+,`|the Hub|
+
+### Kit
+
+Kit keeps five tools behind one search field:
+
+- **Keys** lists shared and window-manager shortcuts.
+- **Commands** keeps Ryoku, Linux, and Saved libraries separate.
+- **Phone** is set up and used in Kit. Its settings live in Ryoku Hub >
+  Connections > Phone, and `ryoku-kit phone` opens it directly.
+- **Dev tools** holds the quick tools useful during a session.
+- **Typing test** provides focused practice and history.
 
 ![The launcher at rest](media/launcher.webp)
 

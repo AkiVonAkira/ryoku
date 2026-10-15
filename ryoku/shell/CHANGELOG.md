@@ -17,6 +17,32 @@
   in the picture directory and the rest at home.
 
 ### Added
+- **Super+K opens Kit.** The keybind cheatsheet becomes Kit, one card with
+  five tabs under one search box: Keys (the shortcuts, as before), Commands,
+  Phone, Dev tools and Typing test. Typing anywhere searches the open tab and
+  jumps to the tab that matches; Kit remembers the last tab, and
+  `ryoku-kit <tab> [<section>]` opens it on a given tab (`quickshell/keys/`,
+  `scripts/ryoku-kit`).
+- **Kit > Commands lists every Ryoku command.** Every command of every Ryoku
+  tool, grouped by task, sits apart from a Linux library of the commands a
+  beginner to intermediate user needs, filtered to the running edition. Commands
+  can be copied, starred, run in a terminal when they need no input, or saved as
+  your own (`quickshell/keys/commands/`).
+- **Kit > Dev tools keeps the useful eleven.** Passwords and UUIDs (drawn from
+  `/dev/urandom`), JSON, Base64, URL encoding, JWTs, Unix time, colours, regex,
+  text diff and chmod (`quickshell/keys/devtools/`).
+- **Your phone in Kit.** Kit > Phone walks through setup (install, the KDE
+  Connect app, pairing, then USB debugging for the screen) and then carries the
+  phone: ring, files, clipboard, links, typing, notifications with reply,
+  contacts, Android apps, calls, and the phone's screen, camera and microphone.
+  The KDE Connect and scrcpy services live in the shell, so a mirror, webcam or
+  microphone keeps running after Kit closes; Kit reads their state and calls them
+  over IPC. The services start only while Phone is turned on in the Hub
+  (`quickshell/shell/modules/phone/`, `quickshell/keys/phone/`).
+- **Phone notifications can stay off the desktop.** When "Show phone
+  notifications" is off, KDE Connect's copies of phone notifications skip the
+  popups while file-transfer results still arrive
+  (`quickshell/shell/services/Notifs.qml`).
 - **The ii dock design.** The dock ported from P3DROVFX's ii-p3drovfx joins the
   shared dock store as a fourth design: pick "ii" in the Stage Editor's dock
   page and the shell mounts the ported tray, its magnification, app groups,

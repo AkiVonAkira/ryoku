@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+- **`ryoku-host phone` installs and removes the phone feature.** `status`,
+  `enable`, `disable` and their `plan-` dry runs translate one package set per
+  edition (Arch, CachyOS with the running kernel's headers, Fedora through two
+  COPRs, Void), load v4l2loopback from `phone-v4l2loopback.conf` (a name the
+  doctor's stray-file sweep leaves alone), roll back a half-finished install,
+  keep the record of what it installed across repeated enables, and remove only
+  what the switch itself installed (`internal/host/phone.go`).
+
 ### Fixed
 - **Updates preserve installer package choices.** Control-manifest convergence
   now excludes browser, login-shell, and compositor packages selected per box,

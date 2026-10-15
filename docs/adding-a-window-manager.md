@@ -56,7 +56,7 @@ The ten verbs, in plain terms:
 |`apply <store>`|"Turn these settings into my config file."|
 |`defaults`|"Here is my baseline for those settings."|
 |`schema`|"Here are the settings only I have, so the Hub can draw them."|
-|`binds <store>`|"Here are the keybinds only I have, so the cheatsheet can list them under my name."|
+|`binds <store>`|"Here are the keybinds only I have, so Kit's Keys tab can list them under my name." Kit also carries Commands, Phone, Dev tools, and Typing test.|
 |`outputs <file>`|"Arrange the displays like this."|
 |`session`|The `wayland-session` desktop entry, so a greeter can offer you.|
 

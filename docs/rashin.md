@@ -18,11 +18,12 @@ It is:
   window, the bar's AI usage collectors) and so do its shortcuts: the Ask bar
   (Alt+Space) and the Rashin window (Super+Alt+Space) are catalogue binds that
   need `ryoku-rashin`, so the compositor registers no chord for them while it
-  is absent and the cheatsheet lists them as not installed. Unticking Rashin
-  in the installer's Apps & tools or `sudo pacman -R ryoku-rashin` reach the
-  same state; the doctor delivers it once and never puts it back. The Fedora
-  and Void desktops still require it, so there the switch only stops and
-  starts the agent.
+  is absent and Kit's Keys tab lists them as not installed. Kit opens with
+  Super+K and puts Keys, Commands, Phone, Dev tools, and Typing test behind one
+  search field. Unticking Rashin in the installer's Apps & tools or `sudo
+  pacman -R ryoku-rashin` reach the same state; the doctor delivers it once and
+  never puts it back. The Fedora and Void desktops still require it, so there
+  the switch only stops and starts the agent.
 - **Local.** The daemon binds `127.0.0.1` only. WebSocket upgrades verify the
   Origin host is localhost. No auth, because the surface is single-user local.
 - **Off by default.** Nothing runs, indexes, or wires until you flip the gate.

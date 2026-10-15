@@ -4,8 +4,10 @@ adwaita-icon-theme	adwaita-icon-theme	desktop
 alsa-lib	alsa-lib	desktop	
 alsa-utils	alsa-utils	desktop	
 amd-ucode	linux-firmware-amd	hardware:amd	
+android-tools	android-tools	optional	
 apple_cursor	apple_cursor	extra	repo=ryoku
 asusctl	-	optional	No faithful runit shutdown integration is available.
+avahi	avahi	optional	
 base	base-system	system	
 base-devel	base-devel	system	
 bash	bash	desktop	
@@ -88,6 +90,7 @@ iw	iw	desktop
 iwd	iwd	desktop	
 jq	jq	desktop	
 kdialog	kdialog	optional	
+kdeconnect	kdeconnect	optional	
 kitty	kitty	desktop	
 lazygit	lazygit	desktop	
 lib32-nvidia-utils	-	hardware:nvidia	Deferred with nvidia-utils: the 32-bit libraries follow the proprietary driver.
@@ -160,6 +163,9 @@ polkit	polkit	desktop
 power-profiles-daemon	power-profiles-daemon	desktop	
 prowl	prowl	desktop	repo=ryoku
 python	python3	desktop,dev	
+python-dbus	python3-dbus	optional	
+python-gobject	python3-gobject	optional	
+python-pillow	python3-Pillow	optional	
 python-pip	python3-pip	dev	
 python-pipx	python3-pipx	dev	
 qemu-desktop	qemu	desktop	
@@ -199,6 +205,7 @@ ryoku-palette-bridge	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-rashin	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-shell	@repo	desktop	Ryoku-owned package built from the checkout.
 ryotunes	ryotunes	optional	repo=ryoku
+scrcpy	scrcpy	optional	
 sddm	sddm	desktop	
 shaderc	shaderc	desktop	
 skwd-paper-bin	skwd-paper-bin	desktop	repo=ryoku
@@ -228,6 +235,7 @@ ttf-rubik-vf	ttf-rubik-vf	desktop	repo=ryoku
 udev	eudev	desktop	
 upower	upower	desktop	
 uv	uv	desktop	
+v4l2loopback-dkms	v4l2loopback	optional	
 vimix-cursors	vimix-cursors	desktop	repo=ryoku
 virglrenderer	virglrenderer	desktop	
 voxtype-bin	voxtype	extra	repo=ryoku

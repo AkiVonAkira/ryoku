@@ -62,7 +62,7 @@ pretending the action worked.
 | `omarchy-plugin-add`, `-update`, `-remove`, `-enable`, `-disable`, `-validate`, `-rescan`, `-list`, `-catalog` | Native Nomarchy plugin lifecycle and catalogue |
 | `omarchy-bar` | Nomarchy host bar configuration IPC |
 | `omarchy-menu`, `omarchy-menu-plugin`, `omarchy-menu-emoji`, `omarchy-menu-emoji-insert` | Nomarchy menu or plugin IPC |
-| `omarchy-menu-keybindings` | Ryoku keybinding cheatsheet |
+| `omarchy-menu-keybindings` | Ryoku Kit's Keys tab |
 | `omarchy-osd` | Nomarchy style-owned OSD IPC |
 | `omarchy-notification-send` | Freedesktop `notify-send` |
 | `omarchy-launch-browser`, `omarchy-launch-webapp` | `ryoku-app browser` or `xdg-open` |
@@ -116,6 +116,10 @@ pretending the action worked.
 | `omarchy-agent-usage-update`, `omarchy-agent-usage-claude`, `omarchy-agent-usage-codex` | Display records adapted from Ryoku's cached AI usage collectors |
 | `omarchy-agent-account-*` | Account controls hidden; AI credentials remain managed in Rāshin |
 | `omarchy-agent`, `omarchy-agent-prompt` | Explicitly unavailable; Ryoku keeps its own agent surface |
+
+Super+K opens Kit: Keys, Commands, Phone, Dev tools, and Typing test share one
+search field. The compatibility helper lands on Keys rather than creating a
+second shortcut surface.
 
 ## Themes
 

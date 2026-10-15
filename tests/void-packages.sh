@@ -112,6 +112,7 @@ for pkg in "${boot_chain[@]}"; do boot[$pkg]=1; done
 while IFS= read -r pkg; do
 	if [[ -n ${boot[$pkg]:-} ]]; then add_lane "$pkg" system; else add_lane "$pkg" desktop; fi
 done < <(package_lines "$ROOT/system/packages/base.packages")
+while IFS= read -r pkg; do [[ -n ${closure[$pkg]:-} ]] || add_lane "$pkg" optional; done < <(package_lines "$ROOT/system/packages/phone.packages")
 while IFS= read -r pkg; do add_lane "$pkg" dev; done < <(package_lines "$ROOT/system/packages/dev.packages")
 while IFS= read -r pkg; do add_lane "$pkg" extra; done < <(package_lines "$ROOT/system/packages/aur.packages")
 while IFS=$'\t' read -r section pkg; do

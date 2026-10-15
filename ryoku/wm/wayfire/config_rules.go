@@ -161,6 +161,7 @@ const (
 	largeGeometry   = "set geometry_ppt 4 6 92 88"
 	mediumGeometry  = "set geometry_ppt 15 17 70 66"
 	compactGeometry = "set geometry_ppt 20 24 60 52"
+	phoneGeometry   = "set geometry_ppt 31 6 38 88"
 )
 
 var wayfireBuiltinRules = []wayfireBuiltinRule{
@@ -185,6 +186,7 @@ var wayfireBuiltinRules = []wayfireBuiltinRule{
 	{key: "nautilus", condition: `app_id is "org.gnome.Nautilus"`, action: largeGeometry, floating: true},
 	{key: "hub", condition: `title is "Ryoku Settings"`, action: pageFit, floating: true},
 	{key: "rashin", condition: `title is "Rashin"`, action: largeGeometry, floating: true},
+	{key: "phone_tools", condition: `title contains "ryoku-phone-"`, action: phoneGeometry, floating: true},
 	{key: "update", condition: `app_id is "dev.ryoku.update"`, action: largeGeometry, floating: true},
 	{key: "ryostore_title", condition: `title is "Ryostore"`, action: largeGeometry, floating: true},
 	{key: "ryovm", condition: `title is "ryovm"`, action: largeGeometry, floating: true},

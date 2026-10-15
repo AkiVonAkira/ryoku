@@ -4,8 +4,8 @@ pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
 import QtQuick
-import stage.services
-import ".."
+import Ryoku.Ui.Singletons
+import shell.services
 
 /**
  * The phone's next alarm, mirrored read-only.
@@ -28,8 +28,9 @@ import ".."
 Singleton {
     id: root
 
-    readonly property var opts: Config.options?.clockApp?.phoneAlarm ?? null
-    readonly property bool enabled: Config.ready && (root.opts?.enable ?? true) && KdeConnectService.adbPresent
+    readonly property var opts: Config.phone?.alarm ?? null
+    readonly property bool enabled: PhoneState.runtimeReady
+        && (root.opts?.enabled ?? true) && KdeConnectService.adbPresent
     readonly property int pollMs: Math.max(1, root.opts?.pollMinutes ?? 10) * 60000
     readonly property var clockApps: Array.from(root.opts?.clockApps ?? []).map(app => String(app).toLowerCase())
     readonly property var ignorePackages: Array.from(root.opts?.ignorePackages ?? []).map(pkg => String(pkg))
@@ -44,20 +45,8 @@ Singleton {
 
     signal phoneAlarmRang(string summary)
 
-    readonly property var pcNext: {
-        AlarmService.alarms;
-        AlarmService.upcomingAlarm;
-        return AlarmService.nextAlarm(new Date());
-    }
-    /// Both ring within the next 12 h at different times: worth a word in the app.
-    readonly property bool mismatch: {
-        if (!root.nextAt || !root.pcNext)
-            return false;
-        const horizon = Date.now() + 12 * 3600000;
-        const phone = root.nextAt.getTime();
-        const pc = root.pcNext.at.getTime();
-        return phone < horizon && pc < horizon && Math.abs(phone - pc) >= 60000;
-    }
+    readonly property var pcNext: null
+    readonly property bool mismatch: false
 
     // One "<package> <epoch ms>" line per alarm-clock alarm (the "next wake from idle" copy
     // repeats one, harmless under min), then "ok" so an empty list still reads as reachable.
@@ -94,7 +83,7 @@ Singleton {
         if (root.reachable && previous && previous.getTime() <= now && now - previous.getTime() <= 15 * 60000
                 && (value?.getTime() ?? 0) !== previous.getTime() && root.announcedAt !== previous.getTime()) {
             root.announcedAt = previous.getTime();
-            root.markRang(Translation.tr("Alarm at %1").arg(Qt.formatTime(previous, "HH:mm")));
+            root.markRang(I18n.tr("Alarm at %1").arg(Qt.formatTime(previous, "HH:mm")));
         }
         if ((value?.getTime() ?? 0) !== (previous?.getTime() ?? 0))
             root.nextAt = value;
@@ -127,6 +116,14 @@ Singleton {
         onTriggered: root.refresh()
     }
 
+    onEnabledChanged: {
+        if (!root.enabled) {
+            pollProc.running = false
+            root.reachable = false
+            root.nextAt = null
+        }
+    }
+
     // Once the alarm time passes, the phone has moved on to its next one — and that
     // move is how the ring is noticed, so look soon after.
     Timer {
@@ -143,7 +140,7 @@ Singleton {
     function prime(): void {
         const seen = {};
         for (const n of Array.from(KdeConnectService.notifications ?? []))
-            seen[String(n?.id ?? "")] = true;
+            seen[String(n?.publicId ?? n?.id ?? "")] = true;
         root.seenIds = seen;
         root.primed = true;
     }
@@ -158,7 +155,7 @@ Singleton {
     Connections {
         target: KdeConnectService
         function onNotificationsChanged() {
-            if (!Config.ready || !(root.opts?.enable ?? true))
+            if (!(root.opts?.enabled ?? true))
                 return;
             if (!root.primed) {
                 root.prime();
@@ -167,7 +164,7 @@ Singleton {
             const seen = Object.assign({}, root.seenIds);
             let rang = "";
             for (const n of Array.from(KdeConnectService.notifications ?? [])) {
-                const id = String(n?.id ?? "");
+                const id = String(n?.publicId ?? n?.id ?? "");
                 if (id.length === 0 || seen[id])
                     continue;
                 seen[id] = true;

@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- `phone.packages`: **the phone feature's packages, installed on demand.** The
+  Hub's Phone switch installs and removes this set; nothing in it joins a
+  default install.
 - `cachyos.packages`: **a CachyOS install carries what CachyOS's own installer
   lays.** `linux-cachyos-lts` and its headers (the fallback kernel, in place of
   stock `linux`), `cachyos-rate-mirrors`, `yay`, `cachyos-hooks`, `chwd`,

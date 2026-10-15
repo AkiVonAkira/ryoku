@@ -4,9 +4,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import stage.modules.common.functions
-import stage.services
-import ".."
+import Ryoku.Ui.Singletons
+import shell.services as Shell
 
 Singleton {
     id: root
@@ -16,7 +15,7 @@ Singleton {
     property string version: ""
     property int versionMajor: 0
     property int versionMinor: 0
-    readonly property bool appModeSupported: available && versionMajor >= 4
+    readonly property bool appModeSupported: available && versionMajor >= 3
 
     // Mirror Session
     property bool mirrorRunning: false
@@ -24,13 +23,6 @@ Singleton {
     property int mirrorElapsedMs: 0
     property string mirrorLaunchError: ""
 
-    // The mirror the Phone sidebar draws inside itself. Same session manager,
-    // same auto-resume, but its window is never meant to be looked at
-    // directly — see PhoneMirrorService for what happens to it.
-    readonly property string embedSessionId: "embed"
-    property bool embedRunning: false
-    property bool embedLaunching: false
-    property string embedError: ""
 
     // Apps Catalog
     property var apps: []
@@ -50,6 +42,7 @@ Singleton {
     property int recordingElapsedMs: 0
     /** The file the running (or last) recording is written to. */
     property string recordingPath: ""
+    property string recordingError: ""
 
     Timer {
         interval: 1000
@@ -82,7 +75,7 @@ Singleton {
     }
 
     Component.onCompleted: {
-        root.refreshCapabilities()
+        if (PhoneState.runtimeReady) root.refreshCapabilities()
     }
 
     // The session manager only acts on commands written to its stdin: between them it sits in a
@@ -90,7 +83,7 @@ Singleton {
     // once it has been idle with no live session — never while one is running, since it owns those
     // scrcpy child processes and reports their exit.
     property bool _managerWanted: false
-    readonly property bool _managerAllowed: (Config.options?.phone?.kdeconnectEnabled ?? true) && KdeConnectService.available
+    readonly property bool _managerAllowed: PhoneState.runtimeReady && KdeConnectService.available
 
     function ensureManagerRunning(): void {
         if (!root._managerAllowed) return
@@ -122,7 +115,7 @@ Singleton {
         interval: 10000
         repeat: false
         onTriggered: {
-            if (root.sessionCount === 0 && !root.mirrorLaunching && !root.embedLaunching && !root.recordingLaunching && !root.appsLoading)
+            if (root.sessionCount === 0 && !root.mirrorLaunching && !root.recordingLaunching && !root.appsLoading)
                 root._managerWanted = false
         }
     }
@@ -130,14 +123,16 @@ Singleton {
     onSessionCountChanged: managerIdleTimer.restart()
     onAppsLoadingChanged: managerIdleTimer.restart()
     onMirrorLaunchingChanged: managerIdleTimer.restart()
-    onEmbedLaunchingChanged: managerIdleTimer.restart()
 
     function refreshCapabilities(): void {
+        if (!PhoneState.runtimeReady) return
         scrcpyVersionProc.running = false
         scrcpyVersionProc.running = true
     }
+    function refresh(): void { root.refreshCapabilities() }
 
     function refreshApps(): void {
+        if (!PhoneState.runtimeReady) return
         if (!appModeSupported) return
         root.appsLoading = true
         root.appsError = ""
@@ -162,6 +157,7 @@ Singleton {
         root.appsSearchQuery = query
         root._updateFilteredApps()
     }
+    function setAppsSearchQuery(query): void { root.setSearchQuery(query) }
 
     function launchMirror(): void {
         if (root.mirrorRunning) {
@@ -170,8 +166,8 @@ Singleton {
         }
         // This used to leave the button spinning on "launching" forever:
         // nothing was ever sent, so nothing ever answered.
-        if (!(Config.options?.phone?.kdeconnectEnabled ?? true)) {
-            root.reportFailure("mirror", Translation.tr("The phone integration is turned off"))
+        if (!PhoneState.runtimeReady) {
+            root.reportFailure("mirror", I18n.tr("The phone integration is turned off"))
             return
         }
         root.mirrorLaunching = true
@@ -195,8 +191,15 @@ Singleton {
     }
 
     on_ManagerAllowedChanged: {
-        if (!root._managerAllowed)
+        if (!root._managerAllowed) {
+            root._managerWanted = false
+            root._waitingForManager = ({})
+            root._resumeQueue = []
+            managerWaitTimer.stop()
+            managerIdleTimer.stop()
             return
+        }
+        root.refreshCapabilities()
         const waiting = root._waitingForManager
         root._waitingForManager = ({})
         managerWaitTimer.stop()
@@ -212,50 +215,55 @@ Singleton {
             root._waitingForManager = ({})
             for (const id in waiting) {
                 if (id === root.recordSessionId) root.recordingLaunching = false
-                root.reportFailure(id, Translation.tr("KDE Connect is not running"))
+                root.reportFailure(id, I18n.tr("KDE Connect is not running"))
             }
         }
     }
 
-    /** The mirror as its own window, sized to the phone and wearing the
-     *  floating toolbar. Every "open it in a window" goes through here: the
-     *  toolbar crops the window to the phone's aspect, and it can only do
-     *  that once it knows the phone's resolution. */
+    /** Opens the phone mirror in its ordinary scrcpy window. */
     function openMirrorWindow(): void {
-        // The sidebar's session would otherwise stay warm behind the window
-        // and keep the phone streaming twice.
-        PhoneMirrorService.release()
-        PhoneMirrorService._probeDeviceSize()
         root.launchMirror()
     }
 
-    /** Ends every mirror of the phone screen at once — the window, the
-     *  sidebar's embedded session kept warm behind it, and a legacy window
-     *  KdeConnectService opened. Stopping one used to leave the others
-     *  running, so the mirror had to be stopped from two places. App
-     *  windows are not mirrors and are left alone. */
+    /** Ends the screen mirror without touching app, camera or microphone sessions. */
     function stopMirroring(): void {
         root.stopMirror()
-        PhoneMirrorService.release()
         if (KdeConnectService.scrcpyRunning || KdeConnectService.scrcpyLaunching)
             KdeConnectService.killScrcpy()
     }
+    function stopSession(sessionId): void {
+        if (!sessionId) return
+        root._markIntentionalStop(sessionId)
+        root._send({ "cmd": "stop", "id": sessionId })
+    }
+
+    function stopAllSessions(): void {
+        for (const session of Array.from(root.sessions || []))
+            root._markIntentionalStop(session.id)
+        root._send({ "cmd": "stop_all" })
+        root.mirrorLaunching = false
+        root.recordingLaunching = false
+    }
+
+    function toggleFavorite(packageName): void { root.toggleAppFavorite(packageName) }
+    function isFavorite(packageName): bool { return root.isAppFavorite(packageName) }
 
     // ─── Failure feedback ─────────────────────────────────────
-    /** A mirror or app window failed; `reason` is already user-facing. The
-     *  island shows it when it owns phone mirror failures, see
-     *  PhoneMirrorErrorSource. */
+    /** A mirror, recording or app window failed; `reason` came from scrcpy. */
     signal mirrorFailed(string sessionId, string title, string reason)
 
-    readonly property bool islandShowsFailures: IslandPolicy.enabled && IslandPolicy.widgetEnabled("phoneMirrorError")
+    readonly property bool islandShowsFailures: false
 
     function reportFailure(sessionId: string, reason: string): void {
         const title = sessionId.startsWith("app:")
-            ? Translation.tr("%1 could not be mirrored").arg(root._appLabel(sessionId.substring(4)))
+            ? I18n.tr("%1 could not be mirrored").arg(root._appLabel(sessionId.substring(4)))
             : sessionId === root.recordSessionId
-                ? Translation.tr("Phone recording failed")
-                : Translation.tr("Phone mirroring failed")
-        const text = root.friendlyError(reason)
+                ? I18n.tr("Phone recording failed")
+                : I18n.tr("Phone mirroring failed")
+        const rawLines = String(reason || "").split("\n").map(line => line.trim()).filter(line => line.length > 0)
+        const text = sessionId === "mirror" && rawLines.length > 0
+            ? rawLines[rawLines.length - 1]
+            : root.friendlyError(reason)
         if (sessionId === "mirror") {
             root.mirrorLaunching = false
             root.mirrorLaunchError = text
@@ -263,27 +271,16 @@ Singleton {
         root.mirrorFailed(sessionId, title, text)
         // The Phone tab keeps its own inline line for this.
         KdeConnectService.dispatchActionFeedback(title + ": " + text, false)
-        if (!root.islandShowsFailures) {
-            Notifications.publishInternalNotification({
-                "appName": Translation.tr("Phone"),
-                "appIcon": "smartphone",
-                "summary": title,
-                "body": text,
-                "urgency": "normal"
-            })
-        }
+        if (!root.islandShowsFailures)
+            Spawn.run(["notify-send", "--app-name=Phone", "--icon=smartphone", title, text])
     }
 
     function _announceRecording(): void {
         const path = root.recordingPath
         const name = path.split("/").pop()
-        Notifications.publishInternalNotification({
-            "appName": Translation.tr("Phone"),
-            "appIcon": "smartphone",
-            "summary": Translation.tr("Phone recording saved"),
-            "body": name + " · " + root._fmtDuration(root.recordingElapsedMs),
-            "urgency": "normal"
-        })
+        Spawn.run(["notify-send", "--app-name=Phone", "--icon=smartphone",
+            I18n.tr("Phone recording saved"),
+            name + " · " + root._fmtDuration(root.recordingElapsedMs)])
     }
 
     function _fmtDuration(ms: int): string {
@@ -303,30 +300,30 @@ Singleton {
         const text = String(raw || "").trim()
         const lower = text.toLowerCase()
         if (lower.length === 0)
-            return Translation.tr("scrcpy closed unexpectedly")
+            return I18n.tr("scrcpy closed unexpectedly")
         if (lower.includes("no such file") && lower.includes("scrcpy"))
-            return Translation.tr("scrcpy is not installed")
+            return I18n.tr("scrcpy is not installed")
         if (lower.includes("unauthorized"))
-            return Translation.tr("USB debugging is not authorized — accept the prompt on the phone")
+            return I18n.tr("USB debugging is not authorized — accept the prompt on the phone")
         if (lower.includes("could not find any adb device") || lower.includes("no devices")
                 || lower.includes("not reachable over adb") || lower.includes("device offline"))
-            return Translation.tr("The phone is not reachable over ADB — check the cable or wireless debugging")
+            return I18n.tr("The phone is not reachable over ADB — check the cable or wireless debugging")
         if (lower.includes("stayed locked"))
-            return Translation.tr("The phone stayed locked — unlock it and try again")
+            return I18n.tr("The phone stayed locked — unlock it and try again")
         if (lower.includes("unlock window was closed"))
-            return Translation.tr("The unlock window was closed before the phone was unlocked")
+            return I18n.tr("The unlock window was closed before the phone was unlocked")
         if (lower.includes("device disconnected") || lower.includes("connection lost"))
-            return Translation.tr("The phone disconnected")
+            return I18n.tr("The phone disconnected")
         if (lower.includes("encoder") || lower.includes("mediacodec") || lower.includes("video stream"))
-            return Translation.tr("The phone's video encoder failed — try a lower resolution or bit rate")
+            return I18n.tr("The phone's video encoder failed — try a lower resolution or bit rate")
         if (lower.includes("could not be finalized"))
-            return Translation.tr("scrcpy did not finish writing the recording, so the file could not be saved")
+            return I18n.tr("scrcpy did not finish writing the recording, so the file could not be saved")
         if (lower.includes("audio"))
-            return Translation.tr("Audio capture failed — try turning phone audio off")
+            return I18n.tr("Audio capture failed — try turning phone audio off")
         if (lower.includes("server connection failed") || lower.includes("could not push"))
-            return Translation.tr("Could not start scrcpy on the phone — reconnect it and try again")
+            return I18n.tr("Could not start scrcpy on the phone — reconnect it and try again")
         if (lower.includes("unrecognized option") || lower.includes("invalid"))
-            return Translation.tr("This scrcpy version rejected an option: %1").arg(text)
+            return I18n.tr("This scrcpy version rejected an option: %1").arg(text)
         return text
     }
 
@@ -335,19 +332,19 @@ Singleton {
      *  "Turn screen off", "Stay awake" and every quality setting silently
      *  applied to the mirror only. */
     function _commonScrcpyArgs() {
-        const opts = Config.options?.phone?.scrcpy
+        const opts = Shell.Config.phone?.scrcpy
         if (!opts) return []
 
         const args = []
         if (opts.stayAwake) args.push("--stay-awake")
         if (opts.turnScreenOff) args.push("--turn-screen-off")
         if (opts.noPowerOn) args.push("--no-power-on")
-        if (opts.noAudio) args.push("--no-audio")
+        if (!(opts.audio ?? true)) args.push("--no-audio")
         if (opts.showTouches) args.push("--show-touches")
         if (opts.fullscreen) args.push("--fullscreen")
         if (opts.alwaysOnTop) args.push("--always-on-top")
         if (opts.maxFps > 0) args.push("--max-fps=" + opts.maxFps)
-        if (opts.bitRate) args.push("--video-bit-rate=" + opts.bitRate)
+        if (opts.videoBitRate) args.push("--video-bit-rate=" + opts.videoBitRate)
         if (opts.maxSize > 0) args.push("--max-size=" + opts.maxSize)
         // scrcpy 3.0 renamed --display-buffer to --video-buffer; the old
         // spelling makes scrcpy exit on a usage error instead of starting.
@@ -363,7 +360,7 @@ Singleton {
     function _launchMirror(targetArgs): void {
         const extraArgs = root._commonScrcpyArgs()
 
-        const opts = Config.options?.phone?.scrcpy
+        const opts = Shell.Config.phone?.scrcpy
         if (opts) {
             const appOpts = opts.appMode || {}
             if (appOpts.flexDisplay) {
@@ -409,64 +406,31 @@ Singleton {
         }
     }
 
+    function _focusWindowTitle(title): void {
+        if (!title) return
+        const windows = Wm.windows || []
+        for (let i = windows.length - 1; i >= 0; i--) {
+            if (windows[i].title === title) {
+                Wm.focusWindow(windows[i].id)
+                return
+            }
+        }
+    }
+
     function focusMirror(): void {
-        root._send({
-            "cmd": "focus",
-            "id": "mirror"
-        })
+        root._focusWindowTitle("ryoku-phone-mirror-mirror")
     }
 
-    /** Starts the session the sidebar embeds. `streamSize` caps the encoded
-     *  height to what the panel actually shows. */
-    function launchEmbed(streamSize: int): void {
-        if (root.embedRunning || root.embedLaunching) return
-        root.embedLaunching = true
-        root.embedError = ""
-        KdeConnectService.withAdbTarget(args => root._launchEmbed(args, streamSize))
-    }
-
-    function _launchEmbed(targetArgs, streamSize): void {
-        const extraArgs = root._embedScrcpyArgs(streamSize)
-        root._rememberSession(root.embedSessionId, "embed", extraArgs)
-        root._send({
-            "cmd": "launch",
-            "id": root.embedSessionId,
-            "type": "embed",
-            "target_args": targetArgs,
-            "extra_args": extraArgs,
-            // Never "lock": leaving the page must not put the phone to sleep.
-            "end_action": "",
-            "auto_unlock": Config.options?.phone?.scrcpy?.appMode?.autoUnlock ?? true
-        })
-    }
-
-    /** Says the shell still wants the embedded session. The manager drops it
-     *  when this stops arriving — see its keepalive watchdog for why a session
-     *  with no window of its own needs one. */
-    function keepEmbedAlive(): void {
-        if (!root.embedRunning) return
-        root._send({
-            "cmd": "keepalive",
-            "id": root.embedSessionId
-        })
-    }
-
-    function stopEmbed(): void {
-        root._markIntentionalStop(root.embedSessionId)
-        root.embedLaunching = false
-        root._send({
-            "cmd": "stop",
-            "id": root.embedSessionId
-        })
-    }
 
     /** Records the phone screen to a file, with no window: scrcpy --record
      *  --no-playback. Runs beside a mirror rather than restarting it. */
     function startRecording(): void {
+        if (!PhoneState.runtimeReady) return
         if (root.recordingRunning || root.recordingLaunching) return
-        const opts = Config.options?.phone?.scrcpy
+        const opts = Shell.Config.phone?.scrcpy
         const configured = String(opts?.recording?.folder ?? "").trim()
-        const folder = FileUtils.trimFileProtocol(configured.length > 0 ? configured : Directories.videos)
+        const cleanFolder = configured.startsWith("file://") ? configured.substring(7) : configured
+        const folder = cleanFolder || (Quickshell.env("HOME") + "/Videos")
         const stamp = Qt.formatDateTime(new Date(), "yyyy-MM-dd_HH-mm-ss")
         root.recordingPath = folder + "/phone-" + stamp + ".mp4"
         root.recordingLaunching = true
@@ -476,9 +440,9 @@ Singleton {
         // window, and --turn-screen-off / --stay-awake would be refused
         // without it.
         const args = ["--no-playback", "--no-control", "--record=" + root.recordingPath]
-        if (opts?.noAudio || !(opts?.recording?.withAudio ?? true)) args.push("--no-audio")
+        if (!(opts?.audio ?? true)) args.push("--no-audio")
         if (opts?.maxFps > 0) args.push("--max-fps=" + opts.maxFps)
-        if (opts?.bitRate) args.push("--video-bit-rate=" + opts.bitRate)
+        if (opts?.videoBitRate) args.push("--video-bit-rate=" + opts.videoBitRate)
         if (opts?.maxSize > 0) args.push("--max-size=" + opts.maxSize)
 
         Quickshell.execDetached(["mkdir", "-p", folder])
@@ -507,35 +471,10 @@ Singleton {
         else root.startRecording()
     }
 
-    /** The embedded window is positioned, sized and covered by the panel, so
-     *  everything that would move or raise it is left out on purpose:
-     *  --fullscreen, --always-on-top, the configured --max-size, and the
-     *  --power-off-on-close that a "lock" session end would add. */
-    function _embedScrcpyArgs(streamSize) {
-        const args = ["--window-borderless"]
-        if (streamSize > 0) args.push("--max-size=" + streamSize)
 
-        const opts = Config.options?.phone?.scrcpy
-        if (opts) {
-            if (opts.stayAwake) args.push("--stay-awake")
-            if (opts.turnScreenOff) args.push("--turn-screen-off")
-            if (opts.noPowerOn) args.push("--no-power-on")
-            if (opts.noAudio) args.push("--no-audio")
-            if (opts.showTouches) args.push("--show-touches")
-            if (opts.maxFps > 0) args.push("--max-fps=" + opts.maxFps)
-            if (opts.bitRate) args.push("--video-bit-rate=" + opts.bitRate)
-            if (opts.videoBuffer > 0) args.push("--video-buffer=" + opts.videoBuffer)
-        }
-        args.push(...root._inputArgs())
-        return args
-    }
-
-    /** Keyboard and clipboard, the same for every window that takes input.
-     *  The mouse stays scrcpy's default on purpose: a UHID mouse captures the
-     *  pointer (Alt to let go), which would trap it inside the sidebar's
-     *  embedded phone. */
+    /** Keyboard and clipboard, the same for every window that takes input. */
     function _inputArgs() {
-        const opts = Config.options?.phone?.scrcpy
+        const opts = Shell.Config.phone?.scrcpy
         const args = []
         if ((opts?.keyboardMode ?? "uhid") === "uhid") args.push("--keyboard=uhid")
         if (!(opts?.clipboardSync ?? true)) args.push("--no-clipboard-autosync")
@@ -543,9 +482,10 @@ Singleton {
     }
 
     function launchApp(packageName: string): void {
+        if (!PhoneState.runtimeReady) return
         if (!packageName) return
         if (!appModeSupported) {
-            KdeConnectService.dispatchActionFeedback(Translation.tr("scrcpy 4.0+ is required for App Mode"), false)
+            KdeConnectService.dispatchActionFeedback(I18n.tr("scrcpy 3.0+ is required for App Mode"), false)
             return
         }
 
@@ -559,13 +499,13 @@ Singleton {
 
     /** What the phone should be left doing once a session ends. */
     function _sessionEndMode(): string {
-        const mode = Config.options?.phone?.scrcpy?.appMode?.onSessionEnd
+        const mode = Shell.Config.phone?.scrcpy?.appMode?.onSessionEnd
         return (mode === "continue" || mode === "lock") ? mode : "home"
     }
 
     function _launchApp(packageName: string, targetArgs): void {
         const sessionId = "app:" + packageName
-        const appOpts = Config.options?.phone?.scrcpy?.appMode || {}
+        const appOpts = Shell.Config.phone?.scrcpy?.appMode || {}
         const useFlex = appOpts.flexDisplay ?? false
         const w = appOpts.displayWidth || 1280
         const h = appOpts.displayHeight || 960
@@ -597,15 +537,9 @@ Singleton {
         root._rememberSession(sessionId, "app", extraArgs)
         root._send(root._launchPayload(sessionId, "app", targetArgs, extraArgs))
 
-        // Record in recents
-        let recents = (Persistent.states?.phone?.scrcpy?.recentPackages || []).slice()
-        const idx = recents.indexOf(packageName)
-        if (idx >= 0) recents.splice(idx, 1)
-        recents.unshift(packageName)
-        if (recents.length > 20) recents = recents.slice(0, 20)
-        Persistent.states.phone.scrcpy.recentPackages = recents
+        PhoneState.rememberPackage(packageName)
 
-        KdeConnectService.dispatchActionFeedback(Translation.tr("Launching %1…").arg(packageName.split(".").pop()), true)
+        KdeConnectService.dispatchActionFeedback(I18n.tr("Launching %1…").arg(packageName.split(".").pop()), true)
     }
 
     function stopApp(packageName: string): void {
@@ -619,10 +553,7 @@ Singleton {
 
     function focusApp(packageName: string): void {
         if (!packageName) return
-        root._send({
-            "cmd": "focus",
-            "id": "app:" + packageName
-        })
+        root._focusWindowTitle("ryoku-phone-app-app_" + packageName)
     }
 
     function restartApp(packageName: string): void {
@@ -663,21 +594,14 @@ Singleton {
 
     function toggleAppFavorite(packageName: string): void {
         if (!packageName) return
-        let favs = (Config.options?.phone?.scrcpy?.appMode?.favoritePackages || []).slice()
-        const idx = favs.indexOf(packageName)
-        if (idx >= 0) {
-            favs.splice(idx, 1)
-        } else {
-            favs.push(packageName)
-        }
-        Config.options.phone.scrcpy.appMode.favoritePackages = favs
+        const favorite = !root.isAppFavorite(packageName)
+        PhoneState.setFavoritePackage(packageName, favorite)
         root._updateFilteredApps()
     }
 
     function isAppFavorite(packageName: string): bool {
         if (!packageName) return false
-        const favs = Config.options?.phone?.scrcpy?.appMode?.favoritePackages || []
-        return favs.indexOf(packageName) >= 0
+        return (PhoneState.favoritePackages || []).indexOf(packageName) >= 0
     }
 
     function _updateFilteredApps(): void {
@@ -728,7 +652,7 @@ Singleton {
             // "continue" is already carried by --no-vd-destroy-content; only
             // "lock" needs the manager to act after the window is gone.
             "end_action": root._sessionEndMode() === "lock" ? "lock" : "",
-            "auto_unlock": Config.options?.phone?.scrcpy?.appMode?.autoUnlock ?? true
+            "auto_unlock": Shell.Config.phone?.scrcpy?.appMode?.autoUnlock ?? true
         }
     }
 
@@ -765,7 +689,7 @@ Singleton {
             root._forgetSession(sessionId)
             return false
         }
-        if (!(Config.options?.phone?.scrcpy?.autoResume ?? true)) return false
+        if (!(Shell.Config.phone?.scrcpy?.autoResume ?? true)) return false
         if (!root._sessionArgs[sessionId]) return false
 
         const now = Date.now()
@@ -773,9 +697,7 @@ Singleton {
         if (!attempt || now - attempt.first > 120000) attempt = { "count": 0, "first": now }
         if (attempt.count >= root._maxResumeAttempts) {
             root._forgetSession(sessionId)
-            // The sidebar's page says this in place of the picture.
-            if (sessionId !== root.embedSessionId)
-                root.reportFailure(sessionId, Translation.tr("Phone connection lost — could not reopen the window"))
+            root.reportFailure(sessionId, I18n.tr("Phone connection lost — could not reopen the window"))
             return false
         }
         attempt.count += 1
@@ -804,7 +726,6 @@ Singleton {
         const rec = root._sessionArgs[sessionId]
         if (!rec) return
         if (sessionId === "mirror") root.mirrorLaunching = true
-        else if (sessionId === root.embedSessionId) root.embedLaunching = true
         // withAdbTarget re-resolves the target first: the port the session
         // died on is exactly the one that just changed.
         KdeConnectService.withAdbTarget(args => {
@@ -836,9 +757,9 @@ Singleton {
     Process {
         id: sessionManagerProc
         stdinEnabled: true
-        command: ProcUtils.pdeath([
+        command: PhoneState.pdeath([
             "python3",
-            Quickshell.shellPath("scripts/phone/scrcpy_session_manager.py")
+            Quickshell.shellPath("modules/phone/scripts/phone/scrcpy_session_manager.py")
         ])
         running: root._managerWanted && root._managerAllowed
 
@@ -856,8 +777,6 @@ Singleton {
             root.sessions = []
             root.mirrorRunning = false
             root.mirrorLaunching = false
-            root.embedRunning = false
-            root.embedLaunching = false
             root.recordingRunning = false
             root.recordingLaunching = false
             root.appsLoading = false
@@ -887,10 +806,6 @@ Singleton {
                             root.mirrorRunning = true
                             root.mirrorLaunching = false
                             root.mirrorElapsedMs = 0
-                        } else if (sid === root.embedSessionId) {
-                            root.embedRunning = true
-                            root.embedLaunching = false
-                            root.embedError = ""
                         } else if (sid === root.recordSessionId) {
                             root.recordingRunning = true
                             root.recordingLaunching = false
@@ -911,25 +826,26 @@ Singleton {
                             curSessions.push(sessionObj)
                         }
                         root.sessions = curSessions
+                        if (msg.alreadyRunning && msg.title)
+                            root._focusWindowTitle(msg.title)
 
                     } else if (ev === "waiting") {
                         // The manager holds a launch back while the phone is
                         // unreachable or still locked; say so instead of
                         // leaving a dead-looking button.
                         if (msg.id === "mirror") root.mirrorLaunching = true
-                        else if (msg.id === root.embedSessionId) root.embedLaunching = true
                         else if (msg.id === root.recordSessionId) root.recordingLaunching = true
                         // Android draws the PIN pad on a FLAG_SECURE surface,
                         // so that window can only ever show black there. Input
                         // still reaches the phone, so the PIN can be typed
                         // blind — but only if the user is told to.
                         const waitText = msg.reason !== "locked"
-                            ? Translation.tr("Waiting for the phone to reconnect…")
+                            ? I18n.tr("Waiting for the phone to reconnect…")
                             : !msg.unlockWindow
-                                ? Translation.tr("Waiting for the phone to be unlocked…")
+                                ? I18n.tr("Waiting for the phone to be unlocked…")
                                 : msg.secure
-                                    ? Translation.tr("Type your PIN in the window that opened — Android blanks the PIN screen, so it stays black")
-                                    : Translation.tr("Unlock your phone in the window that just opened")
+                                    ? I18n.tr("Type your PIN in the window that opened — Android blanks the PIN screen, so it stays black")
+                                    : I18n.tr("Unlock your phone in the window that just opened")
                         KdeConnectService.dispatchActionFeedback(waitText, true)
 
                     } else if (ev === "exited") {
@@ -946,12 +862,6 @@ Singleton {
                             root.mirrorRunning = false
                             root.mirrorLaunching = resuming
                             if (failed) root.reportFailure(sid, msg.error || "")
-                        } else if (sid === root.embedSessionId) {
-                            root.embedRunning = false
-                            root.embedLaunching = resuming
-                            // The page shows this in place of the picture, so
-                            // it does not also need a toast over the sidebar.
-                            if (failed) root.embedError = root.friendlyError(msg.error || "")
                         } else if (sid === root.recordSessionId) {
                             const wasRunning = root.recordingRunning
                             root.recordingRunning = false
@@ -967,11 +877,6 @@ Singleton {
                         root.sessions = curSessions
 
                     } else if (ev === "error") {
-                        if (msg.id === root.embedSessionId) {
-                            root.embedLaunching = false
-                            root.embedError = root.friendlyError(msg.message || "")
-                            return
-                        }
                         if (msg.id === root.recordSessionId) root.recordingLaunching = false
                         root.reportFailure(msg.id || "mirror", msg.message || "")
                     }

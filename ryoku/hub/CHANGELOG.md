@@ -3,6 +3,16 @@
 ## Unreleased
 
 ### Added
+- **Connections > Phone.** One switch installs or removes everything the phone
+  feature needs on Arch, CachyOS, Fedora and Void (KDE Connect, scrcpy, adb,
+  v4l2loopback and the helpers). The card says where the phone stands
+  ("Connected to Pixel 8 · 72%") and opens Kit's Phone tab, where setup and
+  everyday use live; below it sit the notification, mirroring, webcam and
+  microphone settings, with everything else in a collapsed Advanced drawer
+  (`quickshell/pages/PhoneConnectionTab.qml`, `backend/phone.go`).
+- **Credits name the Kit and Phone sources.** ii-p3drovfx now credits Kit and
+  Phone as well, and Monkeytype is listed for the typing test's words and sounds
+  (`quickshell/pages/CreditsPage.qml`, `../../NOTICE`).
 - **The Rashin switch owns the package.** On Arch, switching Rashin off on its
   page now stops the agent and removes `ryoku-rashin` through the host seam
   (the polkit prompt, no terminal), and switching it on installs the package
