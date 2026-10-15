@@ -111,7 +111,7 @@ Hyprland only:
 
     configReload  cursorSet  focusGrab  globalShortcuts  liveConfigEval
     persistentScreenCapture  plugins  screenShader  submap  tiledLayout
-    windowEmbed  workspaceSlideStyle
+    workspaceSlideStyle
 
 niri only:
 
@@ -168,10 +168,6 @@ that change what a user sees:
   (`wlopm`), so a single named output can be blanked; its HDR claim is the
   compositor's on/off switch, with wide gamut and SDR brightness reported as
   losses.
-- **`windowEmbed`** is absent on niri and wayfire: no window can be pinned to
-  a layer surface's screen and corner there, so the ii dock's phone-mirror
-  frame shows its scrcpy session as a plain window instead of drawing it
-  through the panel's cut-out.
 - **`workspaceSlideStyle`** is absent on niri and wayfire: neither answers a
   query for its resolved workspace animation, so the live-draw overlay keeps
   its built-in curve there and matches the compositor's own slide only on
