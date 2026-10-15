@@ -66,8 +66,8 @@ check "the plugin touches /.snapshots" has "$bm/snapper/50-ryoku-boot-menu" '${R
 check "the CLI rescans until /.snapshots holds still" grep -q 'modTime(snapshotsDir).Equal(before)' "$cli"
 check "the restored unit runs the CLI follow-up" line "$bm/ryoku-snapshot-restored.service" "ExecStart=/usr/bin/ryoku boot-menu restored"
 check "the restored unit waits for the restore's flag" line "$bm/ryoku-snapshot-restored.service" \
-  "ConditionPathExists=/var/lib/ryoku/snapshot-restored"
-check "the CLI writes the flag the unit waits for" grep -q 'restoredFlag = "/var/lib/ryoku/snapshot-restored"' "$restore"
+  "ConditionPathExists=/etc/ryoku/snapshot-restored"
+check "the CLI writes the flag the unit waits for" grep -q 'restoredFlag = "/etc/ryoku/snapshot-restored"' "$restore"
 check "the CLI restores from the snapshot the look hook mounted" grep -q 'previewLower = "/run/ryoku/preview/lower"' "$restore"
 check "the look hook mounts it there" has "$mod/ryoku-snapshot-preview.sh" 'base="$run/ryoku/preview"'
 check "the CLI builds images with the shipped module" grep -q 'snapshotDracutMod *= "ryoku-snapshot"' "$cli"

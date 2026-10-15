@@ -32,8 +32,9 @@ const (
 )
 
 // restoredFlag lives inside the root subvolume, so only the restored root
-// sees it; the restore writes it there before that root ever boots.
-const restoredFlag = "/var/lib/ryoku/snapshot-restored"
+// sees it; the restore writes it there before that root ever boots. /etc, not
+// /var: Fedora Cloud mounts /var from its own subvolume, which would hide it.
+const restoredFlag = "/etc/ryoku/snapshot-restored"
 
 var fstabFile = "/etc/fstab"
 
@@ -68,7 +69,7 @@ func restoreSnapshot() error {
 		return err
 	}
 	opts, flags := baseSnapshotOptions(readText(procCmdline))
-	layout := menuLayout{bootUUID: uuid, options: opts, rootflags: flags}
+	layout := menuLayout{bootUUID: uuid, bootPrefix: grubBootPrefix(boot), options: opts, rootflags: flags}
 
 	top, cleanup, err := mountBtrfsTop(lower.source)
 	if err != nil {

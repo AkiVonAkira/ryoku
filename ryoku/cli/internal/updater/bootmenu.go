@@ -102,7 +102,10 @@ type bootSnapshot struct {
 // menuLayout is what every entry shares: where /boot is for GRUB, the kernel
 // options, and the btrfs subvolume names the cmdlines use.
 type menuLayout struct {
-	bootUUID   string
+	bootUUID string
+	// bootPrefix is where /boot sits inside its filesystem as GRUB sees it:
+	// "" for a /boot partition, the subvolume path for a /boot subvolume.
+	bootPrefix string
 	options    string
 	rootflags  []string
 	rootSubvol string
@@ -166,6 +169,7 @@ func readMenuLayout() (menuLayout, error) {
 		return l, err
 	}
 	l.bootUUID = uuid
+	l.bootPrefix = grubBootPrefix(boot)
 	l.options, l.rootflags = baseSnapshotOptions(baseCmdline())
 	if !strings.Contains(" "+l.options, " root=") {
 		return l, fmt.Errorf(i18n.T("no root= in the kernel command line"))
@@ -180,6 +184,16 @@ func baseCmdline() string {
 		return base
 	}
 	return strings.TrimSpace(readText(procCmdline))
+}
+
+// grubBootPrefix is the path GRUB puts before a file under /boot. GRUB reads a
+// btrfs from its top level, so a /boot that is a subvolume (Fedora Cloud's
+// layout) is found under that subvolume's path.
+func grubBootPrefix(boot mountEntry) string {
+	if boot.fstype != "btrfs" {
+		return ""
+	}
+	return strings.TrimRight(boot.root, "/")
 }
 
 func blockUUID(dev string) (string, error) {
@@ -444,8 +458,8 @@ func renderSnapshotMenu(snaps []bootSnapshot, l menuLayout) string {
 // writeKernelLines are the lines an entry boots a kernel copy with.
 func writeKernelLines(b *strings.Builder, indent string, l menuLayout, kver, options string) {
 	fmt.Fprintf(b, "%ssearch --no-floppy --fs-uuid --set=root %s\n", indent, l.bootUUID)
-	fmt.Fprintf(b, "%slinux /ryoku/snapshots/%s/vmlinuz %s\n", indent, kver, options)
-	fmt.Fprintf(b, "%sinitrd /ryoku/snapshots/%s/initramfs.img\n", indent, kver)
+	fmt.Fprintf(b, "%slinux %s/ryoku/snapshots/%s/vmlinuz %s\n", indent, l.bootPrefix, kver, options)
+	fmt.Fprintf(b, "%sinitrd %s/ryoku/snapshots/%s/initramfs.img\n", indent, l.bootPrefix, kver)
 }
 
 // snapshotLabel: "Snapshot 42, 2026-09-20 10:11 UTC, pre ryoku update".

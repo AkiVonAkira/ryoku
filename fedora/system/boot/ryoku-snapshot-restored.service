@@ -5,7 +5,7 @@
 # modules for: those entries are dropped, the restored root's own kernels get
 # entries, and the kernel this boot runs becomes the default.
 Description=Ryoku boot entries after a snapshot restore
-ConditionPathExists=/var/lib/ryoku/snapshot-restored
+ConditionPathExists=/etc/ryoku/snapshot-restored
 RequiresMountsFor=/boot /.snapshots
 
 [Service]

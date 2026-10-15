@@ -235,3 +235,25 @@ func TestSnapshotsListedNeedsAKernelCopy(t *testing.T) {
 		t.Fatal("not listed with a kernel copy")
 	}
 }
+
+func TestMenuFindsKernelCopiesInABootSubvolume(t *testing.T) {
+	cloud := parseMountInfo(`43 1 0:35 /root / rw - btrfs /dev/vda3 rw,subvol=/root
+50 43 0:35 /boot /boot rw - btrfs /dev/vda3 rw,subvol=/boot
+`)
+	if got := grubBootPrefix(cloud["/boot"]); got != "/boot" {
+		t.Fatalf("prefix for a /boot subvolume = %q", got)
+	}
+	if got := grubBootPrefix(parseMountInfo(fedoraMountInfo)["/boot"]); got != "" {
+		t.Fatalf("prefix for a /boot partition = %q", got)
+	}
+	l := menuLayout{bootUUID: "b00t", bootPrefix: "/boot", options: "root=UUID=abc", snapSubvol: ".snapshots"}
+	cfg := renderSnapshotMenu([]bootSnapshot{{Num: "7", kver: "k"}}, l)
+	for _, want := range []string{
+		"    linux /boot/ryoku/snapshots/k/vmlinuz ",
+		"    initrd /boot/ryoku/snapshots/k/initramfs.img\n",
+	} {
+		if !strings.Contains(cfg, want) {
+			t.Errorf("menu lacks %q\n%s", want, cfg)
+		}
+	}
+}
