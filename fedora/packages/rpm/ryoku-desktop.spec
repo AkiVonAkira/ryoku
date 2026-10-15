@@ -93,6 +93,10 @@ Requires:       fontconfig
 Requires:       grubby
 Requires:       btrfs-progs
 Requires:       snapper
+Requires:       plymouth
+Requires:       plymouth-scripts
+Requires:       plymouth-plugin-script
+Requires:       plymouth-plugin-label
 Requires:       dracut
 Requires:       kernel-devel
 Requires:       kernel-headers
@@ -185,6 +189,9 @@ RYOKU_HOST_INIT=systemd /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>
 # system, list the snapshots already on disk in the background: a kernel image
 # is built per kernel version they need.
 /usr/bin/ryoku-grub-menu install >/dev/null 2>&1 || :
+# The splash theme is in place now; make it the default and rebuild the dracut
+# images that carry it.
+/usr/bin/ryoku-plymouth-apply apply >/dev/null 2>&1 || :
 if [ -x /usr/bin/ryoku-polkit-reload ] &&
    ! /usr/bin/ryoku-polkit-reload; then
   logger -t ryoku-polkit \
@@ -206,6 +213,7 @@ exit 0
 [ "$1" -eq 0 ] || exit 0
 systemctl disable --now ryoku-snapshot-menu.path ryoku-snapshot-restored.service >/dev/null 2>&1 || :
 /usr/bin/ryoku-grub-menu purge >/dev/null 2>&1 || :
+/usr/bin/ryoku-plymouth-apply reset >/dev/null 2>&1 || :
 [ -d /run/systemd/system ] || exit 0
 systemd-detect-virt --quiet --chroot && exit 0
 [ -x /usr/bin/ryoku-power-cutover ] || exit 0

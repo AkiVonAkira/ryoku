@@ -73,6 +73,10 @@ The menu wears the Ryoku theme (`system/boot/grub/theme/`): the Limine menu's
 layout on the Ryoku wallpaper, with "Ryoku Mono" fonts `ryoku-grub-menu` builds
 onto `/boot` from SpaceMono when `ryoku-extras` installed it, else Noto Sans
 Mono.
+The Ryoku Plymouth splash shows from GRUB to the login screen: `ryoku-desktop`
+pulls in the script and label plugins it draws with, and `ryoku-plymouth-apply`
+(`system/boot/ryoku-plymouth-apply`) makes it the default and rebuilds the dracut
+images on install. Later updates rebuild only while it is still the default.
 NVIDIA stays on nouveau. Wayfire is unavailable because Fedora ships
 0.10.1 and Ryoku requires 0.11. AUR-only extras such as Zen Browser, LocalSend,
 Voxtype, Looking Glass, and SteamCMD are not shipped in the Fedora lane.
