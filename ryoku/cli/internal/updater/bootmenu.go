@@ -19,7 +19,7 @@ import (
 // The snapshot boot menu makes snapper snapshots bootable from Fedora's GRUB
 // without touching what Secure Boot verifies. Pieces (fedora/system/boot/):
 //
-//   - /etc/grub.d/42_ryoku_snapshots, rendered into grub.cfg once, sources
+//   - /etc/grub.d/15_ryoku_snapshots, rendered into grub.cfg once, sources
 //     snapshotMenuCfg, which `ryoku boot-menu sync` rewrites after every
 //     snapshot: ryoku-snapshot-menu.path starts ryoku-snapshot-menu.service
 //     when /.snapshots changes, which the snapper plugin makes sure of once a
@@ -35,7 +35,7 @@ import (
 //     Arch (bootmenu_restore.go).
 const (
 	snapshotMenuID = "ryoku-snapshots"
-	// ships beside /etc/grub.d/42_ryoku_snapshots; /etc/grub.d is root-only
+	// ships beside /etc/grub.d/15_ryoku_snapshots; /etc/grub.d is root-only
 	// and `ryoku snapshots` runs as the user.
 	snapshotMenuTool  = "/usr/bin/ryoku-grub-menu"
 	snapshotDracutMod = "ryoku-snapshot"

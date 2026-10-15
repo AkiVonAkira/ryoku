@@ -35,7 +35,7 @@ package() {
   # into grub.cfg.
   local boot="$_repo/fedora/system/boot" file unit mod
   install -Dm755 "$boot/grub/ryoku-grub-menu" "$pkgdir/usr/bin/ryoku-grub-menu"
-  install -Dm755 "$boot/grub/42_ryoku_snapshots" "$pkgdir/etc/grub.d/42_ryoku_snapshots"
+  install -Dm755 "$boot/grub/15_ryoku_snapshots" "$pkgdir/etc/grub.d/15_ryoku_snapshots"
   for file in "$boot"/grub/theme/*; do
     install -Dm644 "$file" "$pkgdir/usr/share/ryoku/grub/theme/${file##*/}"
   done

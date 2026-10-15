@@ -36,7 +36,7 @@ absent() { [ ! -e "$1" ]; }
 # case 1
 for dest in \
   usr/bin/ryoku-grub-menu \
-  etc/grub.d/42_ryoku_snapshots \
+  etc/grub.d/15_ryoku_snapshots \
   usr/libexec/snapper/plugins/50-ryoku-boot-menu; do
   check "ryoku-desktop ships /$dest" has "$payload" "\"\$pkgdir/$dest\""
 done
@@ -72,8 +72,8 @@ check "the CLI restores from the snapshot the look hook mounted" grep -q 'previe
 check "the look hook mounts it there" has "$mod/ryoku-snapshot-preview.sh" 'base="$run/ryoku/preview"'
 check "the CLI builds images with the shipped module" grep -q 'snapshotDracutMod *= "ryoku-snapshot"' "$cli"
 check "the CLI detects the menu by the tool the package ships" grep -q 'snapshotMenuTool *= "/usr/bin/ryoku-grub-menu"' "$cli"
-check "the snippet sources the file the CLI writes" has "$bm/grub/42_ryoku_snapshots" 'source "${config_directory}/ryoku-snapshots.cfg"'
-check "the grub.d snippet renders" sh -c "sh '$bm/grub/42_ryoku_snapshots' | grep -q '^if \\[ -f '"
+check "the snippet sources the file the CLI writes" has "$bm/grub/15_ryoku_snapshots" 'source "${config_directory}/ryoku-snapshots.cfg"'
+check "the grub.d snippet renders" sh -c "sh '$bm/grub/15_ryoku_snapshots' | grep -q '^if \\[ -f '"
 check "the module is only built in on request" grep -q '^  return 255$' "$mod/module-setup.sh"
 check "the module has no unattended restore" test ! -e "$mod/ryoku-snapshot-restore.sh"
 
@@ -147,7 +147,7 @@ printf 'face' >"$work/face.ttf"
 cat >"$stubs/mkconfig" <<EOF_STUB
 #!/bin/sh
 echo run >>"$work/mkconfig.log"
-sh "$bm/grub/42_ryoku_snapshots" >"\$2"
+sh "$bm/grub/15_ryoku_snapshots" >"\$2"
 EOF_STUB
 cat >"$stubs/mkfont" <<'EOF_STUB'
 #!/bin/sh
