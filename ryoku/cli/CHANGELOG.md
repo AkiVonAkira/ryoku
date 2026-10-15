@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+- **Fedora snapshots every dnf transaction.** The `ryoku` RPM ships a libdnf5
+  actions hook (`fedora/system/snapshots/`) that takes a snapper pre/post pair
+  around each `dnf` run, the way snap-pac does for pacman. `ryoku update` marks
+  its own pair in `/run/ryoku/update-snapshot`, so the hook does not nest a
+  second pair inside it.
+
 ### Fixed
 - **Updates preserve installer package choices.** Control-manifest convergence
   now excludes browser, login-shell, and compositor packages selected per box,
