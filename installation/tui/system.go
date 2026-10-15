@@ -1103,12 +1103,11 @@ func switchWifiBackend(backend string) bool {
 	if err := os.WriteFile(wifiBackendConf, []byte(body), 0o644); err != nil {
 		return false
 	}
-	leaving := "wpa_supplicant.service"
+	leaving, keeping := "wpa_supplicant", "iwd"
 	if backend == "wpa_supplicant" {
-		leaving = "iwd.service"
+		leaving, keeping = "iwd", "wpa_supplicant"
 	}
-	_ = exec.Command("systemctl", "stop", leaving).Run()
-	if err := exec.Command("systemctl", "restart", "NetworkManager.service").Run(); err != nil {
+	if !restartWifiStack(leaving, keeping) {
 		return false
 	}
 	for range 20 {
@@ -1118,6 +1117,27 @@ func switchWifiBackend(backend string) bool {
 		time.Sleep(250 * time.Millisecond)
 	}
 	return true
+}
+
+// systemdRuntimeDir is where a booted systemd leaves its mark; its absence on
+// the live medium means runit (the Void ISO).
+var systemdRuntimeDir = "/run/systemd/system"
+
+// restartWifiStack stops the supplicant being left and restarts NetworkManager
+// so it picks up the new backend. On systemd NetworkManager D-Bus-activates
+// whichever supplicant it keeps. Under runit it cannot start iwd that way (Void's
+// iwd ships no activation file), so the supervised service is raised by hand;
+// wpa_supplicant is bus-activated on both.
+func restartWifiStack(leaving, keeping string) bool {
+	if info, err := os.Stat(systemdRuntimeDir); err == nil && info.IsDir() {
+		_ = exec.Command("systemctl", "stop", leaving+".service").Run()
+		return exec.Command("systemctl", "restart", "NetworkManager.service").Run() == nil
+	}
+	_ = exec.Command("sv", "down", leaving).Run()
+	if keeping == "iwd" {
+		_ = exec.Command("sv", "up", "iwd").Run()
+	}
+	return exec.Command("sv", "restart", "NetworkManager").Run() == nil
 }
 
 // wifiConnect joins a network with nmcli. If the live backend (iwd by default)

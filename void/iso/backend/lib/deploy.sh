@@ -71,6 +71,7 @@ void_deploy_user() {
 
 void_services() {
   log "enabling the Void desktop services"
+  void_supervise_iwd
   run chroot /mnt env RYOKU_HOST_INIT=runit ryoku-host session ensure --system
   run chroot /mnt env RYOKU_HOST_INIT=runit ryoku-host svc reconcile --system
   if [[ ${RYOKU_ENABLE_SERIAL:-0} == 1 ]]; then
@@ -79,6 +80,23 @@ void_services() {
     fi
     void_enable_service agetty-ttyS0
   fi
+}
+
+# NetworkManager cannot D-Bus-activate iwd on Void (the package ships no
+# activation file), so the backend ryoku_network pinned decides whether iwd runs
+# supervised: the manifest's wifi-iwd row links /etc/sv/iwd while this marker
+# exists. ryoku-wifi-backend keeps marker and service in step after install.
+void_supervise_iwd() {
+  local conf=/mnt/etc/NetworkManager/conf.d/wifi-backend.conf
+  if [[ -z ${RYOKU_DRYRUN:-} && -r $conf ]] \
+    && grep -qiE '^[[:space:]]*wifi\.backend[[:space:]]*=[[:space:]]*wpa_supplicant' "$conf"; then
+    log 'Wi-Fi backend is wpa_supplicant: iwd stays unsupervised'
+    return 0
+  fi
+  log 'Wi-Fi backend is iwd: marking it for supervision (/var/lib/ryoku/wifi-iwd.enabled)'
+  run mkdir -p /mnt/var/lib/ryoku
+  write_file /mnt/var/lib/ryoku/wifi-iwd.enabled <<'EOF'
+EOF
 }
 void_default_browser() {
   local user=$RYOKU_USERNAME browser=${RYOKU_BROWSER:-firefox} desktop command

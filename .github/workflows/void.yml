@@ -69,6 +69,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Check init translation
         run: bash tests/void-init.sh
+      - name: Check the Wi-Fi backend keeps iwd supervised
+        run: bash tests/void-wifi-backend.sh
 
   init-runit:
     name: Init behavior under runit

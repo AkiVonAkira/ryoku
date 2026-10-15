@@ -5,7 +5,10 @@ root=${1:?rootfs path is required}
 service_root=$root/etc/runit/runsvdir/default
 mkdir -p "$service_root" "$root/var/log" "$root/var/db/xbps/keys"
 
-for service in dbus NetworkManager seatd; do
+# iwd is NetworkManager's Wi-Fi backend here (etc/NetworkManager/conf.d), and
+# Void ships it without a D-Bus activation file, so it runs supervised or Wi-Fi
+# never associates; wpa_supplicant, the TUI's fallback, is bus-activated.
+for service in dbus NetworkManager iwd seatd; do
 	[ -d "$root/etc/sv/$service" ] || {
 		printf 'post-setup: required live service is missing: %s\n' "$service" >&2
 		exit 1

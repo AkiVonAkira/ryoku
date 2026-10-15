@@ -17,6 +17,13 @@
   headless one exits at once.
 
 ### Fixed
+- **`ryoku-wifi-backend` keeps iwd supervised on a runit host.** Switching the
+  backend on Void wrote the drop-in and restarted NetworkManager, which cannot
+  D-Bus-activate iwd there; the switch now maintains
+  `/var/lib/ryoku/wifi-iwd.enabled`, reconciles the service manifest (its
+  `wifi-iwd` row links or unlinks `/etc/sv/iwd`) and raises iwd when it is the
+  backend. On systemd nothing changes: NetworkManager activates iwd itself
+  (`system/hardware/network/ryoku-wifi-backend`, `tests/void-wifi-backend.sh`).
 - `power/ryoku-clamshell`: **Wayfire lid close now locks, suspends, or enters
   docked clamshell mode instead of being swallowed by the lid inhibitor.**
   Wayfire 0.11 receives switch devices internally but exposes no switch binding

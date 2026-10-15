@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Fixed
+- **The Void live medium can join Wi-Fi.** Its NetworkManager drop-in pinned
+  iwd while nothing started iwd, so the installer never saw a network. The live
+  image now supervises `iwd` (`void/iso/post-setup.sh`), the drop-in carries the
+  same name as the Arch medium's (`wifi-backend.conf`) so the TUI reads the
+  backend it pins, and the TUI's wpa_supplicant fallback drives the live
+  supplicants through `sv` under runit instead of `systemctl`
+  (`installation/tui/system.go`).
 - **The CachyOS edition's disk layout starts from CachyOS's sizes.** It
   defaulted to the Arch edition's 1 GiB ESP and 16 GiB swap; it now starts at a
   4 GiB ESP and no swap partition, as CachyOS's installer does for Limine

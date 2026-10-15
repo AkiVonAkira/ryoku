@@ -61,6 +61,15 @@
   naming `RYOKU_ESP_MODE=dedicated` as the way around it (`lib/bootloader.sh`).
 
 ### Fixed
+- **Wi-Fi works on a Void install.** The target pins NetworkManager to iwd,
+  but NetworkManager can only D-Bus-activate iwd where an activation file
+  exists (systemd); Void's iwd ships none, so every Void install came up with
+  the radio `unavailable`, an empty scan and no way to join. The Void services
+  step now records `/var/lib/ryoku/wifi-iwd.enabled` when the pinned backend is
+  iwd, and the service manifest's `wifi-iwd` row links `/etc/sv/iwd` while that
+  marker exists (`void/iso/backend/lib/deploy.sh`). Proven on a virtual radio:
+  the same box went from "No Wi-Fi device found" to a WPA2 join once iwd was
+  supervised.
 - **Filtered Ryoku DNS now fails before the disk is touched.** The mirror
   preflight recognizes private, loopback, and known sinkhole answers for
   `ryoku.dev`, explains that the network is filtering DNS, and links the

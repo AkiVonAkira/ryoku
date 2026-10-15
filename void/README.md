@@ -90,6 +90,13 @@ btrfs root and snapper; `ryoku doctor` converges the root snapper config.
 environment generator, including explicit accepted losses. `tests/void-init.sh`
 fails if a source unit has no row.
 
+Wi-Fi on Void runs NetworkManager over iwd like the other editions, with one
+runit-only piece: Void's iwd has no D-Bus activation file, so iwd runs as a
+supervised service while `/var/lib/ryoku/wifi-iwd.enabled` exists (the
+manifest's `wifi-iwd` row). The installer records the marker for the backend it
+pins and `ryoku-wifi-backend` maintains it on every switch, so a box moved to
+wpa_supplicant stops supervising iwd and one moved back starts again.
+
 System services install under `/etc/sv/`. Packaged user services live under
 `/usr/lib/ryoku/runit/user/` and are provisioned to
 `~/.config/service/` for Turnstile. `system/services/manifest.tsv` owns their
