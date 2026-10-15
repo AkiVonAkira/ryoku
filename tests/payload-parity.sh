@@ -280,7 +280,9 @@ adapter_entry() {
       return 1
       ;;
     *:etc/boot/*|*:etc/kernel.d/*|*:usr/lib/initcpio/*|*:usr/share/ryoku/boot/*|\
-    *:usr/bin/ryoku-boot-apply|*:usr/bin/ryoku-windows-entry)
+    *:usr/bin/ryoku-boot-apply|*:usr/bin/ryoku-windows-entry|\
+    fedora:etc/grub.d/42_ryoku_snapshots|fedora:usr/bin/ryoku-grub-menu|\
+    fedora:usr/libexec/snapper/plugins/50-ryoku-boot-menu|fedora:usr/lib/dracut/modules.d/90ryoku-snapshot/*)
       return 1
       ;;
     *:usr/share/polkit-1/rules.d/54-ryoku-bluetooth-a2dp.rules|\

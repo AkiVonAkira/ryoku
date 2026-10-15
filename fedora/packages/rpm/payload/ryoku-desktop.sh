@@ -26,4 +26,20 @@ package() {
 
   install -Dm644 "$_repo/fedora/system/hardware/network/ryoku-wifi-regdom.service" \
     "$pkgdir/usr/lib/systemd/system/ryoku-wifi-regdom.service"
+
+  # the snapshot boot menu (fedora/system/boot): the "Ryoku snapshots" GRUB
+  # submenu, resynced after every snapshot by the snapper plugin and
+  # ryoku-snapshot-menu.path; %posttrans renders the snippet into grub.cfg.
+  local boot="$_repo/fedora/system/boot" unit mod
+  install -Dm755 "$boot/grub/ryoku-grub-menu" "$pkgdir/usr/bin/ryoku-grub-menu"
+  install -Dm755 "$boot/grub/42_ryoku_snapshots" "$pkgdir/etc/grub.d/42_ryoku_snapshots"
+  install -Dm755 "$boot/snapper/50-ryoku-boot-menu" \
+    "$pkgdir/usr/libexec/snapper/plugins/50-ryoku-boot-menu"
+  for unit in ryoku-snapshot-menu.service ryoku-snapshot-menu.path ryoku-snapshot-restored.service; do
+    install -Dm644 "$boot/$unit" "$pkgdir/usr/lib/systemd/system/$unit"
+  done
+  for mod in module-setup.sh ryoku-snapshot-preview.sh; do
+    install -Dm755 "$boot/dracut/90ryoku-snapshot/$mod" \
+      "$pkgdir/usr/lib/dracut/modules.d/90ryoku-snapshot/$mod"
+  done
 }

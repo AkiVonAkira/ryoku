@@ -1,0 +1,34 @@
+#!/usr/bin/bash
+#
+# Puts the "Ryoku snapshots" submenu into Fedora's GRUB, keeping shim, GRUB and
+# the kernels exactly as Fedora signs them.
+#
+#   install   render /etc/grub.d/42_ryoku_snapshots into grub.cfg when it is
+#             not there yet (ryoku-desktop %posttrans)
+#   purge     drop the snapshot menu and its kernel copies (ryoku-desktop
+#             %preun on removal; %postun rebuilds grub.cfg)
+set -euo pipefail
+
+grub_dir="${RYOKU_GRUB_DIR:-/boot/grub2}"
+mkconfig="${RYOKU_GRUB_MKCONFIG:-grub2-mkconfig}"
+boot_dir=$(dirname "$grub_dir")
+
+install_menu() {
+  [ -d "$grub_dir" ] || return 0
+  grep -qs "ryoku-snapshots.cfg" "$grub_dir/grub.cfg" && return 0
+  "$mkconfig" -o "$grub_dir/grub.cfg" >/dev/null
+}
+
+purge_menu() {
+  rm -rf "$grub_dir/ryoku-snapshots.cfg" "$boot_dir/ryoku/snapshots"
+  rmdir "$boot_dir/ryoku" 2>/dev/null || :
+}
+
+case "${1:-}" in
+  install) install_menu ;;
+  purge) purge_menu ;;
+  *)
+    echo "usage: ryoku-grub-menu install|purge" >&2
+    exit 2
+    ;;
+esac

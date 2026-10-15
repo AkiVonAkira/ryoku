@@ -20,6 +20,14 @@
   yet, so `ryoku rollback <id>` guides a restore of the changed files with
   `snapper undochange`, and the boot guard's third step points at that instead
   of booting a snapshot.
+- **Fedora's GRUB lists the snapshots.** A **Ryoku snapshots** submenu boots
+  each snapshot read-only, its writes in RAM, from a copy of Fedora's own
+  signed kernel on `/boot`, so Secure Boot keeps working. `ryoku boot-menu
+  sync` rewrites it after every snapshot (through `ryoku-snapshot-menu.path`
+  and a snapper plugin), and `sudo ryoku boot-menu restore`, run in that look
+  boot, makes the snapshot the root again, keeping the replaced root for two
+  weeks. The first boot after a restore brings Fedora's kernel entries in line
+  with the restored root. Fedora's `grub-boot-success.timer` is left alone.
 
 ### Fixed
 - **Updates preserve installer package choices.** Control-manifest convergence
