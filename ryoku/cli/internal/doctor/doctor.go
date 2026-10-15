@@ -227,7 +227,10 @@ func reconcilers() []reconciler {
 		{i18n.T("interface language"), reconcileShellLanguage},
 	}
 	if fedora {
-		checks = append(checks, reconciler{i18n.T("Fedora release"), reconcileFedoraRelease})
+		checks = append(checks,
+			reconciler{i18n.T("Fedora release"), reconcileFedoraRelease},
+			reconciler{i18n.T("earlier Fedora boot-menu leftovers"), reconcileFedoraLegacyBoot},
+		)
 	}
 	if !fedora {
 		checks = append(checks,

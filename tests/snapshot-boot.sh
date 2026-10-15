@@ -182,7 +182,9 @@ done
 check "the theme names only fonts install builds" \
   test -z "$(grep -o '"[A-Za-z ]* [0-9][0-9]*"' "$bm/grub/theme/theme.txt" | grep -vE '"Ryoku Mono Regular (16|20|24)"')"
 
+mkdir -p "$theme" && printf 'old' >"$theme/background.png" && printf 'old' >"$theme/unicode.pf2"
 menu install
+check "install drops what the earlier theme left" test ! -e "$theme/background.png" -a ! -e "$theme/unicode.pf2"
 check "install copies the theme onto /boot" test -f "$theme/theme.txt" -a -f "$theme/ryoku-wall.png" -a -f "$theme/select_c.png"
 for size in 16 20 24; do
   check "install builds Ryoku Mono at $size px" line "$theme/ryoku-mono-$size.pf2" "PFF2 Ryoku Mono $size"
@@ -212,9 +214,11 @@ check "purge removes the theme, the menu and the kernel copies" \
   test ! -e "$theme" -a ! -e "$grub/ryoku-snapshots.cfg" -a ! -e "$work/boot/ryoku"
 check "purge leaves grub.cfg to %postun" test -f "$grub/grub.cfg"
 
+menu install
 FACE=$work/missing.ttf menu install
 check "without a font face, GRUB's Unifont stands in" cmp -s "$work/unicode.pf2" "$theme/unicode.pf2"
 check "and GRUB_FONT names it" line "$work/etc/grub" "GRUB_FONT=\"$theme/unicode.pf2\""
+check "and the Ryoku Mono fonts nothing names go" test -z "$(find "$theme" -name 'ryoku-mono-*.pf2')"
 menu purge
 
 printf 'GRUB_TERMINAL_OUTPUT="serial console"\n' >"$work/etc/grub"

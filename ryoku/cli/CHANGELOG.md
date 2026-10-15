@@ -44,6 +44,13 @@
   its own.
 
 ### Fixed
+- **`ryoku doctor` clears what earlier Fedora packages left in the boot menu.**
+  Their console plugin twinned every kernel's boot entry as
+  `<kver>~ryokuconsole`; once the plugin is gone the twins are removed. Their
+  `%post` disabled Fedora's `grub-boot-success.timer` for every user, which is
+  turned back on once (`/var/lib/ryoku/migrations/grub-boot-success-timer`), so
+  a later choice to disable it stands. `ryoku-grub-menu install` drops the
+  files an earlier theme left in `/boot/grub2/themes/ryoku`.
 - **Updates preserve installer package choices.** Control-manifest convergence
   now excludes browser, login-shell, and compositor packages selected per box,
   so it cannot install alternatives the user did not choose.

@@ -98,6 +98,23 @@ install_fonts() {
   return "$changed"
 }
 
+# prune_theme: drop what an earlier theme left in the directory, so
+# grub2-mkconfig does not keep loading a font no theme names; returns 0 when
+# something went.
+prune_theme() {
+  local pruned=1 file name
+  for file in "$theme_dir"/*; do
+    [ -e "$file" ] || continue
+    name=${file##*/}
+    [ -e "$shipped/$name" ] && continue
+    [ "$file" = "$font" ] && continue
+    case "$name" in ryoku-mono-*.pf2) [ "$font" = "$theme_dir/ryoku-mono-20.pf2" ] && continue ;; esac
+    rm -rf "$file"
+    pruned=0
+  done
+  return "$pruned"
+}
+
 install_menu() {
   [ -d "$grub_dir" ] && [ -f "$defaults" ] || return 0
   mkdir -p "$theme_dir"
@@ -109,6 +126,7 @@ install_menu() {
     copy_new "$theme_dir/${file##*/}.new" "$theme_dir/${file##*/}" && changed=0
   done
   install_fonts && changed=0
+  prune_theme && changed=0
 
   # only Fedora's plain console becomes graphical; a serial or other chosen
   # terminal is kept, and the theme simply does not show there.
