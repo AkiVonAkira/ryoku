@@ -20,7 +20,10 @@ Item {
     property var screen: null
 
     readonly property url faceUrl: WidgetsRegistry.getQmlPath(faceId)
-    readonly property Component faceComp: Qt.createComponent(faceUrl)
+    // Compiled off the main thread: a face pulls in a deep tree of its own
+    // components, and compiling it inline froze the desktop while a widget
+    // was being added.
+    readonly property Component faceComp: Qt.createComponent(faceUrl, Component.Asynchronous)
     property Item faceItem: null
 
     implicitWidth: faceItem ? faceItem.implicitWidth : 240
@@ -29,9 +32,11 @@ Item {
     readonly property int _screenW: adapter.screen ? adapter.screen.width : 1920
     readonly property int _screenH: adapter.screen ? adapter.screen.height : 1080
 
-    // The component compiles synchronously; creating the object passes
-    // isPreview as an initial value, so the widget never runs a frame in the
-    // stage's placement mode.
+    // isPreview is an initial value, so the widget never runs a frame in the
+    // stage's placement mode. The face's root is the stage's own draggable
+    // MouseArea: it takes no buttons and drags nothing here, so a press on the
+    // face falls through to WidgetSlot's grip like every other library's,
+    // while the face's own controls keep their clicks.
     function create() {
         const comp = adapter.faceComp;
         if (comp === null || comp.status !== Component.Ready)
@@ -40,6 +45,8 @@ Item {
             adapter.faceItem.destroy();
         adapter.faceItem = comp.createObject(adapter, {
             "isPreview": true,
+            "draggable": false,
+            "acceptedButtons": Qt.NoButton,
             "visible": true,
             "screenWidth": adapter._screenW,
             "screenHeight": adapter._screenH,
