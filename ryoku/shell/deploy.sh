@@ -776,6 +776,15 @@ if command -v sudo >/dev/null 2>&1; then
   # package's older wrapper and logs in with its startup and failure rules.
   _priv_install "$here/../lockscreen/sddm/ryoku-wayland-session" \
     /usr/share/ryoku/lockscreen/ryoku-wayland-session 755
+  # The login screen guard: restarts SDDM when it runs with no greeter and no
+  # session. The runit copy lands with the other void/init services below.
+  _priv_install "$here/../lockscreen/sddm/ryoku-greeter-guard" \
+    /usr/share/ryoku/lockscreen/ryoku-greeter-guard 755
+  if [ -d /run/systemd/system ]; then
+    _priv_install "$here/../lockscreen/sddm/ryoku-greeter-guard.service" \
+      /usr/lib/systemd/system/ryoku-greeter-guard.service 644
+    sudo systemctl enable --quiet ryoku-greeter-guard.service || true
+  fi
   # Wayfire composes its whole config from the shipped baseline, so every later
   # apply (a Hub save, materialize) reads it from the config base the variant
   # package installs. A checkout box has no variant package: lay the baseline

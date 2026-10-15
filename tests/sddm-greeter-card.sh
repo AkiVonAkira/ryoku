@@ -33,7 +33,14 @@ for arg in "$@"; do
   printf '%s\n' "$arg" >>"$RYOKU_TEST_WESTON_LOG"
 done
 STUB
-chmod +x "$bin/modetest" "$bin/weston"
+# the stub weston exits at once; the wrapper reads that as a death and would
+# start it again, so one attempt is allowed and its report goes to a stub logger
+# instead of the host's system log.
+cat >"$bin/logger" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$RYOKU_TEST_LOGGER_LOG"
+STUB
+chmod +x "$bin/modetest" "$bin/weston" "$bin/logger"
 
 reset_fixture() {
   rm -rf "$tmp/drm" "$tmp/run"
@@ -73,6 +80,8 @@ run_case() {
     RYOKU_GREETER_DEADLINE=0 \
     RYOKU_TEST_MODETEST_LOG="$tmp/run/modetest" \
     RYOKU_TEST_WESTON_LOG="$tmp/run/weston" \
+    RYOKU_TEST_LOGGER_LOG="$tmp/run/logger" \
+    RYOKU_GREETER_RETRY_LIMIT=1 \
     RYOKU_TEST_CONNECTOR="$connector" \
     TMPDIR="$tmp/run" \
     PATH="$bin:$PATH" \

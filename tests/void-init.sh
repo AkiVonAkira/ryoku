@@ -77,6 +77,7 @@ done < <(find \
 	"$ROOT/ryoku/cli/systemd" \
 	"$ROOT/system/hardware/network" \
 	"$ROOT/system/hardware/bluetooth" \
+	"$ROOT/ryoku/lockscreen/sddm" \
 	"$ROOT/fedora/system/hardware/network" \
 	-maxdepth 1 -type f \( -name '*.service' -o -name '*.timer' -o -name '*.target' \) | sort)
 

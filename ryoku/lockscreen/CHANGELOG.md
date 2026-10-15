@@ -3,6 +3,20 @@
 ## Unreleased
 
 ### Added
+- **The login screen comes back when its greeter dies.** SDDM 0.21 reports a
+  Wayland greeter that died, compositor or greeter client, crash or exit, as a
+  finished login (`sddm-helper-start-wayland` quits with 0, the daemon reads
+  `HELPER_SUCCESS` and starts nothing), so a box whose greeter failed once sat
+  on an empty VT with a blinking cursor and nothing to log in to. Two pieces
+  close that: `ryoku-greeter` now supervises weston and starts it again when
+  it dies before the greeter connects (the card re-chosen each time, every
+  death logged with weston's last lines), and the new `ryoku-greeter-guard`
+  service restarts the display manager when it runs with no greeter and no
+  session for 20s, three times per boot at most. Both say what happened in
+  the system log under their tags; the guard's last word names the helper log
+  (`/var/lib/sddm/.local/share/sddm-helper-start-wayland/sddm.log`) that holds
+  the greeter client's own exit (`tests/sddm-greeter-supervise.sh`,
+  `tests/sddm-greeter-guard.sh`).
 - The built-in in-session clockwork lockscreen follows the global 12/24-hour preference, including AM/PM.
 
 ### Fixed

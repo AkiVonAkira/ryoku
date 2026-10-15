@@ -286,6 +286,16 @@ EOF
   # [Wayland] SessionCommand by sddm/setup and doctor.
   install -Dm755 "$_repo/ryoku/lockscreen/sddm/ryoku-wayland-session" \
     "$pkgdir/usr/share/ryoku/lockscreen/ryoku-wayland-session"
+  # the login screen guard: SDDM 0.21 reads a Wayland greeter that died as a
+  # finished login and starts nothing afterwards; this restarts the display
+  # manager when it runs with no greeter and no session. The runit service
+  # rides the void/init loop above.
+  install -Dm755 "$_repo/ryoku/lockscreen/sddm/ryoku-greeter-guard" \
+    "$pkgdir/usr/share/ryoku/lockscreen/ryoku-greeter-guard"
+  if [[ $RYOKU_INIT_MODE == systemd ]]; then
+    install -Dm644 "$_repo/ryoku/lockscreen/sddm/ryoku-greeter-guard.service" \
+      "$pkgdir/usr/lib/systemd/system/ryoku-greeter-guard.service"
+  fi
 
   if [[ $RYOKU_INIT_MODE == systemd ]]; then
     # systemd user sources are materialized for the user manager on Arch.

@@ -17,6 +17,7 @@ wifi-iwd	system	conditional	-	iwd	condition:/var/lib/ryoku/wifi-iwd.enabled
 socklog	system	enable-once	-	socklog-unix	preserve
 nanoklogd	system	enable-once	-	nanoklogd	preserve
 sddm	system	enable-once	-	sddm	preserve
+greeter-guard	system	boot	ryoku-greeter-guard.service	ryoku-greeter-guard	none
 snapper-cleanup	system	on-demand	snapper-cleanup.timer	snapper-cleanup	preserve
 ryoku-bootstrap	user	session	ryoku-bootstrap.service	ryoku-bootstrap	preserve:/var/lib/ryoku/bootstrap-enabled
 ryogami	user	session	ryogami.service	ryogami	preserve
