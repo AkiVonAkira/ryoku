@@ -48,6 +48,16 @@ Singleton {
     property bool oskOpen: Stage.GlobalStates.oskOpen
     onOskOpenChanged: if (Stage.GlobalStates.oskOpen !== root.oskOpen)
         Stage.GlobalStates.oskOpen = root.oskOpen
+    // Read-only overlay state the dock's tooltip gate and badges watch: the
+    // stage owns every surface behind these, the dock never raises them.
+    readonly property bool sidebarLeftOpen: Stage.GlobalStates.sidebarLeftOpen
+    readonly property bool sidebarRightOpen: Stage.GlobalStates.sidebarRightOpen
+    readonly property bool osdVolumeOpen: Stage.GlobalStates.osdVolumeOpen
+    readonly property bool cheatsheetOpen: Stage.GlobalStates.cheatsheetOpen
+    readonly property bool notesAppOpen: Stage.GlobalStates.notesAppOpen
+    readonly property bool sessionOpen: Stage.GlobalStates.sessionOpen
+    readonly property bool usageOpen: Stage.GlobalStates.usageOpen
+    readonly property bool islandDashboardOpen: Stage.GlobalStates.islandDashboardOpen
 
     readonly property bool effectiveLeftOpen: Stage.GlobalStates.sidebarLeftOpen
     readonly property bool effectiveRightOpen: Stage.GlobalStates.sidebarRightOpen
