@@ -99,12 +99,19 @@ func createTopLevelSnapshots() error {
 			return fmt.Errorf(i18n.T("adding /.snapshots to %s: %w"), fstabPath, err)
 		}
 		_ = sys.Run("sudo", "restorecon", fstabPath)
-		_ = sys.Run("sudo", "systemctl", "daemon-reload")
 	}
+	_ = sys.Run("sudo", "systemctl", "daemon-reload")
 	if err := sys.Run("sudo", "mkdir", "-p", "/.snapshots"); err != nil {
 		return err
 	}
-	if err := sys.Run("sudo", "mount", "/.snapshots"); err != nil {
+	// systemd mounts it through the unit its fstab generator made, which the
+	// snapshot menu's RequiresMountsFor may already have started; a plain
+	// mount on top of that would stack a second one.
+	unit, err := sys.RunOut("systemd-escape", "-p", "--suffix=mount", "/.snapshots")
+	if err != nil {
+		return fmt.Errorf(i18n.T("naming the /.snapshots mount unit: %w"), err)
+	}
+	if err := sys.Run("sudo", "systemctl", "start", strings.TrimSpace(unit)); err != nil {
 		return fmt.Errorf(i18n.T("mounting /.snapshots: %w"), err)
 	}
 	_ = sys.Run("sudo", "restorecon", "-R", "/.snapshots")
