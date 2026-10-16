@@ -3,6 +3,18 @@
 ## Unreleased
 
 ### Changed
+- **Audio downloads keep the stream they came with.** The stash helper used to
+  ask yt-dlp to transcode every audio download to mp3 (`-x --audio-format mp3`)
+  and told cobalt the same, so a low-bitrate or lossless source came back as a
+  lossy mp3 of it. yt-dlp now takes the best audio stream as it is (`-f ba`,
+  no `-x`) and cobalt is asked for `best`, which passes the original through,
+  so nothing is re-encoded on the way in (`scripts/stash-cobalt.sh`,
+  `tests/stash-probe.sh`).
+- **A download notification says which video it was.** The desktop
+  notification for a finished download now carries the title, on success and on
+  failure alike: the probed title when the link was read first, otherwise the
+  name the file landed under (`scripts/stash-cobalt.sh`,
+  `quickshell/shell/services/Stash.qml`).
 - **Ask and the sidebar chat point at the Hub when Rashin is off.** A quick
   ask or a chat message on a box without `ryoku-rashin` answers "Rashin is off,
   switch it on in Ryoku Hub" instead of naming a package to install by hand.
@@ -17,6 +29,67 @@
   in the picture directory and the rest at home.
 
 ### Added
+- **The ask box shows what a link can be fetched as, before it downloads
+  anything.** Paste a link into the ask field and press Enter (or pick
+  "Download URL"; both take the same path): the box reads the formats once and
+  lists them, one row per tier, under the file's own title. The title wraps to
+  as many lines as it needs and is set bold, because a heading cut to one
+  ellipsis line said nothing about what was on offer. Video and Mute rows read
+  a resolution and a size (`1080p`, `~145 MB`), Audio rows read a bitrate
+  (`320k`, `~14 MB`), and an audio-only source reads `Audio · ~5 MB` rather
+  than a resolution it does not have. Each row has its own Download button and
+  nothing else does: a row that fetched on any touch was a row that fetched
+  when the user meant to read the sizes.
+
+  Nothing probes on a keystroke. Reading formats is a yt-dlp call, so it costs
+  one deliberate Enter and the box reads "Reading formats" while it runs; the
+  answer then takes the slot the command list held, so there is one thing below
+  the field that changes rather than two stacked ones. The field's border is
+  the one thing that does answer a keystroke, and it only reads the text: green
+  once the text is a link, resting colour while it is not, because the same
+  field also takes commands and red would lie about them. It is advice, not a
+  gate: Enter runs exactly as before, and text the helper will not fetch falls
+  through to the command path rather than going nowhere. A link that has
+  already been asked about answers from a day-long local cache keyed by the
+  link itself, so returning to the same video costs no round trip; the cache
+  only ever holds successful answers and is written atomically. The mode chips
+  answer from that one probe: switching Auto/Audio/Mute re-renders the same
+  answer rather than asking again, and only editing the link drops a stale one.
+  A chip the source has nothing for says so in one quiet line ("No audio
+  tracks", "No formats for this"), which is a true answer rather than a failed
+  read, so it gets no error box and no fallback button. A link that cannot be
+  read says so in the same box, carries the helper's own reason underneath it
+  (an unsupported URL, a private video), and offers "Download best", so a probe
+  failure costs the size hint and not the download. Pressing Enter clears the
+  field once the command is accepted, so the next paste starts clean. All the
+  state lives in `Stash` and the ask box only renders it, so the flow is
+  testable without a window (`quickshell/shell/modules/ask/AskTools.qml`,
+  `quickshell/shell/modules/ask/AskField.qml`,
+  `quickshell/shell/modules/ask/AskSurface.qml`,
+  `quickshell/shell/services/Stash.qml`).
+- **A download in flight can be stopped.** A queue row that was running showed
+  a percentage and nothing to do about it, so a link queued by mistake or one
+  that turned out to be a 4 GB remux had to be waited out or found in a
+  terminal. A running row now carries the same cross the finished rows use, and
+  pressing it stops the job. The row stays put and reads "cancelled" in the
+  same quiet ink as "queued", not the red of a failure, because nothing went
+  wrong: it keeps the retry and dismiss a finished row has, so a cancel costs
+  the place in the queue and nothing else
+  (`quickshell/shell/modules/ask/AskTools.qml`,
+  `quickshell/shell/services/Stash.qml`).
+- **The picker is answered by the script, and the tier you tap is the one that
+  downloads.** `stash-cobalt.sh probe <url>` asks yt-dlp for the format table
+  once and answers with a single `TIERS` line: video and mute get three heights
+  (the top rung, the best under 720p, the cheapest worth keeping) and audio
+  gets the 320/128/64 kbit rungs, each with an estimated size and the exact
+  selector that lands on it. Mute selectors carry no audio at all, an
+  audio-only link falls through to the bitrate rungs, a source with no duration
+  reports no size rather than an invented one, and a rung the source never
+  offered is left off the menu instead of being faked. `download` takes that
+  selector as an optional argument and hands it to yt-dlp as its format, or
+  maps the height onto cobalt's quality ladder, so choosing a card and getting
+  the bytes are the same decision. Without a selector it runs the exact command
+  it always did (`scripts/stash-cobalt.sh`, `tests/stash-probe.sh`).
 - **The ii dock design.** The dock ported from P3DROVFX's ii-p3drovfx joins the
   shared dock store as a fourth design: pick "ii" in the Stage Editor's dock
   page and the shell mounts the ported tray, its magnification, app groups,
