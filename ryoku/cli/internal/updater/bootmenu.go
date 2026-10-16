@@ -494,7 +494,10 @@ func writeKernelLines(b *strings.Builder, indent string, l menuLayout, kver, opt
 // snapshotLabel: "Snapshot 42, 2026-09-20 10:11 UTC, pre ryoku update".
 func snapshotLabel(s bootSnapshot) string {
 	label := "Snapshot " + s.Num + ", " + shortSnapDate(s.Date) + " UTC"
-	if d := strings.TrimSpace(s.Kind + " " + s.Description); d != "" {
+	// snapper's type reads as a word only for a pair: a pre snapshot is the
+	// state before the change it describes, a post one after it.
+	when := map[string]string{"pre": "before", "post": "after"}[s.Kind]
+	if d := strings.TrimSpace(when + " " + s.Description); d != "" {
 		label += ", " + d
 	}
 	return label

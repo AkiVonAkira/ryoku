@@ -94,6 +94,20 @@ func writeSnapshot(t *testing.T, dir, num, kind, desc string, kvers ...string) {
 	}
 }
 
+func TestSnapshotLabelSaysWhenNotSnapperType(t *testing.T) {
+	for _, tc := range []struct{ kind, desc, want string }{
+		{"single", "vm test snapshot", "Snapshot 7, 2026-10-16 19:39 UTC, vm test snapshot"},
+		{"pre", "dnf transaction", "Snapshot 7, 2026-10-16 19:39 UTC, before dnf transaction"},
+		{"post", "dnf transaction", "Snapshot 7, 2026-10-16 19:39 UTC, after dnf transaction"},
+		{"single", "", "Snapshot 7, 2026-10-16 19:39 UTC"},
+	} {
+		got := snapshotLabel(bootSnapshot{Num: "7", Kind: tc.kind, Date: "2026-10-16 19:39:20", Description: tc.desc})
+		if got != tc.want {
+			t.Errorf("%s %q: label = %q, want %q", tc.kind, tc.desc, got, tc.want)
+		}
+	}
+}
+
 func TestReadBootSnapshotsNewestFirstWithTheirKernel(t *testing.T) {
 	dir := t.TempDir()
 	writeSnapshot(t, dir, "9", "pre", "ryoku update", "6.16.9-200.fc44.x86_64")
@@ -122,7 +136,7 @@ func TestRenderSnapshotMenu(t *testing.T) {
 	cfg := renderSnapshotMenu(snaps, l)
 	for _, want := range []string{
 		"submenu 'Ryoku snapshots' --id ryoku-snapshots {\n",
-		"  menuentry 'Snapshot 42, 2026-09-20 10:11 UTC, pre its ryoku update' --id ryoku-snapshot-42 {\n",
+		"  menuentry 'Snapshot 42, 2026-09-20 10:11 UTC, before its ryoku update' --id ryoku-snapshot-42 {\n",
 		"    search --no-floppy --fs-uuid --set=root b00t\n",
 		"    linux /ryoku/snapshots/6.17.1-300.fc44.x86_64/vmlinuz root=UUID=abc rhgb quiet ro rootflags=subvol=.snapshots/42/snapshot rd.ryoku.preview=.snapshots/42/snapshot\n",
 		"    initrd /ryoku/snapshots/6.17.1-300.fc44.x86_64/initramfs.img\n",
