@@ -19,8 +19,8 @@ import (
 //     writes a twin any more.
 //   - its %post disabled Fedora's grub-boot-success.timer for every user, which
 //     keeps GRUB from hiding its menu after a good boot and from counting a
-//     failed one. That is restored once, so a later choice to disable it
-//     stands.
+//     failed one. The doctor turns it back on once, so a later choice to
+//     disable it stands.
 const (
 	legacyConsoleSuffix = "~ryokuconsole"
 	legacyConsolePlugin = "/usr/lib/kernel/install.d/95-ryoku-console.install"

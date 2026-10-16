@@ -25,8 +25,8 @@ import (
 //   - /etc/grub.d/15_ryoku_snapshots, rendered into grub.cfg once, sources
 //     snapshotMenuCfg, which `ryoku boot-menu sync` rewrites after every
 //     snapshot: ryoku-snapshot-menu.path starts ryoku-snapshot-menu.service
-//     when /.snapshots changes, which the snapper plugin makes sure of once a
-//     snapshot is complete.
+//     when /.snapshots changes, and the snapper plugin touches /.snapshots once
+//     a snapshot is complete.
 //   - GRUB cannot read the root filesystem on an encrypted install, so each
 //     kernel version a snapshot needs gets a copy on /boot under
 //     snapshotKernelDir: Fedora's signed vmlinuz, which shim and GRUB verify
@@ -491,7 +491,7 @@ func writeKernelLines(b *strings.Builder, indent string, l menuLayout, kver, opt
 	fmt.Fprintf(b, "%sinitrd %s/ryoku/snapshots/%s/initramfs.img\n", indent, l.bootPrefix, kver)
 }
 
-// snapshotLabel: "Snapshot 42, 2026-09-20 10:11 UTC, pre ryoku update".
+// snapshotLabel: "Snapshot 42, 2026-09-20 10:11 UTC, before ryoku update".
 func snapshotLabel(s bootSnapshot) string {
 	label := "Snapshot " + s.Num + ", " + shortSnapDate(s.Date) + " UTC"
 	// snapper's type reads as a word only for a pair: a pre snapshot is the

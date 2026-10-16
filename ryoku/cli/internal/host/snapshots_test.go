@@ -157,7 +157,7 @@ func TestSnapshotsUnavailableInSnapshotLookBoot(t *testing.T) {
 	if supported {
 		t.Fatal("a look boot reported snapshots as supported")
 	}
-	if want := "This boot is a look at snapshot 12; its changes stay in RAM. Run `sudo ryoku boot-menu restore` to make it the system, or reboot to go back."; reason != want {
+	if want := "This boot runs snapshot 12 read-only and keeps its changes in RAM. Run `sudo ryoku boot-menu restore` to make it the system, or reboot to go back."; reason != want {
 		t.Fatalf("look boot reason = %q, want %q", reason, want)
 	}
 	if code := app.Execute([]string{"snapshots", "create", "inside the look"}); code != ExitNotProvided {

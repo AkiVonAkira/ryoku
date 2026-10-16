@@ -10,7 +10,7 @@ import (
 
 const (
 	snapshotsUnavailableReason = "Snapshots are not available on this host, so updates cannot be rolled back."
-	snapshotPreviewReason      = "This boot is a look at %s; its changes stay in RAM. Run `sudo ryoku boot-menu restore` to make it the system, or reboot to go back."
+	snapshotPreviewReason      = "This boot runs %s read-only and keeps its changes in RAM. Run `sudo ryoku boot-menu restore` to make it the system, or reboot to go back."
 )
 
 // Snapshots reports whether this host provides Ryoku's snapper-based safety net.

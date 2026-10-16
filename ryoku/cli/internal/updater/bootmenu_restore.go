@@ -40,7 +40,7 @@ var fstabFile = "/etc/fstab"
 func restoreSnapshot() error {
 	snap := cmdlineValue(readText(procCmdline), "rd.ryoku.preview")
 	if snap == "" {
-		return errors.New(i18n.T("this boot is not a snapshot look boot: reboot, open Ryoku snapshots in the boot menu, pick the snapshot, then run this again"))
+		return errors.New(i18n.T("this is not a snapshot boot: reboot, open Ryoku snapshots in the boot menu, pick the snapshot, then run this again"))
 	}
 	if !safeSubvolPath(snap) || !strings.HasSuffix(snap, "/snapshot") {
 		return fmt.Errorf(i18n.T("refusing snapshot path %q"), snap)
@@ -110,7 +110,7 @@ func restoreSnapshot() error {
 	if err := sys.Run("grub2-reboot", restoredEntryID); err != nil {
 		err = undo(fmt.Errorf(i18n.T("pointing the next boot at the restored root: %w"), err))
 		if werr := sys.WriteFileAtomic(snapshotMenuCfg(), menu, 0o644); werr != nil {
-			return fmt.Errorf(i18n.T("%w; the boot menu still lists \"Ryoku: restored system\" (%v), which now boots the current root and goes with the next snapshot"), err, werr)
+			return fmt.Errorf(i18n.T("%w; the boot menu still lists \"Ryoku: restored system\" (%v), which now boots the current root until the next snapshot removes it"), err, werr)
 		}
 		return err
 	}

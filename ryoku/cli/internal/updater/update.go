@@ -2078,7 +2078,7 @@ func Status(args []string) error {
 	snapshotsSupported, snapshotsReason := snapshotCapability()
 	switch {
 	case !snapshotsSupported && snapshotPreview() != "":
-		fmt.Println(i18n.T("snapshots:     this boot is a look at one (sudo ryoku boot-menu restore keeps it)"))
+		fmt.Println(i18n.T("snapshots:     this boot runs one read-only (sudo ryoku boot-menu restore keeps it)"))
 	case !snapshotsSupported:
 		fmt.Printf(i18n.T("snapshots:     unavailable (%s)\n"), snapshotsReason)
 	case !sys.Exists("/etc/snapper/configs/root"):

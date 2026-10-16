@@ -3,11 +3,12 @@
 ## Unreleased
 
 ### Added
-- **Fedora snapshots every dnf transaction.** The `ryoku` RPM ships a libdnf5
-  actions hook (`fedora/system/snapshots/`) that takes a snapper pre/post pair
-  around each `dnf` run, the way snap-pac does for pacman. `ryoku update` names
-  itself in `/run/ryoku/update-snapshot` by pid and start time, so the hook
-  does not nest a second pair inside its own; a dead or reused pid frees it.
+- **Every dnf transaction on Fedora gets a snapshot pair.** The `ryoku` RPM
+  ships a libdnf5 actions hook (`fedora/system/snapshots/`) that takes a snapper
+  pre/post pair around each `dnf` run, the way snap-pac does for pacman.
+  `ryoku update` writes its pid and start time to `/run/ryoku/update-snapshot`,
+  and the hook takes no pair inside the update's own. Once that pid is gone or
+  belongs to another process, the hook takes pairs again.
 - **`ryoku doctor` lays out Fedora snapshots.** On a btrfs Fedora root it
   creates `/.snapshots` as a top-level subvolume with its own `/etc/fstab`
   entry (copied from the root's, with its own `subvol=`), so a whole-system
@@ -19,22 +20,19 @@
   units read it.
 - **Fedora gets snapshots.** The host now reports snapshots as supported on
   Fedora, so `ryoku update` takes its pre/post pair, `ryoku snapshots` lists
-  them, and the doctor sets them up. Fedora's boot menu does not list snapshots
-  yet, so `ryoku rollback <id>` guides a restore of the changed files with
-  `snapper undochange`, and the boot guard's third step points at that instead
-  of booting a snapshot.
+  them, and the doctor sets them up.
 - **Fedora's GRUB lists the snapshots.** A **Ryoku snapshots** submenu boots
   each snapshot read-only, its writes in RAM, from a copy of Fedora's own
   signed kernel on `/boot`, so Secure Boot keeps working. `ryoku boot-menu
   sync` rewrites it after every snapshot (through `ryoku-snapshot-menu.path`
-  and a snapper plugin), and `sudo ryoku boot-menu restore`, run in that look
-  boot, makes the snapshot the root again, keeping the replaced root for two
-  weeks. The first boot after a restore brings Fedora's kernel entries in line
+  and a snapper plugin), and `sudo ryoku boot-menu restore`, run in that
+  snapshot's boot, makes the snapshot the root again and keeps the replaced
+  root for two weeks. The first boot after a restore brings Fedora's kernel entries in line
   with the restored root. Fedora's `grub-boot-success.timer` is left alone.
-- **Fedora's GRUB wears the Ryoku theme.** The Limine menu's layout (the
-  "Ryoku Bootloader" title, the key help, the centred list with a burnt-orange
-  selection bar, the countdown) drawn on the Ryoku wallpaper, which moves from
-  `system/boot/limine/`, where nothing used it, to `fedora/system/boot/grub/theme/`.
+- **Fedora's GRUB uses the Ryoku theme.** It draws the Limine menu's layout on
+  the Ryoku wallpaper: the "Ryoku Bootloader" title, the key help, the centred
+  list with a burnt-orange selection bar, and the countdown. The wallpaper moves
+  from `system/boot/limine/`, where nothing used it, to `fedora/system/boot/grub/theme/`.
   `ryoku-grub-menu install` builds the "Ryoku Mono" fonts onto `/boot` (SpaceMono,
   else Noto Sans Mono, else GRUB's Unifont), so an encrypted root never has to
   be read for them; a serial terminal is kept as it is.
@@ -57,9 +55,9 @@
 - **`ryoku doctor` clears what earlier Fedora packages left in the boot menu.**
   Their console plugin twinned every kernel's boot entry as
   `<kver>~ryokuconsole`; once the plugin is gone the twins are removed. Their
-  `%post` disabled Fedora's `grub-boot-success.timer` for every user, which is
-  turned back on once (`/var/lib/ryoku/migrations/grub-boot-success-timer`), so
-  a later choice to disable it stands. `ryoku-grub-menu install` drops the
+  `%post` disabled Fedora's `grub-boot-success.timer` for every user; the
+  doctor turns it back on once (`/var/lib/ryoku/migrations/grub-boot-success-timer`),
+  so a later choice to disable it stands. `ryoku-grub-menu install` drops the
   files an earlier theme left in `/boot/grub2/themes/ryoku`.
 - **Updates preserve installer package choices.** Control-manifest convergence
   now excludes browser, login-shell, and compositor packages selected per box,
