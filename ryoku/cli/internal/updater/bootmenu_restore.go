@@ -91,13 +91,14 @@ func restoreSnapshot() error {
 	// its flag and its one-time entry would boot Fedora's newest kernel, which
 	// it may have no modules for, and nothing would mend its boot entries.
 	undo := func(cause error) error {
-		if err := sys.Run("btrfs", "subvolume", "delete", root); err != nil {
-			return fmt.Errorf(i18n.T("%v; putting the replaced root back failed as well (%v): it is %s at the btrfs top level"), cause, err, broken)
+		err := sys.Run("btrfs", "subvolume", "delete", root)
+		if err == nil {
+			err = os.Rename(filepath.Join(top, broken), root)
 		}
-		if err := os.Rename(filepath.Join(top, broken), root); err != nil {
-			return fmt.Errorf(i18n.T("%v; putting the replaced root back failed as well (%v): it is %s at the btrfs top level"), cause, err, broken)
+		if err != nil {
+			return fmt.Errorf(i18n.T("%w; putting the replaced root back failed as well (%v): it is %s at the btrfs top level"), cause, err, broken)
 		}
-		return fmt.Errorf(i18n.T("%w; the current root is back, nothing was changed"), cause)
+		return fmt.Errorf(i18n.T("%w; the current root is back"), cause)
 	}
 	if err := sys.WriteFileAtomic(filepath.Join(root, restoredFlag), snap+" "+broken+"\n", 0o644); err != nil {
 		return undo(err)
@@ -107,8 +108,11 @@ func restoreSnapshot() error {
 		return undo(err)
 	}
 	if err := sys.Run("grub2-reboot", restoredEntryID); err != nil {
-		_ = sys.WriteFileAtomic(snapshotMenuCfg(), menu, 0o644)
-		return undo(fmt.Errorf(i18n.T("pointing the next boot at the restored root: %w"), err))
+		err = undo(fmt.Errorf(i18n.T("pointing the next boot at the restored root: %w"), err))
+		if werr := sys.WriteFileAtomic(snapshotMenuCfg(), menu, 0o644); werr != nil {
+			return fmt.Errorf(i18n.T("%w; the boot menu still lists \"Ryoku: restored system\" (%v), which now boots the current root and goes with the next snapshot"), err, werr)
+		}
+		return err
 	}
 	fmt.Printf(i18n.T("Restored %s. The system it replaced is kept as %s for two weeks.\n"), snap, broken)
 	fmt.Println(i18n.T("Reboot now to start the restored system."))
@@ -253,16 +257,8 @@ func cmdlineValue(cmdline, key string) string {
 
 // fstabRootSubvol is the subvolume the fstab entry for / mounts.
 func fstabRootSubvol(fstab string) string {
-	f := sys.FstabRoot(fstab)
-	if f == nil {
-		return ""
-	}
-	for _, o := range strings.Split(f[3], ",") {
-		if v, ok := strings.CutPrefix(o, "subvol="); ok {
-			return strings.Trim(v, "/")
-		}
-	}
-	return ""
+	_, subvol := sys.FstabBtrfsRoot(fstab)
+	return subvol
 }
 
 // safeSubvolPath accepts a relative btrfs path of plain name characters, the

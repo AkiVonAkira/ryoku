@@ -21,10 +21,17 @@ rebuild() {
   dracut --regenerate-all --force --quiet
 }
 
+fingerprint() {
+  find "$theme_dir" -type f -exec sha256sum {} + | sort | sha256sum | cut -d' ' -f1
+}
+
+# apply runs in the background on a live system (ryoku-desktop %posttrans), and
+# a second transaction finds it still running and starts none of its own, so
+# it rebuilds again whenever the theme changed under the rebuild just done.
 apply() {
   [ -d "$theme_dir" ] || return 0
   local fp current
-  fp=$(find "$theme_dir" -type f -exec sha256sum {} + | sort | sha256sum | cut -d' ' -f1)
+  fp=$(fingerprint)
   current=$(plymouth-set-default-theme)
   if [ -f "$stamp" ]; then
     [ "$current" = ryoku ] || return 0
@@ -32,7 +39,11 @@ apply() {
   else
     plymouth-set-default-theme ryoku || return 0
   fi
-  rebuild || return 0
+  while :; do
+    rebuild || return 0
+    [ "$(fingerprint)" = "$fp" ] && break
+    fp=$(fingerprint)
+  done
   mkdir -p "${stamp%/*}" && printf '%s\n' "$fp" >"$stamp"
 }
 

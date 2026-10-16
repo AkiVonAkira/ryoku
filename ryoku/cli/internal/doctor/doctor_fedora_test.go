@@ -65,6 +65,33 @@ func TestFedoraSnapperPlanMovesANestedSnapshotsSubvolume(t *testing.T) {
 	}
 }
 
+func TestFedoraSnapperFlagsSnapshotsMountedFromInsideTheRoot(t *testing.T) {
+	outcome, problems := planSnapper(snapperState{
+		manager: host.DNF, rootIsBtrfs: true, configExists: true, snapperInstalled: true,
+		snapshotsExists: true, snapshotsIsSubvol: true, snapshotsMountedInRoot: true, snapshotsMode: 0o750,
+	})
+	if outcome != snapperWarnInconsistent || len(problems) != 1 || !strings.Contains(problems[0], "inside the root") {
+		t.Fatalf("outcome = %v, problems = %q", outcome, problems)
+	}
+}
+
+func TestInsideSubvol(t *testing.T) {
+	for _, c := range []struct {
+		sub, parent string
+		want        bool
+	}{
+		{"/root/.snapshots", "/root", true},
+		{"/.snapshots", "/root", false},
+		{"/rootfs/.snapshots", "/root", false},
+		{"/.snapshots", "/", false},
+		{"/.snapshots", "", false},
+	} {
+		if got := insideSubvol(c.sub, c.parent); got != c.want {
+			t.Errorf("insideSubvol(%q, %q) = %v, want %v", c.sub, c.parent, got, c.want)
+		}
+	}
+}
+
 func TestSnapshotsFstabLineFollowsTheRootEntry(t *testing.T) {
 	fstab := "# comment\n" +
 		"UUID=ab / btrfs subvol=root,compress=zstd:1,x-systemd.device-timeout=0 0 0\n" +

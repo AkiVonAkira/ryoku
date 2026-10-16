@@ -5,9 +5,9 @@
 ### Added
 - **Fedora snapshots every dnf transaction.** The `ryoku` RPM ships a libdnf5
   actions hook (`fedora/system/snapshots/`) that takes a snapper pre/post pair
-  around each `dnf` run, the way snap-pac does for pacman. `ryoku update` runs
-  dnf with `RYOKU_MANAGED_UPDATE=1`, as it sets `SNAP_PAC_SKIP` for pacman, so
-  the hook does not nest a second pair inside its own.
+  around each `dnf` run, the way snap-pac does for pacman. `ryoku update` names
+  itself in `/run/ryoku/update-snapshot` by pid and start time, so the hook
+  does not nest a second pair inside its own; a dead or reused pid frees it.
 - **`ryoku doctor` lays out Fedora snapshots.** On a btrfs Fedora root it
   creates `/.snapshots` as a top-level subvolume with its own `/etc/fstab`
   entry (copied from the root's, with its own `subvol=`), so a whole-system

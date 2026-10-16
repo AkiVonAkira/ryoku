@@ -8,16 +8,22 @@ import (
 	i18n "ryoku-i18n"
 )
 
-// FstabRoot is the fields of fstab's active entry for /, or nil when it has
-// none.
-func FstabRoot(fstab string) []string {
+// FstabBtrfsRoot is the fields of fstab's first active btrfs entry for / that
+// names its subvolume with subvol=, and that subvolume; nil when there is
+// none. Any other entry for /, a stale one above the real root, is passed by.
+func FstabBtrfsRoot(fstab string) ([]string, string) {
 	for _, line := range strings.Split(fstab, "\n") {
 		f := strings.Fields(line)
-		if len(f) >= 4 && !strings.HasPrefix(f[0], "#") && f[1] == "/" {
-			return f
+		if len(f) < 4 || strings.HasPrefix(f[0], "#") || f[1] != "/" || f[2] != "btrfs" {
+			continue
+		}
+		for _, o := range strings.Split(f[3], ",") {
+			if v, ok := strings.CutPrefix(o, "subvol="); ok {
+				return f, strings.Trim(v, "/")
+			}
 		}
 	}
-	return nil
+	return nil, ""
 }
 
 // MountBtrfsTop mounts the top level of the btrfs on dev, where the

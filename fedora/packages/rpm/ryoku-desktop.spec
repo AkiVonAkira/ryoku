@@ -179,6 +179,11 @@ systemd-run --quiet --collect --unit=ryoku-power-cutover-guard.service \
   /usr/bin/sleep infinity
 
 %post
+# A first install never had the console plugin earlier packages shipped, so
+# there are no twin boot entries for ryoku doctor to look for.
+if [ "$1" -eq 1 ]; then
+  install -D -m 0644 /dev/null /var/lib/ryoku/migrations/ryoku-console-entries || :
+fi
 systemctl daemon-reload >/dev/null 2>&1 || :
 RYOKU_HOST_INIT=systemd /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>&1 || :
 /usr/bin/ryoku-bluetooth-tune >/dev/null 2>&1 || :
@@ -193,7 +198,8 @@ RYOKU_HOST_INIT=systemd /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>
 # images that carry it. That is a dracut run per installed kernel, so a running
 # system does it in the background instead of holding the transaction; an
 # install into a chroot has no systemd to hand it to and needs it before the
-# first boot anyway.
+# first boot anyway. A run still going from an earlier transaction keeps the
+# unit name, and catches up with this theme itself.
 if [ -d /run/systemd/system ] && ! systemd-detect-virt --quiet --chroot; then
   systemd-run --quiet --no-block --collect --unit=ryoku-plymouth-apply \
     --property=Nice=10 --property=IOSchedulingClass=idle \

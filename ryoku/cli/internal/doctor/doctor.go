@@ -697,15 +697,17 @@ type snapperState struct {
 	snapshotsIsSubvol bool
 	// a /.snapshots subvolume inside the root subvolume, the layout
 	// `snapper create-config /` makes. Fedora's needs its own top-level one.
-	snapshotsNested     bool
-	snapshotsMode       os.FileMode
-	confdExists         bool
-	confdContents       string
-	snapperInstalled    bool
-	snapPacInstalled    bool
-	limineInstalled     bool
-	limineSyncInstalled bool
-	limineSyncEnabled   bool
+	snapshotsNested bool
+	// a /.snapshots mounted, through fstab, from a subvolume inside the root.
+	snapshotsMountedInRoot bool
+	snapshotsMode          os.FileMode
+	confdExists            bool
+	confdContents          string
+	snapperInstalled       bool
+	snapPacInstalled       bool
+	limineInstalled        bool
+	limineSyncInstalled    bool
+	limineSyncEnabled      bool
 }
 
 // planSnapper picks the branch from observed state. pure, no IO. the
@@ -738,6 +740,9 @@ func planSnapper(s snapperState) (snapperOutcome, []string) {
 	var problems []string
 	if s.snapshotsExists && !s.snapshotsIsSubvol {
 		problems = append(problems, i18n.T("/.snapshots is a plain directory, not a btrfs subvolume"))
+	}
+	if s.snapshotsMountedInRoot {
+		problems = append(problems, i18n.T("/.snapshots is mounted from a subvolume inside the root subvolume, so a restore would take the snapshots with it and the boot menu leaves them out"))
 	}
 	if s.snapshotsExists && s.snapshotsMode != 0o750 {
 		problems = append(problems, fmt.Sprintf(i18n.T("/.snapshots is mode %04o, expected 0750"), s.snapshotsMode))
@@ -790,7 +795,11 @@ func gatherSnapperState() snapperState {
 		s.snapshotsExists = true
 		s.snapshotsMode = fi.Mode().Perm()
 		s.snapshotsIsSubvol = sys.IsBtrfsSubvolumeRoot("/.snapshots")
-		s.snapshotsNested = manager == host.DNF && s.snapshotsIsSubvol && !isMountPoint("/.snapshots")
+		if manager == host.DNF && s.snapshotsIsSubvol {
+			snaps := mountFSRoot("/.snapshots")
+			s.snapshotsNested = snaps == ""
+			s.snapshotsMountedInRoot = insideSubvol(snaps, mountFSRoot("/"))
+		}
 	}
 	if b, err := os.ReadFile(snapperConfdPath(manager)); err == nil {
 		s.confdExists = true
@@ -840,6 +849,9 @@ func reconcileSnapper(checkOnly bool) recResult {
 			remedy = i18n.T("run `ryoku doctor`; use `ryoku-host pkg advice <package>` for a missing snapshot package")
 		case host.DNF:
 			remedy = i18n.T("see https://docs.fedoraproject.org/en-US/quick-docs/snapper/")
+			if st.snapshotsMountedInRoot {
+				remedy = i18n.T("drop the /.snapshots line from /etc/fstab and run `sudo umount /.snapshots`; ryoku doctor then moves it to its own top-level subvolume")
+			}
 		}
 		return warnRes("%s", strings.Join(problems, "; ")).withFix(remedy)
 	}

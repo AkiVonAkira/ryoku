@@ -24,24 +24,19 @@ const (
 // same device and options with its own subvolume. It is "" when fstab has no
 // btrfs root that names a subvolume, a layout this cannot extend.
 func snapshotsFstabLine(fstab string) string {
-	f := sys.FstabRoot(fstab)
-	if f == nil || f[2] != "btrfs" {
+	f, _ := sys.FstabBtrfsRoot(fstab)
+	if f == nil {
 		return ""
 	}
 	var opts []string
-	named := false
 	for _, o := range strings.Split(f[3], ",") {
 		switch {
 		case strings.HasPrefix(o, "subvol="):
 			opts = append(opts, "subvol="+topLevelSnapshotsSubvol)
-			named = true
 		case strings.HasPrefix(o, "subvolid="):
 		default:
 			opts = append(opts, o)
 		}
-	}
-	if !named {
-		return ""
 	}
 	return strings.Join([]string{f[0], "/.snapshots", "btrfs", strings.Join(opts, ","), "0", "0"}, " ")
 }
@@ -119,8 +114,17 @@ func createTopLevelSnapshots() error {
 var errSnapshotsInUse = errors.New("/.snapshots holds snapshots")
 
 // moveNestedSnapshots replaces an empty /.snapshots subvolume nested in the
-// root with the top-level one.
+// root with the top-level one. The fstab entry it needs is worked out first,
+// and a nested one is made again if the move fails halfway, so snapper is
+// never left without /.snapshots.
 func moveNestedSnapshots() error {
+	raw, err := os.ReadFile(fstabPath)
+	if err != nil {
+		return err
+	}
+	if snapshotsFstabLine(string(raw)) == "" {
+		return fmt.Errorf(i18n.T("the root entry in %s names no btrfs subvolume"), fstabPath)
+	}
 	out, err := sys.RunOut("sudo", "find", "/.snapshots", "-mindepth", "1", "-maxdepth", "1", "-print", "-quit")
 	if err != nil {
 		return fmt.Errorf(i18n.T("reading /.snapshots: %w"), err)
@@ -131,7 +135,14 @@ func moveNestedSnapshots() error {
 	if err := sys.Run("sudo", "btrfs", "subvolume", "delete", "/.snapshots"); err != nil {
 		return fmt.Errorf(i18n.T("removing the nested /.snapshots subvolume: %w"), err)
 	}
-	return createTopLevelSnapshots()
+	if err := createTopLevelSnapshots(); err != nil {
+		if !isMountPoint("/.snapshots") {
+			_ = sys.Run("sudo", "rmdir", "/.snapshots")
+			_ = sys.Run("sudo", "btrfs", "subvolume", "create", "/.snapshots")
+		}
+		return err
+	}
+	return nil
 }
 
 func snapshotsMoveFailed(err error) recResult {
@@ -145,6 +156,21 @@ func snapshotsMoveFailed(err error) recResult {
 
 // isMountPoint reports whether something is mounted exactly at path.
 func isMountPoint(path string) bool {
-	out, err := sys.RunOut("findmnt", "-n", "-o", "TARGET", "--mountpoint", path)
-	return err == nil && strings.TrimSpace(out) != ""
+	return mountFSRoot(path) != ""
+}
+
+// mountFSRoot is the subvolume path of what is mounted exactly at path, or ""
+// when nothing is.
+func mountFSRoot(path string) string {
+	out, err := sys.RunOut("findmnt", "-n", "-o", "FSROOT", "--mountpoint", path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
+
+// insideSubvol reports whether subvolume path sub lies inside parent.
+func insideSubvol(sub, parent string) bool {
+	parent = strings.TrimSuffix(parent, "/")
+	return parent != "" && strings.HasPrefix(sub, parent+"/")
 }

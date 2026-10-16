@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -57,14 +58,10 @@ var (
 	procCmdline     = "/proc/cmdline"
 	mountInfo       = "/proc/self/mountinfo"
 	dracutModuleDir = "/usr/lib/dracut/modules.d/90ryoku-snapshot"
-	// what else a kernel copy's initramfs is built from: dracut itself and
-	// its configuration.
-	dracutInputs = []string{
-		"/usr/lib/dracut/dracut-version.sh",
-		"/usr/lib/dracut/dracut.conf.d",
-		"/etc/dracut.conf",
-		"/etc/dracut.conf.d",
-	}
+	// dracut itself, the other half of what a kernel copy's look boot runs.
+	// Its configuration is left out: a copy built under an earlier one still
+	// boots, and driver packages change it often.
+	dracutVersionFile = "/usr/lib/dracut/dracut-version.sh"
 )
 
 func snapshotMenuCfg() string   { return filepath.Join(bootDir, "grub2", "ryoku-snapshots.cfg") }
@@ -130,7 +127,9 @@ func syncSnapshotMenu() error {
 	}
 	var listed []bootSnapshot
 	used := map[string]bool{}
-	inputs := dracutFingerprint(append([]string{dracutModuleDir}, dracutInputs...))
+	inputs := sync.OnceValue(func() string {
+		return dracutFingerprint([]string{dracutModuleDir, dracutVersionFile})
+	})
 	for _, s := range readBootSnapshots(snapshotsDir) {
 		if s.kver == "" {
 			continue
@@ -350,21 +349,36 @@ func compareVersions(a, b string) int {
 // is built from the running system, so it needs kver's modules installed; a
 // copy made while they were is kept after the kernel is removed. It is
 // rebuilt when what dracut builds it from changed (inputs, a
-// dracutFingerprint) and the kernel is still around.
-func ensureSnapshotKernel(kver, inputs string) error {
+// dracutFingerprint) and the kernel is still around; a copy that fails to
+// rebuild stays as it was, since it still boots.
+func ensureSnapshotKernel(kver string, inputs func() string) error {
 	dir := filepath.Join(snapshotKernelDir(), kver)
-	vmlinuz, initrd := filepath.Join(dir, "vmlinuz"), filepath.Join(dir, "initramfs.img")
 	stamp := filepath.Join(dir, "dracut-inputs")
 	src := filepath.Join(modulesDir, kver, "vmlinuz")
-	have := sys.Exists(vmlinuz) && sys.Exists(initrd)
+	have := sys.Exists(filepath.Join(dir, "vmlinuz")) && sys.Exists(filepath.Join(dir, "initramfs.img"))
 	installed := sys.Exists(src)
-	if have && (!installed || strings.TrimSpace(readText(stamp)) == inputs) {
+	if have && (!installed || strings.TrimSpace(readText(stamp)) == inputs()) {
 		return nil
 	}
 	if !installed {
 		return fmt.Errorf(i18n.T("kernel %s is no longer installed and has no copy on /boot"), kver)
 	}
-	if free, ok := sys.FreeBytes(bootDir); ok && !have {
+	if err := buildSnapshotKernel(kver, src, dir); err != nil {
+		if have {
+			fmt.Printf(i18n.T("boot menu: kept the copy of kernel %s as it was, rebuilding it failed: %v\n"), kver, err)
+			return nil
+		}
+		return err
+	}
+	_ = os.WriteFile(stamp, []byte(inputs()+"\n"), 0o644)
+	return nil
+}
+
+// buildSnapshotKernel writes kver's vmlinuz and a fresh initramfs into dir
+// beside whatever copy is there, and swaps them in only once both are built.
+func buildSnapshotKernel(kver, src, dir string) error {
+	vmlinuz, initrd := filepath.Join(dir, "vmlinuz"), filepath.Join(dir, "initramfs.img")
+	if free, ok := sys.FreeBytes(bootDir); ok {
 		need := fileSize(src) + fileSize(filepath.Join(bootDir, "initramfs-"+kver+".img")) + bootHeadroom
 		if free < uint64(need) {
 			return fmt.Errorf(i18n.T("/boot has %d MiB free, too little for a copy of kernel %s"), free>>20, kver)
@@ -373,23 +387,20 @@ func ensureSnapshotKernel(kver, inputs string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
+	defer os.Remove(vmlinuz + ".new")
+	defer os.Remove(initrd + ".new")
 	if err := sys.CopyFile(src, vmlinuz+".new"); err != nil {
 		return err
 	}
 	build := exec.Command("dracut", "--quiet", "--force", "--add", snapshotDracutMod, "--kver", kver, initrd+".new")
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
-		_ = os.Remove(vmlinuz + ".new")
-		_ = os.Remove(initrd + ".new")
 		return fmt.Errorf(i18n.T("building the initramfs for %s: %w"), kver, err)
 	}
 	if err := os.Rename(vmlinuz+".new", vmlinuz); err != nil {
 		return err
 	}
-	if err := os.Rename(initrd+".new", initrd); err != nil {
-		return err
-	}
-	return os.WriteFile(stamp, []byte(inputs+"\n"), 0o644)
+	return os.Rename(initrd+".new", initrd)
 }
 
 // dracutFingerprint hashes the contents of every file under paths. Contents,

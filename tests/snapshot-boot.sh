@@ -52,6 +52,10 @@ check "%posttrans lists the snapshots on disk and watches for more" has "$spec" 
 check "%preun disables the menu trigger" has "$spec" \
   "systemctl disable --now ryoku-snapshot-menu.path ryoku-snapshot-restored.service"
 check "%preun drops the menu" has "$spec" "/usr/bin/ryoku-grub-menu purge"
+legacy="$repo/ryoku/cli/internal/doctor/reconcile_fedora_legacy_boot.go"
+twins_marker=$(sed -n 's/^[[:space:]]*consoleTwinsMarker *= "\(.*\)"$/\1/p' "$legacy")
+check "a first install seeds the console-twins marker the doctor reads" \
+  test -n "$twins_marker" -a "$(grep -c "install -D -m 0644 /dev/null $twins_marker" "$spec")" = 1
 check "%postun drops it from grub.cfg" has "$spec" "grub2-mkconfig -o /boot/grub2/grub.cfg"
 check "Fedora's boot-success timer is left alone" test -z "$(grep -n 'grub-boot-success' "$spec")"
 for dep in grub2-tools grub2-tools-extra fontconfig grubby btrfs-progs snapper dracut; do

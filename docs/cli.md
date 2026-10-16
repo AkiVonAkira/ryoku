@@ -50,8 +50,9 @@ These are user-facing and work on any install.
 On snapshot-capable Ryoku hosts, Arch/CachyOS, Void and Fedora, the full safe
 update is wrapped in a best-effort snapper pre/post pair: an unconfigured
 snapper never blocks the update, but a failed step aborts before anything else
-changes. On Fedora the update runs dnf with `RYOKU_MANAGED_UPDATE=1`, so the
-dnf snapshot hook does not nest a second pair inside it. What the update runs
+changes. On Fedora the update names itself in `/run/ryoku/update-snapshot` (its
+pid and start time), so the dnf snapshot hook does not nest a second pair
+inside it for the dnf runs the update and its doctor make. What the update runs
 next depends on the world:
 
 - **Dev checkout:** updates through the git channel. It fetches the channel

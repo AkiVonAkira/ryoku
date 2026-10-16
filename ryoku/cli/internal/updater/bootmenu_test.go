@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -300,5 +301,15 @@ func TestDracutFingerprintFollowsContentsNotTimes(t *testing.T) {
 	_ = os.Chtimes(hook, old, old)
 	if got := dracutFingerprint([]string{dir}); got == before {
 		t.Fatal("new contents with an old mtime kept the fingerprint")
+	}
+}
+
+func TestProcStartTimeReadsThisProcess(t *testing.T) {
+	start := procStartTime(os.Getpid())
+	if _, err := strconv.ParseUint(start, 10, 64); err != nil {
+		t.Fatalf("start time = %q, want clock ticks", start)
+	}
+	if got := procStartTime(-1); got != "" {
+		t.Fatalf("a missing process gave %q", got)
 	}
 }
