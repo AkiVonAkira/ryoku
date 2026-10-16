@@ -25,6 +25,7 @@ import "modules/dock"
 import "modules/launcher"
 import "modules/overview"
 import "modules/clipboard"
+import shell.modules.phone as Phone
 import QtQuick
 import Quickshell.Io
 import Quickshell.Wayland
@@ -34,6 +35,7 @@ import "modules/capture"
 import "modules/ask"
 import "modules/confirm"
 import Ryoku.Ui.Singletons
+import stage.modules.common as StageIsland
 
 /**
  * The single resident Ryoku shell instance.
@@ -71,6 +73,10 @@ ShellRoot {
     ServiceLoader {
         services: [ShellState, ScreenTime, Keypresses, KeyboardLayout, BatteryAlerts]
     }
+
+    // The bridge stays resident even when phone support is off so Kit always
+    // has a current install state and can turn the feature on.
+    Phone.PhoneBridge { }
 
     readonly property string reloadStatePath: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/ryoku-reload-cover.json"
     readonly property string reloadCoverBin: Quickshell.env("RYOKU_SHELL_DIR")
@@ -295,13 +301,14 @@ ShellRoot {
                 screen: perScreen.modelData
                 enabled: Config.askBubble.enabled
                     && Config.askBubble.screen === perScreen.modelData.name
+                suppressed: perScreen.st ? perScreen.st.askOpen : false
             }
 
             // One cheap host per monitor loads only the selected dock design.
             // The surface itself remains independent of the active bar style.
             // The dock stays through the Stage Editor session (like the bar):
-            // the dock catalogue edits it live, and the mode's viewport clears
-            // the edge it occupies (GlobalStates.dockInsets).
+            // the dock catalogue edits it live inside the editor's card, and it
+            // publishes the edge it occupies (GlobalStates.dockInsets).
             UniversalDockHost {
                 id: dockLoader
                 screen: perScreen.modelData
@@ -723,6 +730,15 @@ ShellRoot {
         target: Notifs
         property: "dnd"
         value: Flags.dnd
+    }
+
+    // Hosted desktop widgets that show the wallpaper (a photo widget with no
+    // photo picked) read a still of it from the stage config: the daemon's
+    // active picture, or a clip's live poster frame.
+    Binding {
+        target: StageIsland.Config
+        property: "hostWallpaperStill"
+        value: Session.wallIsVideo ? Session.livePoster : Session.wallpaper
     }
 
     // Compositor-level idle inhibitor, mapped only while Keep-Awake is on. It

@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// The catalogue is the one source both the cheatsheet and the Hub read, so a
-// duplicated id would list a bind twice or record a rebind against the wrong
-// entry. Every id must be unique.
+// The catalogue is the one source both Kit and the Hub read, so a duplicated id
+// would list a bind twice or record a rebind against the wrong entry. Every id
+// must be unique.
 func TestShippedBindsIDsUnique(t *testing.T) {
 	seen := map[string]bool{}
 	for _, b := range ShippedBinds() {

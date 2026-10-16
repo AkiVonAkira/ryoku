@@ -6,6 +6,7 @@ import QtQuick.Effects
 import stage.modules.common.functions
 import stage.modules.common.widgets
 import stage.services
+import shell.modules.phone
 import "../.."
 
 /**
@@ -369,7 +370,7 @@ Item {
             symbol: "alarm_add"
             shape: "Cookie9Sided"
             title: Translation.tr("No alarms")
-            subtitle: Translation.tr("Add one to wake up on time, or pick an event from your timetable.")
+            subtitle: Translation.tr("Add one to wake up on time, or pick an event from your calendar.")
         }
 
         ClockButton {

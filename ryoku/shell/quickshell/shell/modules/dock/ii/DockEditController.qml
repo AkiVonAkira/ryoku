@@ -29,12 +29,12 @@ QtObject {
         { "id": "tasks", "key": "enableTasksWidget", "symbol": "checklist", "title": Translation.tr("Tasks"), "stackable": true },
         { "id": "sports", "key": "enableSportsWidget", "symbol": "sports_soccer", "title": Translation.tr("Sports"), "stackable": true },
         { "id": "livePreview", "key": "enableLivePreviewWidget", "symbol": "live_tv", "title": Translation.tr("Live preview"), "stackable": true,
-            "options": "widgets/DockLivePreviewConfig.qml" },
+            "options": "DockLivePreviewConfig.qml" },
         { "id": "phone", "key": "showPhoneButton", "symbol": "smartphone", "title": Translation.tr("Phone mirror"), "stackable": false }
     ]
     readonly property var buttons: [
         { "id": "overview", "key": "showOverviewButton", "symbol": "apps", "title": Translation.tr("Overview"),
-            "options": "widgets/DockOverviewButtonConfig.qml" },
+            "options": "DockOverviewButtonConfig.qml" },
         { "id": "pin", "key": "showPinButton", "symbol": "keep", "title": Translation.tr("Pin") },
         { "id": "trash", "key": "showTrashButton", "symbol": "delete", "title": Translation.tr("Trash") }
     ]
@@ -123,7 +123,7 @@ QtObject {
                 "subtitle": item.wide && wideAllowed ? Translation.tr("Wide widget") : Translation.tr("Square widget"),
                 "sizes": wideAllowed,
                 "wide": !!item.wide,
-                "options": info?.settings ? "dockUtilities/" + info.file + "Config.qml" : ""
+                "options": info?.settings ? info.file + "Config.qml" : ""
             };
         }
         if (type === "action") {
@@ -167,6 +167,17 @@ QtObject {
         const order = Array.from(dock.order ?? []);
         if (order.indexOf(key) >= 0)
             dock.order = order.filter(entry => entry !== key);
+    }
+
+    function _insertOrderKey(dock, key) {
+        const order = Array.from(dock.order ?? []);
+        if (order.indexOf(key) >= 0)
+            return;
+        let index = order.length;
+        while (index > 0 && ["trash", "overview", "pin"].indexOf(order[index - 1]) >= 0)
+            index--;
+        order.splice(index, 0, key);
+        dock.order = order;
     }
 
     function remove(item) {
@@ -271,17 +282,22 @@ QtObject {
                     root._dropOrderKey(dock, id);
                 } else {
                     dock.utilityWidgets = DockUtilityCatalog.withKind(dock.utilityWidgets ?? [], kind, false);
+                    root._insertOrderKey(dock, id);
                 }
                 return;
             }
             if (id === "widgetStack") {
                 dock.enableWidgetStack = !added;
+                if (!added)
+                    root._insertOrderKey(dock, id);
                 return;
             }
             const info = root.nativeInfo(id) ?? root.buttonInfo(id);
             if (!info)
                 return;
             dock[info.key] = !added;
+            if (!added)
+                root._insertOrderKey(dock, id);
             // Taking a stacked widget off takes it out of the stack too, or
             // the stack would keep drawing what was just removed.
             if (added && root.nativeInfo(id) !== null)

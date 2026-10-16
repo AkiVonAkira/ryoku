@@ -4,8 +4,10 @@ adwaita-icon-theme	adwaita-icon-theme	desktop
 alsa-lib	alsa-lib	desktop	
 alsa-utils	alsa-utils	desktop	
 amd-ucode	amd-ucode-firmware	hardware:amd	
+android-tools	android-tools	optional	
 apple_cursor	apple_cursor	extra	Ryoku-owned RPM.
 asusctl	asusctl	optional	Ryoku-owned RPM.
+avahi	avahi-tools	optional	
 base	-	system	Fedora has no Arch base metapackage; the existing host supplies the base system.
 base-devel	gcc gcc-c++ make cmake meson ninja-build pkgconf-pkg-config git	system	
 bash	bash	desktop	
@@ -88,6 +90,8 @@ iw	iw	desktop
 iwd	iwd	desktop	
 jq	jq	desktop	
 kdialog	kdialog	optional	
+kdeconnect	kde-connect	optional	
+khal	khal	desktop	
 kitty	kitty	desktop	
 lazygit	lazygit	desktop	Provided by a restricted COPR.
 lib32-nvidia-utils	-	hardware:nvidia	Fedora NVIDIA drivers require RPM Fusion and hardware-specific selection.
@@ -160,6 +164,9 @@ polkit	polkit	desktop
 power-profiles-daemon	ppd-service	desktop	
 prowl	prowl	desktop	Ryoku-owned RPM.
 python	python3	desktop,dev	
+python-dbus	python3-dbus	optional	
+python-gobject	python3-gobject	optional	
+python-pillow	python3-pillow	optional	
 python-pip	python3-pip	dev	
 python-pipx	pipx	dev	
 qemu-desktop	qemu-kvm	desktop	
@@ -199,6 +206,7 @@ ryoku-palette-bridge	ryoku-palette-bridge	desktop	Ryoku-owned RPM.
 ryoku-rashin	ryoku-rashin	desktop	Ryoku-owned RPM.
 ryoku-shell	ryoku-shell	desktop	Ryoku-owned RPM.
 ryotunes	ryotunes	optional	Ryoku-owned RPM.
+scrcpy	scrcpy	optional	Provided by a restricted COPR.
 sddm	sddm	desktop	
 shaderc	glslc	desktop	
 skwd-paper-bin	skwd-paper-bin	desktop	Ryoku-owned RPM.
@@ -217,6 +225,7 @@ syntax-highlighting	kf6-syntax-highlighting	desktop
 tesseract	tesseract	desktop	
 tesseract-data-eng	tesseract-langpack-eng	desktop	
 tigervnc	tigervnc	optional	
+translate-shell	translate-shell	desktop	
 ttf-firacode-nerd	ttf-firacode-nerd	desktop	Ryoku-owned RPM.
 ttf-fraunces-variable	ttf-fraunces-variable	extra	Ryoku-owned RPM.
 ttf-hack-nerd	ttf-hack-nerd	desktop	Ryoku-owned RPM.
@@ -228,6 +237,8 @@ ttf-rubik-vf	google-rubik-fonts	desktop
 udev	systemd-udev	desktop	
 upower	upower	desktop	
 uv	uv	desktop	
+v4l2loopback-dkms	v4l2loopback v4l2loopback-dkms	optional	Provided by a restricted COPR.
+vdirsyncer	vdirsyncer	desktop	
 vimix-cursors	vimix-cursors	desktop	Ryoku-owned RPM.
 virglrenderer	virglrenderer	desktop	
 voxtype-bin	voxtype	extra	Ryoku-owned RPM.

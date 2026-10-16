@@ -11,7 +11,7 @@ ColumnLayout {
 
     readonly property bool colorful: Config.options.background.widgets.clock_digital.colorful
     readonly property bool showColon: Config.options.background.widgets.clock_digital.showColon
-    readonly property bool showSeconds: Config.options.bar.clock.showSeconds
+    readonly property bool showSeconds: Config.options.background.widgets.clock_digital.showSeconds ?? false
     readonly property real lineSpacing: Config.options.background.widgets.clock_digital.lineSpacing
 
     property bool isVertical: Config.options.background.widgets.clock_digital.vertical

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -205,7 +206,24 @@ func TestProwlProxyRejectsCrossSiteAndUnknownRequests(t *testing.T) {
 	}
 }
 
-func TestProwlProxyGatewayDownStartsAtMostOncePerWindow(t *testing.T) {
+func waitGatewayEnsureIdle(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		gatewayLifecycleMu.Lock()
+		inFlight := gatewayEnsureInFlight
+		gatewayLifecycleMu.Unlock()
+		if !inFlight {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("gateway start remained in flight")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestProwlProxyGatewayDownStartsAsynchronouslyOncePerWindow(t *testing.T) {
 	homeDir := isolateProwlGatewayTest(t)
 	bin := filepath.Join(homeDir, "prowl")
 	if err := os.WriteFile(bin, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
@@ -222,39 +240,109 @@ func TestProwlProxyGatewayDownStartsAtMostOncePerWindow(t *testing.T) {
 
 	oldSpawn, oldSystemd, oldNow := gatewaySpawn, gatewaySystemdPresent, gatewayNow
 	gatewayLifecycleMu.Lock()
-	oldLast := gatewayLastEnsure
+	oldLast, oldInFlight := gatewayLastEnsure, gatewayEnsureInFlight
 	gatewayLastEnsure = time.Time{}
+	gatewayEnsureInFlight = false
 	gatewayLifecycleMu.Unlock()
+	type spawnCall struct {
+		name string
+		args []string
+	}
+	calls := make(chan spawnCall, 2)
+	release := make(chan struct{})
+	releaseStart := func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}
 	t.Cleanup(func() {
+		releaseStart()
+		waitGatewayEnsureIdle(t)
 		gatewaySpawn, gatewaySystemdPresent, gatewayNow = oldSpawn, oldSystemd, oldNow
 		gatewayLifecycleMu.Lock()
-		gatewayLastEnsure = oldLast
+		gatewayLastEnsure, gatewayEnsureInFlight = oldLast, oldInFlight
 		gatewayLifecycleMu.Unlock()
 	})
-	calls := 0
-	gatewaySystemdPresent = func() bool { return false }
+	gatewaySystemdPresent = func() bool { return true }
 	gatewayNow = func() time.Time { return time.Unix(1000, 0) }
 	gatewaySpawn = func(name string, args ...string) error {
-		calls++
-		if name != bin || strings.Join(args, " ") != "gateway up --port "+strconv.Itoa(port) {
-			t.Errorf("spawn = %s %v", name, args)
-		}
+		calls <- spawnCall{name: name, args: append([]string(nil), args...)}
+		<-release
 		return nil
 	}
 
 	mux := http.NewServeMux()
 	registerProwlProxy(mux, 3600)
-	for range 2 {
-		recorder := proxyRequest(t, mux, http.MethodGet, "/api/prowl/health", "")
-		if recorder.Code != http.StatusServiceUnavailable {
-			t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
-		}
-		if !strings.Contains(recorder.Body.String(), `"code":"gateway_down"`) {
-			t.Fatalf("body = %s", recorder.Body.String())
-		}
+	recorder := proxyRequest(t, mux, http.MethodGet, "/api/prowl/health", "")
+	if recorder.Code != http.StatusServiceUnavailable || !strings.Contains(recorder.Body.String(), `"code":"gateway_down"`) {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
 	}
-	if calls != 1 {
-		t.Fatalf("gateway spawn calls = %d, want 1", calls)
+	var call spawnCall
+	select {
+	case call = <-calls:
+	case <-time.After(3 * time.Second):
+		t.Fatal("gateway start was not scheduled")
+	}
+	if call.name != bin || strings.Join(call.args, " ") != "gateway up --port "+strconv.Itoa(port) {
+		t.Fatalf("spawn = %s %v", call.name, call.args)
+	}
+	recorder = proxyRequest(t, mux, http.MethodGet, "/api/prowl/health", "")
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("second status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	select {
+	case extra := <-calls:
+		t.Fatalf("second gateway start while first was in flight: %+v", extra)
+	case <-time.After(50 * time.Millisecond):
+	}
+	releaseStart()
+	waitGatewayEnsureIdle(t)
+}
+
+func TestEnsureGatewayRetriesAfterFailedSpawn(t *testing.T) {
+	homeDir := isolateProwlGatewayTest(t)
+	bin := filepath.Join(homeDir, "prowl")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RYOKU_PROWL_BIN", bin)
+	t.Setenv("RYOKU_PROWL_PORT", "1")
+	oldSpawn := gatewaySpawn
+	gatewayLifecycleMu.Lock()
+	oldLast, oldInFlight := gatewayLastEnsure, gatewayEnsureInFlight
+	gatewayLastEnsure = time.Time{}
+	gatewayEnsureInFlight = false
+	gatewayLifecycleMu.Unlock()
+	t.Cleanup(func() {
+		waitGatewayEnsureIdle(t)
+		gatewaySpawn = oldSpawn
+		gatewayLifecycleMu.Lock()
+		gatewayLastEnsure, gatewayEnsureInFlight = oldLast, oldInFlight
+		gatewayLifecycleMu.Unlock()
+	})
+	calls := make(chan struct{}, 2)
+	gatewaySpawn = func(string, ...string) error {
+		calls <- struct{}{}
+		return errors.New("start failed")
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if err := ensureGateway(); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case <-calls:
+		case <-time.After(3 * time.Second):
+			t.Fatalf("attempt %d did not start", attempt+1)
+		}
+		waitGatewayEnsureIdle(t)
+	}
+	gatewayLifecycleMu.Lock()
+	last := gatewayLastEnsure
+	gatewayLifecycleMu.Unlock()
+	if !last.IsZero() {
+		t.Fatalf("failed start set retry window at %v", last)
 	}
 }
 
@@ -293,6 +381,19 @@ func TestProwlGatewayJSONDecodesErrorEnvelope(t *testing.T) {
 	}
 	if gatewayErr.Status != http.StatusUnprocessableEntity || gatewayErr.Type != "validation" || gatewayErr.Code != "bad_route" || gatewayErr.Message != "route is invalid" {
 		t.Fatalf("decoded error = %+v", gatewayErr)
+	}
+}
+
+func TestProwlGatewayJSONRejectsEmptySuccessResponse(t *testing.T) {
+	isolateProwlGatewayTest(t)
+	gateway := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	defer gateway.Close()
+	pointGatewayAt(t, gateway.URL)
+	var out map[string]any
+	err := prowlGatewayJSON(context.Background(), http.MethodGet, "/api/setup/harnesses", nil, &out)
+	gatewayErr, ok := err.(*prowlGatewayError)
+	if !ok || gatewayErr.Status != http.StatusBadGateway || gatewayErr.Type != "upstream" || gatewayErr.Code != "empty_response" {
+		t.Fatalf("gateway error = %#v", err)
 	}
 }
 

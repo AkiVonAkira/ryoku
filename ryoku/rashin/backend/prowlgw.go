@@ -146,8 +146,16 @@ func prowlGatewayJSON(ctx context.Context, method, path string, in, out any) err
 		}
 		return gatewayErr
 	}
-	if out == nil || len(bytes.TrimSpace(payload)) == 0 {
+	if out == nil {
 		return nil
+	}
+	if len(bytes.TrimSpace(payload)) == 0 {
+		return &prowlGatewayError{
+			Status:  http.StatusBadGateway,
+			Type:    "upstream",
+			Code:    "empty_response",
+			Message: "Prowl's gateway returned an empty response",
+		}
 	}
 	return json.Unmarshal(payload, out)
 }
@@ -155,6 +163,7 @@ func prowlGatewayJSON(ctx context.Context, method, path string, in, out any) err
 var (
 	gatewayLifecycleMu    sync.Mutex
 	gatewayLastEnsure     time.Time
+	gatewayEnsureInFlight bool
 	gatewayEnsureWindow   = 30 * time.Second
 	gatewayNow            = time.Now
 	gatewaySystemdPresent = systemdUserManagerPresent
@@ -196,22 +205,42 @@ func prowlGatewayRunning() bool {
 
 func ensureGateway() error {
 	bin, installed := findProwl()
-	if !installed || prowlGatewayRunning() {
+	if !installed {
 		return nil
 	}
 
 	gatewayLifecycleMu.Lock()
-	defer gatewayLifecycleMu.Unlock()
 	now := gatewayNow()
-	if !gatewayLastEnsure.IsZero() && now.Sub(gatewayLastEnsure) < gatewayEnsureWindow {
+	if gatewayEnsureInFlight || (!gatewayLastEnsure.IsZero() && now.Sub(gatewayLastEnsure) < gatewayEnsureWindow) {
+		gatewayLifecycleMu.Unlock()
 		return nil
 	}
-	gatewayLastEnsure = now
-	port := strconv.Itoa(prowlGatewayPort())
-	if gatewaySystemdPresent() {
-		return gatewaySpawn("systemctl", "--user", "start", "ryoku-prowl.service")
-	}
-	return gatewaySpawn(bin, "gateway", "up", "--port", port)
+	gatewayEnsureInFlight = true
+	gatewayLifecycleMu.Unlock()
+
+	go func() {
+		spawned := false
+		defer func() {
+			gatewayLifecycleMu.Lock()
+			gatewayEnsureInFlight = false
+			if spawned {
+				gatewayLastEnsure = gatewayNow()
+			}
+			gatewayLifecycleMu.Unlock()
+		}()
+		if prowlGatewayRunning() {
+			return
+		}
+		port := prowlGatewayPort()
+		var err error
+		if port == defaultProwlGatewayPort && gatewaySystemdPresent() {
+			err = gatewaySpawn("systemctl", "--user", "start", "ryoku-prowl.service")
+		} else {
+			err = gatewaySpawn(bin, "gateway", "up", "--port", strconv.Itoa(port))
+		}
+		spawned = err == nil
+	}()
+	return nil
 }
 
 func stopGateway() error {

@@ -15,6 +15,12 @@ import "lib/dock.js" as DockList
 Singleton {
     id: root
 
+    // The running design's stateful actions the Stage Editor's dock pages
+    // need beyond the shared store (the ii design's saved layouts and
+    // folders), published by that design's host while it is up; null
+    // otherwise.
+    property var designActions: null
+
     // Icon resolution is not reactive on its own: iconFor() reads the desktop DB and
     // the icon theme through plain function calls, so a binding that resolves before
     // the desktop DB is scanned or the icon-theme cache is warm -- a fresh boot, or

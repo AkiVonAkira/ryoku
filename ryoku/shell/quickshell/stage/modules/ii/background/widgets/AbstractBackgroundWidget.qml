@@ -1,7 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Ryoku.Ui.Singletons
 import stage
+import stage.services
 import stage.modules.common
 import stage.modules.common.widgets
 import stage.modules.common.functions
@@ -43,6 +45,23 @@ AbstractWidget {
     property var widgetListModel: null
     property var widgetSizes: ({})
     property int widgetSizesVersion: 0
+    // A host (or Edit Mode) can park the widget's clocks and refresh timers
+    // without hiding it; `live` gates the per-second work the faces share.
+    property bool paused: false
+    readonly property bool live: !root.paused && root.visible && root.opacity > 0
+    readonly property string windowPresenceOutput: root.monitorName || Wm.focusedOutput
+    readonly property var activeWorkspaceForOutput: (Wm.workspaces ?? []).find(workspace =>
+        workspace.active === true
+            && (!root.windowPresenceOutput
+                || String(workspace.output ?? workspace.outputName ?? "") === root.windowPresenceOutput)) ?? null
+    readonly property bool activeWorkspaceHasWindows: root.activeWorkspaceForOutput !== null
+        && (Wm.windowsOnWorkspace(root.activeWorkspaceForOutput.id) ?? []).length > 0
+    readonly property var instanceImagePath: {
+        if (!root.widgetInstance)
+            return undefined;
+        const entry = WidgetPlacement.findEntry(Config.options.background.activeWidgets, root.widgetInstance.id);
+        return entry && entry.imagePath !== undefined ? String(entry.imagePath) : undefined;
+    }
     property var configEntry: widgetInstance !== null ? widgetInstance : (Config.options.background.widgets[configEntryName] || null)
     property string placementStrategy: isPreview ? "free" : (widgetInstance !== null ? (widgetInstance.placementStrategy || "free") : (configEntry ? configEntry.placementStrategy : "free"))
     property string lockBehavior: widgetInstance ? (widgetInstance.lockBehavior || "hide") : "hide"
@@ -66,12 +85,7 @@ AbstractWidget {
         return result;
     }
 
-    readonly property var centeredWidgetsList: {
-        if (backgroundScope && backgroundScope.widgetSyncVersion !== undefined) {
-            backgroundScope.widgetSyncVersion; // dependency to force re-evaluation
-        }
-        return getCenteredWidgetsList() ?? [];
-    }
+    readonly property var centeredWidgetsList: getCenteredWidgetsList() ?? []
     readonly property int centeredWidgetCount: (centeredWidgetsList ?? []).length
     readonly property int centeredWidgetIndex: {
         if (!widgetInstance) return 0;
@@ -1392,22 +1406,22 @@ AbstractWidget {
     }
 
     property bool needsColText: false
-    property color dominantColor: Appearance.colors.colPrimary
+    property color dominantColor: WidgetColorScheme.colors.colPrimary
     property bool dominantColorIsDark: dominantColor.hslLightness < 0.5
     property color colText: {
         const onNormalBackground = (lockLayoutActive && Config.options.lock.blur.enable)
-        const adaptiveColor = ColorUtils.colorWithLightness(Appearance.colors.colPrimary, (dominantColorIsDark ? 0.8 : 0.12))
-        return onNormalBackground ? Appearance.colors.colOnLayer0 : adaptiveColor;
+        const adaptiveColor = ColorUtils.colorWithLightness(WidgetColorScheme.colors.colPrimary, (dominantColorIsDark ? 0.8 : 0.12))
+        return onNormalBackground ? WidgetColorScheme.colors.colOnLayer0 : adaptiveColor;
     }
     property color colTextSecondary: {
         const onNormalBackground = (lockLayoutActive && Config.options.lock.blur.enable)
-        const adaptiveColor = ColorUtils.colorWithLightness(Appearance.colors.colSecondary, (dominantColorIsDark ? 0.8 : 0.12))
-        return onNormalBackground ? Appearance.colors.colOnLayer0 : adaptiveColor;
+        const adaptiveColor = ColorUtils.colorWithLightness(WidgetColorScheme.colors.colSecondary, (dominantColorIsDark ? 0.8 : 0.12))
+        return onNormalBackground ? WidgetColorScheme.colors.colOnLayer0 : adaptiveColor;
     }
     property color colTextTertiary: {
         const onNormalBackground = (lockLayoutActive && Config.options.lock.blur.enable)
-        const adaptiveColor = ColorUtils.colorWithLightness(Appearance.colors.colTertiary, (dominantColorIsDark ? 0.8 : 0.12))
-        return onNormalBackground ? Appearance.colors.colOnLayer0 : adaptiveColor;
+        const adaptiveColor = ColorUtils.colorWithLightness(WidgetColorScheme.colors.colTertiary, (dominantColorIsDark ? 0.8 : 0.12))
+        return onNormalBackground ? WidgetColorScheme.colors.colOnLayer0 : adaptiveColor;
     }
 
     property bool wallpaperIsVideo: Config.options.background.wallpaperPath.endsWith(".mp4") || Config.options.background.wallpaperPath.endsWith(".webm") || Config.options.background.wallpaperPath.endsWith(".mkv") || Config.options.background.wallpaperPath.endsWith(".avi") || Config.options.background.wallpaperPath.endsWith(".mov")
@@ -1453,7 +1467,7 @@ AbstractWidget {
                 // console.log("[Background] Least busy region output:", output)
                 if (output.length === 0) return;
                 const parsedContent = JSON.parse(output);
-                root.dominantColor = parsedContent.dominant_color || Appearance.colors.colPrimary;
+                root.dominantColor = parsedContent.dominant_color || WidgetColorScheme.colors.colPrimary;
                 root.calculatedX = parsedContent.center_x * root.wallpaperScale - root.width / 2;
                 root.calculatedY  = parsedContent.center_y * root.wallpaperScale - root.height / 2;
             }

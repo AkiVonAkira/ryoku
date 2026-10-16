@@ -45,6 +45,13 @@
   GRUB menu lists them. After three failed boots, the boot guard sends the next
   boot once to the pre-update snapshot's read-only entry; it never restores on
   its own.
+- **`ryoku-host phone` installs and removes the phone feature.** `status`,
+  `enable`, `disable` and their `plan-` dry runs translate one package set per
+  edition (Arch, CachyOS with the running kernel's headers, Fedora through two
+  COPRs, Void), load v4l2loopback from `phone-v4l2loopback.conf` (a name the
+  doctor's stray-file sweep leaves alone), roll back a half-finished install,
+  keep the record of what it installed across repeated enables, and remove only
+  what the switch itself installed (`internal/host/phone.go`).
 
 ### Fixed
 - **`ryoku doctor` clears what earlier Fedora packages left in the boot menu.**

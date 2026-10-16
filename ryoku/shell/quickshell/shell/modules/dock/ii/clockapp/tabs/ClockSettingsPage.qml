@@ -4,7 +4,8 @@ import QtQuick
 import QtQuick.Layouts
 import stage.modules.common.widgets
 import stage.services
-import "./reminders"
+import shell.modules.phone
+import "../reminders"
 import "../.."
 
 /**
@@ -310,8 +311,8 @@ Rectangle {
                 }
                 ClockSettingsRow {
                     symbol: "calendar_month"
-                    title: Translation.tr("Timetable suggestions")
-                    description: Translation.tr("Offer upcoming timetable events as alarms")
+                    title: Translation.tr("Calendar suggestions")
+                    description: Translation.tr("Offer upcoming calendar events as alarms")
                     Toggle {
                         target: root.app
                         key: "showTimetableEvents"

@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Added
+- `base.packages`: **khal, vdirsyncer and translate-shell.** The dock's
+  calendar reads and syncs calendars through khal and vdirsyncer, and the
+  translator desktop widget runs translate-shell; existing boxes receive them
+  on their next update.
+- `phone.packages`: **the phone feature's packages, installed on demand.** The
+  Hub's Phone switch installs and removes this set; nothing in it joins a
+  default install.
 - `cachyos.packages`: **a CachyOS install carries what CachyOS's own installer
   lays.** `linux-cachyos-lts` and its headers (the fallback kernel, in place of
   stock `linux`), `cachyos-rate-mirrors`, `yay`, `cachyos-hooks`, `chwd`,

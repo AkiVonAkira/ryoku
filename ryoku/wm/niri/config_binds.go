@@ -16,8 +16,8 @@ import (
 // niri's own action vocabulary and folds the store's rebinds, unbinds and custom
 // binds into it, resolving every chord collision to exactly one winner (custom
 // over rebound default over static default) so the emitted config never carries
-// a chord twice. binds reports the full effective legend the cheatsheet and Hub
-// draw; apply writes the resolved KDL.
+// a chord twice. binds reports the full effective legend Kit and the Hub draw;
+// apply writes the resolved KDL.
 
 // niriBind is how niri expresses one catalogue entry: the niri action string, or
 // a reason when niri has no action for the behaviour (which lists the bind as an
@@ -389,8 +389,8 @@ func genBinds(s niriStore) (string, []wm.Unhonored) {
 // row in catalogue order (its chord resolved against the user's rebinds, its
 // copy overridden where niri's mechanic differs, and marked unhonored where niri
 // cannot perform it), then niri's own binds outside the catalogue, then the
-// user's custom binds. One list, so the cheatsheet and the Hub read the legend
-// from the seam rather than parsing niri's config.
+// user's custom binds. One list, so Kit and the Hub read the legend from the
+// seam rather than parsing niri's config.
 func bindRows(s niriStore) []wm.BindRow {
 	defs := defaultBinds()
 	rows := make([]wm.BindRow, 0, 128)

@@ -1,7 +1,6 @@
 module dock.ii
 FocusGrab 1.0 ../../../components/FocusGrab.qml
 GlobalShortcut 1.0 ../../../components/CustomShortcut.qml
-WindowEmbed 1.0 ../../../components/WindowEmbed.qml
 WorkspaceSlide 1.0 ../../../components/WorkspaceSlide.qml
 singleton AiPlanUsage 1.0 services/AiPlanUsage.qml
 AiUsageConfig 1.0 settings/AiUsageConfig.qml
@@ -13,20 +12,17 @@ AlarmRingingPopup 1.0 alarm/AlarmRingingPopup.qml
 singleton AlarmService 1.0 services/AlarmService.qml
 AlarmsTab 1.0 clockapp/tabs/AlarmsTab.qml
 singleton AppStats 1.0 services/AppStats.qml
-singleton Appearance 1.0 bridge/Appearance.qml
 BatteryPanel 1.0 utilities/BatteryPanel.qml
 BatteryTile 1.0 utilities/BatteryTile.qml
 singleton BedtimeService 1.0 services/BedtimeService.qml
 BedtimeTab 1.0 clockapp/tabs/BedtimeTab.qml
-singleton BluetoothDeviceImages 1.0 services/BluetoothDeviceImages.qml
 singleton BrowserSites 1.0 services/BrowserSites.qml
 CalendarPanel 1.0 utilities/CalendarPanel.qml
-singleton CalendarService 1.0 services/CalendarService.qml
 CalendarTile 1.0 utilities/CalendarTile.qml
 ClipboardPanel 1.0 utilities/ClipboardPanel.qml
 ClipboardTile 1.0 utilities/ClipboardTile.qml
 singleton Cliphist 1.0 services/Cliphist.qml
-ClockApp 1.0 clockapp/ClockApp.qml
+singleton ClockApp 1.0 clockapp/ClockApp.qml
 ClockAppContent 1.0 clockapp/ClockAppContent.qml
 ClockAppWindow 1.0 clockapp/ClockAppWindow.qml
 ClockButton 1.0 clock/ClockButton.qml
@@ -59,15 +55,7 @@ ClockTile 1.0 utilities/ClockTile.qml
 ClockTopBar 1.0 clock/ClockTopBar.qml
 ColorPickerPanel 1.0 utilities/ColorPickerPanel.qml
 ColorPickerTile 1.0 utilities/ColorPickerTile.qml
-ColorsChip 1.0 settings/ColorsChip.qml
-ColorsFeatureTile 1.0 settings/ColorsFeatureTile.qml
-ColorsModeToggle 1.0 settings/ColorsModeToggle.qml
-ColorsPalettePane 1.0 settings/ColorsPalettePane.qml
-ColorsSchemeEditor 1.0 settings/ColorsSchemeEditor.qml
-ColorsWallpaperCard 1.0 settings/ColorsWallpaperCard.qml
-ColorsWallpaperHero 1.0 settings/ColorsWallpaperHero.qml
 ColorsWallpaperImage 1.0 settings/ColorsWallpaperImage.qml
-singleton Config 1.0 bridge/Config.qml
 ConfigRow 1.0 settings/ConfigRow.qml
 ConfigSelectionArray 1.0 settings/ConfigSelectionArray.qml
 ConfigSlider 1.0 settings/ConfigSlider.qml
@@ -90,7 +78,6 @@ DashedBorder 1.0 settings/DashedBorder.qml
 DatePickerPopup 1.0 widgets/DatePickerPopup.qml
 singleton DateUtils 1.0 functions/DateUtils.qml
 singleton DictationService 1.0 services/DictationService.qml
-singleton Directories 1.0 bridge/Directories.qml
 DiskConfig 1.0 settings/DiskConfig.qml
 DiskTile 1.0 utilities/DiskTile.qml
 Dock 1.0 Dock.qml
@@ -99,10 +86,8 @@ DockAppButton 1.0 DockAppButton.qml
 DockAppGroupButton 1.0 DockAppGroupButton.qml
 DockAppIcon 1.0 widgets/DockAppIcon.qml
 DockAppIndicator 1.0 DockAppIndicator.qml
-DockAppearanceConfig 1.0 settings/DockAppearanceConfig.qml
 DockAttentionAnimation 1.0 widgets/DockAttentionAnimation.qml
 DockButton 1.0 widgets/DockButton.qml
-DockConfig 1.0 settings/DockConfig.qml
 DockContent 1.0 DockContent.qml
 DockContextMenu 1.0 DockContextMenu.qml
 DockContextMenuBase 1.0 widgets/DockContextMenuBase.qml
@@ -112,7 +97,6 @@ DockEditAddSheet 1.0 DockEditAddSheet.qml
 DockEditController 1.0 DockEditController.qml
 DockEditItemLayer 1.0 DockEditItemLayer.qml
 DockEditMenu 1.0 DockEditMenu.qml
-DockEntryCard 1.0 settings/DockEntryCard.qml
 DockFileButton 1.0 DockFileButton.qml
 DockFileContextMenu 1.0 DockFileContextMenu.qml
 DockGroupDragArea 1.0 widgets/DockGroupDragArea.qml
@@ -122,13 +106,11 @@ DockInputShield 1.0 settings/DockInputShield.qml
 DockIslandSurface 1.0 widgets/DockIslandSurface.qml
 DockItemPosition 1.0 widgets/DockItemPosition.qml
 DockItemView 1.0 settings/DockItemView.qml
-DockLensPreview 1.0 settings/DockLensPreview.qml
 DockListView 1.0 widgets/DockListView.qml
 DockLivePreviewConfig 1.0 settings/DockLivePreviewConfig.qml
 DockLivePreviewPicker 1.0 widgets/DockLivePreviewPicker.qml
 singleton DockLivePreviewService 1.0 services/DockLivePreviewService.qml
 DockLivePreviewWidget 1.0 DockLivePreviewWidget.qml
-DockMagnificationConfig 1.0 settings/DockMagnificationConfig.qml
 DockMediaButton 1.0 widgets/DockMediaButton.qml
 DockMediaWidget 1.0 DockMediaWidget.qml
 DockMenuGroups 1.0 widgets/DockMenuGroups.qml
@@ -137,28 +119,19 @@ DockOverviewButtonConfig 1.0 settings/DockOverviewButtonConfig.qml
 DockPhoneContextMenu 1.0 DockPhoneContextMenu.qml
 DockPhoneWidget 1.0 DockPhoneWidget.qml
 singleton DockPresets 1.0 services/DockPresets.qml
-DockPresetsPane 1.0 settings/DockPresetsPane.qml
 DockPreviewContext 1.0 settings/DockPreviewContext.qml
 DockPreviewPopup 1.0 widgets/DockPreviewPopup.qml
-DockPreviewStage 1.0 settings/DockPreviewStage.qml
 DockSeparator 1.0 widgets/DockSeparator.qml
-DockSilhouette 1.0 settings/DockSilhouette.qml
 DockSportsPopup 1.0 widgets/DockSportsPopup.qml
 DockSportsWidget 1.0 DockSportsWidget.qml
 DockStackPopup 1.0 widgets/DockStackPopup.qml
-singleton DockStore 1.0 bridge/DockStore.qml
-DockStylePicker 1.0 settings/DockStylePicker.qml
 DockTasksWidget 1.0 DockTasksWidget.qml
 DockToPanelConfig 1.0 settings/DockToPanelConfig.qml
 DockTooltip 1.0 widgets/DockTooltip.qml
 DockTooltipHost 1.0 widgets/DockTooltipHost.qml
 DockTrashContextMenu 1.0 widgets/DockTrashContextMenu.qml
-DockUtilitiesConfig 1.0 settings/DockUtilitiesConfig.qml
-DockUtilityCard 1.0 settings/DockUtilityCard.qml
-DockUtilityCardGrid 1.0 settings/DockUtilityCardGrid.qml
 DockUtilityWidget 1.0 DockUtilityWidget.qml
 DockWeatherWidget 1.0 DockWeatherWidget.qml
-DockWidgetCard 1.0 settings/DockWidgetCard.qml
 DockWidgetStack 1.0 DockWidgetStack.qml
 DockWorkspaceConfig 1.0 settings/DockWorkspaceConfig.qml
 DrawCanvas 1.0 draw/DrawCanvas.qml
@@ -181,45 +154,28 @@ FilesTile 1.0 utilities/FilesTile.qml
 FloatingActionButton 1.0 common/FloatingActionButton.qml
 FolderFeed 1.0 utilities/FolderFeed.qml
 singleton GlobalFocusGrab 1.0 services/GlobalFocusGrab.qml
-singleton GlobalStates 1.0 bridge/GlobalStates.qml
-singleton GoogleTasksService 1.0 services/GoogleTasksService.qml
 HighlightOverlay 1.0 settings/HighlightOverlay.qml
-singleton HyprlandData 1.0 bridge/HyprlandData.qml
-singleton IslandPolicy 1.0 bridge/IslandPolicy.qml
-IslandSegmentedToggle 1.0 settings/IslandSegmentedToggle.qml
-singleton KdeConnectService 1.0 services/KdeConnectService.qml
 KeyHint 1.0 settings/KeyHint.qml
-LazyBlock 1.0 settings/LazyBlock.qml
 singleton LiveDraw 1.0 services/LiveDraw.qml
 LiveDrawMenus 1.0 draw/LiveDrawMenus.qml
 LiveDrawPanel 1.0 utilities/LiveDrawPanel.qml
 LiveDrawSettings 1.0 draw/LiveDrawSettings.qml
 LiveDrawTile 1.0 utilities/LiveDrawTile.qml
 LiveDrawWindow 1.0 draw/LiveDrawWindow.qml
-singleton LocalSend 1.0 services/LocalSend.qml
+LocalSendPopup 1.0 send/LocalSendPopup.qml
+LocalSendPopupContent 1.0 send/LocalSendPopupContent.qml
 MaterialLoadingIndicator 1.0 settings/MaterialLoadingIndicator.qml
 MaterialTextField 1.0 settings/MaterialTextField.qml
-singleton MprisController 1.0 services/MprisController.qml
 Notch 1.0 common/Notch.qml
-NotesDocumentFile 1.0 services/notes/NotesDocumentFile.qml
-singleton NotesLinkPreview 1.0 services/notes/NotesLinkPreview.qml
-singleton NotesRevisions 1.0 services/notes/NotesRevisions.qml
-singleton NotesService 1.0 services/NotesService.qml
-NotesStore 1.0 services/notes/NotesStore.qml
-singleton NotesSync 1.0 services/notes/NotesSync.qml
 NoticeBox 1.0 settings/NoticeBox.qml
 singleton ObjectUtils 1.0 functions/ObjectUtils.qml
-singleton OutlookService 1.0 services/OutlookService.qml
-singleton Persistent 1.0 bridge/Persistent.qml
-singleton PhoneAlarmService 1.0 services/PhoneAlarmService.qml
-singleton PhoneMirrorService 1.0 services/PhoneMirrorService.qml
-singleton PhoneScrcpyService 1.0 services/PhoneScrcpyService.qml
 PomodoroConfig 1.0 settings/PomodoroConfig.qml
 PomodoroPanel 1.0 utilities/PomodoroPanel.qml
 PomodoroTab 1.0 clockapp/tabs/PomodoroTab.qml
 PomodoroTile 1.0 utilities/PomodoroTile.qml
 singleton ProgressService 1.0 services/ProgressService.qml
 ReminderCategoriesSheet 1.0 clockapp/reminders/ReminderCategoriesSheet.qml
+ReminderAlertPopup 1.0 alarm/ReminderAlertPopup.qml
 ReminderCategorySheet 1.0 clockapp/reminders/ReminderCategorySheet.qml
 ReminderCheck 1.0 clockapp/reminders/ReminderCheck.qml
 ReminderEditorSheet 1.0 clockapp/reminders/ReminderEditorSheet.qml
@@ -251,7 +207,6 @@ ShelfTile 1.0 utilities/ShelfTile.qml
 ShellRegionTarget 1.0 common/ShellRegionTarget.qml
 singleton ShellRegions 1.0 services/ShellRegions.qml
 SiteIcon 1.0 utilities/SiteIcon.qml
-singleton SoundService 1.0 bridge/SoundService.qml
 singleton SportsService 1.0 services/SportsService.qml
 StableDockModel 1.0 widgets/StableDockModel.qml
 StopwatchConfig 1.0 settings/StopwatchConfig.qml
@@ -261,7 +216,6 @@ StopwatchTile 1.0 utilities/StopwatchTile.qml
 StyledSlider 1.0 settings/StyledSlider.qml
 StyledSpinBox 1.0 settings/StyledSpinBox.qml
 StyledTextArea 1.0 common/StyledTextArea.qml
-singleton SystemInfo 1.0 services/SystemInfo.qml
 TaskShortcutContent 1.0 common/TaskShortcutContent.qml
 singleton TaskbarApps 1.0 services/TaskbarApps.qml
 TileBadge 1.0 utilities/TileBadge.qml
@@ -277,12 +231,10 @@ TimerConfig 1.0 settings/TimerConfig.qml
 TimerKeypad 1.0 clockapp/tabs/TimerKeypad.qml
 TimerKeypadSheet 1.0 clockapp/tabs/TimerKeypadSheet.qml
 TimerPanel 1.0 utilities/TimerPanel.qml
-singleton TimerService 1.0 services/TimerService.qml
 TimerTab 1.0 clockapp/tabs/TimerTab.qml
 TimerTile 1.0 utilities/TimerTile.qml
 TimetableEventsStrip 1.0 clockapp/tabs/TimetableEventsStrip.qml
 TimezonePickerSheet 1.0 clockapp/tabs/TimezonePickerSheet.qml
-singleton Todo 1.0 services/Todo.qml
 ToolsConfig 1.0 settings/ToolsConfig.qml
 ToolsPanel 1.0 utilities/ToolsPanel.qml
 ToolsTile 1.0 utilities/ToolsTile.qml
@@ -292,11 +244,64 @@ UtilityPreview 1.0 utilities/UtilityPreview.qml
 UtilityTile 1.0 utilities/UtilityTile.qml
 WaterConfig 1.0 settings/WaterConfig.qml
 WaterPanel 1.0 utilities/WaterPanel.qml
-singleton WaterReminderService 1.0 services/WaterReminderService.qml
 WaterTile 1.0 utilities/WaterTile.qml
 WavyLine 1.0 settings/WavyLine.qml
-singleton Weather 1.0 bridge/Weather.qml
 WorldAnalogClock 1.0 clockapp/tabs/WorldAnalogClock.qml
 WorldClockCard 1.0 clockapp/tabs/WorldClockCard.qml
 singleton WorldClockService 1.0 services/WorldClockService.qml
 WorldClockTab 1.0 clockapp/tabs/WorldClockTab.qml
+singleton Icons 1.0 ui/Icons.qml
+singleton Images 1.0 ui/Images.qml
+singleton PanelFamily 1.0 ui/PanelFamily.qml
+singleton SettingsPageRegistry 1.0 ui/SettingsPageRegistry.qml
+ButtonGroup 1.0 ui/widgets/ButtonGroup.qml
+CachedShapeCanvas 1.0 ui/widgets/CachedShapeCanvas.qml
+ColorPreviewButton 1.0 ui/widgets/ColorPreviewButton.qml
+ColorPreviewGrid 1.0 ui/widgets/ColorPreviewGrid.qml
+ConfigSubPageHost 1.0 ui/widgets/ConfigSubPageHost.qml
+CustomIcon 1.0 ui/widgets/CustomIcon.qml
+GroupButton 1.0 ui/widgets/GroupButton.qml
+GroupPosition 1.0 ui/widgets/GroupPosition.qml
+MaterialShape 1.0 ui/widgets/MaterialShape.qml
+MaterialShapeWrappedMaterialSymbol 1.0 ui/widgets/MaterialShapeWrappedMaterialSymbol.qml
+MaterialSymbol 1.0 ui/widgets/MaterialSymbol.qml
+PointingHandInteraction 1.0 ui/widgets/PointingHandInteraction.qml
+RippleButton 1.0 ui/widgets/RippleButton.qml
+RippleButtonWithIcon 1.0 ui/widgets/RippleButtonWithIcon.qml
+SelectionGroupButton 1.0 ui/widgets/SelectionGroupButton.qml
+StaggeredEntrance 1.0 ui/widgets/StaggeredEntrance.qml
+StyledFlickable 1.0 ui/widgets/StyledFlickable.qml
+StyledImage 1.0 ui/widgets/StyledImage.qml
+StyledIndeterminateProgressBar 1.0 ui/widgets/StyledIndeterminateProgressBar.qml
+StyledListView 1.0 ui/widgets/StyledListView.qml
+StyledRectangularShadow 1.0 ui/widgets/StyledRectangularShadow.qml
+StyledScrollBar 1.0 ui/widgets/StyledScrollBar.qml
+StyledSwitch 1.0 ui/widgets/StyledSwitch.qml
+StyledText 1.0 ui/widgets/StyledText.qml
+StyledTextContextMenu 1.0 ui/widgets/StyledTextContextMenu.qml
+StyledTextContextMenuLoader 1.0 ui/widgets/StyledTextContextMenuLoader.qml
+StyledTextInput 1.0 ui/widgets/StyledTextInput.qml
+StyledToolTip 1.0 ui/widgets/StyledToolTip.qml
+StyledToolTipContent 1.0 ui/widgets/StyledToolTipContent.qml
+ThumbnailImage 1.0 ui/widgets/ThumbnailImage.qml
+ToolbarTextField 1.0 ui/widgets/ToolbarTextField.qml
+TouchpadScrollHandler 1.0 ui/widgets/TouchpadScrollHandler.qml
+singleton ColorUtils 1.0 ui/functions/ColorUtils.qml
+singleton FileUtils 1.0 ui/functions/FileUtils.qml
+singleton Fuzzy 1.0 ui/functions/Fuzzy.qml
+singleton Levendist 1.0 ui/functions/Levendist.qml
+singleton ProcUtils 1.0 ui/functions/ProcUtils.qml
+singleton ScrollWheel 1.0 ui/functions/ScrollWheel.qml
+singleton StringUtils 1.0 ui/functions/StringUtils.qml
+AdaptedMaterialScheme 1.0 ui/models/AdaptedMaterialScheme.qml
+EditAddBadge 1.0 ui/editMode/EditAddBadge.qml
+singleton Appearance 1.0 bridge/Appearance.qml
+singleton Config 1.0 bridge/Config.qml
+singleton Directories 1.0 bridge/Directories.qml
+singleton DockStore 1.0 bridge/DockStore.qml
+singleton GlobalStates 1.0 bridge/GlobalStates.qml
+singleton WmData 1.0 bridge/WmData.qml
+singleton IslandPolicy 1.0 bridge/IslandPolicy.qml
+singleton Persistent 1.0 bridge/Persistent.qml
+singleton Network 1.0 bridge/Network.qml
+singleton Notifications 1.0 bridge/Notifications.qml

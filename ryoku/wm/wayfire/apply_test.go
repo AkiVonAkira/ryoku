@@ -284,6 +284,7 @@ fingers = 3
 ryoku_builtin_nautilus = on created if app_id is "org.gnome.Nautilus" then set geometry_ppt 4 6 92 88
 ryoku_builtin_hub = on created if title is "Ryoku Settings" then maximize
 ryoku_builtin_rashin = on created if title is "Rashin" then set geometry_ppt 4 6 92 88
+ryoku_builtin_phone_tools = on created if title contains "ryoku-phone-" then set geometry_ppt 31 6 38 88
 ryoku_builtin_update = on created if app_id is "dev.ryoku.update" then set geometry_ppt 4 6 92 88
 ryoku_builtin_ryostore_title = on created if title is "Ryostore" then set geometry_ppt 4 6 92 88
 ryoku_builtin_ryovm = on created if title is "ryovm" then set geometry_ppt 4 6 92 88

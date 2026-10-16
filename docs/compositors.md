@@ -30,7 +30,7 @@ A provider is one binary, `ryoku-wm-<name>`, shipped by
 |`apply <store>`|write the compositor's config from the neutral settings store|
 |`defaults`|the provider's baseline subtree of that store|
 |`schema`|the settings rows only this compositor has, for the Hub to render|
-|`binds <store>`|the keybinds only this compositor has, resolved against the store, for the cheatsheet's compositor section|
+|`binds <store>`|the keybinds only this compositor has, resolved against the store, for Kit's Keys tab|
 |`outputs <layout>`|apply a display layout|
 |`session`|the `wayland-session` desktop entry|
 |`environment <pid>`|export the provider's opaque handle from one verified session process|
@@ -73,11 +73,13 @@ control vocabulary; a row whose control needs a bespoke editor names the page
 that draws it.
 
 `binds` is `schema`'s keybind twin: the provider declares the chords only it
-offers and the Hub folds them into a cheatsheet section titled with the
+offers and the Hub folds them into a section in Kit's Keys tab titled with the
 compositor's name, so a scrolling-tiler action niri has and Hyprland lacks is
 listed without the shell naming either. It resolves the store the way `apply`
 does, so a chord a user displaced is already gone from the list. A compositor
-whose binds are all shared prints an empty list and gets no section.
+whose binds are all shared prints an empty list and gets no section. Kit opens
+with Super+K and keeps Keys, Commands, Phone, Dev tools, and Typing test under
+one search field.
 
 Hyprland adds one more verb, `plugins`. niri has no plugin system and says so
 in `caps` instead of shipping a verb that would fail. Wayfire loads plugins --
@@ -109,7 +111,7 @@ Hyprland only:
 
     configReload  cursorSet  focusGrab  globalShortcuts  liveConfigEval
     persistentScreenCapture  plugins  screenShader  submap  tiledLayout
-    windowEmbed  workspaceSlideStyle
+    workspaceSlideStyle
 
 niri only:
 
@@ -146,7 +148,8 @@ that change what a user sees:
 - **`persistentScreenCapture`** is absent because niri tears its outputs down
   and recreates them on a config reload or a mode change. A one-shot capture is
   fine; a long-lived whole-screen capture can race an output leaving and crash
-  the Qt client. The launcher therefore uses a solid drawer on niri.
+  the Qt client. The launcher therefore uses a solid drawer on niri, and the ii
+  dock's live window preview says it is unavailable instead of capturing.
 - **`keyboardGrabSharesPointer`** is absent on Hyprland because a layer surface
   holding the keyboard exclusively takes every pointer event too. The Stage
   Editor's canvas holds the keyboard on niri, so Escape and the arrows reach it
@@ -166,10 +169,6 @@ that change what a user sees:
   (`wlopm`), so a single named output can be blanked; its HDR claim is the
   compositor's on/off switch, with wide gamut and SDR brightness reported as
   losses.
-- **`windowEmbed`** is absent on niri and wayfire: no window can be pinned to
-  a layer surface's screen and corner there, so the ii dock's phone-mirror
-  frame shows its scrcpy session as a plain window instead of drawing it
-  through the panel's cut-out.
 - **`workspaceSlideStyle`** is absent on niri and wayfire: neither answers a
   query for its resolved workspace animation, so the live-draw overlay keeps
   its built-in curve there and matches the compositor's own slide only on

@@ -3,9 +3,9 @@
 ## Unreleased
 
 ### Changed
-- **Ask and the sidebar chat point at the Hub when Rashin is off.** A quick
-  ask or a chat message on a box without `ryoku-rashin` answers "Rashin is off,
-  switch it on in Ryoku Hub" instead of naming a package to install by hand.
+- **Ask and Agent point at the Hub when Rashin is off.** A read-only ask or an
+  Agent message on a box without `ryoku-rashin` says to switch Rashin on in
+  Ryoku Hub instead of naming a package to install by hand.
 - **The painted frame band drops four fallbacks it could never reach.** `FrameChrome`
   is only visible while the sumi frame is active, so its per-edge reserves no
   longer carry a border-width arm for a state in which nothing is drawn. The
@@ -17,6 +17,52 @@
   in the picture directory and the rest at home.
 
 ### Added
+- **Ask and Agent are separate modes in the Rashin bar.** Ask keeps its own
+  read-only history and route picker; Agent keeps the persistent machine
+  conversation, session history, and harness models. Continue with the agent
+  adds a From Ask card for the next message, while Move to the agent runs the
+  original question immediately (`quickshell/shell/modules/ask/`,
+  `quickshell/shell/services/AskSession.qml`,
+  `quickshell/shell/services/Needle.qml`).
+- **The Rashin bar responds to every action.** Buttons press, controls give
+  tactile feedback, mode changes crossfade, transcript items enter in order,
+  the live marker and orb move smoothly, and the pinned Agent bubble stays
+  clear of the bar (`quickshell/shell/modules/ask/`, `plugin/thinkingorb.cpp`).
+- **Hidden Agent work reports back.** When a turn ends or needs approval while
+  no Rashin surface is visible, a desktop notification opens the bar in Agent
+  mode (`quickshell/shell/services/Needle.qml`).
+- **Right-click an ii desktop widget for its quick settings.** The menu lists
+  up to three of the widget's most used settings (time format, date, album
+  colours, forecast, contour lines and the like) and flips them in place.
+  Customize > Look picks one of twelve colour schemes for every ii widget, a
+  see-through background and its opacity, and an optional plate behind the
+  widget (`quickshell/shell/modules/desktop/ii/IiQuickControls.js`).
+- **Super+K opens Kit.** The keybind cheatsheet becomes Kit, one card with
+  five tabs under one search box: Keys (the shortcuts, as before), Commands,
+  Phone, Dev tools and Typing test. Typing anywhere searches the open tab and
+  jumps to the tab that matches; Kit remembers the last tab, and
+  `ryoku-kit <tab> [<section>]` opens it on a given tab (`quickshell/keys/`,
+  `scripts/ryoku-kit`).
+- **Kit > Commands lists every Ryoku command.** Every command of every Ryoku
+  tool, grouped by task, sits apart from a Linux library of the commands a
+  beginner to intermediate user needs, filtered to the running edition. Commands
+  can be copied, starred, run in a terminal when they need no input, or saved as
+  your own (`quickshell/keys/commands/`).
+- **Kit > Dev tools keeps the useful eleven.** Passwords and UUIDs (drawn from
+  `/dev/urandom`), JSON, Base64, URL encoding, JWTs, Unix time, colours, regex,
+  text diff and chmod (`quickshell/keys/devtools/`).
+- **Your phone in Kit.** Kit > Phone walks through setup (install, the KDE
+  Connect app, pairing, then USB debugging for the screen) and then carries the
+  phone: ring, files, clipboard, links, typing, notifications with reply,
+  contacts, Android apps, calls, and the phone's screen, camera and microphone.
+  The KDE Connect and scrcpy services live in the shell, so a mirror, webcam or
+  microphone keeps running after Kit closes; Kit reads their state and calls them
+  over IPC. The services start only while Phone is turned on in the Hub
+  (`quickshell/shell/modules/phone/`, `quickshell/keys/phone/`).
+- **Phone notifications can stay off the desktop.** When "Show phone
+  notifications" is off, KDE Connect's copies of phone notifications skip the
+  popups while file-transfer results still arrive
+  (`quickshell/shell/services/Notifs.qml`).
 - **The ii dock design.** The dock ported from P3DROVFX's ii-p3drovfx joins the
   shared dock store as a fourth design: pick "ii" in the Stage Editor's dock
   page and the shell mounts the ported tray, its magnification, app groups,
@@ -26,7 +72,6 @@
   shell.json's one `dock` object, so the Hub, `ryoku-shell dock` and the stage
   edit pages keep working unchanged (`quickshell/shell/modules/dock/ii/`,
   `quickshell/shell/modules/dock/IiDockHost.qml`,
-  `quickshell/shell/components/WindowEmbed.qml`,
   `quickshell/shell/components/WorkspaceSlide.qml`).
 - **Orpheus is Ryoku's default bar.** `Ryoku.Blobs` drops hang from the top
   edge with a voice in the middle that shows the time, the track, a fresh
@@ -178,10 +223,10 @@
   panel, so the history is usable without reaching for the mouse
   (`quickshell/shell/modules/clipboard/`).
 
-- **The Ask bar names its agent mode.** The mode strip reads Ask / Agent /
-  Tools / Web and the answer chip says Continue with the agent: the bar is
-  Rashin's Ryoku lane, and Chat is now the companion window's plain
-  conversation with the harness (`quickshell/shell/modules/ask/`).
+- **The Ask bar names its Agent mode.** The strip reads Ask / Agent / Tools /
+  Web. Ask is the separate read-only question flow, Agent is the persistent
+  machine conversation, and Chat remains the console's plain harness lane
+  (`quickshell/shell/modules/ask/`).
 - **The Ask bar is sealed.** Its header carries the Rashin mark from the icon
   theme (`rashin-app`), so the bar, the window and the console share one
   identity (`quickshell/shell/modules/ask/AskSurface.qml`). `deploy.sh` now
@@ -196,21 +241,17 @@
 - **The wordmark sweeps while the cover waits.** The bundled brand mark
   regained its loading light sweep, so a held cover reads as working rather
   than frozen (`quickshell/reload-cover/ReloadMedia.qml`).
-- **The Ask bar wears its history and model pickers on the header.** Two icon
-  buttons sit beside the RASHIN // ASK mark: one opens the history drawer
-  (recent chats from the shared session and recent asks from the fast lane,
-  keyboard-navigable, picking a chat switches to it and picking an ask recalls
-  its answer without a model call), and one opens the model drawer (the
-  fast-lane provider the quick asks answer from, and the agent's chat models;
-  a switch lands on the daemon and every chat surface follows). The bar grows
-  around an open drawer instead of clipping it, Ctrl+Shift+H and Ctrl+Shift+M
-  toggle the two drawers without the mouse, and Escape closes the drawer
-  before the bar (`quickshell/shell/modules/ask/AskSurface.qml`,
-  `AskDrawer.qml`, `AskField.qml`, `quickshell/shell/services/Needle.qml`).
-- **OPEN RASHIN joins CONTINUE IN CHAT.** The quick answer's chips now carry a
-  button that leaves the bar and opens the full companion window
-  (`rashin-app`), raising it when it is already open. Continue in chat stays
-  exactly as it was for anyone who wants the thread inside the bar
+- **The Ask bar keeps mode-specific history and model drawers.** Ask history
+  lists `rashin-asks.jsonl` and its route drawer lists Agent model before Prowl
+  routes. Agent history lists persistent sessions and its model drawer shows
+  the harness-wide saved pick, including Saved model unavailable when needed.
+  Ctrl+Shift+H and Ctrl+Shift+M toggle the drawers
+  (`quickshell/shell/modules/ask/AskSurface.qml`,
+  `AskDrawer.qml`, `quickshell/shell/services/Needle.qml`).
+- **Open Rashin and the Agent hand-off join Ask answers.** Continue with the
+  agent carries a finished question and answer into a From Ask card; Move to
+  the agent cancels unfinished read-only work and runs the question as an Agent
+  turn. Open Rashin raises the companion window
   (`quickshell/shell/modules/ask/AskAnswer.qml`, `AskSurface.qml`).
 - **Controls sets the power profile.** The Super+Escape panel gains a Power
   Saver / Balanced / Performance switch for the system power profile. It
@@ -244,13 +285,13 @@
   selected, microphone, key-press overlay, and webcam overlay toggles beside
   the desktop-audio one; the settings popover links to Hub > Recording
   (`quickshell/ryoshot/`).
-- **Ask brings Rashin into a compact global bar.** Alt+Space opens streaming
-  quick answers, full chat, tools, and web search with keyboard mode prefixes
-  and Tab cycling. A monochrome dotted orb narrates what the agent is doing and
-  a light beam rides the field while a request runs. Answers can be pinned to a
-  draggable, edge-snapped desktop bubble whose position persists.
-  (`quickshell/shell/modules/ask/`, `quickshell/shell/services/AskSession.qml`,
-  `plugin/thinkingorb.cpp`, `plugin/borderbeam.cpp`)
+- **Ask brings Rashin into a compact global bar.** Alt+Space opens separate
+  read-only Ask and persistent Agent modes beside Tools and Web. A monochrome
+  dotted orb narrates active work and a light beam rides the field while a
+  request runs. The Agent can be pinned to a draggable, edge-snapped desktop
+  bubble whose position persists (`quickshell/shell/modules/ask/`,
+  `quickshell/shell/services/AskSession.qml`, `plugin/thinkingorb.cpp`,
+  `plugin/borderbeam.cpp`).
 - **A fifth bar style: Python.** The serpantinum shell (by ilyamiro, AGPL-3.0)
   is ported into the style folder as `python`: a top or edge bar of pill
   widgets that open into one morphing stage, with the ported network, sound,
@@ -540,11 +581,11 @@
   right under it; the grid reflows beside it. Hover actions are a bar on the
   card (`ryogami/picker/qml/browser/`, `ryogami/picker/src/layouts/walllayout.cpp`,
   `ryogami/picker/src/scene/cardfield.cpp`).
-- **The Ask bar's Fast lane lists Prowl routes.** Its model drawer offers the
-  active set, the capability axes and your routing sets instead of provider
-  names (`quickshell/shell/modules/ask/AskSurface.qml`,
-  `quickshell/shell/services/Needle.qml`). `deploy.sh` installs
-  `ryoku-prowl.service` beside the Rashin unit.
+- **The Ask bar lists Agent model before Prowl routes.** Its Ask route drawer
+  offers the harness model, then Prowl's active set, capability axes, and named
+  sets. This choice is separate from the Agent model drawer
+  (`quickshell/shell/modules/ask/AskSurface.qml`,
+  `quickshell/shell/services/Needle.qml`).
 - **The visualiser's deep settings moved onto the desktop editor.** The
   placement bar grew a gear that opens a square drawer of everything it has no
   room for: playback (enabled, idle wave, frame rate, adaptive quality), shape
@@ -638,18 +679,14 @@
   (`modules/desktop/DesktopContextMenu.qml`, `MenuQuick.qml`, `MenuRow.qml`,
   `modules/dock/DockMenu.qml`, `modules/bar/TrayMenu.qml`).
 
-- **Ask Chat is the desktop's one live window on the shared agent session.** It
-  renders the daemon's stream as it arrives: thinking streams open
-  then folds to a one-line Thought when the answer starts, the reply reads in the
-  order the agent worked with its segments falling in around the tool calls, and
-  each tool row shows its kind, input, status and auto-approval with an
-  output-or-diff peek. Approvals are answered inline, a read-only switch
-  auto-approves reads, and the agent and model chip opens a searchable picker over
-  the agent's whole model list. The launcher quick ask's continue now opens this
-  chat rather than a separate page (`modules/bar/panel/PanelChat.qml`,
-  `ChatMessage.qml`, `ChatToolRow.qml`, `ChatApproval.qml`, `ChatModelPicker.qml`,
-  `services/Needle.qml`, `services/lib/chatstate.js`,
-  `modules/launcher/shared/AskPanel.qml`).
+- **Agent is the desktop's persistent live Rashin conversation.** The bar and
+  bubble render the daemon stream as it arrives: thinking folds, replies stay
+  ordered around tool calls, tool rows show input, status, output or diff, and
+  approvals sit inline. The searchable model picker shows the harness-wide
+  saved choice. An explicit From Ask card is the only way a read-only Ask
+  enters this transcript (`modules/ask/AskChat.qml`,
+  `modules/ask/AskHandoffCard.qml`, `services/Needle.qml`,
+  `services/lib/chatstate.js`, `modules/launcher/shared/AskPanel.qml`).
 
 - **iRiS cards and the Control Center grow out of the frame.** The default
   iRiS theme now melts an opened body into the bubble or edge it came from, so
@@ -658,6 +695,57 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **Every ii dock widget works on Hyprland and niri.** A panel or menu now
+  opens one at a time, switches straight to another tile's panel, takes typing
+  in its fields, and closes on Escape, a click on the desktop or an app, or a
+  second click on its tile. The Clipboard panel lists its history again
+  (it failed to load and collapsed to a thin bar) and says when it is still
+  loading. AI usage shows the provider that has data instead of "?", explains a
+  signed-out or stale provider, and offers sign-in only where it applies. Water
+  keeps its week, Tasks opens a panel to add and finish tasks, Weather opens its
+  forecast, Media opens its controls above the widget, Phone and Send reach the
+  paired phone, the Clock opens one window, and "Widget settings" lands on that
+  widget's row in the Stage Editor. Live preview says it is unavailable where
+  the compositor cannot capture windows (`quickshell/shell/modules/dock/ii/`,
+  `quickshell/shell/modules/dock/IiDockHost.qml`).
+- **Customize on an ii desktop widget opens beside it with its own settings.**
+  The inspector docked to the middle of the screen and every widget's page
+  said it was disabled with its text cut off at both edges. It now opens next
+  to the widget, shows the widget's real settings, and those settings reach the
+  widget, its shadow included. All 87 ii widgets load: the services they share
+  with the dock (tasks, notes, timers, water, calendar, weather, LocalSend) run
+  once instead of twice, and the missing ones (at a glance, translator, earbuds,
+  email, lyrics, the audio spectrum) are in place (`quickshell/stage/services/`,
+  `quickshell/stage/modules/ii/background/widgets/`,
+  `quickshell/shell/modules/desktop/`).
+- **ii desktop widgets are solid again.** Their cards, digits and text were
+  painted with the desktop's see-through ink tints, so on a bright wallpaper a
+  clock's card faded to a ghost and the Nagasaki text clock all but vanished.
+  They now take the wallpaper palette's own surfaces and accents, as the
+  original library draws them; Customize > Look > See-through background makes
+  them translucent on purpose. Unselected choices on their settings pages are
+  readable too (`quickshell/stage/services/WidgetColorScheme.qml`).
+- **Customize shows the widget you opened it on.** Opening Customize on one ii
+  widget after another kept the first widget's page, so the Nothing wheel clock
+  showed PC Battery Bars' "widget disabled". The page now follows the widget,
+  and the first time it opens on that widget's own settings
+  (`quickshell/shell/modules/desktop/WidgetInspector.qml`).
+- **Every ii widget's settings do what they say.** Each widget's page was
+  checked against the original: switches that changed nothing now work or are
+  gone, settings the widget reads but nobody could reach got a control (the
+  Nothing wheel clock's time format and date header, weather details, the
+  calendar's week start and event count, photo crop or fit, battery
+  percentages and more), and the widgets that had settings but no page got
+  one. The landscape EasyEffects preset now lies on its side instead of
+  standing (`quickshell/stage/modules/settings/configs/widgets/`).
+- **The Notes, Android search bar and EasyEffects preset widgets show up.**
+  They failed to load without a word (a drawing helper, an effects table and
+  its style were never brought over, and the search glyph set a read-only
+  size), so placing one left an empty spot. A widget that cannot load now says
+  why in the shell log. The square and plain photo widgets with no photo picked
+  show the current wallpaper, a live wallpaper's still frame included, instead
+  of an old one (`quickshell/stage/modules/ii/`,
+  `quickshell/shell/modules/desktop/ii/`).
 - **Picking a file no longer crashes the shell once its window has been
   rebuilt.** Quickshell deletes the window behind a hidden layer-shell or popup
   surface, and Qt's non-native `FileDialog` kept a bare pointer to the
@@ -1470,40 +1558,20 @@
   (`barstyles/kairos/components/TrayFlyout.qml`, `components/Island.qml`,
   `settings/IslandSettings.qml`).
 
-- **Rashin works with any coding agent now, not just Hermes.** The Hub's Rashin
-  page and the dashboard both list your detected agents with a one-click Wire
-  (it drops a pointer, the ryoku skill, and prowl-agent's code-intelligence
-  skill into that agent), show every path Rashin exposes -- the skill, each
-  vault map, prowl-agent -- and offer a Copy snippet to point an agent Rashin
-  doesn't wire directly. Ask Chat can run a coding agent other than
-  Hermes when its ACP adapter is installed; Hermes stays the recommended
-  default. `ryoku-rashin paths` and `ryoku-rashin agent` do the same in a
-  terminal.
-
-- **The Ask Chat header picks the agent and its model in one place.** The
-  chip shows what is answering -- the agent, plus its model when it has one
-  ("Hermes · gpt-5.6-luna", or just "Oh My Pi" for an agent that carries its own
-  model). Tapping it opens a two-level picker: choose the agent (Hermes, Oh My
-  Pi, and any other whose adapter is installed; the rest show "needs adapter"),
-  and, for agents that expose a model list, the model. Switching the agent takes
-  effect on your next message, and the chip no longer shows a stale model after
-  a switch.
-
-- **Ask Chat opens with a clearer start.** Instead of a wall of text,
-  the empty chat now leads with a heading, a one-line explainer, and three
-  tap-to-fill example prompts, so it is obvious what to do first.
-
-- **The needle guides first-time setup instead of failing.** On a box with no
-  AI configured yet, Ask Chat now shows a "Connect an AI" prompt with an
-  Open setup button (straight to Ryoku Settings' Rashin page) rather than the
-  example prompts, so a first ask never dead-ends on an error.
-
-- **Quick asks are no longer locked to Hermes.** The launcher fast lane can run
-  against any of ten built-in providers (OpenRouter, OpenAI, Groq, DeepSeek,
-  Mistral, Together, xAI, Cerebras, Ollama, local). `ryoku-rashin backend
-  <provider>[:model]` picks one (`backend auto` follows Hermes), and keys can
-  live in `~/.config/ryoku/rashin.env` instead of Hermes's own `.env`, so quick
-  asks work without a Hermes provider configured.
+- **Rashin's Agent can run more than Hermes.** Available backends are Hermes,
+  Codex through `codex-acp`, Claude Code through either ACP adapter, omp,
+  opencode, and Gemini CLI. The Hub and console list detected harnesses and
+  their vault pointers and skills; Hermes remains recommended
+  (`rashin/backend/chatbackend.go`, `rashin/backend/harnesses.go`).
+- **The Agent and its model are separate choices.** Choosing a harness changes
+  the backend on the next message. Choosing a model saves one pick for that
+  harness and applies it to every Rashin session. Prowl is an optional external
+  plug-in and never replaces that pick on its own
+  (`rashin/backend/chatbackend.go`, `rashin/backend/modelpick.go`).
+- **Ask can answer without Hermes.** Its route drawer offers Agent model and
+  available Prowl routes. Prowl provider and route setup lives in the Rashin
+  console, separate from the harness model (`services/Needle.qml`,
+  `modules/ask/AskSurface.qml`).
 
 - **The qsbar music widget opens a now-playing card, with a 10-band equalizer.**
   Clicking the widget (its title, its spectrum glyph, or anywhere on it in the
@@ -1712,12 +1780,10 @@
   leading `~` to `$HOME` before building the URL, the way the shell already
   resolves the brand mark, for both the image and the video path
   (`quickshell/reload-cover/ReloadMedia.qml`).
-- **Ask Chat can approve a tool.** When hermes paused on an edit or a command,
-  the panel only showed "waiting for approval" with no way to
-  answer, so the turn dead-ended unless the dashboard was open. The permission
-  frame now carries hermes's options through `ryoku-rashin chat`, the bubble
-  shows them as buttons, and a pick answers over the new `--perm <id>
-  <option>` flag (`services/Needle.qml`, `modules/bar/panel/PanelChat.qml`,
+- **Agent can approve a tool in the bar or bubble.** A permission frame carries
+  the harness's options to every Agent surface, so a paused edit or command no
+  longer needs the console to continue. Ask has no approvals and remains
+  strictly read-only (`services/Needle.qml`, `modules/ask/AskChat.qml`,
   `rashin/backend/chatcli.go`).
 - **In-shell video wallpapers can play sound again (#139).** The in-shell
   engine's QtMultimedia player was hardwired to `AudioOutput { muted: true }`,
@@ -1972,33 +2038,19 @@
 
 
 ### Added
-- **Rashin gives every agent the desktop map: a shipped `ryoku` skill and a
-  config source mirror.** `ryoku/rashin/skills/ryoku/` (`SKILL.md`, `bar.md`,
-  `plugins.md`) is the agent skill (safety rules, the command catalogue, the QS
-  Bar and dock guide, the plugin contract); `ryoku-rashin wire` symlinks it into
-  every agent's skills dir (`~/.agents`, `~/.claude`, `~/.codex`, `~/.omp/agent`,
-  `~/.hermes`, each `~/.hermes/profiles/*`), `unwire` removes only those links,
-  and `status --json` gained a `skillWired` flag per agent. The vault's
-  `desktop.md` now carries a generated "Bar and dock" section (the widget ids,
-  visibility keys, and the `ryoku-shell bar`/`dock` crib) built from the qsbar
-  widget catalogue and, when the daemon answers, the installed bar plugins. On
-  every reindex, when prowl-agent is present, Rashin mirrors `~/.config/quickshell`,
-  `~/.config/hypr`, and `~/.config/ryoku/*.json` into
-  `~/.local/share/ryoku/rashin/source/` and indexes it, so `prowlRepo()` and
-  `search_code` answer on a packaged box with no checkout, not only on a dev
-  machine (`rashin/backend/agents.go`, `index.go`, `vault.go`, `prowl.go`,
+- **Rashin gives every harness the desktop map through a shipped `ryoku`
+  skill and source mirror.** `ryoku-rashin wire` links the skill into detected
+  harness skill directories, `unwire` removes only those links, and status
+  reports each result. Reindex mirrors the live shell and Ryoku configuration
+  into a read-only source tree and asks the external `prowl` tool to index it,
+  so code lookup works on a packaged box without a checkout
+  (`rashin/backend/agents.go`, `index.go`, `vault.go`, `prowl.go`,
   `sourcemirror.go`, `skills/ryoku/`).
-- **Prowl ships with the desktop, and Rashin sets it up.** `prowl-agent` (the
-  code-intelligence indexer and MCP server the agent brain reads source with) is
-  now a signed `[ryoku]` package that `ryoku-rashin` depends on, so every rashin
-  box has it instead of a hand-install. `ryoku-rashin index` now runs
-  `prowl-agent init --integrations agents,agent-skills,claude,omp` in the config
-  mirror (was `none`, under a 120s budget), so the mirror carries Prowl's
-  `AGENTS.md` block, MCP config and skills next to its code index, and
-  `ryoku-rashin wire` also runs `prowl-agent skills --yes --clients <detected>`
-  for the claude, omp and hermes clients it detects (skipped on a Prowl without
-  the non-interactive `--yes`), installing Prowl's own skill beside the `ryoku`
-  one (`rashin/backend/sourcemirror.go`, `agents.go`).
+- **Prowl ships beside Rashin as its own tool.** It provides the optional model
+  gateway, code index, and portable skills. Rashin hosts its lifecycle and
+  console controls, but connecting a harness does not make Prowl auto the
+  default unless the user enables that separate switch
+  (`rashin/backend/harnesses.go`, `rashin/backend/sourcemirror.go`).
 - **A wallpaper video engine toggle (`wallpaper.video_engine`).** Video
   wallpapers now play through one of two engines: `ryogami` (the default, the
   lightweight C player that decodes a cached transcode into `wl_shm` on its own
@@ -3310,35 +3362,22 @@
   `modules/bar/barstyles/qsbar/**/{BarSlot,modules/ClockWidget}.qml`,
   `modules/bar/framebars/menus/MenuClockCard.qml`; Hub `Hub.qml` +
   `schema/DesktopPage.js`).
-- **Ask Chat holds a multi-turn Rashin conversation.** The answer streams in as
-  it is written and renders as selectable, copyable Markdown, with fenced code
-  in a wrapped, syntax-highlighted box that has a one-click copy. Attach images
-  with the paperclip, by pasting, or by dropping them; attached and produced
-  images preview inline. The input grows with the text and sends on Enter, with
-  Shift+Enter for a newline. `ryoku-rashin chat` bridges the daemon's shared
-  session over a line protocol, so follow-ups keep context and New Chat
-  (`chat --new`) forgets it. The conversation and any in-flight answer live in
-  the shared chat singleton, so closing and reopening Ask keeps the thread
-  (`services/Needle.qml`, `rashin/backend/chatcli.go`).
-- **The chat survives a shell reload.** On load Ask restores the
-  conversation the persistent daemon session still holds (text), so a
-  `ryoku reload` or relogin lands back on the thread instead of an empty chat.
-  A new `ryoku-rashin chat --history` replays the session transcript
-  (`rashin/backend/chatcli.go`, `services/Needle.qml`).
-- **Browse and resume past conversations from Ask.** The chat header
-  gained a history button: it opens a drawer listing every stored session
-  (newest first, by title) plus New Chat. Picking one loads it into the
-  thread, matching the dashboard's session drawer. New
-  `ryoku-rashin chat --sessions` and `chat --load <id>` back it, and stored
-  titles that captured the identity preamble are cleaned
-  (`rashin/backend/chatcli.go`, `rashin/backend/acp.go`, `services/Needle.qml`,
-  `modules/bar/panel/PanelChat.qml`).
-- **The chat answers as the Needle, not generic hermes.** The daemon rides a
-  one-time identity preamble in front of a session's first turn, so the sidebar
-  assistant introduces itself as the Needle, Ryoku's resident assistant, and
-  stays Ryoku-aware. It is chat-scoped and invisible to the transcript, so
-  Claude Code and other agents reading the shared vault are unaffected
-  (`rashin/backend/ws.go`).
+- **Agent holds a multi-turn Rashin conversation.** Replies stream as
+  selectable Markdown with copyable code, images can be attached or produced,
+  and the composer grows with its text. `ryoku-rashin chat` bridges the
+  persistent Agent session over a line protocol, so follow-ups keep context,
+  New Chat starts another session, and closing or reloading the shell does not
+  lose the in-flight turn (`services/Needle.qml`,
+  `rashin/backend/chatcli.go`).
+- **Browse and resume Agent conversations from the bar.** Its history drawer
+  lists every stored Agent session, newest first, plus New Chat. Picking one
+  loads it into the same transcript shown by the console Agent sheet
+  (`rashin/backend/chatcli.go`, `rashin/backend/acp.go`,
+  `services/Needle.qml`, `modules/ask/AskSurface.qml`).
+- **Agent answers as the Needle, not a generic harness.** The daemon adds the
+  machine identity to the first turn of the persistent Agent session. Chat
+  stays plain, and read-only Ask gets its own private preamble
+  (`rashin/backend/ws.go`, `rashin/backend/lane.go`).
 - **The chat shows the agent working.** While the needle answers, a live
   activity log streams above the text: every tool the agent runs (read, search,
   edit, run a command, ...) as an icon and title with a status that flips to a
@@ -3355,23 +3394,17 @@
   completes, Esc dismisses, and Enter runs it in the session. New
   `ryoku-rashin chat --commands` and `--skills` fetch the lists
   (`rashin/backend/chatcli.go`, `modules/bar/panel/PanelChat.qml`).
-- **The needle can query the Ryoku code index mid-chat.** When prowl-agent and
-  an indexed checkout are both present, the hermes session starts with
-  prowl-agent wired in as an MCP server, so the agent answers "where is X
-  defined", "what calls Y", or "what is the blast radius of Z" with cited
-  results from the index instead of guessing. Absent prowl, the session opens
-  unchanged (`rashin/backend/acp.go`, `rashin/backend/prowl.go`).
-- **Pick the model from the sidebar.** A chip in the chat header shows the
-  current model; opening it lists every model the hermes session offers (an
-  OpenAI model, a local endpoint, or whatever the provider config exposes) and
-  switching is one click. So the chat can talk to rashin's hermes, OpenAI, or a
-  local model without leaving the sidebar. The pick is remembered: the daemon
-  saves it and re-applies it to every new session, so a restart keeps your
-  model and the dashboard, sidebar, terminal fast lane, and `status` all use
-  the model the session is actually on (`chat --models`, `chat --set-model`;
-  `rashin/backend/acp.go`, `rashin/backend/ws.go`, `rashin/backend/hermes.go`,
-  `rashin/backend/quick.go`,
-  `modules/bar/panel/PanelChat.qml`, `services/Needle.qml`).
+- **The Agent can query Prowl's code index.** When the external Prowl tool and
+  an indexed checkout are available, its MCP service gives the harness cited
+  answers for definitions, callers, and blast radius. Without Prowl the
+  session opens unchanged (`rashin/backend/acp.go`,
+  `rashin/backend/prowl.go`).
+- **Pick one model per harness from any Rashin surface.** The daemon saves the
+  explicit pick and reapplies it to Agent, Chat, new and loaded sessions,
+  respawns, and private Ask sessions. Every surface shows the same choice;
+  when unavailable it stays saved while the live session uses its current
+  model (`rashin/backend/modelpick.go`, `rashin/backend/acp.go`,
+  `services/Needle.qml`).
 
 ### Fixed
 - **The all-in-one desktop widget follows the theme and trims its wide divider.**

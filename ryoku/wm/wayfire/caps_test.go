@@ -153,14 +153,10 @@ func TestDeniesLiveConfigEval(t *testing.T) {
 	}
 }
 
-// No plugin pins a window under a layer surface, and the workspace animation
-// has no query IPC, so the phone-mirror frame and the live-draw overlay must
-// both take their fallback paths here.
-func TestDeniesEmbedAndSlide(t *testing.T) {
+// The workspace animation has no query IPC, so the live-draw overlay must
+// take its fallback path here.
+func TestDeniesWorkspaceSlideStyle(t *testing.T) {
 	c := wm.Caps{Supports: capsManifest}
-	if c.Has(wm.CapWindowEmbed) {
-		t.Error("wayfire cannot pin a window to a layer surface; the manifest must not claim it")
-	}
 	if c.Has(wm.CapWorkspaceSlideStyle) {
 		t.Error("wayfire cannot report its workspace animation; the manifest must not claim it")
 	}

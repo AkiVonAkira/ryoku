@@ -47,10 +47,23 @@ Singleton {
         return Array.from(ShellCfg.Dock.pinnedOrStarter() ?? []);
     }
 
+    // Leaves the ii design shares with every other design: the shared store
+    // owns them, so the Stage Editor's shared rows drive this dock too.
     readonly property var sharedKeys: ({
         "enable": "enabled",
         "position": "edge",
-        "height": "size"
+        "height": "size",
+        "enableMagnification": "magnify"
+    })
+    // Shared keys whose meaning is the opposite of the ii leaf: a dock that
+    // hides automatically is one that does not start pinned.
+    readonly property var invertedSharedKeys: ({
+        "pinnedOnStartup": "autohide"
+    })
+    // What the shared rows show while a key is unset, so this dock agrees.
+    readonly property var sharedFallbacks: ({
+        "magnify": true,
+        "autohide": true
     })
 
     function frame(): var {
@@ -89,11 +102,27 @@ Singleton {
         return v;
     }
 
+    // The dock's own code assigns leaves (a remove from its menu, a dragged
+    // order), and an assignment drops the leaf's binding to the store. A leaf
+    // whose change commit() actually wrote hands this back to itself, so a
+    // later write from the Stage Editor, the Hub or the CLI still reaches the
+    // dock. A change the binding itself produced writes nothing and is not
+    // rebound: list leaves come back as fresh copies, and rebinding those
+    // would fire the leaf again forever.
+    function rebind(path: string, fallback: var): var {
+        return Qt.binding(() => root.pull(path, fallback));
+    }
+
     function resolve(path: string, fallback: var): var {
         const shared = root.sharedKeys[path];
         if (shared !== undefined) {
-            const v = ShellCfg.Dock.cfg(shared, null);
+            const v = ShellCfg.Dock.cfg(shared, root.sharedFallbacks[shared] ?? null);
             return (v === null || v === undefined) ? fallback : v;
+        }
+        const inverted = root.invertedSharedKeys[path];
+        if (inverted !== undefined) {
+            const v = ShellCfg.Dock.cfg(inverted, root.sharedFallbacks[inverted] ?? null);
+            return (v === null || v === undefined) ? fallback : !v;
         }
         if (path === "pinnedApps")
             return Array.from(ShellCfg.Dock.pinnedOrStarter() ?? []);
@@ -132,26 +161,32 @@ Singleton {
         return d[path] === encoded;
     }
 
-    // Write one option leaf back. Shared keys go straight to the shared
-    // store; a pinned-apps write mirrors there too so the other designs stay
-    // in sync. Everything else merges into the dock.ii frame.
-    function commit(path: string, value: var) {
+    // Write one option leaf back, answering whether anything was written.
+    // Shared keys go straight to the shared store; a pinned-apps write mirrors
+    // there too so the other designs stay in sync. Everything else merges into
+    // the dock.ii frame.
+    function commit(path: string, value: var): bool {
         // Compare against the stored data, not the memo: an absent key reads
         // back the sentinel, and the first Changed a leaf fires is the
         // binding's own default landing, which must never be persisted.
         const current = root.resolve(path, root);
         if (current !== root && JSON.stringify(current) === JSON.stringify(value))
-            return;
+            return false;
         if (current === root && root.isDefaultWrite(path, undefined, value))
-            return;
+            return false;
         const shared = root.sharedKeys[path];
         if (shared !== undefined) {
             ShellCfg.Dock.setCfg(shared, value);
-            return;
+            return true;
+        }
+        const inverted = root.invertedSharedKeys[path];
+        if (inverted !== undefined) {
+            ShellCfg.Dock.setCfg(inverted, !value);
+            return true;
         }
         if (path === "pinnedApps") {
             ShellCfg.Dock.setPinned(Array.from(value ?? []));
-            return;
+            return true;
         }
         const next = JSON.parse(JSON.stringify(root.frame()));
         const parts = path.split(".");
@@ -163,5 +198,6 @@ Singleton {
         }
         node[parts[parts.length - 1]] = value;
         ShellCfg.Dock.setCfg("ii", next);
+        return true;
     }
 }

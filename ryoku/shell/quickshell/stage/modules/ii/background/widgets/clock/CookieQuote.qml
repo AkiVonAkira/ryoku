@@ -20,7 +20,7 @@ Item {
         verticalOffset: 2
         radius: 12
         samples: radius * 2 + 1
-        color: Appearance.colors.colShadow
+        color: WidgetColorScheme.colors.colShadow
         transparentBorder: true
     }
     

@@ -18,6 +18,8 @@ import "shape"
 import "iris"
 import "iris/IrisRoster.js" as IrisRoster
 import "python"
+import "ii"
+import "ii/IiRoster.js" as IiRoster
 import "python/PythonRoster.js" as PythonRoster
 import Ryoku.PluginKit
 import shell.services as Services
@@ -169,6 +171,9 @@ Scope {
         const py = PythonRoster.byPrefix(w);
         if (py)
             return py.label;
+        const ii = IiRoster.byPrefix(w);
+        if (ii)
+            return ii.label;
         return w;
     }
     function widgetValue(widget, suffix) {
@@ -235,6 +240,11 @@ Scope {
             const f = irisFaces[k];
             out.push({ id: f.prefix, label: f.label, icon: f.icon, enabled: root.widgetValue(f.prefix, "Enabled") === true, group: "Shima widgets" });
         }
+        const iiFaces = IiRoster.faces;
+        for (var q = 0; q < iiFaces.length; q++) {
+            const f = iiFaces[q];
+            out.push({ id: f.prefix, label: f.label, icon: f.icon, enabled: root.widgetValue(f.prefix, "Enabled") === true, group: "ii widgets" });
+        }
         const pythonFaces = PythonRoster.faces;
         for (var p = 0; p < pythonFaces.length; p++) {
             const f = pythonFaces[p];
@@ -247,7 +257,7 @@ Scope {
         }
         return out;
     }
-    // The live WidgetSlot for a built-in or iRiS scope. Every slot rides a
+    // The live WidgetSlot for a built-in or hosted scope. Every slot rides a
     // full-screen host, so its x/y/width/height are already monitor pixels the
     // inspector can dock beside.
     function _outerFor(w) {
@@ -271,6 +281,11 @@ Scope {
             const pd = pythonRepeater.itemAt(j);
             if (pd && pd.item && pd.modelData && pd.modelData.prefix === w)
                 return pd.item;
+        }
+        for (var k = 0; k < iiRepeater.count; k++) {
+            const id = iiRepeater.itemAt(k);
+            if (id && id.item && id.modelData && id.modelData.prefix === w)
+                return id.item;
         }
         return null;
     }
@@ -315,6 +330,7 @@ Scope {
             root.openDesktopMenu(x, y);
             return;
         }
+        root.releaseHostedWidgetTyping();
         if (root.stageComposing) {
             root.stageOpenSettings(widget);
             return;
@@ -342,6 +358,7 @@ Scope {
     function openInspector(widget) {
         if (widget === "desktop")
             return;
+        root.releaseHostedWidgetTyping();
         if (root.stageComposing) {
             root.stageOpenSettings(widget);
             return;
@@ -355,6 +372,7 @@ Scope {
         inspectorLoader.active = true;
     }
     function openDesktopMenu(x, y) {
+        root.releaseHostedWidgetTyping();
         if (desktopMenuLoader.item) {
             desktopMenuLoader.item.openAt(x, y);
             return;
@@ -384,9 +402,16 @@ Scope {
     // it is mapped and takes keyboard only while it shows.
     readonly property bool inspectorShowing:
         inspectorLoader.item && inspectorLoader.item.showing === true
+    function releaseHostedWidgetTyping() {
+        const owner = String(Stage.GlobalStates.widgetTypingOwner || "");
+        if (root.monitorName !== "" && owner.indexOf(root.monitorName + "|") === 0)
+            Stage.GlobalStates.widgetTypingOwner = "";
+    }
+    onMenusShowingChanged: if (!menusShowing) root.releaseHostedWidgetTyping()
+    onInspectorShowingChanged: if (!inspectorShowing) root.releaseHostedWidgetTyping()
 
-    // Off-surface open of a widget's right-click menu (the `desktop menu` IPC /
-    // niri routing). Lands near the top-left of this monitor's canvas.
+    // Off-surface open of a widget's right-click menu from the desktop IPC.
+    // Lands near the top-left of this monitor's canvas.
     Connections {
         target: Services.ShellState
         function onWidgetMenuRequested(mon, widget) {
@@ -610,6 +635,12 @@ Scope {
         // the desktop, and the toolbar and catalogue on their own surface stay
         // clickable (keyboardGrabSharesPointer in docs/compositors.md).
         property int kbWanted: 0
+        readonly property bool hostedWidgetTyping: {
+            const owner = String(Stage.GlobalStates.widgetTypingOwner || "");
+            return root.monitorName !== "" && owner.indexOf(root.monitorName + "|") === 0;
+        }
+        onHostedWidgetTypingChanged: kbWanted += hostedWidgetTyping ? 1 : -1
+        Component.onDestruction: if (hostedWidgetTyping) kbWanted -= 1
         readonly property bool stageKeyboardWanted: root.stageComposing
             && kbWanted === 0
             && !root.menusShowing
@@ -1330,6 +1361,58 @@ Scope {
                                 screen: root.screen
                                 hostX: irisSlot.x
                                 hostY: irisSlot.y
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // The vendored ii widget library rides the same global slot contract:
+        // Ryoku owns placement, lock and chrome; the ii face paints inside and
+        // keeps its own per-widget options (the Stage Editor edits them).
+        Repeater {
+            id: iiRepeater
+            model: IiRoster.faces
+            delegate: Loader {
+                id: iiLoader
+                required property var modelData
+                anchors.fill: parent
+                z: root.widgetZ(iiLoader.modelData.prefix)
+                active: root.widgetsEnabled && root.reloadReady
+                    && (root.widgetValue(iiLoader.modelData.prefix, "Enabled") === true)
+                sourceComponent: Component {
+                    Item {
+                        anchors.fill: parent
+                        WidgetSlot {
+                            id: iiSlot
+                            widget: iiLoader.modelData.prefix
+                            monitor: root.monitorName
+                            z: root.widgetZ(iiLoader.modelData.prefix)
+                            visible: true
+                            anchor: root.widgetValue(iiLoader.modelData.prefix, "Anchor")
+                            freeX: root.widgetValue(iiLoader.modelData.prefix, "X")
+                            freeY: root.widgetValue(iiLoader.modelData.prefix, "Y")
+                            locked: root.widgetValue(iiLoader.modelData.prefix, "Locked")
+                            composing: root.stageComposing
+                            stageController: stageSelection
+                            gridSize: root.editGridSize
+                            snapEnabled: root.editGridSnap
+                            bg: Config[iiLoader.modelData.prefix + "Bg"]
+                            scaleCfg: root.widgetValue(iiLoader.modelData.prefix, "Scale")
+                            radiusOverride: Config[iiLoader.modelData.prefix + "Radius"]
+                            pad: Config[iiLoader.modelData.prefix + "Pad"] >= 0
+                                ? Config[iiLoader.modelData.prefix + "Pad"] : 0
+                            borderWidth: Config[iiLoader.modelData.prefix + "Border"]
+                            borderOpacity: Config[iiLoader.modelData.prefix + "BorderOpacity"]
+                            backingOpacity: Config[iiLoader.modelData.prefix + "BackingOpacity"]
+                            onMenuRequested: (x, y, w) => root.openWidgetMenu(w, x, y)
+                            onDropped: (box) => { win.flashDrop(box); root.stageRecordGesture(iiSlot); }
+                            onResized: root.stageRecordGesture(iiSlot)
+                            IiFaceWidget {
+                                faceId: iiLoader.modelData.id
+                                prefix: iiLoader.modelData.prefix
+                                screen: root.screen
                             }
                         }
                     }
