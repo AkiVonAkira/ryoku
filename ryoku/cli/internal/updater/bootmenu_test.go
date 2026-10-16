@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // mountinfo as a Fedora install with a separate /boot and the kickstart's
@@ -258,5 +259,46 @@ func TestMenuFindsKernelCopiesInABootSubvolume(t *testing.T) {
 		if !strings.Contains(cfg, want) {
 			t.Errorf("menu lacks %q\n%s", want, cfg)
 		}
+	}
+}
+
+func TestExpiredBrokenRootsKeepTheNewestAndTheRecent(t *testing.T) {
+	list := "ID 256 gen 90 top level 5 path root\n" +
+		"ID 257 gen 90 top level 5 path .snapshots\n" +
+		"ID 300 gen 40 top level 5 path <FS_TREE>/root.broken-20260901-100000\n" +
+		"ID 301 gen 50 top level 5 path root.broken-20260910-100000\n" +
+		"ID 302 gen 60 top level 5 path root.broken-20261010-100000\n" +
+		"ID 303 gen 70 top level 5 path root.broken-20261015-100000\n" +
+		"ID 304 gen 70 top level 256 path root/var/lib/root.broken-20260101-000000\n"
+	now := time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC)
+	got := expiredBrokenRoots(list, "root", now)
+	want := []string{"root.broken-20260901-100000", "root.broken-20260910-100000"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expired = %q, want %q", got, want)
+	}
+	only := "ID 300 gen 40 top level 5 path root.broken-20250101-000000\n"
+	if got := expiredBrokenRoots(only, "root", now); len(got) != 0 {
+		t.Fatalf("the only set-aside root was due: %q", got)
+	}
+}
+
+func TestDracutFingerprintFollowsContentsNotTimes(t *testing.T) {
+	dir := t.TempDir()
+	hook := filepath.Join(dir, "hook.sh")
+	if err := os.WriteFile(hook, []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := dracutFingerprint([]string{dir, filepath.Join(dir, "missing")})
+	old := time.Now().Add(-time.Hour)
+	_ = os.Chtimes(hook, old, old)
+	if got := dracutFingerprint([]string{dir, filepath.Join(dir, "missing")}); got != before {
+		t.Fatal("a changed mtime changed the fingerprint")
+	}
+	if err := os.WriteFile(hook, []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Chtimes(hook, old, old)
+	if got := dracutFingerprint([]string{dir}); got == before {
+		t.Fatal("new contents with an old mtime kept the fingerprint")
 	}
 }

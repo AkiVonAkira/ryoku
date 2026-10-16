@@ -25,7 +25,6 @@ const (
 	restoredEntryID = "ryoku-restored"
 	// where the look boot's initramfs hook mounts the snapshot it shows.
 	previewLower = "/run/ryoku/preview/lower"
-	btrfsTop     = "/run/ryoku/btrfs-top"
 	// a set-aside root is deleted this long after a restore; the newest one
 	// is always kept.
 	brokenRootKeep = 14 * 24 * time.Hour
@@ -71,31 +70,45 @@ func restoreSnapshot() error {
 	opts, flags := baseSnapshotOptions(readText(procCmdline))
 	layout := menuLayout{bootUUID: uuid, bootPrefix: grubBootPrefix(boot), options: opts, rootflags: flags}
 
-	top, cleanup, err := mountBtrfsTop(lower.source)
+	top, unmount, err := sys.MountBtrfsTop(lower.source)
 	if err != nil {
 		return err
 	}
-	defer cleanup()
-	if !isDir(filepath.Join(top, snap)) || !isDir(filepath.Join(top, rootSubvol)) {
+	defer unmount()
+	root := filepath.Join(top, rootSubvol)
+	if !isDir(filepath.Join(top, snap)) || !isDir(root) {
 		return fmt.Errorf(i18n.T("%s or %s is missing from the btrfs top level; nothing was changed"), snap, rootSubvol)
 	}
 	broken := rootSubvol + ".broken-" + time.Now().UTC().Format("20060102-150405")
-	if err := os.Rename(filepath.Join(top, rootSubvol), filepath.Join(top, broken)); err != nil {
+	if err := os.Rename(root, filepath.Join(top, broken)); err != nil {
 		return fmt.Errorf(i18n.T("setting the current root aside: %w; nothing was changed"), err)
 	}
-	if err := sys.Run("btrfs", "subvolume", "snapshot", filepath.Join(top, snap), filepath.Join(top, rootSubvol)); err != nil {
-		_ = os.Rename(filepath.Join(top, broken), filepath.Join(top, rootSubvol))
+	if err := sys.Run("btrfs", "subvolume", "snapshot", filepath.Join(top, snap), root); err != nil {
+		_ = os.Rename(filepath.Join(top, broken), root)
 		return fmt.Errorf(i18n.T("snapshotting %s failed, the current root is back: %w"), snap, err)
 	}
-	if err := writeFileAtomic(filepath.Join(top, rootSubvol, restoredFlag), snap+" "+broken+"\n", 0o644); err != nil {
-		return err
+	// From here a failure puts the replaced root back: a restored root without
+	// its flag and its one-time entry would boot Fedora's newest kernel, which
+	// it may have no modules for, and nothing would mend its boot entries.
+	undo := func(cause error) error {
+		if err := sys.Run("btrfs", "subvolume", "delete", root); err != nil {
+			return fmt.Errorf(i18n.T("%v; putting the replaced root back failed as well (%v): it is %s at the btrfs top level"), cause, err, broken)
+		}
+		if err := os.Rename(filepath.Join(top, broken), root); err != nil {
+			return fmt.Errorf(i18n.T("%v; putting the replaced root back failed as well (%v): it is %s at the btrfs top level"), cause, err, broken)
+		}
+		return fmt.Errorf(i18n.T("%w; the current root is back, nothing was changed"), cause)
 	}
-	menu := readText(snapshotMenuCfg()) + renderRestoredEntry(layout, rootSubvol, kver)
-	if err := writeFileAtomic(snapshotMenuCfg(), menu, 0o644); err != nil {
-		return err
+	if err := sys.WriteFileAtomic(filepath.Join(root, restoredFlag), snap+" "+broken+"\n", 0o644); err != nil {
+		return undo(err)
+	}
+	menu := readText(snapshotMenuCfg())
+	if err := sys.WriteFileAtomic(snapshotMenuCfg(), menu+renderRestoredEntry(layout, rootSubvol, kver), 0o644); err != nil {
+		return undo(err)
 	}
 	if err := sys.Run("grub2-reboot", restoredEntryID); err != nil {
-		return fmt.Errorf(i18n.T("the root is restored, but the next boot could not be pointed at it: %w"), err)
+		_ = sys.WriteFileAtomic(snapshotMenuCfg(), menu, 0o644)
+		return undo(fmt.Errorf(i18n.T("pointing the next boot at the restored root: %w"), err))
 	}
 	fmt.Printf(i18n.T("Restored %s. The system it replaced is kept as %s for two weeks.\n"), snap, broken)
 	fmt.Println(i18n.T("Reboot now to start the restored system."))
@@ -124,7 +137,8 @@ func snapshotRestored() error {
 		return nil
 	}
 	fmt.Printf(i18n.T("boot menu: this root was restored from %s; the one it replaced is %s\n"), what[0], what[1])
-	for kver := range blsKernels(blsDir) {
+	listed := blsKernels(blsDir)
+	for kver := range listed {
 		if !sys.Exists(filepath.Join(modulesDir, kver)) {
 			_ = sys.Run("kernel-install", "remove", kver)
 		}
@@ -133,7 +147,7 @@ func snapshotRestored() error {
 	for _, m := range modules {
 		kver := m.Name()
 		img := filepath.Join(modulesDir, kver, "vmlinuz")
-		if _, listed := blsKernels(blsDir)[kver]; sys.Exists(img) && !listed {
+		if _, ok := listed[kver]; sys.Exists(img) && !ok {
 			_ = sys.Run("kernel-install", "add", kver, img)
 		}
 	}
@@ -176,46 +190,55 @@ func blsKernels(dir string) map[string]string {
 }
 
 // pruneBrokenRoots deletes the roots earlier restores set aside once they are
-// older than brokenRootKeep, keeping the newest regardless.
+// older than brokenRootKeep. It runs on every sync, so it reads the subvolume
+// list first and mounts the btrfs top level only when one is due.
 func pruneBrokenRoots(rootSubvol string) {
+	out, err := sys.RunOut("btrfs", "subvolume", "list", "/")
+	if err != nil {
+		return
+	}
+	due := expiredBrokenRoots(out, rootSubvol, time.Now())
+	if len(due) == 0 {
+		return
+	}
 	root, ok := parseMountInfo(readText(mountInfo))["/"]
 	if !ok {
 		return
 	}
-	top, cleanup, err := mountBtrfsTop(root.source)
+	top, unmount, err := sys.MountBtrfsTop(root.source)
 	if err != nil {
 		return
 	}
-	defer cleanup()
-	matches, _ := filepath.Glob(filepath.Join(top, rootSubvol+".broken-*"))
-	sort.Strings(matches)
-	for i, m := range matches {
-		if i == len(matches)-1 {
-			break
-		}
-		stamp := strings.TrimPrefix(filepath.Base(m), rootSubvol+".broken-")
-		at, err := time.Parse("20060102-150405", stamp)
-		if err != nil || time.Since(at) < brokenRootKeep {
-			continue
-		}
+	defer unmount()
+	for _, name := range due {
 		// -R: systemd creates var/lib/portables as a subvolume inside the root
-		if err := sys.Run("btrfs", "subvolume", "delete", "-R", m); err == nil {
-			fmt.Printf(i18n.T("boot menu: deleted %s, set aside by a restore on %s\n"), filepath.Base(m), at.Format("2006-01-02"))
+		if err := sys.Run("btrfs", "subvolume", "delete", "-R", filepath.Join(top, name)); err == nil {
+			fmt.Printf(i18n.T("boot menu: deleted %s, set aside by a restore\n"), name)
 		}
 	}
 }
 
-// mountBtrfsTop mounts the top level of a btrfs device privately under
-// /run/ryoku, where the root subvolume, the snapshots and set-aside roots sit
-// side by side.
-func mountBtrfsTop(dev string) (string, func(), error) {
-	if err := os.MkdirAll(btrfsTop, 0o700); err != nil {
-		return "", nil, err
+// expiredBrokenRoots picks from `btrfs subvolume list` output the set-aside
+// roots older than brokenRootKeep, never the newest one.
+func expiredBrokenRoots(list, rootSubvol string, now time.Time) []string {
+	prefix := rootSubvol + ".broken-"
+	var names []string
+	for _, line := range strings.Split(list, "\n") {
+		_, path, ok := strings.Cut(line, " path ")
+		path = strings.TrimPrefix(strings.TrimSpace(path), "<FS_TREE>/")
+		if ok && strings.HasPrefix(path, prefix) && !strings.Contains(path, "/") {
+			names = append(names, path)
+		}
 	}
-	if err := sys.Run("mount", "-t", "btrfs", "-o", "subvolid=5", dev, btrfsTop); err != nil {
-		return "", nil, fmt.Errorf(i18n.T("mounting the btrfs top level: %w"), err)
+	sort.Strings(names)
+	var due []string
+	for i, name := range names {
+		at, err := time.Parse("20060102-150405", strings.TrimPrefix(name, prefix))
+		if i < len(names)-1 && err == nil && now.Sub(at) >= brokenRootKeep {
+			due = append(due, name)
+		}
 	}
-	return btrfsTop, func() { _ = sys.Run("umount", btrfsTop) }, nil
+	return due
 }
 
 // cmdlineValue is the value of key=... on a kernel command line, or "".
@@ -230,15 +253,13 @@ func cmdlineValue(cmdline, key string) string {
 
 // fstabRootSubvol is the subvolume the fstab entry for / mounts.
 func fstabRootSubvol(fstab string) string {
-	for _, line := range strings.Split(fstab, "\n") {
-		f := strings.Fields(line)
-		if len(f) < 4 || strings.HasPrefix(f[0], "#") || f[1] != "/" {
-			continue
-		}
-		for _, o := range strings.Split(f[3], ",") {
-			if v, ok := strings.CutPrefix(o, "subvol="); ok {
-				return strings.Trim(v, "/")
-			}
+	f := sys.FstabRoot(fstab)
+	if f == nil {
+		return ""
+	}
+	for _, o := range strings.Split(f[3], ",") {
+		if v, ok := strings.CutPrefix(o, "subvol="); ok {
+			return strings.Trim(v, "/")
 		}
 	}
 	return ""

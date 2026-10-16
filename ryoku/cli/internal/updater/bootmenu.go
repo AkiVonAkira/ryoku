@@ -1,6 +1,8 @@
 package updater
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
 	"os"
@@ -55,6 +57,14 @@ var (
 	procCmdline     = "/proc/cmdline"
 	mountInfo       = "/proc/self/mountinfo"
 	dracutModuleDir = "/usr/lib/dracut/modules.d/90ryoku-snapshot"
+	// what else a kernel copy's initramfs is built from: dracut itself and
+	// its configuration.
+	dracutInputs = []string{
+		"/usr/lib/dracut/dracut-version.sh",
+		"/usr/lib/dracut/dracut.conf.d",
+		"/etc/dracut.conf",
+		"/etc/dracut.conf.d",
+	}
 )
 
 func snapshotMenuCfg() string   { return filepath.Join(bootDir, "grub2", "ryoku-snapshots.cfg") }
@@ -120,18 +130,19 @@ func syncSnapshotMenu() error {
 	}
 	var listed []bootSnapshot
 	used := map[string]bool{}
+	inputs := dracutFingerprint(append([]string{dracutModuleDir}, dracutInputs...))
 	for _, s := range readBootSnapshots(snapshotsDir) {
 		if s.kver == "" {
 			continue
 		}
-		if err := ensureSnapshotKernel(s.kver); err != nil {
+		if err := ensureSnapshotKernel(s.kver, inputs); err != nil {
 			fmt.Printf(i18n.T("boot menu: snapshot %s left out: %v\n"), s.Num, err)
 			continue
 		}
 		used[s.kver] = true
 		listed = append(listed, s)
 	}
-	if err := writeFileAtomic(snapshotMenuCfg(), renderSnapshotMenu(listed, layout), 0o644); err != nil {
+	if err := sys.WriteFileAtomic(snapshotMenuCfg(), renderSnapshotMenu(listed, layout), 0o644); err != nil {
 		return err
 	}
 	pruneSnapshotKernels(used)
@@ -157,7 +168,7 @@ func readMenuLayout() (menuLayout, error) {
 	}
 	snaps, ok := mounts[snapshotsDir]
 	if !ok || snaps.fstype != "btrfs" {
-		return l, fmt.Errorf(i18n.T("%s is not its own btrfs subvolume; snapshots are not bootable (ryoku doctor sets it up)"), snapshotsDir)
+		return l, fmt.Errorf(i18n.T("%s is not mounted from its own top-level btrfs subvolume; snapshots are not bootable (ryoku doctor moves it there)"), snapshotsDir)
 	}
 	l.rootSubvol = strings.Trim(root.root, "/")
 	l.snapSubvol = strings.Trim(snaps.root, "/")
@@ -338,14 +349,16 @@ func compareVersions(a, b string) int {
 // ensureSnapshotKernel keeps a bootable copy of kver on /boot. The initramfs
 // is built from the running system, so it needs kver's modules installed; a
 // copy made while they were is kept after the kernel is removed. It is
-// rebuilt when the dracut module changes and the kernel is still around.
-func ensureSnapshotKernel(kver string) error {
+// rebuilt when what dracut builds it from changed (inputs, a
+// dracutFingerprint) and the kernel is still around.
+func ensureSnapshotKernel(kver, inputs string) error {
 	dir := filepath.Join(snapshotKernelDir(), kver)
 	vmlinuz, initrd := filepath.Join(dir, "vmlinuz"), filepath.Join(dir, "initramfs.img")
+	stamp := filepath.Join(dir, "dracut-inputs")
 	src := filepath.Join(modulesDir, kver, "vmlinuz")
 	have := sys.Exists(vmlinuz) && sys.Exists(initrd)
 	installed := sys.Exists(src)
-	if have && (!installed || !newerThan(dracutModuleDir, initrd)) {
+	if have && (!installed || strings.TrimSpace(readText(stamp)) == inputs) {
 		return nil
 	}
 	if !installed {
@@ -373,25 +386,30 @@ func ensureSnapshotKernel(kver string) error {
 	if err := os.Rename(vmlinuz+".new", vmlinuz); err != nil {
 		return err
 	}
-	return os.Rename(initrd+".new", initrd)
+	if err := os.Rename(initrd+".new", initrd); err != nil {
+		return err
+	}
+	return os.WriteFile(stamp, []byte(inputs+"\n"), 0o644)
 }
 
-// newerThan reports whether any file under dir changed after path did.
-func newerThan(dir, path string) bool {
-	ref, err := os.Stat(path)
-	if err != nil {
-		return true
-	}
-	newer := false
-	_ = filepath.WalkDir(dir, func(_ string, d os.DirEntry, err error) error {
-		if err == nil && !d.IsDir() {
-			if fi, err := d.Info(); err == nil && fi.ModTime().After(ref.ModTime()) {
-				newer = true
+// dracutFingerprint hashes the contents of every file under paths. Contents,
+// not mtimes: rpm installs a file with the time it was built, which can be
+// older than a copy built before the update.
+func dracutFingerprint(paths []string) string {
+	h := sha256.New()
+	for _, root := range paths {
+		_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
 			}
-		}
-		return nil
-	})
-	return newer
+			if b, err := os.ReadFile(path); err == nil {
+				fmt.Fprintf(h, "%s %d\n", path, len(b))
+				h.Write(b)
+			}
+			return nil
+		})
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func modTime(path string) time.Time {
@@ -485,15 +503,4 @@ func grubQuote(s string) string {
 func readText(path string) string {
 	b, _ := os.ReadFile(path)
 	return string(b)
-}
-
-func writeFileAtomic(path, content string, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	tmp := path + ".new"
-	if err := os.WriteFile(tmp, []byte(content), mode); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
 }
