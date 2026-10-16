@@ -1481,18 +1481,30 @@ func rashinReindex() {
 	}
 }
 
+// prowlManagedLine names the package manager that owns prowl. The line used to
+// say "pacman" on every distribution, which is wrong on the two that are not
+// Arch: the ownership lookup behind it already asks whichever manager the host
+// runs.
+func prowlManagedLine(manager host.PackageManager) string {
+	if manager == "" {
+		return i18n.T("prowl comes from a package; refreshed with the system packages")
+	}
+	return fmt.Sprintf(i18n.T("prowl is managed by %s; refreshed with the system packages"), manager)
+}
+
 // prowlRefresh keeps a dev box's prowl current after an update. A packaged box
-// already got it through `pacman -Syu`, so this runs `<bin> update` only when
-// the binary is on PATH but not owned by a pacman package (a dev or manual
-// install). Best effort, one line either way.
+// already got it with the rest of the system packages, so this runs
+// `<bin> update` only when the binary is on PATH but not owned by a package (a
+// dev or manual install). Best effort, one line either way.
 func prowlRefresh() {
 	path, err := exec.LookPath("prowl")
 	if err != nil {
 		return
 	}
-	switch prowlDecide(true, prowlPacmanOwned(path)) {
+	switch prowlDecide(true, prowlPackageOwned(path)) {
 	case prowlManaged:
-		progress.detailf(i18n.T("prowl is managed by pacman; refreshed with the system packages"))
+		manager, _ := host.Default().PackageManager()
+		progress.detailf("%s", prowlManagedLine(manager))
 	case prowlSelfUpdate:
 		progress.detailf(i18n.T("Updating prowl"))
 		if err := sys.Run(path, "update"); err != nil {
@@ -1501,8 +1513,8 @@ func prowlRefresh() {
 	}
 }
 
-// prowlPacmanOwned reports whether path belongs to an installed package.
-func prowlPacmanOwned(path string) bool {
+// prowlPackageOwned reports whether path belongs to an installed package.
+func prowlPackageOwned(path string) bool {
 	_, err := host.Default().PackageOwner(path)
 	return err == nil
 }
