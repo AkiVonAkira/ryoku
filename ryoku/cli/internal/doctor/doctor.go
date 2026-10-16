@@ -682,18 +682,22 @@ const (
 	snapperCreate
 	snapperWarnMissingPkgs
 	snapperOptedOut
+	snapperMoveSnapshots
 )
 
 // snapperState: the slice of the filesystem reconcileSnapper looks at, lifted
 // to a value so planSnapper is unit-testable without real /etc or running
 // snapper/btrfs.
 type snapperState struct {
-	manager             host.PackageManager
-	rootIsBtrfs         bool
-	configExists        bool
-	optedOut            bool
-	snapshotsExists     bool
-	snapshotsIsSubvol   bool
+	manager           host.PackageManager
+	rootIsBtrfs       bool
+	configExists      bool
+	optedOut          bool
+	snapshotsExists   bool
+	snapshotsIsSubvol bool
+	// a /.snapshots subvolume inside the root subvolume, the layout
+	// `snapper create-config /` makes. Fedora's needs its own top-level one.
+	snapshotsNested     bool
 	snapshotsMode       os.FileMode
 	confdExists         bool
 	confdContents       string
@@ -727,6 +731,9 @@ func planSnapper(s snapperState) (snapperOutcome, []string) {
 			return snapperWarnMissingPkgs, nil
 		}
 		return snapperCreate, nil
+	}
+	if s.snapshotsNested {
+		return snapperMoveSnapshots, nil
 	}
 	var problems []string
 	if s.snapshotsExists && !s.snapshotsIsSubvol {
@@ -783,6 +790,7 @@ func gatherSnapperState() snapperState {
 		s.snapshotsExists = true
 		s.snapshotsMode = fi.Mode().Perm()
 		s.snapshotsIsSubvol = sys.IsBtrfsSubvolumeRoot("/.snapshots")
+		s.snapshotsNested = manager == host.DNF && s.snapshotsIsSubvol && !isMountPoint("/.snapshots")
 	}
 	if b, err := os.ReadFile(snapperConfdPath(manager)); err == nil {
 		s.confdExists = true
@@ -814,6 +822,17 @@ func reconcileSnapper(checkOnly bool) recResult {
 				withFix(i18n.T("ryoku doctor (creates the snapper root config)"))
 		}
 		return createSnapperRootConfig(st)
+	case snapperMoveSnapshots:
+		if checkOnly {
+			return wouldRes(i18n.T("/.snapshots sits inside the root subvolume, so snapshots cannot be booted or restored")).
+				withFix(i18n.T("ryoku doctor (moves it to its own top-level btrfs subvolume)"))
+		}
+		if err := moveNestedSnapshots(); err != nil {
+			return snapshotsMoveFailed(err)
+		}
+		_ = sys.Run("sudo", "chmod", "0750", "/.snapshots")
+		_ = sys.Run("sudo", "chown", "root:root", "/.snapshots")
+		return fixedRes(i18n.T("moved /.snapshots to its own top-level btrfs subvolume, so snapshots can be booted and restored"))
 	case snapperWarnInconsistent:
 		remedy := i18n.T("see https://wiki.archlinux.org/title/Snapper")
 		switch st.manager {
@@ -902,6 +921,11 @@ func createSnapperRootConfig(st snapperState) recResult {
 		if err := createTopLevelSnapshots(); err != nil {
 			return failRes(i18n.T("setting up /.snapshots: %v"), err).
 				withFix(i18n.T("give /.snapshots its own top-level btrfs subvolume in /etc/fstab, then re-run ryoku doctor"))
+		}
+		actions = append(actions, "/.snapshots subvolume")
+	case st.snapshotsNested:
+		if err := moveNestedSnapshots(); err != nil {
+			return snapshotsMoveFailed(err)
 		}
 		actions = append(actions, "/.snapshots subvolume")
 	case !st.snapshotsExists:

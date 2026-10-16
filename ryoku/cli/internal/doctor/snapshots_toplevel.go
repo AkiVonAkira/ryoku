@@ -1,6 +1,7 @@
 package doctor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 // would leave with the old root.
 const (
 	topLevelSnapshotsSubvol = ".snapshots"
-	btrfsTopMount           = "/run/ryoku/btrfs-top"
 	fstabPath               = "/etc/fstab"
 )
 
@@ -24,29 +24,26 @@ const (
 // same device and options with its own subvolume. It is "" when fstab has no
 // btrfs root that names a subvolume, a layout this cannot extend.
 func snapshotsFstabLine(fstab string) string {
-	for _, line := range strings.Split(fstab, "\n") {
-		f := strings.Fields(line)
-		if len(f) < 4 || strings.HasPrefix(f[0], "#") || f[1] != "/" || f[2] != "btrfs" {
-			continue
-		}
-		var opts []string
-		named := false
-		for _, o := range strings.Split(f[3], ",") {
-			switch {
-			case strings.HasPrefix(o, "subvol="):
-				opts = append(opts, "subvol="+topLevelSnapshotsSubvol)
-				named = true
-			case strings.HasPrefix(o, "subvolid="):
-			default:
-				opts = append(opts, o)
-			}
-		}
-		if !named {
-			return ""
-		}
-		return strings.Join([]string{f[0], "/.snapshots", "btrfs", strings.Join(opts, ","), "0", "0"}, " ")
+	f := sys.FstabRoot(fstab)
+	if f == nil || f[2] != "btrfs" {
+		return ""
 	}
-	return ""
+	var opts []string
+	named := false
+	for _, o := range strings.Split(f[3], ",") {
+		switch {
+		case strings.HasPrefix(o, "subvol="):
+			opts = append(opts, "subvol="+topLevelSnapshotsSubvol)
+			named = true
+		case strings.HasPrefix(o, "subvolid="):
+		default:
+			opts = append(opts, o)
+		}
+	}
+	if !named {
+		return ""
+	}
+	return strings.Join([]string{f[0], "/.snapshots", "btrfs", strings.Join(opts, ","), "0", "0"}, " ")
 }
 
 // fstabMounts reports whether fstab has an active entry for target.
@@ -77,17 +74,15 @@ func createTopLevelSnapshots() error {
 	if dev = strings.TrimSpace(dev); err != nil || dev == "" {
 		return fmt.Errorf(i18n.T("no device for the root filesystem"))
 	}
-	if err := sys.Run("sudo", "mkdir", "-p", btrfsTopMount); err != nil {
+	top, unmount, err := sys.MountBtrfsTop(dev)
+	if err != nil {
 		return err
 	}
-	if err := sys.Run("sudo", "mount", "-t", "btrfs", "-o", "subvolid=5", dev, btrfsTopMount); err != nil {
-		return fmt.Errorf(i18n.T("mounting the btrfs top level: %w"), err)
-	}
-	sub := filepath.Join(btrfsTopMount, topLevelSnapshotsSubvol)
+	sub := filepath.Join(top, topLevelSnapshotsSubvol)
 	if sys.Run("sudo", "test", "-d", sub) != nil {
 		err = sys.Run("sudo", "btrfs", "subvolume", "create", sub)
 	}
-	_ = sys.Run("sudo", "umount", btrfsTopMount)
+	unmount()
 	if err != nil {
 		return fmt.Errorf(i18n.T("creating the %s subvolume: %w"), topLevelSnapshotsSubvol, err)
 	}
@@ -116,4 +111,40 @@ func createTopLevelSnapshots() error {
 	}
 	_ = sys.Run("sudo", "restorecon", "-R", "/.snapshots")
 	return nil
+}
+
+// errSnapshotsInUse: a nested /.snapshots that already holds snapshots is not
+// moved. They are read-only subvolumes of the old layout, and only the user
+// decides whether they go.
+var errSnapshotsInUse = errors.New("/.snapshots holds snapshots")
+
+// moveNestedSnapshots replaces an empty /.snapshots subvolume nested in the
+// root with the top-level one.
+func moveNestedSnapshots() error {
+	out, err := sys.RunOut("sudo", "find", "/.snapshots", "-mindepth", "1", "-maxdepth", "1", "-print", "-quit")
+	if err != nil {
+		return fmt.Errorf(i18n.T("reading /.snapshots: %w"), err)
+	}
+	if strings.TrimSpace(out) != "" {
+		return errSnapshotsInUse
+	}
+	if err := sys.Run("sudo", "btrfs", "subvolume", "delete", "/.snapshots"); err != nil {
+		return fmt.Errorf(i18n.T("removing the nested /.snapshots subvolume: %w"), err)
+	}
+	return createTopLevelSnapshots()
+}
+
+func snapshotsMoveFailed(err error) recResult {
+	if errors.Is(err, errSnapshotsInUse) {
+		return warnRes(i18n.T("/.snapshots sits inside the root subvolume and already holds snapshots, so they cannot be booted or restored")).
+			withFix(i18n.T("delete them (sudo snapper -c root list, then sudo snapper -c root delete <first>-<last>), then run ryoku doctor to move /.snapshots"))
+	}
+	return failRes(i18n.T("moving /.snapshots to its own subvolume: %v"), err).
+		withFix(i18n.T("give /.snapshots its own top-level btrfs subvolume in /etc/fstab, then re-run ryoku doctor"))
+}
+
+// isMountPoint reports whether something is mounted exactly at path.
+func isMountPoint(path string) bool {
+	out, err := sys.RunOut("findmnt", "-n", "-o", "TARGET", "--mountpoint", path)
+	return err == nil && strings.TrimSpace(out) != ""
 }

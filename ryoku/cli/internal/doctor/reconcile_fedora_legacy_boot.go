@@ -14,7 +14,9 @@ import (
 //
 //   - its 95-ryoku-console.install plugin twinned every kernel's BLS entry as
 //     <id>-<kver>~ryokuconsole.conf. The plugin is gone, so the twins stay in
-//     GRUB's menu for good and no new kernel gets one.
+//     GRUB's menu for good and no new kernel gets one. /boot/loader/entries is
+//     root-only, so finding them takes sudo; that happens once, since nothing
+//     writes a twin any more.
 //   - its %post disabled Fedora's grub-boot-success.timer for every user, which
 //     keeps GRUB from hiding its menu after a good boot and from counting a
 //     failed one. That is restored once, so a later choice to disable it
@@ -25,6 +27,7 @@ const (
 	bootSuccessTimer    = "grub-boot-success.timer"
 	bootSuccessUnit     = "/usr/lib/systemd/user/grub-boot-success.timer"
 	bootSuccessMarker   = "/var/lib/ryoku/migrations/grub-boot-success-timer"
+	consoleTwinsMarker  = "/var/lib/ryoku/migrations/ryoku-console-entries"
 	legacyBLSDir        = "/boot/loader/entries"
 )
 
@@ -32,6 +35,7 @@ const (
 // plan is testable without a real /boot or systemd.
 type legacyBootState struct {
 	pluginPresent bool
+	twinsChecked  bool
 	entriesRead   bool
 	entries       []string
 	timerShipped  bool
@@ -40,20 +44,28 @@ type legacyBootState struct {
 }
 
 type legacyBootPlan struct {
+	// readTwins: the entries still need a look that takes sudo.
+	readTwins   bool
 	removeTwins []string
+	markTwins   bool
 	enableTimer bool
 	markTimer   bool
 }
 
 func (p legacyBootPlan) empty() bool {
-	return len(p.removeTwins) == 0 && !p.enableTimer && !p.markTimer
+	return !p.readTwins && len(p.removeTwins) == 0 && !p.markTwins && !p.enableTimer && !p.markTimer
 }
+
+// twinsPending reports whether the entries still have to be looked at.
+func (s legacyBootState) twinsPending() bool { return !s.pluginPresent && !s.twinsChecked }
 
 // planLegacyBoot picks what to undo. Twins are left alone while the old plugin
 // is still installed, since it would only write them again.
 func planLegacyBoot(s legacyBootState) legacyBootPlan {
 	var p legacyBootPlan
-	if !s.pluginPresent && s.entriesRead {
+	if s.twinsPending() {
+		p.readTwins = !s.entriesRead
+		p.markTwins = s.entriesRead
 		for _, e := range s.entries {
 			if strings.HasSuffix(filepath.Base(e), legacyConsoleSuffix+".conf") {
 				p.removeTwins = append(p.removeTwins, e)
@@ -69,8 +81,14 @@ func planLegacyBoot(s legacyBootState) legacyBootPlan {
 
 // legacy boot probes, variables so tests stub them.
 var (
-	legacyBLSEntries = func() ([]string, bool) {
-		out, err := sys.RunOut("sudo", "-n", "find", legacyBLSDir, "-maxdepth", "1", "-name", "*.conf")
+	// legacyBLSEntries lists the BLS entries; ask lets sudo prompt, which a
+	// check never does.
+	legacyBLSEntries = func(ask bool) ([]string, bool) {
+		args := []string{"find", legacyBLSDir, "-maxdepth", "1", "-name", "*.conf"}
+		if !ask {
+			args = append([]string{"-n"}, args...)
+		}
+		out, err := sys.RunOut("sudo", args...)
 		if err != nil {
 			return nil, false
 		}
@@ -81,25 +99,30 @@ var (
 	}
 )
 
-func gatherLegacyBootState() legacyBootState {
-	entries, read := legacyBLSEntries()
-	return legacyBootState{
+func gatherLegacyBootState(checkOnly bool) legacyBootState {
+	s := legacyBootState{
 		pluginPresent: sys.Exists(legacyConsolePlugin),
-		entriesRead:   read,
-		entries:       entries,
+		twinsChecked:  sys.Exists(consoleTwinsMarker),
 		timerShipped:  sys.Exists(bootSuccessUnit),
 		timerEnabled:  globalTimerEnabled(),
 		timerMigrated: sys.Exists(bootSuccessMarker),
 	}
+	if s.twinsPending() {
+		s.entries, s.entriesRead = legacyBLSEntries(!checkOnly)
+	}
+	return s
 }
 
 func reconcileFedoraLegacyBoot(checkOnly bool) recResult {
-	plan := planLegacyBoot(gatherLegacyBootState())
+	plan := planLegacyBoot(gatherLegacyBootState(checkOnly))
 	if plan.empty() {
 		return okRes(i18n.T("no boot-menu leftovers from earlier Fedora packages"))
 	}
 	if checkOnly {
 		var found []string
+		if plan.readTwins {
+			found = append(found, i18n.T("the boot entries were not yet checked for Ryoku console twins (that needs sudo)"))
+		}
 		if len(plan.removeTwins) > 0 {
 			found = append(found, i18n.T("Ryoku console boot entries no package keeps up to date"))
 		}
@@ -120,6 +143,11 @@ func reconcileFedoraLegacyBoot(checkOnly bool) recResult {
 		}
 		done = append(done, i18n.T("removed the Ryoku console boot entries"))
 	}
+	if plan.markTwins {
+		if err := sys.Sudo("install", "-D", "-m", "0644", "/dev/null", consoleTwinsMarker); err != nil {
+			return failRes(i18n.T("recording the Ryoku console boot entry cleanup: %v"), err)
+		}
+	}
 	if plan.enableTimer {
 		if err := sys.Sudo("systemctl", "--global", "enable", bootSuccessTimer); err != nil {
 			return failRes(i18n.T("turning %s back on: %v"), bootSuccessTimer, err).
@@ -131,6 +159,10 @@ func reconcileFedoraLegacyBoot(checkOnly bool) recResult {
 		if err := sys.Sudo("install", "-D", "-m", "0644", "/dev/null", bootSuccessMarker); err != nil {
 			return failRes(i18n.T("recording the %s migration: %v"), bootSuccessTimer, err)
 		}
+	}
+	if plan.readTwins {
+		return warnRes(i18n.T("could not read %s to look for Ryoku console boot entries"), legacyBLSDir).
+			withFix(i18n.T("sudo rm -f %s/*%s.conf"), legacyBLSDir, legacyConsoleSuffix)
 	}
 	if len(done) == 0 {
 		return okRes(i18n.T("no boot-menu leftovers from earlier Fedora packages"))

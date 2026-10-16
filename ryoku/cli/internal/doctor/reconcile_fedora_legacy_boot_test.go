@@ -26,28 +26,38 @@ func TestLegacyBootRemovesConsoleTwinsOnceThePluginIsGone(t *testing.T) {
 	}
 
 	plan = planLegacyBoot(legacyBootState{entriesRead: false})
+	if !plan.readTwins || plan.markTwins || len(plan.removeTwins) != 0 {
+		t.Fatalf("an unreadable /boot/loader/entries should ask for a sudo look and nothing else: %+v", plan)
+	}
+
+	plan = planLegacyBoot(legacyBootState{entriesRead: true, entries: entries[:1]})
+	if !plan.markTwins || len(plan.removeTwins) != 0 {
+		t.Fatalf("a clean look should only be recorded: %+v", plan)
+	}
+
+	plan = planLegacyBoot(legacyBootState{twinsChecked: true})
 	if !plan.empty() {
-		t.Fatalf("an unreadable /boot/loader/entries planned work: %+v", plan)
+		t.Fatalf("entries already checked were looked at again: %+v", plan)
 	}
 }
 
 func TestLegacyBootRestoresTheBootSuccessTimerOnce(t *testing.T) {
-	plan := planLegacyBoot(legacyBootState{timerShipped: true})
+	plan := planLegacyBoot(legacyBootState{twinsChecked: true, timerShipped: true})
 	if !plan.enableTimer || !plan.markTimer {
 		t.Fatalf("a disabled timer is not restored: %+v", plan)
 	}
 
-	plan = planLegacyBoot(legacyBootState{timerShipped: true, timerEnabled: true})
+	plan = planLegacyBoot(legacyBootState{twinsChecked: true, timerShipped: true, timerEnabled: true})
 	if plan.enableTimer || !plan.markTimer {
 		t.Fatalf("an enabled timer should only be recorded: %+v", plan)
 	}
 
-	plan = planLegacyBoot(legacyBootState{timerShipped: true, timerMigrated: true})
+	plan = planLegacyBoot(legacyBootState{twinsChecked: true, timerShipped: true, timerMigrated: true})
 	if !plan.empty() {
 		t.Fatalf("a timer disabled after the migration was turned on again: %+v", plan)
 	}
 
-	plan = planLegacyBoot(legacyBootState{})
+	plan = planLegacyBoot(legacyBootState{twinsChecked: true})
 	if !plan.empty() {
 		t.Fatalf("a box without grub2-tools' timer planned work: %+v", plan)
 	}

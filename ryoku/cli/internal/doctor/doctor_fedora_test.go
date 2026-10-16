@@ -55,6 +55,16 @@ func TestFedoraSnapperProblemsNameSysconfigAndNoForeignTools(t *testing.T) {
 	assertNoForeignPackageAdvice(t, recResult{detail: strings.Join(problems, "; ")})
 }
 
+func TestFedoraSnapperPlanMovesANestedSnapshotsSubvolume(t *testing.T) {
+	outcome, _ := planSnapper(snapperState{
+		manager: host.DNF, rootIsBtrfs: true, configExists: true, snapperInstalled: true,
+		snapshotsExists: true, snapshotsIsSubvol: true, snapshotsNested: true, snapshotsMode: 0o750,
+	})
+	if outcome != snapperMoveSnapshots {
+		t.Fatalf("outcome = %v, want snapperMoveSnapshots", outcome)
+	}
+}
+
 func TestSnapshotsFstabLineFollowsTheRootEntry(t *testing.T) {
 	fstab := "# comment\n" +
 		"UUID=ab / btrfs subvol=root,compress=zstd:1,x-systemd.device-timeout=0 0 0\n" +
