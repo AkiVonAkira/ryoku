@@ -14,19 +14,37 @@
 # (the overlay's fstab, so only RAM changes) and snapper's timers and the menu
 # resync are masked, so a look boot never cleans up, adds or relists snapshots.
 #
+# /home is not in the snapshot, so the look shows the live one, but older
+# programs must not write to it: an older browser or mail client can damage a
+# profile a newer version already upgraded. Its fstab entry moves read-only
+# under /run/ryoku/preview/home, and /home becomes an overlay of it whose
+# writes share the root's RAM layer, so the session runs and the disk keeps
+# nothing from it.
+#
 # dracut sources hooks, so this returns and never exits.
 
 # shellcheck source=/dev/null
 type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
-# ryoku_snapshot_preview_fstab <fstab>: adds ro to the /.snapshots entry.
+# ryoku_snapshot_preview_fstab <fstab> <base>: adds ro to the /.snapshots
+# entry, and moves the /home entry read-only to <base>/home under an overlay
+# whose upper layer is <base>/rw/home.
 ryoku_snapshot_preview_fstab() {
-  local fstab="$1" line dev target fstype opts rest out=""
+  local fstab="$1" base="$2" line dev target fstype opts rest out=""
   [ -f "$fstab" ] || return 0
   while IFS= read -r line || [ -n "$line" ]; do
     read -r dev target fstype opts rest <<<"$line"
-    if [ "$target" = /.snapshots ] && [ "${dev#\#}" = "$dev" ] && [ -n "$opts" ]; then
-      line="$dev $target $fstype $opts,ro${rest:+ $rest}"
+    if [ "${dev#\#}" = "$dev" ] && [ -n "$opts" ]; then
+      case "$target" in
+        /.snapshots)
+          line="$dev $target $fstype $opts,ro${rest:+ $rest}"
+          ;;
+        /home)
+          line="$dev $base/home $fstype $opts,ro${rest:+ $rest}"$'\n'
+          line+="ryoku-preview-home /home overlay lowerdir=$base/home,upperdir=$base/rw/home/upper"
+          line+=",workdir=$base/rw/home/work,x-systemd.requires-mounts-for=$base/home 0 0"
+          ;;
+      esac
     fi
     out+="$line"$'\n'
   done <"$fstab"
@@ -47,7 +65,7 @@ ryoku_snapshot_preview() {
     return 0
   fi
   mount -t tmpfs -o mode=0755 ryoku-preview "$base/rw"
-  mkdir -p "$base/rw/upper" "$base/rw/work"
+  mkdir -p "$base/rw/upper" "$base/rw/work" "$base/rw/home/upper" "$base/rw/home/work"
   if ! mount -t overlay ryoku-preview \
     -o "lowerdir=$base/lower,upperdir=$base/rw/upper,workdir=$base/rw/work" "$newroot"; then
     warn "ryoku: overlay failed; booting $snap read-only as it is"
@@ -60,7 +78,7 @@ ryoku_snapshot_preview() {
     snapper-boot.timer ryoku-snapshot-menu.path; do
     ln -sf /dev/null "$run/systemd/system/$unit"
   done
-  ryoku_snapshot_preview_fstab "$newroot/etc/fstab"
+  ryoku_snapshot_preview_fstab "$newroot/etc/fstab" "$base"
   info "ryoku: previewing $snap; changes stay in RAM"
 }
 

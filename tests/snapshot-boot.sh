@@ -6,7 +6,7 @@
 #         snapshot is created or deleted.
 # case 2: the initramfs look hook stacks a RAM overlay on the snapshot,
 #         masks systemd-remount-fs and the snapshot timers for that boot,
-#         and mounts /.snapshots read-only.
+#         mounts /.snapshots read-only and puts /home under a RAM overlay.
 # case 3: ryoku-grub-menu themes GRUB and renders the snippet into grub.cfg
 #         idempotently, and purge undoes it.
 # shellcheck disable=SC2329 # stubs and predicates run indirectly
@@ -130,6 +130,7 @@ cat >"$work/sysroot/etc/fstab" <<'FSTAB'
 # /.snapshots stays commented here
 UUID=abc / btrfs subvol=root,compress=zstd:1 0 0
 UUID=abc /.snapshots btrfs subvol=.snapshots,compress=zstd:1 0 0
+UUID=abc /home btrfs subvol=home,compress=zstd:1 0 0
 FSTAB
 hook "$mod/ryoku-snapshot-preview.sh" "root=UUID=abc ro rootflags=subvol=.snapshots/42/snapshot rd.ryoku.preview=.snapshots/42/snapshot"
 base="$work/run/ryoku/preview"
@@ -150,6 +151,13 @@ check "look leaves the root entry alone" \
   grep -qxF "UUID=abc / btrfs subvol=root,compress=zstd:1 0 0" "$work/sysroot/etc/fstab"
 check "look leaves comments alone" \
   grep -qxF "# /.snapshots stays commented here" "$work/sysroot/etc/fstab"
+check "look mounts the live /home read-only under the look" \
+  grep -qxF "UUID=abc $base/home btrfs subvol=home,compress=zstd:1,ro 0 0" "$work/sysroot/etc/fstab"
+check "look stacks a RAM overlay on /home" grep -qxF \
+  "ryoku-preview-home /home overlay lowerdir=$base/home,upperdir=$base/rw/home/upper,workdir=$base/rw/home/work,x-systemd.requires-mounts-for=$base/home 0 0" \
+  "$work/sysroot/etc/fstab"
+check "look keeps /home's writes in the root's RAM layer" test -d "$base/rw/home/upper" -a -d "$base/rw/home/work"
+check "look leaves no other /home entry" test "$(grep -c " /home " "$work/sysroot/etc/fstab")" = 1
 
 rm -f "$work/mount.log"
 hook "$mod/ryoku-snapshot-preview.sh" "root=UUID=abc ro rootflags=subvol=root"

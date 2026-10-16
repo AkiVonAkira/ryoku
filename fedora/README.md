@@ -65,7 +65,8 @@ its own top-level btrfs subvolume and fstab entry, `ryoku update` takes a
 pre/post pair, and a libdnf5 actions hook (`system/snapshots/`) takes one around
 every other dnf transaction. GRUB lists them under **Ryoku snapshots** (hold
 Shift or press Esc while booting; Fedora hides the menu after a good boot).
-Each one boots read-only with its writes in RAM, and `sudo ryoku boot-menu
+Each one boots read-only with its writes in RAM; `/home` shows as it is now,
+and what that boot writes there is dropped too. `sudo ryoku boot-menu
 restore` in that boot makes it the system again; `ryoku rollback <id>` walks
 through it. Shim, GRUB and Fedora's kernels stay as Fedora signs them: the
 snapshot entries boot copies of those kernels from `/boot/ryoku/snapshots`.
