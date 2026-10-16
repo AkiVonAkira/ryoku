@@ -75,6 +75,55 @@ var (
 // come from Arch or CachyOS, whichever the box installed, and stay the user's
 // to take with `sudo pacman -Syu`; the run reports what is waiting there.
 // `--system` runs that lane too, in one command.
+// updateOptions is every option `ryoku update` acts on. An option outside this
+// set used to be ignored, so a mistyped flag, or `--help`, ran a full system
+// update instead of being answered: the password prompt, the whole config tree
+// re-laid, the desktop restarted.
+var updateOptions = map[string]bool{
+	"--stage2": true, "-v": true, "--verbose": true, "--channel-switch": true,
+	"--system": true, "--full": true, "--wait": true, "--force": true, "--unchecked": true,
+	// The Hub's plumbing. It is answered above, where only the first argument
+	// is read, so these are named here too rather than refused in any other
+	// position.
+	"--gui": true, "--gui-host": true, "--auth": true, "--cancel": true,
+}
+
+// readUpdateOptions reports whether the run was only asking for help, and the
+// first option this command does not know. The argument after --stage2 is a
+// value, not an option, and is skipped.
+func readUpdateOptions(args []string) (help bool, unknown string) {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "-h" || a == "--help" {
+			return true, ""
+		}
+		if a == "--stage2" {
+			i++
+			continue
+		}
+		if !strings.HasPrefix(a, "-") || updateOptions[a] {
+			continue
+		}
+		return false, a
+	}
+	return false, ""
+}
+
+func updateUsage() string {
+	return i18n.T(`usage: ryoku update [options]
+
+Updates the Ryoku packages, re-lays the configuration, reloads the desktop and
+heals what the doctor finds. The base system stays as it is unless --system.
+
+  --system, --full    update the base system packages too
+  --channel-switch    allow the run to move between release channels
+  --force, --unchecked  update even when the release checks say to wait
+  --wait              wait for a run that is already in progress
+  -v, --verbose       keep the full package output on screen
+  -h, --help          show this
+`)
+}
+
 func Update(args []string) (err error) {
 	// The Hub's plumbing: start a background run, hand it the password, stop it.
 	if len(args) > 0 {
@@ -88,6 +137,13 @@ func Update(args []string) (err error) {
 		case "--cancel":
 			return cancelRun()
 		}
+	}
+	if help, unknown := readUpdateOptions(args); help || unknown != "" {
+		if unknown != "" {
+			return fmt.Errorf(i18n.T("`ryoku update` does not take %s; `ryoku update --help` lists what it does take"), unknown)
+		}
+		fmt.Print(updateUsage())
+		return nil
 	}
 	stage2 := len(args) >= 2 && args[0] == "--stage2"
 	channelSwitch := false
