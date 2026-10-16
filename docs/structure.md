@@ -330,8 +330,8 @@ are supported; Atomic and other rpm-ostree systems are refused.
   `stable/fedora/<N>/`.
 
 Fedora is installed by the shell installer onto an existing supported Fedora
-system. It leaves NVIDIA on nouveau and keeps GRUB, adding a submenu that boots
-Ryoku's snapper snapshots. Wayfire is unavailable because Fedora ships
+system. It leaves NVIDIA on nouveau, keeps GRUB, and provides Ryoku snapshots
+with a snapshot boot submenu in GRUB. Wayfire is unavailable because Fedora ships
 0.10.1 and Ryoku requires 0.11. Package rollback and the boot guard use DNF
 downgrades.
 

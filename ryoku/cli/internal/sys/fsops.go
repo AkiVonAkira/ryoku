@@ -58,9 +58,9 @@ func CopyFile(src, dst string) error {
 	return os.Rename(tmp, dst)
 }
 
-// WriteFileAtomic writes contents to path through a temp file in the same
-// directory and an atomic rename, so a reader never sees a half-written file.
-// The directory is created when missing.
+// WriteFileAtomic writes contents to path via a temp file in the same directory
+// and an atomic rename, so a reader never sees a half-written file. The
+// directory is created when missing.
 func WriteFileAtomic(path, contents string, mode os.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err

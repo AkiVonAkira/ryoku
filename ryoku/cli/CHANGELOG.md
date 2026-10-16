@@ -27,8 +27,8 @@
   sync` rewrites it after every snapshot (through `ryoku-snapshot-menu.path`
   and a snapper plugin), and `sudo ryoku boot-menu restore`, run in that
   snapshot's boot, makes the snapshot the root again and keeps the replaced
-  root for two weeks. The first boot after a restore brings Fedora's kernel entries in line
-  with the restored root. Fedora's `grub-boot-success.timer` is left alone.
+  root for two weeks. The first boot after a restore brings Fedora's kernel
+  entries in line with the restored root. Fedora's `grub-boot-success.timer` is left alone.
 - **Fedora's GRUB uses the Ryoku theme.** It draws the Limine menu's layout on
   the Ryoku wallpaper: the "Ryoku Bootloader" title, the key help, the centred
   list with a burnt-orange selection bar, and the countdown. The wallpaper moves
