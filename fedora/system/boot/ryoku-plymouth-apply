@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Fedora's half of the Ryoku boot look: make the shipped splash the Plymouth
-# theme and rebuild the dracut images that embed it. Fedora keeps its own GRUB
+# Ryoku's Plymouth splash on Fedora: make the shipped theme the default and
+# rebuild the dracut images that embed it. Fedora keeps its own GRUB
 # and kernels, so this is all of system/boot/ryoku-boot-apply that applies here.
 #
 #   apply   ryoku-desktop %posttrans. The first run makes ryoku the default; later

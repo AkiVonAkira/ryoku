@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 #
 # pre-pivot hook. rd.ryoku.preview=<top-level path of a snapshot> boots that
-# read-only snapshot for a look: the snapshot is the lower layer of an overlay
+# snapshot read-only: the snapshot is the lower layer of an overlay
 # whose writes go to RAM, so the system runs normally and nothing on disk
 # changes. sysroot.mount has already mounted the snapshot read-only (the
 # entry's rootflags name it); the overlay is stacked on top of /sysroot, and
@@ -10,16 +10,17 @@
 # the overlay refuses on remount, so systemd-remount-fs is masked for this
 # boot only (/run).
 #
-# /.snapshots is the real store, not part of the look: it is mounted read-only
-# (the overlay's fstab, so only RAM changes) and snapper's timers and the menu
-# resync are masked, so a look boot never cleans up, adds or relists snapshots.
+# /.snapshots is the real store, not part of the snapshot this boot runs. The
+# hook adds ro to its entry in the overlay's fstab, which lives in RAM, and
+# masks snapper's timers and the menu resync, so this boot never cleans up,
+# adds or relists snapshots.
 #
-# /home is not in the snapshot, so the look shows the live one, but older
+# /home is not in the snapshot, so this boot shows the live one, but older
 # programs must not write to it: an older browser or mail client can damage a
 # profile a newer version already upgraded. Its fstab entry moves read-only
 # under /run/ryoku/preview/home, and /home becomes an overlay of it whose
-# writes share the root's RAM layer, so the session runs and the disk keeps
-# nothing from it.
+# writes share the root's RAM layer. The session runs, and nothing it writes
+# reaches the disk.
 #
 # dracut sources hooks, so this returns and never exits.
 

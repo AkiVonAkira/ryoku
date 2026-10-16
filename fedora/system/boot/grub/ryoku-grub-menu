@@ -112,7 +112,7 @@ install_fonts() {
 
 # prune_theme: drop what an earlier theme left in the directory, so
 # grub2-mkconfig does not keep loading a font no theme names; returns 0 when
-# something went.
+# it removed something.
 prune_theme() {
   local pruned=1 file name
   for file in "$theme_dir"/*; do
@@ -141,7 +141,7 @@ install_menu() {
   prune_theme && changed=0
 
   # only Fedora's plain console becomes graphical; a serial or other chosen
-  # terminal is kept, and the theme simply does not show there.
+  # terminal is kept, and the theme does not show there.
   case "$(terminal_output)" in
     "" | console) set_key GRUB_TERMINAL_OUTPUT gfxterm && changed=0 ;;
   esac
