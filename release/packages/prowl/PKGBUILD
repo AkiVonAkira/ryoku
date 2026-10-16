@@ -1,10 +1,11 @@
 # Maintainer: Ryoku <releases@ryoku.dev>
 #
-# Prowl is the model gateway and code-intelligence engine behind Rashin. This
-# package builds a pinned upstream commit so every Ryoku release has one known
-# engine. The managedBy=pacman stamp keeps `prowl update` from replacing a
-# pacman-owned binary. The minishlab potion-code-16M embedding model is compiled
-# into the binary, so indexing never downloads a model at runtime.
+# Prowl is an external model gateway and code index that Rashin hosts; it plugs
+# into the agent harnesses on the machine. This package builds a pinned upstream commit
+# so every Ryoku release has one known version. The managedBy=pacman stamp keeps
+# `prowl update` from replacing a pacman-owned binary.
+# The minishlab potion-code-16M embedding model is compiled into the binary, so
+# indexing never downloads a model at runtime.
 pkgname=prowl
 pkgver=0.17.2
 pkgrel=2

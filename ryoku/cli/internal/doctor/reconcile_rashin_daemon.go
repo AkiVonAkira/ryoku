@@ -135,7 +135,7 @@ func reconcileRashinDaemon(checkOnly bool) recResult {
 			return okRes(i18n.T("rashin left off by choice (`ryoku-rashin disable`)"))
 		}
 		if checkOnly {
-			result := wouldRes(i18n.T("rashin (the Super+S needle and AI dashboard) is off; Ryoku turns it on by default"))
+			result := wouldRes(i18n.T("rashin (the Alt+Space bar and AI dashboard) is off; Ryoku turns it on by default"))
 			if initSystem == host.Runit {
 				return result.withFix(i18n.T("ryoku doctor enables it in the runit session roster; `ryoku-rashin disable` opts out"))
 			}
@@ -146,7 +146,7 @@ func reconcileRashinDaemon(checkOnly bool) recResult {
 				return failRes(i18n.T("could not enable the rashin daemon: %v"), err).
 					withFix("ryoku-rashin enable --at-boot")
 			}
-			return fixedRes(i18n.T("enabled rashin at boot (the Super+S needle and AI dashboard); `ryoku-rashin disable` turns it off"))
+			return fixedRes(i18n.T("enabled rashin at boot (the Alt+Space bar and AI dashboard); `ryoku-rashin disable` turns it off"))
 		}
 		if code := rashinService([]string{"--user", "enable", "--now", rashinUserUnit}); code != host.ExitOK {
 			return failRes(i18n.T("could not enable the rashin daemon (service exit %d)"), code).
