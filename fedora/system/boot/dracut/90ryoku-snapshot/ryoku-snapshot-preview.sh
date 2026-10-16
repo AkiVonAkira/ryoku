@@ -10,10 +10,28 @@
 # the overlay refuses on remount, so systemd-remount-fs is masked for this
 # boot only (/run).
 #
+# /.snapshots is the real store, not part of the look: it is mounted read-only
+# (the overlay's fstab, so only RAM changes) and snapper's timers and the menu
+# resync are masked, so a look boot never cleans up, adds or relists snapshots.
+#
 # dracut sources hooks, so this returns and never exits.
 
 # shellcheck source=/dev/null
 type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
+
+# ryoku_snapshot_preview_fstab <fstab>: adds ro to the /.snapshots entry.
+ryoku_snapshot_preview_fstab() {
+  local fstab="$1" line dev target fstype opts rest out=""
+  [ -f "$fstab" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    read -r dev target fstype opts rest <<<"$line"
+    if [ "$target" = /.snapshots ] && [ "${dev#\#}" = "$dev" ] && [ -n "$opts" ]; then
+      line="$dev $target $fstype $opts,ro${rest:+ $rest}"
+    fi
+    out+="$line"$'\n'
+  done <"$fstab"
+  printf '%s' "$out" >"$fstab"
+}
 
 ryoku_snapshot_preview() {
   local snap dev run="${RYOKU_RUN:-/run}" newroot="${NEWROOT:-/sysroot}"
@@ -37,7 +55,12 @@ ryoku_snapshot_preview() {
     return 0
   fi
   mkdir -p "$run/systemd/system"
-  ln -sf /dev/null "$run/systemd/system/systemd-remount-fs.service"
+  local unit
+  for unit in systemd-remount-fs.service snapper-timeline.timer snapper-cleanup.timer \
+    snapper-boot.timer ryoku-snapshot-menu.path; do
+    ln -sf /dev/null "$run/systemd/system/$unit"
+  done
+  ryoku_snapshot_preview_fstab "$newroot/etc/fstab"
   info "ryoku: previewing $snap; changes stay in RAM"
 }
 

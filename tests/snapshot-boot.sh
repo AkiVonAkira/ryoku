@@ -4,8 +4,9 @@
 # case 1: the payload, the spec, the units and the CLI agree on names and
 #         paths, and the snapper plugin touches /.snapshots only after a
 #         snapshot is created or deleted.
-# case 2: the initramfs look hook stacks a RAM overlay on the snapshot and
-#         masks systemd-remount-fs for that boot.
+# case 2: the initramfs look hook stacks a RAM overlay on the snapshot,
+#         masks systemd-remount-fs and the snapshot timers for that boot,
+#         and mounts /.snapshots read-only.
 # case 3: ryoku-grub-menu themes GRUB and renders the snippet into grub.cfg
 #         idempotently, and purge undoes it.
 # shellcheck disable=SC2329 # stubs and predicates run indirectly
@@ -124,6 +125,12 @@ hook() {
   )
 }
 
+mkdir -p "$work/sysroot/etc"
+cat >"$work/sysroot/etc/fstab" <<'FSTAB'
+# /.snapshots stays commented here
+UUID=abc / btrfs subvol=root,compress=zstd:1 0 0
+UUID=abc /.snapshots btrfs subvol=.snapshots,compress=zstd:1 0 0
+FSTAB
 hook "$mod/ryoku-snapshot-preview.sh" "root=UUID=abc ro rootflags=subvol=.snapshots/42/snapshot rd.ryoku.preview=.snapshots/42/snapshot"
 base="$work/run/ryoku/preview"
 check "look mounts the snapshot read-only as the lower layer" \
@@ -134,6 +141,15 @@ check "look stacks the overlay on the root" grep -qxF \
   "$work/mount.log"
 check "look masks systemd-remount-fs for this boot" \
   test "$(readlink "$work/run/systemd/system/systemd-remount-fs.service")" = /dev/null
+for unit in snapper-timeline.timer snapper-cleanup.timer snapper-boot.timer ryoku-snapshot-menu.path; do
+  check "look masks $unit for this boot" test "$(readlink "$work/run/systemd/system/$unit")" = /dev/null
+done
+check "look mounts /.snapshots read-only" \
+  grep -qxF "UUID=abc /.snapshots btrfs subvol=.snapshots,compress=zstd:1,ro 0 0" "$work/sysroot/etc/fstab"
+check "look leaves the root entry alone" \
+  grep -qxF "UUID=abc / btrfs subvol=root,compress=zstd:1 0 0" "$work/sysroot/etc/fstab"
+check "look leaves comments alone" \
+  grep -qxF "# /.snapshots stays commented here" "$work/sysroot/etc/fstab"
 
 rm -f "$work/mount.log"
 hook "$mod/ryoku-snapshot-preview.sh" "root=UUID=abc ro rootflags=subvol=root"
