@@ -10,7 +10,7 @@ desktop-image: "ryoku-wall.png"
 desktop-image-scale-method: "crop"
 terminal-font: "Ryoku Mono Regular 20"
 # Full screen: GRUB boots an entry inside its terminal window, and the default
-# window is a black box in the middle of the wallpaper.
+# window is an empty rectangle in the middle of the wallpaper.
 terminal-left: "0"
 terminal-top: "0"
 terminal-width: "100%"
