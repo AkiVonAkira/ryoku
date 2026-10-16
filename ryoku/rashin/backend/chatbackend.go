@@ -115,9 +115,10 @@ func setChatAgent(_ context.Context, id string) (chatAgentRouting, error) {
 	if _, ok := lookupChatBackend(selected); !ok {
 		return chatAgentRouting{}, fmt.Errorf("unknown chat agent %q", selected)
 	}
-	cfg := LoadConfig()
-	cfg.ChatAgent = id
-	if err := SaveConfig(cfg); err != nil {
+	if err := updateConfig(func(cfg *Config) error {
+		cfg.ChatAgent = id
+		return nil
+	}); err != nil {
 		return chatAgentRouting{}, err
 	}
 	return chatAgentRouting{}, nil

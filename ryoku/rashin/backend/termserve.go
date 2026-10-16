@@ -197,6 +197,9 @@ func termPreamble(req termReq) string {
 // closed terminal never aborts the work; only /api/term/cancel?id= or the
 // timeout stops it.
 func (h *chatHub) handleTerm(w http.ResponseWriter, r *http.Request) {
+	if !allowLocalMutation(w, r, true) {
+		return
+	}
 	var req termReq
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64*1024)).Decode(&req); err != nil {
 		http.Error(w, "bad request body", http.StatusBadRequest)
@@ -434,6 +437,9 @@ func stripCodeFences(answer string) string {
 // handleTermCancel stops one terminal request. The request cancels its own ACP
 // turn after it observes the cancelled context.
 func (h *chatHub) handleTermCancel(w http.ResponseWriter, r *http.Request) {
+	if !allowLocalMutation(w, r, false) {
+		return
+	}
 	id := r.URL.Query().Get("id")
 	h.mu.Lock()
 	cancel := h.termCancels[id]
@@ -447,6 +453,9 @@ func (h *chatHub) handleTermCancel(w http.ResponseWriter, r *http.Request) {
 // handleTermRan is the learning feedback: shell post-command hooks (and --run)
 // report what actually ran after a rashin proposal, and how it exited.
 func (h *chatHub) handleTermRan(w http.ResponseWriter, r *http.Request) {
+	if !allowLocalMutation(w, r, true) {
+		return
+	}
 	var rec runRecord
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16*1024)).Decode(&rec); err != nil {
 		http.Error(w, "bad request body", http.StatusBadRequest)

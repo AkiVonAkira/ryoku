@@ -167,13 +167,7 @@ func Serve(cfg Config) error {
 		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 		_, _ = w.Write(b)
 	})
-	mux.HandleFunc("POST /api/index", func(w http.ResponseWriter, r *http.Request) {
-		if err := Reindex(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, map[string]bool{"ok": true})
-	})
+	mux.HandleFunc("POST /api/index", handleReindex)
 	migrationCtx, migrationCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	if err := migrateQuickProviderKeys(migrationCtx); err != nil {
 		fmt.Fprintln(os.Stderr, "ryoku-rashin: quick key migration:", err)
@@ -192,20 +186,7 @@ func Serve(cfg Config) error {
 	mux.HandleFunc("GET /api/quick", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, quickInfo(r.Context(), LoadConfig()))
 	})
-	mux.HandleFunc("POST /api/quick", func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Route string `json:"route"`
-		}
-		if json.NewDecoder(r.Body).Decode(&body) != nil {
-			http.Error(w, "missing route", http.StatusBadRequest)
-			return
-		}
-		if err := setQuickRoute(r.Context(), body.Route); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		writeJSON(w, quickInfo(r.Context(), LoadConfig()))
-	})
+	mux.HandleFunc("POST /api/quick", handleSetQuickRoute)
 	mux.HandleFunc("GET /api/manifest", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, BuildManifest(LoadConfig()))
 	})
@@ -267,6 +248,35 @@ func Serve(cfg Config) error {
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func handleReindex(w http.ResponseWriter, r *http.Request) {
+	if !allowLocalMutation(w, r, true) {
+		return
+	}
+	if err := Reindex(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
+func handleSetQuickRoute(w http.ResponseWriter, r *http.Request) {
+	if !allowLocalMutation(w, r, true) {
+		return
+	}
+	var body struct {
+		Route string `json:"route"`
+	}
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		http.Error(w, "missing route", http.StatusBadRequest)
+		return
+	}
+	if err := setQuickRoute(r.Context(), body.Route); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, quickInfo(r.Context(), LoadConfig()))
 }
 
 func handleWireAgent(w http.ResponseWriter, r *http.Request) {
@@ -516,10 +526,13 @@ func haveSystemd() bool {
 }
 
 func cmdEnable(atBoot bool) error {
-	cfg := LoadConfig()
-	cfg.Enabled = true
-	cfg.OptedOut = false
-	if err := SaveConfig(cfg); err != nil {
+	var cfg Config
+	if err := updateConfig(func(current *Config) error {
+		current.Enabled = true
+		current.OptedOut = false
+		cfg = *current
+		return nil
+	}); err != nil {
 		return err
 	}
 	if haveSystemd() && unitKnown() {
@@ -571,10 +584,11 @@ func cmdEnable(atBoot bool) error {
 }
 
 func cmdDisable() error {
-	cfg := LoadConfig()
-	cfg.Enabled = false
-	cfg.OptedOut = true
-	if err := SaveConfig(cfg); err != nil {
+	if err := updateConfig(func(cfg *Config) error {
+		cfg.Enabled = false
+		cfg.OptedOut = true
+		return nil
+	}); err != nil {
 		return err
 	}
 	var stopErr error

@@ -76,7 +76,7 @@ export const api = {
     if (!r.ok) throw new ApiError(path, r.status);
     return r.text();
   },
-  reindex: () => postJSON<Json>("/api/index"),
+  reindex: () => postJSON<Json>("/api/index", {}),
   agents: () => getJSON<Json>("/api/agents"),
   harnesses: () => getJSON<Json>("/api/harnesses"),
   wire: (id: string) => postJSON<WireResponse>("/api/agents/wire", { id, prowlDefault: false }),

@@ -232,9 +232,10 @@ func setQuickRoute(ctx context.Context, route string) error {
 	if err != nil {
 		return err
 	}
-	cfg := LoadConfig()
-	cfg.Quick.Route = route
-	return SaveConfig(cfg)
+	return updateConfig(func(cfg *Config) error {
+		cfg.Quick.Route = route
+		return nil
+	})
 }
 
 func envFileValue(path, key string) string {

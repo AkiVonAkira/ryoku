@@ -619,9 +619,10 @@ func (h *chatHub) setApprovals(mode string) {
 	if mode != approvalsReadOnly && mode != approvalsAsk && mode != approvalsAuto {
 		return
 	}
-	cfg := LoadConfig()
-	cfg.Approvals = mode
-	if err := SaveConfig(cfg); err != nil {
+	if err := updateConfig(func(cfg *Config) error {
+		cfg.Approvals = mode
+		return nil
+	}); err != nil {
 		return
 	}
 	frame := approvalsFrame()

@@ -37,6 +37,9 @@ type sessionAskResult struct {
 }
 
 func (h *chatHub) handleAsk(w http.ResponseWriter, r *http.Request) {
+	if !allowLocalMutation(w, r, false) {
+		return
+	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
 		http.Error(w, "missing q", http.StatusBadRequest)
@@ -131,6 +134,9 @@ func (h *chatHub) cancelAskTurn() {
 }
 
 func (h *chatHub) handleAskCancel(w http.ResponseWriter, r *http.Request) {
+	if !allowLocalMutation(w, r, false) {
+		return
+	}
 	h.cancelAskTurn()
 	w.WriteHeader(http.StatusNoContent)
 }

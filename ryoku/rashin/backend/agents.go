@@ -547,11 +547,11 @@ func connectHarness(ctx context.Context, id string, activate bool) (bool, string
 	if err != nil {
 		return false, "", err
 	}
-	cfg := LoadConfig()
-	if cfg.AddProwlHarness(id) {
-		if err := SaveConfig(cfg); err != nil {
-			return false, "", err
-		}
+	if err := updateConfig(func(cfg *Config) error {
+		cfg.AddProwlHarness(id)
+		return nil
+	}); err != nil {
+		return false, "", err
 	}
 	if skills != "unsupported" {
 		if err := installProwlSkills(ctx, []string{id}); err != nil {
@@ -565,11 +565,11 @@ func disconnectHarness(ctx context.Context, id string) error {
 	if err := prowlGatewayJSON(ctx, http.MethodDelete, "/api/setup/harnesses/"+id, nil, nil); err != nil {
 		return err
 	}
-	cfg := LoadConfig()
-	if cfg.RemoveProwlHarness(id) {
-		if err := SaveConfig(cfg); err != nil {
-			return err
-		}
+	if err := updateConfig(func(cfg *Config) error {
+		cfg.RemoveProwlHarness(id)
+		return nil
+	}); err != nil {
+		return err
 	}
 	return unwireRashinHarness(id)
 }
