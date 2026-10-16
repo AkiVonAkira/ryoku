@@ -195,6 +195,9 @@ func watchPalette(path string, reload func() error) error {
 	}
 	defer syscall.Close(fd)
 	dir, name := filepath.Dir(path), filepath.Base(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
 	_, err = syscall.InotifyAddWatch(fd, dir, syscall.IN_CLOSE_WRITE|syscall.IN_MOVED_TO)
 	if err != nil {
 		return err
@@ -242,8 +245,10 @@ func main() {
 	flag.Parse()
 
 	hub := newPaletteHub()
+	// No palette yet is a box nobody has logged in to: the session writes one
+	// on first login, and until then the endpoints answer "unavailable".
 	if err := hub.readFile(*palette); err != nil {
-		log.Fatalf("initial palette: %v", err)
+		log.Printf("initial palette: %v; waiting for one", err)
 	}
 	go func() {
 		if err := watchPalette(*palette, func() error { return hub.readFile(*palette) }); err != nil {
