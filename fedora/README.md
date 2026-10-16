@@ -60,19 +60,20 @@ installed Ryoku set in place. Frozen release and testing targets are retained
 for package rollback, and the boot guard can downgrade the Ryoku set after a
 failed update.
 
-Fedora keeps GRUB. Snapper snapshots are on: `ryoku doctor` gives `/.snapshots`
-its own top-level btrfs subvolume and fstab entry, `ryoku update` takes a
-pre/post pair, and a libdnf5 actions hook (`system/snapshots/`) takes one around
-every other dnf transaction. GRUB lists them under **Ryoku snapshots** (hold
-Shift or press Esc while booting; Fedora hides the menu after a good boot).
-Each one boots read-only with its writes in RAM; `/home` shows as it is now,
-and what that boot writes there is dropped too. `sudo ryoku boot-menu
-restore` in that boot makes it the system again; `ryoku rollback <id>` walks
-through it. Shim, GRUB and Fedora's kernels stay as Fedora signs them: the
-snapshot entries boot copies of those kernels from `/boot/ryoku/snapshots`.
-The menu wears the Ryoku theme (`system/boot/grub/theme/`): the Limine menu's
-layout on the Ryoku wallpaper, with "Ryoku Mono" fonts `ryoku-grub-menu` builds
-onto `/boot` from SpaceMono when `ryoku-extras` installed it, else Noto Sans
+Fedora keeps GRUB, and snapper snapshots are on. `ryoku doctor` gives
+`/.snapshots` its own top-level btrfs subvolume and fstab entry, `ryoku update`
+takes a pre/post pair, and a libdnf5 actions hook (`system/snapshots/`) takes a
+pair around each dnf transaction that `ryoku update` does not run. GRUB lists the
+snapshots under **Ryoku snapshots**. Fedora hides the menu after a good boot, so
+hold Shift or press Esc while booting to see it. A snapshot boots read-only and
+keeps its writes in RAM. `/home` shows as it is now, and writes there are
+dropped too. Run `sudo ryoku boot-menu restore` in that boot to make the
+snapshot the system again; `ryoku rollback <id>` walks through the steps. Shim,
+GRUB and Fedora's kernels stay as Fedora signs them, and the snapshot entries
+boot copies of those kernels from `/boot/ryoku/snapshots`. The menu uses the
+Ryoku theme (`system/boot/grub/theme/`), which puts the Limine menu's layout on
+the Ryoku wallpaper. `ryoku-grub-menu` builds its "Ryoku Mono" fonts onto
+`/boot` from SpaceMono when `ryoku-extras` installed it, else from Noto Sans
 Mono.
 The Ryoku Plymouth splash shows from GRUB to the login screen: `ryoku-desktop`
 pulls in the script and label plugins it draws with, and `ryoku-plymouth-apply`

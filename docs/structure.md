@@ -319,11 +319,11 @@ are supported; Atomic and other rpm-ostree systems are refused.
   `prepare-srpms.sh` vendors Go and Cargo dependencies for offline rebuilds.
   The repository build can reuse an identical trusted upstream RPM already
   published for the same Fedora release.
-- `system/` holds what only Fedora's boot and package manager run: `boot/` is
-  the Ryoku GRUB theme and the **Ryoku snapshots** submenu (the `grub.d`
-  snippet and its helper,
-  the look-boot dracut module, the snapper plugin and the menu units), and
-  `snapshots/` is the libdnf5 hook that snapshots every dnf transaction.
+- `system/` holds the Fedora-only boot and dnf pieces. `boot/` has the Ryoku
+  GRUB theme and what the **Ryoku snapshots** submenu needs: the `grub.d`
+  snippet and its helper, the dracut module for snapshot boots, the snapper
+  plugin and the menu units. `snapshots/` has the libdnf5 hook that takes a
+  snapshot pair around every dnf transaction.
 - `.github/workflows/publish-repo-fedora.yml` builds and install-tests every
   supported Fedora release, then publishes moving stable and testing heads,
   frozen releases and unstable builds, and their ledgers below
