@@ -1030,6 +1030,9 @@ func updateStage2(pre string, withSystem bool) (err error) {
 			}
 		}
 		restartWallpaper(wallpaperWasActive)
+		if !waitForDesktopLoaded() {
+			progress.logf(i18n.T("the desktop has not reported a finished load yet; `ryoku doctor` says why"))
+		}
 		dropAbort("shell")
 		reopen()
 	}
@@ -2741,6 +2744,35 @@ func graphicalSessionState() (present bool, active bool, local bool, err error) 
 		return false, false, false, fmt.Errorf("inspect login1 sessions: %w", inspectErr)
 	}
 	return present, false, local, nil
+}
+
+// desktopLoadWait bounds the wait for Quickshell to finish parsing the tree the
+// update just laid down. A box that loads the desktop in a second is the norm;
+// a slow one with many plugins takes several.
+var desktopLoadWait = 25 * time.Second
+
+// waitForDesktopLoaded waits until Quickshell reports a finished load, which is
+// not what `sleep-ready` proves. That answers as soon as the daemon's sleep
+// guard exists, while Quickshell may still be parsing QML or respawning after a
+// load failure. Handing that state to the healing step makes the doctor report a
+// load failure the update is still in the middle of causing, and the desktop
+// then comes back only because the doctor restarts the daemon afterwards.
+//
+// The daemon recreates this file with os.Create on every spawn attempt, so the
+// marker can only come from the attempt that is running now.
+func waitForDesktopLoaded() bool {
+	path := filepath.Join(sys.Xdg("XDG_STATE_HOME", ".local/state"), "ryoku", "surfaces", "shell.log")
+	deadline := time.Now().Add(desktopLoadWait)
+	for {
+		b, _ := os.ReadFile(path)
+		if strings.Contains(string(b), "Configuration Loaded") {
+			return true
+		}
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
 }
 
 func waitForShellReady(expected bool) (bool, error) {
