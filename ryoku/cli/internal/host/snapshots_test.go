@@ -140,3 +140,36 @@ func TestSnapshotCreateKeepsUnsupportedReason(t *testing.T) {
 		t.Fatalf("unsupported snapshot ran commands: %v", runner.commands)
 	}
 }
+
+func TestSnapshotsUnavailableInSnapshotLookBoot(t *testing.T) {
+	runner := &fakeRunner{paths: map[string]bool{"snapper": true}}
+	app, stdout, _ := testApp(runner, map[string]string{"RYOKU_HOST_PKGMGR": "dnf"})
+	cmdline := filepath.Join(t.TempDir(), "cmdline")
+	if err := os.WriteFile(cmdline, []byte("BOOT_IMAGE=/ryoku/snapshots/7.2/vmlinuz ro rootflags=subvol=.snapshots/12/snapshot rd.ryoku.preview=.snapshots/12/snapshot quiet\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	app.cfg.ProcCmdline = cmdline
+
+	if got := app.SnapshotPreview(); got != ".snapshots/12/snapshot" {
+		t.Fatalf("SnapshotPreview = %q", got)
+	}
+	supported, reason := app.Snapshots()
+	if supported {
+		t.Fatal("a look boot reported snapshots as supported")
+	}
+	if want := "This boot is a look at snapshot 12; its changes stay in RAM. Run `sudo ryoku boot-menu restore` to make it the system, or reboot to go back."; reason != want {
+		t.Fatalf("look boot reason = %q, want %q", reason, want)
+	}
+	if code := app.Execute([]string{"snapshots", "create", "inside the look"}); code != ExitNotProvided {
+		t.Fatalf("look boot snapshot create exit = %d, want %d", code, ExitNotProvided)
+	}
+	if stdout.String() != reason+"\n" || len(runner.commands) != 0 {
+		t.Fatalf("look boot create wrote %q and ran %v", stdout.String(), runner.commands)
+	}
+}
+
+func TestSnapshotLabelKeepsUnfamiliarPaths(t *testing.T) {
+	if got := snapshotLabel("@/.snapshots/3/snapshot"); got != "@/.snapshots/3/snapshot" {
+		t.Fatalf("snapshotLabel = %q", got)
+	}
+}

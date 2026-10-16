@@ -1492,6 +1492,12 @@ func snapshotCapability() (supported bool, reason string) {
 	return host.Default().Snapshots()
 }
 
+// snapshotPreview names the snapshot this boot looks at, or "" for an ordinary
+// boot.
+func snapshotPreview() string {
+	return host.Default().SnapshotPreview()
+}
+
 // snapHelpers: the snapshot facts the offer gates on, composed from sys
 // primitives so the updater runs the same checks the doctor does without
 // importing the doctor package.
@@ -1656,6 +1662,15 @@ func Rollback(args []string) error {
 			to = args[i+1]
 			i++
 		}
+	}
+	// A look boot's changes stay in RAM, so neither way back can start here;
+	// the one step left is the restore, which the reason names.
+	if supported, reason := snapshotCapability(); !supported && snapshotPreview() != "" {
+		if to != "" {
+			return errors.New(reason)
+		}
+		fmt.Println(reason)
+		return nil
 	}
 	if to != "" {
 		if !sys.IsFrozenVersion(to) {
@@ -2062,6 +2077,8 @@ func Status(args []string) error {
 	// like a real empty store -- the opposite meaning), and the real count.
 	snapshotsSupported, snapshotsReason := snapshotCapability()
 	switch {
+	case !snapshotsSupported && snapshotPreview() != "":
+		fmt.Println(i18n.T("snapshots:     this boot is a look at one (sudo ryoku boot-menu restore keeps it)"))
 	case !snapshotsSupported:
 		fmt.Printf(i18n.T("snapshots:     unavailable (%s)\n"), snapshotsReason)
 	case !sys.Exists("/etc/snapper/configs/root"):
