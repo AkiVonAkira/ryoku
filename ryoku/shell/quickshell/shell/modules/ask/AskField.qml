@@ -21,6 +21,12 @@ Rectangle {
     property alias inputItem: input
     readonly property bool motionAllowed: !Tokens.reduceMotion && !Motion.reduce
     readonly property bool workingActive: phase === "working" || (mode === "chat" && chatBusy)
+    // Whether the text is a link the Tools mode could read: an http(s) scheme
+    // and a non-empty, whitespace-free authority. The border says yes and says
+    // nothing otherwise. It never says no, because this field takes commands
+    // and questions too, and painting ordinary typing as broken would be a lie.
+    readonly property bool linkOk: mode === "tools"
+        && /^https?:\/\/[^\s\/?#]+(?:[\/?#][^\s]*)?$/i.test(String(text).trim())
 
     signal submitted(string text)
     signal prefixRequested(string mode, string text)
@@ -38,7 +44,12 @@ Rectangle {
     radius: Tokens.radius * s
     color: Tokens.paperLift
     border.width: Tokens.border
-    border.color: input.activeFocus ? Tokens.lineStrong : Tokens.line
+    // The one affirmative the field gives: green while it holds a link Tools
+    // could read. Scheme's tertiary is the palette's green slot, so it follows
+    // the wallpaper like every other colour here. Everything else keeps the
+    // resting border, focus included.
+    border.color: root.linkOk ? Scheme.tertiary
+        : input.activeFocus ? Tokens.lineStrong : Tokens.line
 
     function focusField() {
         Qt.callLater(() => input.forceActiveFocus());
