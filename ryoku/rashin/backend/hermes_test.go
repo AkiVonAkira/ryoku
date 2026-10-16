@@ -57,16 +57,34 @@ func TestHermesModelStopsAtBlockEnd(t *testing.T) {
 	}
 }
 
-func TestHermesStatusUsesExplicitModelPick(t *testing.T) {
+func TestHermesStatusUsesItsProviderScopedModelPick(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RYOKU_STATE_PATH", t.TempDir())
 	t.Setenv("RYOKU_CONFIG_BASE", filepath.Join(t.TempDir(), "absent"))
 	t.Setenv("PATH", filepath.Join(t.TempDir(), "bin"))
 	writeHermesConfig(t, "model:\n  provider: openrouter\n  default: z-ai/glm-5.3\n")
+	cfg := defaultConfig()
+	cfg.ChatAgent = "claude"
+	if err := SaveConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if err := setModelPick("claude", "anthropic:claude-opus"); err != nil {
+		t.Fatal(err)
+	}
 	if err := setModelPick("hermes", "openai-codex:gpt-6-luna"); err != nil {
 		t.Fatal(err)
 	}
-	if got := HermesStatus().Model; got != "openai-codex:gpt-6-luna" {
-		t.Fatalf("status model = %q", got)
+	got := HermesStatus()
+	if got.Provider != "openai-codex" || got.Model != "gpt-6-luna" {
+		t.Fatalf("status provider/model = %q / %q", got.Provider, got.Model)
+	}
+
+	if err := setModelPick("hermes", "unscoped-model"); err != nil {
+		t.Fatal(err)
+	}
+	got = HermesStatus()
+	if got.Provider != "openrouter" || got.Model != "z-ai/glm-5.3" {
+		t.Fatalf("unscoped pick changed config default to %q / %q", got.Provider, got.Model)
 	}
 }

@@ -61,8 +61,11 @@ func HermesStatus() HermesInfo {
 	info.Wired = fileHasBlock(hermesMemory())
 	info.SkillWired = isOurSkillLink(filepath.Join(home(), ".hermes", "skills", "ryoku"))
 	info.Provider, info.Model, _ = hermesModel()
-	if picked := modelPick(activeChatAgentID(LoadConfig())); picked != "" {
-		info.Model = picked
+	if picked := modelPick("hermes"); picked != "" {
+		if provider, model, ok := strings.Cut(picked, ":"); ok && provider != "" && model != "" {
+			info.Provider = provider
+			info.Model = model
+		}
 	}
 	return info
 }
