@@ -133,6 +133,7 @@ func setupBootGuardPaths(t *testing.T) string {
 }
 
 func TestPointBootMenuAtSnapshotWritesFullPathAndClearsEFIEntry(t *testing.T) {
+	t.Setenv("RYOKU_HOST_PKGMGR", "pacman")
 	setupBootGuardPaths(t)
 	if err := os.WriteFile(limineConf, []byte(limineFixture), 0o644); err != nil {
 		t.Fatal(err)
@@ -165,15 +166,17 @@ func TestClearLimineLastBootedEntryDoesNothingWhenAbsent(t *testing.T) {
 
 func TestBootGuardRestoredResetsFirstKernelForBothMenus(t *testing.T) {
 	tests := []struct {
-		name  string
-		conf  string
-		entry string
+		name    string
+		manager string
+		conf    string
+		entry   string
 	}{
-		{name: "Arch", conf: limineFixture, entry: "Ryoku Linux/linux"},
-		{name: "Void", conf: voidLimineFixture, entry: "Ryoku Linux/linux6.18"},
+		{name: "Arch", manager: "pacman", conf: limineFixture, entry: "Ryoku Linux/linux"},
+		{name: "Void", manager: "xbps", conf: voidLimineFixture, entry: "Ryoku Linux/linux6.18"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("RYOKU_HOST_PKGMGR", test.manager)
 			setupBootGuardPaths(t)
 			if err := os.WriteFile(limineConf, []byte(test.conf), 0o644); err != nil {
 				t.Fatal(err)

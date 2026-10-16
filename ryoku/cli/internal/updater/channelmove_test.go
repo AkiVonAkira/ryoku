@@ -216,6 +216,7 @@ func TestDNFMoveReachedTargetUsesInstalledState(t *testing.T) {
 // the active compositor variant, or the box is left with its source lane gone
 // and no packaged base to update from.
 func TestMoveRyokuSetAddsPackagedBaseWhenMigrating(t *testing.T) {
+	t.Setenv("RYOKU_HOST_PKGMGR", "pacman")
 	stubMoveRepoSync(t, func(bool) error { return nil })
 	var movedSet []string
 	oldMove := runRyokuMove
@@ -257,6 +258,7 @@ func TestMoveRyokuSetAddsPackagedBaseWhenMigrating(t *testing.T) {
 }
 
 func TestMoveRyokuSetMigratesRetiredVariant(t *testing.T) {
+	t.Setenv("RYOKU_HOST_PKGMGR", "pacman")
 	stubMoveRepoSync(t, func(bool) error { return nil })
 	legacy := wm.RetiredCompositor()
 	var movedSet, dropped []string
