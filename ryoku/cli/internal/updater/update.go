@@ -15,7 +15,6 @@ import (
 	"ryoku-cli/internal/sys"
 	i18n "ryoku-i18n"
 	wm "ryoku-wm"
-	"strconv"
 	"strings"
 	"syscall"
 	"text/tabwriter"
@@ -2488,12 +2487,6 @@ func Deploy(_ []string) error {
 
 // --- snapper pre/post (best-effort on supported hosts) ----------------------
 
-// updateSnapshotMarker holds the pid of the update that owns the open snapper
-// pair on Fedora, so the dnf hook (fedora/system/snapshots/ryoku-dnf-snapshot)
-// does not nest a second pair inside it. The pid survives the stage2 exec, and
-// a dead pid frees the hook again.
-const updateSnapshotMarker = "/run/ryoku/update-snapshot"
-
 func snapperPre(desc string) string {
 	if supported, reason := snapshotCapability(); !supported {
 		fmt.Fprintln(os.Stderr, "warning: "+reason)
@@ -2515,9 +2508,6 @@ func snapperPre(desc string) string {
 		fmt.Fprintf(os.Stderr, i18n.T("note: pre-update snapshot skipped: %v\n"), err)
 		return ""
 	}
-	if updatePackageManager() == host.DNF {
-		_ = sys.WriteRootFile(updateSnapshotMarker, strconv.Itoa(os.Getpid())+"\n", "0644")
-	}
 	return strings.TrimSpace(out)
 }
 
@@ -2530,9 +2520,6 @@ func snapperPost(pre, desc string) {
 	}
 	_ = sys.Sudo("snapper", "-c", snapperConfig, "create",
 		"-t", "post", "--pre-number", pre, "-c", "number", "-d", desc)
-	if updatePackageManager() == host.DNF {
-		_ = sys.Sudo("rm", "-f", updateSnapshotMarker)
-	}
 	// Prune here, on the path every update takes: snapper-cleanup.timer is
 	// unreliable (its service is coupled to limine-snapper-sync), so without
 	// this the pile grows unbounded. best-effort.

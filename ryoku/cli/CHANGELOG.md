@@ -5,15 +5,18 @@
 ### Added
 - **Fedora snapshots every dnf transaction.** The `ryoku` RPM ships a libdnf5
   actions hook (`fedora/system/snapshots/`) that takes a snapper pre/post pair
-  around each `dnf` run, the way snap-pac does for pacman. `ryoku update` marks
-  its own pair in `/run/ryoku/update-snapshot`, so the hook does not nest a
-  second pair inside it.
+  around each `dnf` run, the way snap-pac does for pacman. `ryoku update` runs
+  dnf with `RYOKU_MANAGED_UPDATE=1`, as it sets `SNAP_PAC_SKIP` for pacman, so
+  the hook does not nest a second pair inside its own.
 - **`ryoku doctor` lays out Fedora snapshots.** On a btrfs Fedora root it
   creates `/.snapshots` as a top-level subvolume with its own `/etc/fstab`
   entry (copied from the root's, with its own `subvol=`), so a whole-system
   restore that swaps the root subvolume keeps the snapshots. An existing
-  subvolume or fstab entry is adopted. `SNAPPER_CONFIGS` goes to
-  `/etc/sysconfig/snapper`, where Fedora's snapper units read it.
+  subvolume or fstab entry is adopted, and an empty `/.snapshots` nested in the
+  root (what `snapper create-config /` makes) is moved to the top level; one
+  that already holds snapshots is reported with the steps to clear it.
+  `SNAPPER_CONFIGS` goes to `/etc/sysconfig/snapper`, where Fedora's snapper
+  units read it.
 - **Fedora gets snapshots.** The host now reports snapshots as supported on
   Fedora, so `ryoku update` takes its pre/post pair, `ryoku snapshots` lists
   them, and the doctor sets them up. Fedora's boot menu does not list snapshots

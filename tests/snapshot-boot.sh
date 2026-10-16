@@ -221,6 +221,20 @@ check "and GRUB_FONT names it" line "$work/etc/grub" "GRUB_FONT=\"$theme/unicode
 check "and the Ryoku Mono fonts nothing names go" test -z "$(find "$theme" -name 'ryoku-mono-*.pf2')"
 menu purge
 
+printf '#!/bin/sh\nexit 1\n' >"$stubs/badfont" && chmod +x "$stubs/badfont"
+menu install
+menu_badfont() {
+  RYOKU_GRUB_DIR="$grub" RYOKU_GRUB_DEFAULTS="$work/etc/grub" RYOKU_GRUB_THEME_SRC="$bm/grub/theme" \
+    RYOKU_GRUB_FONT_SRC="$work/unicode.pf2" RYOKU_GRUB_MKCONFIG="$stubs/mkconfig" \
+    RYOKU_GRUB_MKFONT="$stubs/badfont" RYOKU_GRUB_FONT_FACE="$work/face.ttf" \
+    bash "$bm/grub/ryoku-grub-menu" install
+}
+menu_badfont
+check "a face grub2-mkfont rejects falls back to GRUB's Unifont" line "$work/etc/grub" "GRUB_FONT=\"$theme/unicode.pf2\""
+check "and the font GRUB_FONT names exists" test -f "$theme/unicode.pf2"
+check "and no half-built font is left" test -z "$(find "$theme" -name '*.new')"
+menu purge
+
 printf 'GRUB_TERMINAL_OUTPUT="serial console"\n' >"$work/etc/grub"
 menu install
 check "install keeps a serial terminal" line "$work/etc/grub" 'GRUB_TERMINAL_OUTPUT="serial console"'

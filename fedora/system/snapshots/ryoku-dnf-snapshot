@@ -5,21 +5,12 @@
 # snapshot number to the post step as tmp.ryoku_snapper_pre. Every failure
 # exits 0, so a snapshot problem never blocks a transaction.
 
-marker=/run/ryoku/update-snapshot
-
-# `ryoku update` takes its own pair around the whole update and records its
-# pid here while it runs; a pid that is gone means the update died, so the
-# marker no longer counts.
-ryoku_update_running() {
-  local pid
-  { read -r pid <"$marker"; } 2>/dev/null || return 1
-  [[ $pid =~ ^[0-9]+$ && -d /proc/$pid ]]
-}
-
 case ${1:-} in
   pre)
     [[ -f /etc/snapper/configs/root ]] && command -v snapper >/dev/null || exit 0
-    ryoku_update_running && exit 0
+    # `ryoku update` takes its own pair around the whole update and runs dnf
+    # with RYOKU_MANAGED_UPDATE=1, the way it sets SNAP_PAC_SKIP for pacman.
+    [[ ${RYOKU_MANAGED_UPDATE:-} = 1 ]] && exit 0
     num=$(snapper -c root create -t pre -c number -p -d "dnf transaction" 2>/dev/null) || exit 0
     echo "tmp.ryoku_snapper_pre=$num"
     ;;

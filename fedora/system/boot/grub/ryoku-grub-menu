@@ -78,15 +78,27 @@ font_source() {
   return 1
 }
 
+# build_fonts <face>: build "Ryoku Mono" at every size as .new files; returns
+# 0 only when each one came out, leaving nothing behind otherwise.
+build_fonts() {
+  local size out
+  for size in "${font_sizes[@]}"; do
+    out="$theme_dir/ryoku-mono-$size.pf2.new"
+    if ! "$mkfont" -n "Ryoku Mono" -s "$size" -r "$font_ranges" -o "$out" "$1" 2>/dev/null || [ ! -s "$out" ]; then
+      rm -f "$theme_dir"/ryoku-mono-*.pf2.new
+      return 1
+    fi
+  done
+}
+
 # install_fonts: build "Ryoku Mono" at each size; returns 0 when a font
-# changed. Without a source face or grub2-mkfont, GRUB's own Unifont stands in
-# and the theme's text falls back to it.
+# changed. Without a source face, grub2-mkfont, or a face it can read, GRUB's
+# own Unifont stands in and the theme's text falls back to it.
 install_fonts() {
   local changed=1 src size out
-  if src=$(font_source) && command -v "$mkfont" >/dev/null 2>&1; then
+  if src=$(font_source) && command -v "$mkfont" >/dev/null 2>&1 && build_fonts "$src"; then
     for size in "${font_sizes[@]}"; do
       out="$theme_dir/ryoku-mono-$size.pf2"
-      "$mkfont" -n "Ryoku Mono" -s "$size" -r "$font_ranges" -o "$out.new" "$src" 2>/dev/null
       copy_new "$out.new" "$out" && changed=0
     done
     font="$theme_dir/ryoku-mono-20.pf2"
