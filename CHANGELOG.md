@@ -72,6 +72,16 @@ for finer detail.
   mutable channels current without changing frozen distro snapshots.
 
 ### Added
+- **niri gains key sounds.** niri has no plugin system, so it could not have the
+  keyboard sound Hyprland gets from its `keysounds` plugin; it has one now, from
+  a small Rust engine (`ryoku-keysounds`) that reads the keyboard straight from
+  evdev and plays each press through libcanberra, adding no work to niri itself.
+  It is not installed by default: Ryoku Hub -> Window Manager -> Behaviour has an
+  **Install engine** button that installs and starts it, with on/off, sound
+  profile, volume and key-release settings that apply within a second of saving.
+  Any pack imported with `ryoku-keysounds-import` joins the profile list. The
+  samples and the importer move to their own package, `ryoku-keysounds-profiles`,
+  shared with the Hyprland plugin.
 - **Commits pass a review gate.** Where `rashin-reviewer` is installed, the
   pre-commit hook refuses secrets, conflict markers, a JSON, YAML, TOML,
   Python, Lua or QML file the commit leaves unparseable, and ShellCheck (CI's

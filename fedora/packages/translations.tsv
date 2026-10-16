@@ -98,7 +98,7 @@ lib32-nvidia-utils	-	hardware:nvidia	Fedora NVIDIA drivers require RPM Fusion an
 lib32-vulkan-intel	mesa-vulkan-drivers.i686	hardware:intel	
 lib32-vulkan-radeon	mesa-vulkan-drivers.i686	hardware:amd	
 lib32-vulkan-swrast	mesa-vulkan-drivers.i686	hardware:vm	
-libcanberra	libcanberra	hyprland	
+libcanberra	libcanberra	optional	
 libdrm	libdrm	desktop	
 libgcc	libgcc	desktop	
 libglvnd	libglvnd	desktop	
@@ -201,6 +201,8 @@ ryoku-hub	ryoku-hub	desktop	Ryoku-owned RPM.
 ryoku-hypr-plugins	ryoku-hypr-plugins	hyprland	Ryoku-owned RPM.
 ryoku-keyring	-	desktop	The Fedora installer imports the RPM signing key directly.
 ryoku-keysounds	ryoku-keysounds	hyprland	Ryoku-owned RPM.
+ryoku-keysounds-niri	ryoku-keysounds-niri	optional	Ryoku-owned RPM.
+ryoku-keysounds-profiles	ryoku-keysounds-profiles	optional	Ryoku-owned RPM.
 ryoku-oh-my-zsh	ryoku-oh-my-zsh	desktop	Ryoku-owned RPM.
 ryoku-palette-bridge	ryoku-palette-bridge	desktop	Ryoku-owned RPM.
 ryoku-rashin	ryoku-rashin	desktop	Ryoku-owned RPM.

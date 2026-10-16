@@ -41,6 +41,16 @@ provides=('ryoku-desktop-compositor')
 # deliberately not exclusive: both variants may be installed, so a switch is a
 # config change with no download and a switch back is instant.
 source=()
+# Key sounds are an optional install, never a default one: the Hub's Window
+# Manager > Behaviour offers them and `ryoku-host pkg install` brings them in on
+# demand. niri has no plugin system, so its engine is the standalone daemon
+# (ryoku-keysounds-niri); the samples and the importer (ryoku-keysounds-profiles)
+# are shared with the Hyprland plugin, and libcanberra is what both play through.
+optdepends=(
+  'ryoku-keysounds-niri: play a keyboard sound on every key press'
+  'ryoku-keysounds-profiles: key-sound sample profiles and the Mechvibes importer'
+  'libcanberra: sound playback for the key-sounds engine'
+)
 
 _repo="$startdir/../../.."
 
