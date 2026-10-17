@@ -102,6 +102,16 @@
   edit pages keep working unchanged (`quickshell/shell/modules/dock/ii/`,
   `quickshell/shell/modules/dock/IiDockHost.qml`,
   `quickshell/shell/components/WorkspaceSlide.qml`).
+- **A surface request can name the trigger it was opened from.**
+  `ShellState.requestSurfaceActive` now forwards its context the way
+  `requestSurface` already does, and a caller passing `{ ownerRect: <global
+  rect> }` gets the surface welded to that rect instead of its config anchor.
+  A bar style can open a shell-owned menu under its own widget without
+  rebuilding the menu, which is what kept the frame menus landing in a screen
+  corner when anything but the frame rail asked for them
+  (`services/ShellState.qml`, `modules/bar/Frame.qml`).
+
+### Added
 - **Orpheus is Ryoku's default bar.** `Ryoku.Blobs` drops hang from the top
   edge with a voice in the middle that shows the time, the track, a fresh
   notification, or a recording, budding small bubbles beside it when it is
