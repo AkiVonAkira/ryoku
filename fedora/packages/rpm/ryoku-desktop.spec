@@ -87,6 +87,17 @@ Requires:       ppd-service
 Requires:       ddcutil
 Requires:       hypridle
 Requires:       hyprpicker
+Requires:       grub2-tools
+Requires:       grub2-tools-extra
+Requires:       fontconfig
+Requires:       grubby
+Requires:       btrfs-progs
+Requires:       snapper
+Requires:       plymouth
+Requires:       plymouth-scripts
+Requires:       plymouth-plugin-script
+Requires:       plymouth-plugin-label
+Requires:       dracut
 Requires:       kernel-devel
 Requires:       kernel-headers
 Requires:       dkms
@@ -168,12 +179,34 @@ systemd-run --quiet --collect --unit=ryoku-power-cutover-guard.service \
   /usr/bin/sleep infinity
 
 %post
+# A first install never had the console plugin earlier packages shipped, so
+# there are no twin boot entries for ryoku doctor to look for.
+if [ "$1" -eq 1 ]; then
+  install -D -m 0644 /dev/null /var/lib/ryoku/migrations/ryoku-console-entries || :
+fi
 systemctl daemon-reload >/dev/null 2>&1 || :
 RYOKU_HOST_INIT=systemd /usr/bin/ryoku-host svc reconcile --system >/dev/null 2>&1 || :
 /usr/bin/ryoku-bluetooth-tune >/dev/null 2>&1 || :
 /usr/bin/ryoku-wifi-regdom apply >/dev/null 2>&1 || :
 
 %posttrans
+# Theme GRUB and render the snapshot submenu's snippet into grub.cfg, then, on a running
+# system, list the snapshots already on disk in the background: a kernel image
+# is built per kernel version they need.
+/usr/bin/ryoku-grub-menu install >/dev/null 2>&1 || :
+# The splash theme is in place now; make it the default and rebuild the dracut
+# images that carry it. That is a dracut run per installed kernel, so a running
+# system does it in the background instead of holding the transaction; an
+# install into a chroot has no systemd to hand it to and needs it before the
+# first boot anyway. A run still going from an earlier transaction keeps the
+# unit name, and catches up with this theme itself.
+if [ -d /run/systemd/system ] && ! systemd-detect-virt --quiet --chroot; then
+  systemd-run --quiet --no-block --collect --unit=ryoku-plymouth-apply \
+    --property=Nice=10 --property=IOSchedulingClass=idle \
+    /usr/bin/ryoku-plymouth-apply apply >/dev/null 2>&1 || :
+else
+  /usr/bin/ryoku-plymouth-apply apply >/dev/null 2>&1 || :
+fi
 if [ -x /usr/bin/ryoku-polkit-reload ] &&
    ! /usr/bin/ryoku-polkit-reload; then
   logger -t ryoku-polkit \
@@ -182,6 +215,7 @@ if [ -x /usr/bin/ryoku-polkit-reload ] &&
 fi
 [ -d /run/systemd/system ] || exit 0
 systemd-detect-virt --quiet --chroot && exit 0
+systemctl start --no-block ryoku-snapshot-menu.path ryoku-snapshot-menu.service >/dev/null 2>&1 || :
 [ -x /usr/bin/ryoku-power-cutover ] || exit 0
 if ! /usr/bin/ryoku-power-cutover package; then
   logger -t ryoku-power-cutover \
@@ -192,6 +226,10 @@ exit 0
 
 %preun
 [ "$1" -eq 0 ] || exit 0
+systemctl disable --now ryoku-snapshot-menu.path ryoku-snapshot-restored.service >/dev/null 2>&1 || :
+/usr/bin/ryoku-grub-menu purge >/dev/null 2>&1 || :
+# in the foreground: the theme's files and this script go with the package.
+/usr/bin/ryoku-plymouth-apply reset >/dev/null 2>&1 || :
 [ -d /run/systemd/system ] || exit 0
 systemd-detect-virt --quiet --chroot && exit 0
 [ -x /usr/bin/ryoku-power-cutover ] || exit 0
@@ -199,6 +237,8 @@ systemd-detect-virt --quiet --chroot && exit 0
 
 %postun
 [ "$1" -eq 0 ] || exit 0
+# the snapshot snippet is gone; drop it from grub.cfg too.
+grub2-mkconfig -o /boot/grub2/grub.cfg >/dev/null 2>&1 || :
 if [ -x /run/ryoku-power-cutover ]; then
   /run/ryoku-power-cutover package
 fi

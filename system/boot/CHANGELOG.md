@@ -3,6 +3,15 @@
 ## Unreleased
 
 ### Added
+- The Plymouth splash now shows on Fedora. `ryoku-desktop` there shipped the
+  theme but not the `script` and `label` plugins it draws with, and nothing made
+  it the default, so Fedora booted with its text splash. The RPM now requires
+  both plugins, and `fedora/system/boot/ryoku-plymouth-apply` (run from
+  `%posttrans`) makes `ryoku` the default theme and rebuilds every dracut image
+  once. Later updates rebuild only when the theme's files change and it is still
+  the default, so a theme picked by hand is kept; removing the package hands the
+  splash back to Fedora's default.
+
 - `mkinitcpio/install/ryoku-gpu-trim`: a mkinitcpio install hook that keeps the
   denylisted nouveau driver out of the initramfs, and with it the
   `nvidia/*/gsp` firmware linux-firmware ships for every Turing/Ampere/Ada chip

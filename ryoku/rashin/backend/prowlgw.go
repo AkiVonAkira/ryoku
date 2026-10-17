@@ -231,16 +231,29 @@ func ensureGateway() error {
 		if prowlGatewayRunning() {
 			return
 		}
-		port := prowlGatewayPort()
-		var err error
-		if port == defaultProwlGatewayPort && gatewaySystemdPresent() {
-			err = gatewaySpawn("systemctl", "--user", "start", "ryoku-prowl.service")
-		} else {
-			err = gatewaySpawn(bin, "gateway", "up", "--port", strconv.Itoa(port))
-		}
-		spawned = err == nil
+		spawned = spawnGateway(bin) == nil
 	}()
 	return nil
+}
+
+// startGateway starts Prowl's gateway unless it already answers, and returns
+// once the start command has. The CLI commands use it: ensureGateway starts in
+// the background for the daemon, and a command that exits right after would
+// take that start down with it.
+func startGateway() error {
+	bin, installed := findProwl()
+	if !installed || prowlGatewayRunning() {
+		return nil
+	}
+	return spawnGateway(bin)
+}
+
+func spawnGateway(bin string) error {
+	port := prowlGatewayPort()
+	if port == defaultProwlGatewayPort && gatewaySystemdPresent() {
+		return gatewaySpawn("systemctl", "--user", "start", "ryoku-prowl.service")
+	}
+	return gatewaySpawn(bin, "gateway", "up", "--port", strconv.Itoa(port))
 }
 
 func stopGateway() error {

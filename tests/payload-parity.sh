@@ -275,11 +275,14 @@ adapter_entry() {
     *:etc/sudoers.d/ryoku-service-health)
       return 1
       ;;
-    *:usr/share/libalpm/*|*:usr/share/ryoku/packages/void.tsv|*:usr/share/ryoku/packages/fedora.tsv)
+    *:usr/share/libalpm/*|*:usr/share/ryoku/packages/void.tsv|*:usr/share/ryoku/packages/fedora.tsv|\
+    fedora:etc/dnf/libdnf5-plugins/*|fedora:usr/libexec/ryoku/ryoku-dnf-snapshot)
       return 1
       ;;
     *:etc/boot/*|*:etc/kernel.d/*|*:usr/lib/initcpio/*|*:usr/share/ryoku/boot/*|\
-    *:usr/bin/ryoku-boot-apply|*:usr/bin/ryoku-windows-entry)
+    *:usr/bin/ryoku-boot-apply|*:usr/bin/ryoku-windows-entry|\
+    fedora:etc/grub.d/15_ryoku_snapshots|fedora:usr/bin/ryoku-grub-menu|fedora:usr/bin/ryoku-plymouth-apply|fedora:usr/share/ryoku/grub/*|\
+    fedora:usr/libexec/snapper/plugins/50-ryoku-boot-menu|fedora:usr/lib/dracut/modules.d/90ryoku-snapshot/*)
       return 1
       ;;
     *:usr/share/polkit-1/rules.d/54-ryoku-bluetooth-a2dp.rules|\

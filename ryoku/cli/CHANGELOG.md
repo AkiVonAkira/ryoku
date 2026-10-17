@@ -3,6 +3,46 @@
 ## Unreleased
 
 ### Added
+- **Every dnf transaction on Fedora gets a snapshot pair.** The `ryoku` RPM
+  ships a libdnf5 actions hook (`fedora/system/snapshots/`) that takes a snapper
+  pre/post pair around each `dnf` run, the way snap-pac does for pacman.
+  `ryoku update` writes its pid and start time to `/run/ryoku/update-snapshot`,
+  and the hook takes no pair inside the update's own. Once that pid is gone or
+  belongs to another process, the hook takes pairs again.
+- **`ryoku doctor` lays out Fedora snapshots.** On a btrfs Fedora root it
+  creates `/.snapshots` as a top-level subvolume with its own `/etc/fstab`
+  entry (copied from the root's, with its own `subvol=`), so a whole-system
+  restore that swaps the root subvolume keeps the snapshots. An existing
+  subvolume or fstab entry is adopted, and an empty `/.snapshots` nested in the
+  root (what `snapper create-config /` makes) is moved to the top level; one
+  that already holds snapshots is reported with the steps to clear it.
+  `SNAPPER_CONFIGS` goes to `/etc/sysconfig/snapper`, where Fedora's snapper
+  units read it.
+- **Fedora gets snapshots.** The host now reports snapshots as supported on
+  Fedora, so `ryoku update` takes its pre/post pair, `ryoku snapshots` lists
+  them, and the doctor sets them up.
+- **Fedora's GRUB lists the snapshots.** A **Ryoku snapshots** submenu boots
+  each snapshot read-only, its writes in RAM, from a copy of Fedora's own
+  signed kernel on `/boot`, so Secure Boot keeps working. `ryoku boot-menu
+  sync` rewrites it after every snapshot (through `ryoku-snapshot-menu.path`
+  and a snapper plugin), and `sudo ryoku boot-menu restore`, run in that
+  snapshot's boot, makes the snapshot the root again and keeps the replaced
+  root for two weeks. The first boot after a restore brings Fedora's kernel
+  entries in line with the restored root. Fedora's `grub-boot-success.timer` is left alone.
+- **Fedora's GRUB uses the Ryoku theme.** It draws the Limine menu's layout on
+  the Ryoku wallpaper: the "Ryoku Bootloader" title, the key help, the centred
+  list with a burnt-orange selection bar, and the countdown. The wallpaper moves
+  from `system/boot/limine/`, where nothing used it, to `fedora/system/boot/grub/theme/`.
+  `ryoku-grub-menu install` builds the "Ryoku Mono" fonts onto `/boot` (SpaceMono,
+  else Noto Sans Mono, else GRUB's Unifont), so an encrypted root never has to
+  be read for them; a serial terminal is kept as it is.
+- **`ryoku rollback` and the boot guard use Fedora's snapshot menu.**
+  `ryoku rollback <id>` walks through booting the snapshot (or
+  `grub2-reboot` to it) and `sudo ryoku boot-menu restore`, falling back to
+  `snapper undochange` while the menu lists nothing. `ryoku snapshots` says the
+  GRUB menu lists them. After three failed boots, the boot guard sends the next
+  boot once to the pre-update snapshot's read-only entry; it never restores on
+  its own.
 - **`ryoku-host phone` installs and removes the phone feature.** `status`,
   `enable`, `disable` and their `plan-` dry runs translate one package set per
   edition (Arch, CachyOS with the running kernel's headers, Fedora through two
@@ -30,6 +70,13 @@
 - **`ryoku doctor` recognizes displays attached to the discrete GPU.** A
   never-suspended card now reports the dGPU-wired output as expected load instead
   of blaming processes for idle drain (`internal/doctor/reconcile_dgpu_panel.go`).
+- **`ryoku doctor` clears what earlier Fedora packages left in the boot menu.**
+  Their console plugin twinned every kernel's boot entry as
+  `<kver>~ryokuconsole`; once the plugin is gone the twins are removed. Their
+  `%post` disabled Fedora's `grub-boot-success.timer` for every user; the
+  doctor turns it back on once (`/var/lib/ryoku/migrations/grub-boot-success-timer`),
+  so a later choice to disable it stands. `ryoku-grub-menu install` drops the
+  files an earlier theme left in `/boot/grub2/themes/ryoku`.
 - **Updates preserve installer package choices.** Control-manifest convergence
   now excludes browser, login-shell, and compositor packages selected per box,
   so it cannot install alternatives the user did not choose.

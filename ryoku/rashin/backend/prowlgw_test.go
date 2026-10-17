@@ -346,6 +346,36 @@ func TestEnsureGatewayRetriesAfterFailedSpawn(t *testing.T) {
 	}
 }
 
+// `ryoku-rashin ensure` exits as soon as it returns, so its start must have
+// run by then; a background start died with the command and left Prowl off.
+func TestStartGatewayStartsBeforeItReturns(t *testing.T) {
+	homeDir := isolateProwlGatewayTest(t)
+	bin := filepath.Join(homeDir, "prowl")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RYOKU_PROWL_BIN", bin)
+	t.Setenv("RYOKU_PROWL_PORT", "1")
+	oldSpawn := gatewaySpawn
+	t.Cleanup(func() { gatewaySpawn = oldSpawn })
+	var started []string
+	gatewaySpawn = func(name string, args ...string) error {
+		started = append(started, name+" "+strings.Join(args, " "))
+		return nil
+	}
+	if err := startGateway(); err != nil {
+		t.Fatal(err)
+	}
+	if want := bin + " gateway up --port 1"; len(started) != 1 || started[0] != want {
+		t.Fatalf("started = %q, want [%q] before startGateway returned", started, want)
+	}
+
+	gatewaySpawn = func(string, ...string) error { return errors.New("start failed") }
+	if err := startGateway(); err == nil {
+		t.Fatal("a failed start was not reported")
+	}
+}
+
 func TestEnsureGatewayDoesNotSpawnWithoutProwl(t *testing.T) {
 	isolateProwlGatewayTest(t)
 	oldSpawn := gatewaySpawn

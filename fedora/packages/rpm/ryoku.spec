@@ -12,6 +12,7 @@ BuildRequires:  findutils
 BuildRequires:  golang >= 1.26.4
 Requires:       dnf
 Requires:       snapper
+Requires:       libdnf5-plugin-actions
 Suggests:       lua
 
 %description

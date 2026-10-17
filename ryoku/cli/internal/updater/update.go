@@ -354,7 +354,7 @@ func Update(args []string) (err error) {
 					case host.XBPS:
 						hint = i18n.T("no pre-update snapshot exists (snapper was unavailable), so `ryoku rollback` cannot revert this; recover with XBPS directly")
 					case host.DNF:
-						hint = i18n.T("snapshots are unavailable on Fedora; recover with DNF directly")
+						hint = i18n.T("no pre-update snapshot exists (snapper was unavailable), so `ryoku rollback` cannot revert this; recover with DNF directly")
 					}
 					if pre != "" {
 						hint = i18n.T("see `ryoku rollback` (pre-update snapshot ") + pre + ")"
@@ -1563,6 +1563,12 @@ func snapshotCapability() (supported bool, reason string) {
 	return host.Default().Snapshots()
 }
 
+// snapshotPreview names the snapshot this boot looks at, or "" for an ordinary
+// boot.
+func snapshotPreview() string {
+	return host.Default().SnapshotPreview()
+}
+
 // snapHelpers: the snapshot facts the offer gates on, composed from sys
 // primitives so the updater runs the same checks the doctor does without
 // importing the doctor package.
@@ -1728,6 +1734,15 @@ func Rollback(args []string) error {
 			i++
 		}
 	}
+	// A look boot's changes stay in RAM, so neither way back can start here;
+	// the one step left is the restore, which the reason names.
+	if supported, reason := snapshotCapability(); !supported && snapshotPreview() != "" {
+		if to != "" {
+			return errors.New(reason)
+		}
+		fmt.Println(reason)
+		return nil
+	}
 	if to != "" {
 		if !sys.IsFrozenVersion(to) {
 			return fmt.Errorf(i18n.T("--to takes a release tag or unstable build (see `ryoku rollback` for the list), got %q"), to)
@@ -1747,9 +1762,12 @@ func Rollback(args []string) error {
 	if supported {
 		fmt.Println(i18n.T("Two ways back:"))
 		fmt.Println(i18n.T("  the Ryoku set (its packages and config) to a published release, live;"))
-		if updatePackageManager() == host.XBPS {
+		switch updatePackageManager() {
+		case host.XBPS:
 			fmt.Println(i18n.T("  the whole system (Void included) to a snapshot, from the boot menu."))
-		} else {
+		case host.DNF:
+			fmt.Println(i18n.T("  the whole system (Fedora included) to a snapshot, from the boot menu."))
+		default:
 			fmt.Println(i18n.T("  the whole system (Arch included) to a snapshot, from the boot menu."))
 		}
 	} else {
@@ -1860,6 +1878,10 @@ func restoreGuide(id string) error {
 		}
 	}
 	fmt.Printf(i18n.T("Restoring snapshot %s\n\n"), label)
+	if updatePackageManager() == host.DNF {
+		fedoraRestoreGuide(id)
+		return nil
+	}
 	fmt.Println(i18n.T("Ryoku boots the @ subvolume directly, so a live `snapper rollback` cannot"))
 	fmt.Println(i18n.T("restore the system; the restore runs from the boot menu:"))
 	fmt.Printf(i18n.T("  1. Reboot, and in the Limine menu open Snapshots -> %s.\n"), id)
@@ -1879,6 +1901,27 @@ func restoreGuide(id string) error {
 		}
 	}
 	return nil
+}
+
+// fedoraRestoreGuide is the Fedora restore: look at the snapshot from the
+// "Ryoku snapshots" GRUB submenu, then make it the system from inside that boot.
+// With no snapshot in the menu, snapper reverts the changed files on the
+// running system instead.
+func fedoraRestoreGuide(id string) {
+	if !snapshotsListed() {
+		fmt.Println(i18n.T("The boot menu lists no snapshots (`journalctl -u ryoku-snapshot-menu` says"))
+		fmt.Println(i18n.T("why), so the restore runs on the running system with snapper:"))
+		fmt.Printf(i18n.T("  1. See what changed since then:  sudo snapper -c root status %s..0\n"), id)
+		fmt.Printf(i18n.T("  2. Put those files back:         sudo snapper -c root undochange %s..0\n"), id)
+		fmt.Println(i18n.T("  3. Reboot."))
+		fmt.Println(i18n.T("Kernels on /boot are not part of the snapshot and stay as they are."))
+		return
+	}
+	fmt.Println(i18n.T("The restore runs from the boot menu:"))
+	fmt.Printf(i18n.T("  1. Boot the snapshot: hold Shift (or press Esc) while the machine starts and\n     pick Ryoku snapshots -> Snapshot %s, or send only the next boot there:\n       sudo grub2-reboot '%s'\n"), id, snapshotEntryID(id))
+	fmt.Println(i18n.T("     It runs read-only with changes kept in RAM; nothing on disk changes."))
+	fmt.Println(i18n.T("  2. If it is the one, make it the system:  sudo ryoku boot-menu restore"))
+	fmt.Println(i18n.T("  3. Reboot into the restored system. The one it replaced is kept for two weeks."))
 }
 
 // Snapshots prints the root snapshot table when this host provides it.
@@ -1991,9 +2034,12 @@ func printSnapshotTable(rows []snapshotRow) {
 	if free := rootFree(); free != "" {
 		summary += ", " + free + i18n.T(" free on /")
 	}
-	if snapshotsInBootMenu() {
+	switch {
+	case updatePackageManager() == host.DNF && snapshotsListed():
+		summary += i18n.T(", listed in the GRUB boot menu")
+	case snapshotsInBootMenu():
 		summary += i18n.T(", listed in the Limine boot menu")
-	} else {
+	default:
 		summary += i18n.T(", NOT in the boot menu (ryoku doctor fixes that)")
 	}
 	fmt.Println(summary)
@@ -2102,6 +2148,8 @@ func Status(args []string) error {
 	// like a real empty store -- the opposite meaning), and the real count.
 	snapshotsSupported, snapshotsReason := snapshotCapability()
 	switch {
+	case !snapshotsSupported && snapshotPreview() != "":
+		fmt.Println(i18n.T("snapshots:     this boot runs one read-only (sudo ryoku boot-menu restore keeps it)"))
 	case !snapshotsSupported:
 		fmt.Printf(i18n.T("snapshots:     unavailable (%s)\n"), snapshotsReason)
 	case !sys.Exists("/etc/snapper/configs/root"):
@@ -2527,6 +2575,25 @@ func Deploy(_ []string) error {
 
 // --- snapper pre/post (best-effort on supported hosts) ----------------------
 
+// updateSnapshotMarker names the update that owns the open snapper pair on
+// Fedora, so the dnf hook (fedora/system/snapshots/ryoku-dnf-snapshot) adds no
+// pair inside it for the dnf runs the update and its doctor make through sudo,
+// which drops RYOKU_MANAGED_UPDATE from the environment. It holds the pid and
+// that process's start time: the pid survives the stage2 exec, and a pid
+// reused by another process does not match the time.
+const updateSnapshotMarker = "/run/ryoku/update-snapshot"
+
+// procStartTime is field 22 of /proc/<pid>/stat, the process's start time in
+// clock ticks since boot, or "".
+func procStartTime(pid int) string {
+	stat := readText(fmt.Sprintf("/proc/%d/stat", pid))
+	_, rest, ok := strings.Cut(stat, ") ")
+	if f := strings.Fields(rest); ok && len(f) >= 20 {
+		return f[19]
+	}
+	return ""
+}
+
 func snapperPre(desc string) string {
 	if supported, reason := snapshotCapability(); !supported {
 		fmt.Fprintln(os.Stderr, "warning: "+reason)
@@ -2548,6 +2615,9 @@ func snapperPre(desc string) string {
 		fmt.Fprintf(os.Stderr, i18n.T("note: pre-update snapshot skipped: %v\n"), err)
 		return ""
 	}
+	if start := procStartTime(os.Getpid()); start != "" && updatePackageManager() == host.DNF {
+		_ = sys.WriteRootFile(updateSnapshotMarker, fmt.Sprintf("%d %s\n", os.Getpid(), start), "0644")
+	}
 	return strings.TrimSpace(out)
 }
 
@@ -2560,6 +2630,9 @@ func snapperPost(pre, desc string) {
 	}
 	_ = sys.Sudo("snapper", "-c", snapperConfig, "create",
 		"-t", "post", "--pre-number", pre, "-c", "number", "-d", desc)
+	if updatePackageManager() == host.DNF {
+		_ = sys.Sudo("rm", "-f", updateSnapshotMarker)
+	}
 	// Prune here, on the path every update takes: snapper-cleanup.timer is
 	// unreliable (its service is coupled to limine-snapper-sync), so without
 	// this the pile grows unbounded. best-effort.

@@ -47,12 +47,12 @@ These are user-facing and work on any install.
 
 ### `ryoku update`
 
-On snapshot-capable Ryoku hosts, including Arch/CachyOS and Void, the full safe
-update is wrapped in a best-effort snapper pre/post pair: an unconfigured
-snapper never blocks the update, but a failed step aborts before anything else
-changes. Fedora deliberately reports snapshots unavailable because it boots
-through GRUB, which Ryoku's snapshot menu does not drive; its update continues
-without invoking snapper. What the update runs next depends on the world:
+On snapshot-capable Ryoku hosts, including Arch/CachyOS, Void and Fedora, the
+full safe update is wrapped in a best-effort snapper pre/post pair: an
+unconfigured snapper never blocks the update, but a failed step aborts before
+anything else changes. On Fedora the update writes its pid and start time to
+`/run/ryoku/update-snapshot`, so the dnf snapshot hook does not nest a second
+pair inside it. What the update runs next depends on the world:
 
 - **Dev checkout:** updates through the git channel. It fetches the channel
   branch (`main` for everyone), fast-forwards the checkout when it is sitting
@@ -172,7 +172,8 @@ back to the previous frozen version. Snapshot-capable Arch and Void installs
 can escalate a third failure to the complete
 `Ryoku Linux/Snapshots/<snapshot>/<kernel>` Limine path. Void runs the guard
 through the `ryoku-boot-guard` runit service. Fedora uses the systemd service
-and stops after the DNF package downgrade because it has no snapshot boot path.
+and escalates a third failure to the pre-update snapshot's entry under **Ryoku
+snapshots**, for the next boot only; it never restores unattended.
 
 `ryoku rollback <id>` explains the whole-system restore path on a
 snapshot-capable host. Ryoku boots the `@` subvolume directly
@@ -183,15 +184,36 @@ limine-snapper-restore`, then reboot into the restored system. The restore hook
 resets Limine to the first kernel under **Ryoku Linux** and clears the remembered
 snapshot entry.
 
-On a host without Ryoku's snapshot stack, including Fedora, bare `rollback`
-still lists releases and explains that snapshots are unavailable. Supplying a
-snapshot id returns that explanation as an error without invoking snapper.
+On Fedora the snapshots are under **Ryoku snapshots** in GRUB. Hold Shift or
+press Esc while booting to show the menu, or send only the next boot to a
+snapshot with `sudo grub2-reboot 'ryoku-snapshots>ryoku-snapshot-<id>'`. A
+snapshot boots read-only and keeps its writes in RAM, including writes to
+`/home`. To keep it, run `sudo ryoku boot-menu restore` in that boot. The
+restore keeps the current root subvolume as `<root>.broken-<time>` for two
+weeks, and the next boot starts the restored root and brings Fedora's kernel
+entries in line with it. In a snapshot boot, `ryoku rollback` and `ryoku
+status` name that restore step. When the menu lists no snapshots, `ryoku
+rollback <id>` falls back to `snapper -c root undochange <id>..0` on the
+running system.
+
+On a host without Ryoku's snapshot stack, bare `rollback` still lists releases
+and explains that snapshots are unavailable. Supplying a snapshot id returns
+that explanation as an error without invoking snapper.
+
+### `ryoku boot-menu`
+
+Fedora only, as root. `sync` rewrites the **Ryoku snapshots** GRUB submenu and
+keeps one kernel and initramfs copy on `/boot` for each kernel version the
+snapshots need. `ryoku-snapshot-menu.path` runs it after every snapshot.
+`restore`, run in a snapshot boot, makes that snapshot the root again.
+`restored` runs once, on the first boot of the restored root
+(`ryoku-snapshot-restored.service`).
 
 ### `ryoku snapshots`
 
-List the root snapper snapshots on supported pacman and XBPS hosts. Fedora
-prints that snapshots are unavailable because Ryoku does not drive its GRUB
-boot menu. The command exits with an error without invoking snapper.
+List the root snapper snapshots on supported pacman, XBPS and DNF hosts. On
+any other host it prints that snapshots are unavailable and exits with an
+error without invoking snapper.
 
 ### `ryoku reload`
 

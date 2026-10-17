@@ -35,8 +35,9 @@ moves the kernel unless `ryoku update --system` is used. The direct commands are
 `sudo pacman -Syu` on Arch or CachyOS, `sudo xbps-install -Syu` on Void, and
 `sudo dnf5 upgrade --refresh` on Fedora. XBPS has no transaction snapshot
 hooks, so Void users should use `ryoku update --system` when they want a base
-update covered by Ryoku's pre/post snapshots. Fedora does not provide snapshots;
-`--system` still runs the Ryoku and Fedora package lanes together. On the
+update covered by Ryoku's pre/post snapshots. Fedora snapshots every dnf
+transaction through a libdnf5 actions hook; `--system` still runs the Ryoku and
+Fedora package lanes together, under one pair. On the
 packaged lane, every `ryoku update` reports what the distribution lane is
 holding (`N system package(s) waiting`), `ryoku status` prints it as `system:`,
 and the Hub lists it under SYSTEM PACKAGES.
@@ -235,8 +236,9 @@ Ryoku set back in one native package transaction, re-materializes every user's
 config, and leaves the distribution base and kernel untouched. On
 snapshot-capable Arch and Void installs, a third failed boot selects the full
 pre-update snapshot path and clears Limine's remembered EFI entry so the
-fallback wins. Fedora records that snapshot escalation is unavailable and
-keeps the package downgrade.
+fallback wins. Fedora keeps the package downgrade and sends only the next boot
+to the pre-update snapshot's read-only GRUB entry; `sudo ryoku boot-menu
+restore` keeps it.
 `sudo ryoku boot-guard --disarm` clears a pending marker by hand.
 
 Doctor enables the host's service and prepares its state directory, so older

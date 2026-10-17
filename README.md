@@ -76,8 +76,8 @@ repository (pacman, XBPS or RPM). Hyprland and niri are the first-class
 compositors; Wayfire 0.11 is the experimental third on Arch and CachyOS, reached
 by switching desktops in the Hub or with `ryoku wm use wayfire`. Void is
 niri-only until it ships GCC 15 ([why](void/README.md)). Fedora converts an
-existing mutable system in place, keeps GRUB, has no snapshots, and leaves NVIDIA
-on nouveau ([details](fedora/README.md)).
+existing mutable system in place, keeps GRUB with a Ryoku snapshots submenu, and
+leaves NVIDIA on nouveau ([details](fedora/README.md)).
 
 ## The desktop
 

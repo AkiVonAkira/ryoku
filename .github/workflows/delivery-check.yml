@@ -35,6 +35,9 @@ jobs:
       - name: Verify Fedora package dependencies
         run: bash tests/fedora-packages.sh
 
+      - name: Verify Fedora's snapshot boot menu
+        run: bash tests/snapshot-boot.sh
+
       - name: Verify every edition stages the same payload
         run: bash tests/payload-parity.sh
 

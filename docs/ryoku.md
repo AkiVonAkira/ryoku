@@ -92,7 +92,7 @@ locked behind a text editor.
 - **The installers** share one desktop contract. `installation/` and
   `void/iso/` build the ISO paths and carry their packages offline.
   `ryoku-shell-installer/` converts an existing supported system, which is
-  the only Fedora path. Fedora keeps GRUB and has no snapshot boot menu.
+  the only Fedora path. Fedora keeps GRUB, with a Ryoku snapshots submenu.
   Atomic and other rpm-ostree editions are refused.
 - **Rashin** (`ryoku/rashin/`, optional and off by default) is the agent OS: a
   machine-generated knowledge vault, a local daemon with a web dashboard, and a

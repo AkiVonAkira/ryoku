@@ -50,8 +50,8 @@ compositor configuration into Ryoku's settings, so they appear in the Hub.
 The login screen, console, and boot prompt then follow the desktop keyboard
 layout.
 
-Fedora stays on the nouveau NVIDIA driver. The conversion creates no
-snapshots, does not offer Wayfire, and has no Fedora ISO.
+Fedora stays on the nouveau NVIDIA driver. The conversion sets up snapshots on
+a btrfs root, does not offer Wayfire, and has no Fedora ISO.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash

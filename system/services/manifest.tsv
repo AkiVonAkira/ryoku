@@ -18,6 +18,8 @@ socklog	system	enable-once	-	socklog-unix	preserve
 nanoklogd	system	enable-once	-	nanoklogd	preserve
 sddm	system	enable-once	-	sddm	preserve
 greeter-guard	system	boot	ryoku-greeter-guard.service	ryoku-greeter-guard	none
+snapshot-menu	system	boot	ryoku-snapshot-menu.path	-	none
+snapshot-restored	system	boot	ryoku-snapshot-restored.service	-	none
 snapper-cleanup	system	on-demand	snapper-cleanup.timer	snapper-cleanup	preserve
 ryoku-bootstrap	user	session	ryoku-bootstrap.service	ryoku-bootstrap	preserve:/var/lib/ryoku/bootstrap-enabled
 ryogami	user	session	ryogami.service	ryogami	preserve

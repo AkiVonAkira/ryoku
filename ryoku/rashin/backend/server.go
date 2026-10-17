@@ -541,7 +541,7 @@ func cmdEnable(atBoot bool) error {
 		if err := systemctlUser("enable", "--now", rashinUnit); err != nil {
 			return err
 		}
-		if err := ensureGateway(); err != nil {
+		if err := startGateway(); err != nil {
 			return err
 		}
 		if atBoot {
@@ -576,7 +576,7 @@ func cmdEnable(atBoot bool) error {
 		}
 		_ = cmd.Process.Release()
 	}
-	if err := ensureGateway(); err != nil {
+	if err := startGateway(); err != nil {
 		return err
 	}
 	fmt.Println("rashin enabled")
@@ -614,7 +614,7 @@ func cmdEnsure() error {
 		return nil
 	}
 	if cfg.Enabled && rashinActive() {
-		return ensureGateway()
+		return startGateway()
 	}
 	return cmdEnable(true)
 }

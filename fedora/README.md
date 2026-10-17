@@ -60,7 +60,25 @@ installed Ryoku set in place. Frozen release and testing targets are retained
 for package rollback, and the boot guard can downgrade the Ryoku set after a
 failed update.
 
-Fedora keeps GRUB, so it has no Ryoku snapshot boot menu or snapshot restore.
+Fedora keeps GRUB, and snapper snapshots are on. `ryoku doctor` gives
+`/.snapshots` its own top-level btrfs subvolume and fstab entry, `ryoku update`
+takes a pre/post pair, and a libdnf5 actions hook (`system/snapshots/`) takes a
+pair around each dnf transaction that `ryoku update` does not run. GRUB lists the
+snapshots under **Ryoku snapshots**. Fedora hides the menu after a good boot, so
+hold Shift or press Esc while booting to see it. A snapshot boots read-only and
+keeps its writes in RAM. `/home` shows as it is now, and writes there are
+dropped too. Run `sudo ryoku boot-menu restore` in that boot to make the
+snapshot the system again; `ryoku rollback <id>` walks through the steps. Shim,
+GRUB and Fedora's kernels stay as Fedora signs them, and the snapshot entries
+boot copies of those kernels from `/boot/ryoku/snapshots`. The menu uses the
+Ryoku theme (`system/boot/grub/theme/`), which puts the Limine menu's layout on
+the Ryoku wallpaper. `ryoku-grub-menu` builds its "Ryoku Mono" fonts onto
+`/boot` from SpaceMono when `ryoku-extras` installed it, else from Noto Sans
+Mono.
+The Ryoku Plymouth splash shows from GRUB to the login screen: `ryoku-desktop`
+pulls in the script and label plugins it draws with, and `ryoku-plymouth-apply`
+(`system/boot/ryoku-plymouth-apply`) makes it the default and rebuilds the dracut
+images on install. Later updates rebuild only while it is still the default.
 NVIDIA stays on nouveau. Wayfire is unavailable because Fedora ships
 0.10.1 and Ryoku requires 0.11. AUR-only extras such as Zen Browser, LocalSend,
 Voxtype, Looking Glass, and SteamCMD are not shipped in the Fedora lane.

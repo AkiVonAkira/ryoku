@@ -128,7 +128,7 @@ func RunSetup() error {
 	if setupDryRun() {
 		reportPhase("route", "would connect Hermes to Prowl", true)
 	} else {
-		if err := ensureGateway(); err != nil {
+		if err := startGateway(); err != nil {
 			return fmt.Errorf("start Prowl gateway: %w", err)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
