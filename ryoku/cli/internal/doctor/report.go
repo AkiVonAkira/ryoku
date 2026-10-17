@@ -88,6 +88,23 @@ var diagnosticServices = []diagnosticService{
 	{"--user", "ryoku-rashin.service"},
 }
 
+// Whether a service is running, as far as this report is allowed to look.
+//
+// runit answers `is-active` by running `sv status` against the supervise
+// directory, and for a system service that directory is root's. The report is
+// deliberately unprivileged, so the query fails and the host layer reports the
+// service absent. Printing "absent" for a service that is plainly running is
+// worse than printing nothing: every Void bundle has said the display manager,
+// the network and bluetooth were all down, and the state was never read at all.
+// systemd has no such problem, which is why this went unnoticed.
+func serviceActiveLabel(initSystem host.InitSystem, service diagnosticService) string {
+	code := doctorService(service.scope, "is-active", service.name)
+	if initSystem == host.Runit && service.scope == "--system" && code == host.ExitAbsent {
+		return "unreadable without root"
+	}
+	return hostStateLabel(code)
+}
+
 func hostStateLabel(code int) string {
 	switch code {
 	case host.ExitOK:
@@ -227,7 +244,7 @@ func gatherReport(findings []finding) string {
 	} else {
 		line("service manager: %s", initSystem)
 		for _, service := range diagnosticServices {
-			active := hostStateLabel(doctorService(service.scope, "is-active", service.name))
+			active := serviceActiveLabel(initSystem, service)
 			enabled := hostStateLabel(doctorService(service.scope, "is-enabled", service.name))
 			line("%s %s: active=%s enabled=%s", strings.TrimPrefix(service.scope, "--"), service.name, active, enabled)
 		}
@@ -238,7 +255,11 @@ func gatherReport(findings []finding) string {
 
 	section("desktop")
 	cmd("ryoku-shell", "status")
-	cmd("pgrep", "-af", "quickshell")
+	// The shell runs as `qs -c shell` and only ryogami and the lockscreen run as
+	// `quickshell`, so a bare "quickshell" pattern reports the shell missing in
+	// every bundle and matches this report's own command line besides. Anchor on
+	// the executable instead, which catches both spellings and nothing else.
+	cmd("pgrep", "-af", `^(\S*/)?(quickshell|qs)([[:space:]]|$)`)
 	for _, v := range []string{"WAYLAND_DISPLAY", "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE"} {
 		line("%s=%s", v, os.Getenv(v))
 	}

@@ -12,6 +12,21 @@
   what the switch itself installed (`internal/host/phone.go`).
 
 ### Fixed
+- **`ryoku debug` stops reporting the shell as missing.** The desktop section
+  ran `pgrep -af quickshell`, but the shell is invoked as `qs -c shell`, and
+  only ryogami and the lockscreen carry `quickshell` in their command line. So
+  every bundle anyone shared looked like the shell was not running, which is the
+  first line a maintainer reads, and the pattern matched the report's own
+  command line besides. It now anchors on the executable and catches both
+  spellings (`internal/doctor/report.go`).
+- **A service state the report could not read is no longer printed as absent.**
+  runit answers `is-active` for a system service by reading root's supervise
+  directory, and the report is deliberately unprivileged, so the query failed
+  and the host layer called the service absent. Every Void bundle therefore
+  claimed sddm, NetworkManager and bluetooth were all down while they were
+  running, with and without a sudo ticket, because sudo is never invoked. The
+  report now says the state is unreadable without root
+  (`internal/doctor/report.go`).
 - **Updates preserve installer package choices.** Control-manifest convergence
   now excludes browser, login-shell, and compositor packages selected per box,
   so it cannot install alternatives the user did not choose.
