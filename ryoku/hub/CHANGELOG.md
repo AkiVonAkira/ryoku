@@ -96,6 +96,10 @@
   Hermes's model, and connecting an agent now says it routes that agent's models
   through Prowl (`quickshell/pages/RashinPage.qml`).
 ### Fixed
+- **Animation controls keep their names and copy inside each card.** Motion feel
+  chips wrap before the starting-point hint, curve notes use the room beside the
+  editor, and Advanced rows move their controls below the animation name when a
+  narrow column cannot hold both (`quickshell/pages/AnimationsPage.qml`).
 - **Global resets stay on the Global page, and Save says when it applies.**
   Reset restores only language, region, location and font choices instead of
   also changing the bar style or other pages. The window settings page now says
