@@ -10,7 +10,6 @@ BuildRequires:  bash
 BuildRequires:  coreutils
 BuildRequires:  ffmpeg-free
 BuildRequires:  findutils
-BuildRequires:  git
 BuildRequires:  python3
 Requires:       ffmpeg-free
 

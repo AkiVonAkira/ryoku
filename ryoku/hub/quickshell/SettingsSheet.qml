@@ -218,8 +218,9 @@ Item {
     // privilege prompt belongs, and the engine starts now rather than next login.
     // The row carries a package name and a binary, so this stays compositor-neutral.
     function installPackage(r) {
-        if (!r.pkg) return;
-        var cmd = "ryoku-host pkg install " + r.pkg;
+        if (!r.pkg || !/^[A-Za-z0-9@._+-]+$/.test(r.pkg)) return;
+        if (r.launch && !/^[A-Za-z0-9._+-]+$/.test(r.launch)) return;
+        var cmd = "sudo ryoku-host pkg install " + r.pkg;
         // A second reader of the keyboard would play every press twice, so start
         // one only when none is running; setsid detaches it from the terminal.
         if (r.launch)

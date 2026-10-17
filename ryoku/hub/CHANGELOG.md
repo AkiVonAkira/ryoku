@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **Window Manager can install optional package-backed features.** Its generic
+  install row opens a privileged package install in a terminal, then starts the
+  feature without waiting for the next login (`quickshell/SettingsSheet.qml`).
 - **Desktop > Notifications can show notification images.** The new switch
   writes the shell's opt-in image setting; off keeps the shipped text-only
   notification look (`quickshell/schema/DesktopPage.js`).

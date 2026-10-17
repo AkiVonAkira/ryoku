@@ -7,7 +7,8 @@ _repo="$startdir/../../../.."
 _payload="$_repo/release/packages/ryoku-keysounds-profiles/payload.sh"
 
 build() {
-  RYOKU_SRC="$_repo" RYOKU_BUILD_DIR="$srcdir" RYOKU_PKGVER="$pkgver" \
+  MECHVIBES="$_repo/.rpm-ryoku-keysounds-profiles/mechvibes" \
+    RYOKU_SRC="$_repo" RYOKU_BUILD_DIR="$srcdir" RYOKU_PKGVER="$pkgver" \
     "$_payload" build
 }
 

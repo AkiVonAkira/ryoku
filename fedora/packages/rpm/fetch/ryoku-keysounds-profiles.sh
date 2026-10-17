@@ -3,7 +3,7 @@ set -euo pipefail
 
 : "${RYOKU_FETCH_TREE:?}"
 commit=326252a13e7bef4f1c35d08ef0189b5af6f8ba02
-dest="$RYOKU_FETCH_TREE/.rpm-ryoku-keysounds/mechvibes"
+dest="$RYOKU_FETCH_TREE/.rpm-ryoku-keysounds-profiles/mechvibes"
 rm -rf "$dest"
 mkdir -p "${dest%/*}"
 git clone -q https://github.com/hainguyents13/mechvibes.git "$dest"

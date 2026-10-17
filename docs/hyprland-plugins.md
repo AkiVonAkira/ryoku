@@ -134,9 +134,9 @@ installed under `/usr/share/ryoku/keysounds/`; the plugin package
 has no plugin system, so it reuses the same samples through
 `ryoku/keysounds/main.rs`: a small standalone engine (evdev in, libcanberra
 out, no crates) that the niri provider writes its settings for, shipped as the
-package `ryoku-keysounds-niri`. Both read the one copy of the samples on disk,
-and neither is a default install: the Hub's Window Manager page installs them
-on demand.
+package `ryoku-keysounds-niri`. Both read the one copy of the samples on disk.
+The Hyprland package arrives with the Hyprland desktop; niri installs its
+engine on demand from the Hub's Window Manager page.
 
 The plugin looks for a profile in the user's `~/.local/share/ryoku/keysounds/`,
 then beside its own `.so` (where a local build lays it), then the packaged

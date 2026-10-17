@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **Key sounds have shared profiles and a niri engine package.**
+  `ryoku-keysounds-profiles` now owns the samples and importer, while the new
+  `ryoku-keysounds-niri` package ships niri's standalone engine.
 - **The Testing gate moves the source lane only after its checks pass.**
   `.github/workflows/testing-gate.yml` records the current check and last
   passing commit in `channels/testing/checked.json` on every `unstable-dev`

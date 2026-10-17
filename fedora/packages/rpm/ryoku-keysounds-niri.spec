@@ -7,8 +7,10 @@ URL:            https://ryoku.dev
 Source0:        ryoku-%{version}.tar.gz
 %global debug_package %{nil}
 BuildRequires:  bash
+BuildRequires:  gcc
 BuildRequires:  coreutils
 BuildRequires:  findutils
+BuildRequires:  libcanberra-devel
 BuildRequires:  rust
 Requires:       libcanberra
 Requires:       ryoku-keysounds-profiles = %{version}-%{release}

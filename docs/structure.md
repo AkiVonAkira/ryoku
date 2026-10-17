@@ -247,7 +247,7 @@ serves them with no release infrastructure.
 ## `release/` packaging
 
 - `packages/` one directory per pacman package in the `[ryoku]` repo, each a
-  `PKGBUILD`. 42 in all, in four groups by why they exist:
+  `PKGBUILD`. 40 in all, in four groups by why they exist:
   - built from the checked-out monorepo: the components (`ryoku-shell`,
     `ryoku-hub`, `ryoku-rashin`, `ryoku`, `ryoku-blobs`,
     `ryotunes`, `ryogami` the wallpaper daemon), the `ryoku-desktop` umbrella,

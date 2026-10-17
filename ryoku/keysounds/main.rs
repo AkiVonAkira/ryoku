@@ -1,7 +1,7 @@
 // ryoku-keysounds: a keyboard sound on every key press, for a compositor with no
 // plugin system to hang one on. Reading the same evdev node libinput reads is
 // the one way to hear every key in every window without grabbing input, and
-// playback goes through libcanberra, the same event-sound library the Hyprland
+// playback goes through libcanberra, the same event-sound library the companion
 // plugin uses, so the sound server caches and mixes and the compositor does no
 // work per keystroke.
 //
@@ -53,8 +53,8 @@ extern "C" {
 }
 
 /// The settings the provider writes and the daemon reads: `key=value` lines,
-/// `#` comments ignored. The defaults match the Hyprland plugin, so a box whose
-/// provider has never run still sounds.
+/// `#` comments ignored. The defaults match the companion plugin, so a box
+/// whose provider has never run still sounds.
 struct Settings {
     enabled: bool,
     profile: String,
@@ -148,8 +148,8 @@ fn is_sample(p: &Path) -> bool {
     matches!(p.extension().and_then(|e| e.to_str()), Some("wav") | Some("oga") | Some("ogg"))
 }
 
-/// Files named `<role>-<n>.<ext>`, matched by prefix exactly as the Hyprland
-/// plugin's sample lookup matches them, so a profile sounds the same either way.
+/// Files named `<role>-<n>.<ext>`, matched by prefix exactly as the plugin's
+/// sample lookup matches them, so a profile sounds the same either way.
 fn collect(dir: &Path, role: &str) -> Vec<String> {
     let prefix = format!("{role}-");
     let mut out = Vec::new();

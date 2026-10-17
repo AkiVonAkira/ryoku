@@ -5,7 +5,7 @@ ryoku/i18n/catalog ryoku-desktop
 .rpm-extras ryoku-extras
 .rpm-ryoku-oh-my-zsh ryoku-oh-my-zsh
 .rpm-ryoku-hypr-plugins ryoku-hypr-plugins
-.rpm-ryoku-keysounds ryoku-keysounds
+.rpm-ryoku-keysounds-profiles ryoku-keysounds-profiles
 .rpm-hypr-dynamic-cursors hypr-dynamic-cursors
 .rpm-hyprglass hyprglass
 .rpm-hyprgrass hyprgrass
