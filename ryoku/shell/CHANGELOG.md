@@ -40,6 +40,13 @@
   rebuilding the menu, which is what kept the frame menus landing in a screen
   corner when anything but the frame rail asked for them
   (`services/ShellState.qml`, `modules/bar/Frame.qml`).
+- **Apps installed through Stash can be removed again.** The ask bar's Tools
+  list shows managed AppImages and extracted apps with a confirmed Uninstall
+  action; the CLI also provides `stash-install.sh list` and `uninstall <id>`.
+  Removal clears the payload, every launcher that points to it, and its icon
+  while leaving the app's own data in place (`scripts/stash-install.sh`,
+  `quickshell/shell/services/Stash.qml`,
+  `quickshell/shell/modules/ask/AskTools.qml`, `tests/stash-install.sh`).
 - **The ask box shows what a link can be fetched as before it downloads.**
   Paste a link and press Enter (or pick "Download URL"): the box reads the
   formats once and lists one row per tier under the file's own title, with a

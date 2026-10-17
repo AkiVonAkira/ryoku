@@ -38,7 +38,12 @@ cat >"$stub/flatpak" <<EOF
 printf '%s\n' "\$*" >>"$work/flatpak.log"
 exit 0
 EOF
-for t in notify-send update-desktop-database; do printf '#!/bin/sh\nexit 0\n' >"$stub/$t"; done
+printf '#!/bin/sh\nexit 0\n' >"$stub/notify-send"
+cat >"$stub/update-desktop-database" <<EOF
+#!/bin/sh
+printf '%s\n' "\$*" >>"$work/desktop-db.log"
+exit 0
+EOF
 chmod +x "$stub"/*
 export PATH="$stub:$PATH"
 
@@ -51,9 +56,13 @@ mkpkg() {
   ( cd "$d" && tar -czf "$out" .PKGINFO )
 }
 
+run_stash_cmd() {
+  HOME="$work/home" bash "$SCRIPT" "$@" >"$work/out" 2>&1
+}
+
 run_stash() {
   rm -rf "${work:?}/home"
-  HOME="$work/home" bash "$SCRIPT" >"$work/out" 2>&1
+  run_stash_cmd "$@"
 }
 
 # case 1: .pkg.tar.* installs via pkexec and the host seam, not extraction.
@@ -188,6 +197,88 @@ s7="$work/stash7"; mkdir -p "$s7"
 printf 'not a real package\n' >"$s7/broken.deb"
 STASH_DIR="$s7" run_stash || true
 present "$s7/broken.deb" "a failed install keeps its source in the stash"
+
+# case 8: a managed AppImage is listed, and uninstall removes every installed
+# artifact plus a second desktop entry that points at the payload.
+s8="$work/stash8"; mkdir -p "$s8"
+cat >"$s8/managed.AppImage" <<'EOF'
+#!/bin/sh
+if [ "${1:-}" = "--appimage-extract" ]; then
+  mkdir -p squashfs-root/icons
+  printf '[Desktop Entry]\nType=Application\nName=Managed App\nExec=managed\nIcon=managed\n' \
+    >squashfs-root/managed.desktop
+  printf 'icon\n' >squashfs-root/icons/managed.png
+fi
+EOF
+chmod +x "$s8/managed.AppImage"
+: >"$work/desktop-db.log"
+STASH_DIR="$s8" run_stash "$s8/managed.AppImage"
+payload="$work/home/.local/share/ryoku-apps/managed.AppImage"
+desktop="$work/home/.local/share/applications/managed.desktop"
+icon="$work/home/.local/share/icons/managed.png"
+manifest="$work/home/.local/share/ryoku-apps/.stash-managed.manifest"
+extra="$work/home/.local/share/applications/managed-second.desktop"
+present "$payload" "AppImage payload installed"
+present "$desktop" "synthesized AppImage desktop installed"
+present "$icon" "AppImage icon installed"
+present "$manifest" "managed install records its artifacts"
+printf '[Desktop Entry]\nType=Application\nName=Managed App secondary\nExec="%s" %%U\n' "$payload" >"$extra"
+mkdir -p "$work/home/.config/ManagedApp"
+printf 'keep\n' >"$work/home/.config/ManagedApp/settings"
+run_stash_cmd list
+if grep -qx $'managed\tManaged App' "$work/out"; then
+  echo "  ok: managed AppImage appears in list"
+else
+  echo "::error::FAIL: managed AppImage missing from list: $(cat "$work/out")" >&2; fail=1
+fi
+run_stash_cmd uninstall managed
+absent "$payload" "uninstall removes the AppImage payload"
+absent "$desktop" "uninstall removes the synthesized desktop"
+absent "$extra" "uninstall removes a second desktop pointing at the payload"
+absent "$icon" "uninstall removes the installed icon"
+absent "$manifest" "uninstall removes the install manifest"
+present "$work/home/.config/ManagedApp/settings" "uninstall keeps application data"
+if grep -qx "$work/home/.local/share/applications" "$work/desktop-db.log"; then
+  echo "  ok: uninstall refreshes the desktop database"
+else
+  echo "::error::FAIL: uninstall did not refresh the desktop database" >&2; fail=1
+fi
+
+# case 9: installs made before manifests existed are discovered from their
+# payload and desktop entry, then removed with their icon.
+rm -rf "${work:?}/home"
+legacy_store="$work/home/.local/share/ryoku-apps"
+legacy_apps="$work/home/.local/share/applications"
+legacy_icons="$work/home/.local/share/icons"
+mkdir -p "$legacy_store" "$legacy_apps" "$legacy_icons"
+legacy_payload="$legacy_store/legacy.AppImage"
+printf '#!/bin/sh\nexit 0\n' >"$legacy_payload"; chmod +x "$legacy_payload"
+printf 'legacy icon\n' >"$legacy_icons/legacy.png"
+printf '[Desktop Entry]\nType=Application\nName=Legacy App\nExec=%s %%U\nTryExec=%s\nIcon=%s\n' \
+  "$legacy_payload" "$legacy_payload" "$legacy_icons/legacy.png" >"$legacy_apps/legacy.desktop"
+printf '[Desktop Entry]\nType=Application\nName=Legacy TryExec\nExec=/usr/bin/false\nTryExec=%s\n' \
+  "$legacy_payload" >"$legacy_apps/legacy-try.desktop"
+run_stash_cmd list
+if grep -qx $'legacy\tLegacy App' "$work/out"; then
+  echo "  ok: pre-manifest AppImage appears in list"
+else
+  echo "::error::FAIL: pre-manifest AppImage missing from list: $(cat "$work/out")" >&2; fail=1
+fi
+run_stash_cmd uninstall legacy
+absent "$legacy_payload" "pre-manifest uninstall removes the payload"
+absent "$legacy_apps/legacy.desktop" "pre-manifest uninstall removes its desktop"
+absent "$legacy_apps/legacy-try.desktop" "pre-manifest uninstall removes a TryExec-linked desktop"
+absent "$legacy_icons/legacy.png" "pre-manifest uninstall removes its icon"
+
+# case 10: ids cannot traverse out of the payload directory.
+mkdir -p "$work/home/.local/share/outside"
+printf 'keep\n' >"$work/home/.local/share/outside/sentinel"
+if run_stash_cmd uninstall "../outside"; then
+  echo "::error::FAIL: hostile uninstall id was accepted" >&2; fail=1
+else
+  echo "  ok: hostile uninstall id refused"
+fi
+present "$work/home/.local/share/outside/sentinel" "hostile id cannot remove an outside path"
 
 if (( fail )); then echo "stash-install: FAILED" >&2; exit 1; fi
 echo "stash-install: all checks passed"

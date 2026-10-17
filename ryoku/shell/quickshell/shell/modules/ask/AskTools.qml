@@ -18,6 +18,8 @@ Item {
     property bool pickerOpen: false
     property string pickerMode: "compress"
     property bool recentOpen: false
+    property bool installedOpen: false
+    property string confirmUninstallId: ""
     property bool engineOpen: false
     readonly property bool motionAllowed: active && !Tokens.reduceMotion && !Motion.reduce
     // The download has been queued and the link is spent, so the field is
@@ -27,6 +29,7 @@ Item {
         { id: "download", glyph: "download", name: I18n.tr("Download URL"), hint: I18n.tr("Video, audio, or mute") },
         { id: "compress", glyph: "folder_zip", name: I18n.tr("Compress files"), hint: I18n.tr("Pick videos or images") },
         { id: "install", glyph: "deployed_code", name: I18n.tr("Install package files"), hint: I18n.tr("AppImage, package, or archive") },
+        { id: "installed", glyph: "inventory_2", name: I18n.tr("Installed apps"), hint: I18n.tr("Remove apps installed through Stash") },
         { id: "recent", glyph: "history", name: I18n.tr("Recent downloads"), hint: I18n.tr("Open the Stash folder") },
         { id: "clear", glyph: "delete_sweep", name: I18n.tr("Clear recent"), hint: I18n.tr("Remove downloaded files") },
         { id: "dashboard", glyph: "dashboard", name: I18n.tr("Rashin dashboard"), hint: I18n.tr("Open setup and usage") }
@@ -87,6 +90,14 @@ Item {
             openPicker(id);
         } else if (id === "recent") {
             recentOpen = !recentOpen;
+            installedOpen = false;
+            confirmUninstallId = "";
+        } else if (id === "installed") {
+            installedOpen = !installedOpen;
+            recentOpen = false;
+            confirmUninstallId = "";
+            if (installedOpen)
+                Stash.refreshInstalled();
         } else if (id === "clear") {
             Stash.clearAll();
         } else if (id === "dashboard") {
@@ -828,6 +839,122 @@ Item {
                             wrapMode: Text.WordWrap
                         }
                     }
+                }
+            }
+        }
+
+        Column {
+            width: parent.width
+            visible: root.installedOpen
+            spacing: Tokens.s1 * root.s
+
+            Text {
+                text: I18n.tr("INSTALLED THROUGH STASH")
+                color: Tokens.inkMuted
+                font.family: Tokens.mono
+                font.pixelSize: Tokens.fTiny * root.s
+                font.letterSpacing: Tokens.trackLabel
+            }
+
+            Text {
+                width: parent.width
+                text: I18n.tr("Uninstall removes the app and launcher. Your app data stays.")
+                color: Tokens.inkMuted
+                font.family: Tokens.ui
+                font.pixelSize: Tokens.fTiny * root.s
+                wrapMode: Text.WordWrap
+            }
+
+            Text {
+                visible: Stash.installedState === "loading"
+                text: I18n.tr("Reading installed apps…")
+                color: Tokens.inkMuted
+                font.family: Tokens.ui
+                font.pixelSize: Tokens.fSmall * root.s
+            }
+
+            Text {
+                visible: Stash.installedState === "ready" && Stash.installedModel.count === 0
+                text: I18n.tr("No apps installed through Stash")
+                color: Tokens.inkMuted
+                font.family: Tokens.ui
+                font.pixelSize: Tokens.fSmall * root.s
+            }
+
+            Text {
+                visible: Stash.installedState === "error"
+                text: I18n.tr("Couldn't read installed apps")
+                color: Tokens.inkDim
+                font.family: Tokens.ui
+                font.pixelSize: Tokens.fSmall * root.s
+            }
+
+            Repeater {
+                model: Stash.installedModel
+                delegate: Rectangle {
+                    id: installedRow
+                    required property string appId
+                    required property string label
+                    width: parent.width
+                    height: 44 * root.s
+                    radius: Tokens.radius * root.s
+                    color: installedHover.hovered ? Tokens.tint10 : "transparent"
+                    border.width: Tokens.border
+                    border.color: Tokens.lineSoft
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.right: uninstallButton.left
+                        anchors.leftMargin: Tokens.s3 * root.s
+                        anchors.rightMargin: Tokens.s2 * root.s
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: installedRow.label
+                        color: Tokens.ink
+                        font.family: Tokens.ui
+                        font.pixelSize: Tokens.fSmall * root.s
+                        elide: Text.ElideMiddle
+                    }
+
+                    Rectangle {
+                        id: uninstallButton
+                        anchors.right: parent.right
+                        anchors.rightMargin: Tokens.s2 * root.s
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: uninstallLabel.implicitWidth + Tokens.s3 * root.s
+                        height: Tokens.ctlH * root.s
+                        radius: Tokens.radius * root.s
+                        color: uninstallTap.pressed ? Tokens.tint16
+                            : uninstallHover.hovered ? Tokens.tint10 : Tokens.tint5
+                        border.width: Tokens.border
+                        border.color: root.confirmUninstallId === installedRow.appId
+                            ? Tokens.lineStrong : Tokens.lineSoft
+
+                        Text {
+                            id: uninstallLabel
+                            anchors.centerIn: parent
+                            text: Stash.uninstallingId === installedRow.appId ? I18n.tr("Removing…")
+                                : root.confirmUninstallId === installedRow.appId ? I18n.tr("Confirm")
+                                : I18n.tr("Uninstall")
+                            color: Tokens.ink
+                            font.family: Tokens.ui
+                            font.pixelSize: Tokens.fTiny * root.s
+                            font.weight: Font.DemiBold
+                        }
+                        HoverHandler { id: uninstallHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler {
+                            id: uninstallTap
+                            enabled: Stash.uninstallingId.length === 0
+                            onTapped: {
+                                if (root.confirmUninstallId === installedRow.appId) {
+                                    root.confirmUninstallId = "";
+                                    Stash.uninstallApp(installedRow.appId);
+                                } else {
+                                    root.confirmUninstallId = installedRow.appId;
+                                }
+                            }
+                        }
+                    }
+                    HoverHandler { id: installedHover }
                 }
             }
         }

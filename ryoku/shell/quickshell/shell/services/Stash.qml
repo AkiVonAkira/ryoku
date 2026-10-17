@@ -28,6 +28,9 @@ Singleton {
     readonly property alias files: files
     readonly property int count: files.count
     readonly property alias queueModel: queueModel
+    readonly property alias installedModel: installedModel
+    property string installedState: "idle" // idle | loading | ready | error
+    property string uninstallingId: ""
 
     // Newest-first, capped: the Tools "recently downloaded" list. Sorted here in
     // JS because FolderListModel's own time sort is unreliable across builds.
@@ -183,6 +186,32 @@ Singleton {
     function install(paths) {
         if (!paths || paths.length === 0) return;
         Quickshell.execDetached(["stash-install.sh"].concat(paths));
+    }
+
+    function refreshInstalled() {
+        installedModel.clear();
+        root.installedState = "loading";
+        if (installedProc.running)
+            installedProc.running = false;
+        installedProc.running = true;
+    }
+
+    function onInstalledLine(line) {
+        const fields = ("" + line).split("\t");
+        if (fields.length < 1 || fields[0].length === 0)
+            return;
+        installedModel.append({
+            appId: fields[0],
+            label: fields.length > 1 && fields[1].length > 0 ? fields.slice(1).join(" ") : fields[0]
+        });
+    }
+
+    function uninstallApp(appId) {
+        if (!appId || uninstallProc.running)
+            return;
+        root.uninstallingId = appId;
+        uninstallProc.command = ["stash-install.sh", "uninstall", appId];
+        uninstallProc.running = true;
     }
 
     // ── Format probe ────────────────────────────────────────────────────
@@ -481,6 +510,28 @@ Singleton {
 
     ListModel {
         id: queueModel
+    }
+
+    ListModel {
+        id: installedModel
+    }
+
+    Process {
+        id: installedProc
+        command: ["stash-install.sh", "list"]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: (line) => root.onInstalledLine(line)
+        }
+        onExited: (code) => root.installedState = code === 0 ? "ready" : "error"
+    }
+
+    Process {
+        id: uninstallProc
+        onExited: {
+            root.uninstallingId = "";
+            root.refreshInstalled();
+        }
     }
 
     Process {
