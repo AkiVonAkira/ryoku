@@ -78,6 +78,15 @@
   under Hyprland, niri and Wayfire (`quickshell/inir/`).
 
 ### Added
+- **Ryogami has a Duel picker style.** One row of slanted cards: the chosen
+  wallpaper stands tall and wide in the middle, its neighbours narrow and
+  shorten the further out they sit, and the whole row glides as you step, with
+  a video playing on the chosen card. Pick it under Settings, Layout & presets,
+  Display mode; card height and width, slant, narrowing, corner radius, glide
+  time, shadows and the row's position are its own settings. The design follows
+  the wallpaper picker in Serpantinum by ilyamiro
+  (`ryogami/picker/src/layouts/duellayout.cpp`,
+  `ryogami/daemon/settings_schema_table.go`).
 - **A surface request can name the trigger it was opened from.**
   `ShellState.requestSurfaceActive` now forwards its context the way
   `requestSurface` already does, and a caller passing `{ ownerRect: <global
