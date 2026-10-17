@@ -24,6 +24,8 @@ Item {
     property color borderColor: "transparent"
     property real borderWidth: 0
     property bool hasShadow: false
+    property bool standaloneBlur: false
+    property var blurScreen: null
     property color shadowColor: Qt.rgba(0, 0, 0, 0.22)
     property real emptyGraphicSize: root.s(148)
     property real contentMargins: root.s(12)
@@ -97,7 +99,7 @@ Item {
         anchors.bottomMargin: -root.s(2)
         radius: root.cornerRadius
         color: root.shadowColor
-        visible: root.hasShadow
+        visible: root.hasShadow && !ThemeBackend.glassActive
     }
 
     Rectangle {
@@ -115,6 +117,16 @@ Item {
             radius: parent.radius
             tintColor: ThemeBackend.surface0
             tintAmount: 0.3
+        }
+
+        WallpaperBlur {
+            z: -1
+            anchors.fill: parent
+            radius: parent.radius
+            standalone: true
+            surfaceEnabled: root.standaloneBlur
+            screenOverride: root.blurScreen
+            useSnapshot: root.blurScreen !== null
         }
     }
 
@@ -460,7 +472,7 @@ Item {
 
                                 Rectangle {
                                     id: groupUnderShadow
-                                    visible: !ThemeBackend.liquidGlass && !groupWrapper.isExpanded && groupWrapper.memberCount > 1
+                                    visible: !ThemeBackend.glassActive && !groupWrapper.isExpanded && groupWrapper.memberCount > 1
                                     anchors.fill: groupHeaderCard
                                     anchors.topMargin: root.s(1.5)
                                     anchors.bottomMargin: -root.s(1.5)
@@ -481,7 +493,7 @@ Item {
                                     anchors.topMargin: root.s(4)
                                     height: groupHeaderCard.height
                                     radius: root.cardRadius
-                                    color: stackGlass.active ? "transparent" : Qt.darker(ThemeBackend.surface1, 1.08)
+                                    color: stackGlass.active ? "transparent" : ThemeBackend.faded(Qt.darker(ThemeBackend.surface1, 1.08))
                                     z: -1
                                     opacity: Math.max(0.0, 1.0 - groupWrapper.groupExpandProgress * 2.0)
 
@@ -502,7 +514,7 @@ Item {
                                     anchors.bottomMargin: -Math.max(0, groupWrapper.dragY * 0.4)
                                     radius: root.cardRadius
                                     color: Qt.rgba(0, 0, 0, Math.min(0.18, Math.max(0, groupWrapper.dragY / root.s(3.5)) * 0.18))
-                                    visible: groupWrapper.dragY > 0
+                                    visible: groupWrapper.dragY > 0 && !ThemeBackend.glassActive
                                     z: -1
                                 }
 
@@ -642,7 +654,7 @@ Item {
                                             Rectangle {
                                                 anchors.fill: parent
                                                 radius: root.s(10)
-                                                color: groupIconGlass.active ? "transparent" : ThemeBackend.surface2
+                                                color: groupIconGlass.active ? "transparent" : ThemeBackend.faded(ThemeBackend.surface2)
 
                                                 GlassFill {
                                                     id: groupIconGlass
@@ -810,7 +822,7 @@ Item {
                                                 Rectangle {
                                                     anchors.fill: parent
                                                     radius: root.s(8)
-                                                    color: countGlass.active ? "transparent" : ThemeBackend.surface2
+                                                    color: countGlass.active ? "transparent" : ThemeBackend.faded(ThemeBackend.surface2)
 
                                                     GlassFill {
                                                         id: countGlass

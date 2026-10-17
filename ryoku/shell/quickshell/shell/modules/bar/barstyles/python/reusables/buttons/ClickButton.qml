@@ -135,7 +135,7 @@ Item {
                     id: subLabel
                     visible: root.subText !== ""
                     text: root.subText
-                    font.family: "JetBrains Mono"
+                    font.family: ThemeBackend.fontFamily
                     font.pixelSize: Math.max(10, root.textFontSize - 6)
                     color: root.displayTextColor
                     horizontalAlignment: root.contentAlignment === Qt.AlignHCenter ? Text.AlignHCenter : I18n.textAlignment

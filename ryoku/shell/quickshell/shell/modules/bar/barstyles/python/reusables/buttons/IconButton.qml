@@ -22,7 +22,7 @@ Item {
     property color textColor: "#11111b"
     property real bgOpacity: 1.0
     property real glassShadow: 1
-    readonly property color displayTextColor: (glass.active && (0.2126 * textColor.r + 0.7152 * textColor.g + 0.0722 * textColor.b) < 0.5) ? ThemeBackend.text : textColor
+    readonly property color displayTextColor: (ThemeBackend.liquidGlass && (0.2126 * textColor.r + 0.7152 * textColor.g + 0.0722 * textColor.b) < 0.5) ? ThemeBackend.text : textColor
 
     property bool action_highlight: false
     property string clickSound: "reusables/iconbutton/click.wav"
@@ -57,7 +57,7 @@ Item {
             anchors.fill: parent
             radius: root.cornerRadius
             clip: !glass.active
-            color: glass.active ? "transparent" : (!root.enabled ? root.accentColor : (btnMa.pressed ? Qt.darker(root.accentColor, 1.12) : (root.isHoveredOrHighlighted ? Qt.lighter(root.accentColor, 1.12) : root.accentColor)))
+            color: ThemeBackend.liquidGlass ? "transparent" : (!root.enabled ? root.accentColor : (btnMa.pressed ? Qt.darker(root.accentColor, 1.12) : (root.isHoveredOrHighlighted ? Qt.lighter(root.accentColor, 1.12) : root.accentColor)))
             opacity: (root.enabled ? 1.0 : 0.5) * root.bgOpacity
 
             Behavior on color { ColorAnimation { duration: 180 } }

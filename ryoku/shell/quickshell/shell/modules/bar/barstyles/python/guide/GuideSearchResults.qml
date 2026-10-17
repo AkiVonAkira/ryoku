@@ -188,7 +188,7 @@ Flickable {
                                 readonly property color legacyColor: directItemRow.isSelected
                                     ? ThemeBackend.mauve
                                     : (directItemMa.containsMouse ? Qt.alpha(ThemeBackend.surface1, 0.6) : Qt.alpha(ThemeBackend.surface0, 0.35))
-                                color: directItemRowGlass.active ? "transparent" : legacyColor
+                                color: ThemeBackend.liquidGlass ? "transparent" : legacyColor
                                 border.color: "transparent"
 
                                 GlassFill {
@@ -245,7 +245,7 @@ Flickable {
                                             font.family: ThemeBackend.fontFamily
                                             font.pixelSize: popup.s(12)
                                             font.bold: true
-                                            color: (directItemRow.isSelected && !directItemRowGlass.active) ? ThemeBackend.crust : ThemeBackend.text
+                                            color: (directItemRow.isSelected && !ThemeBackend.liquidGlass) ? ThemeBackend.crust : ThemeBackend.text
                                             elide: Text.ElideRight
 
                                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -257,7 +257,7 @@ Flickable {
                                             visible: text !== ""
                                             font.family: ThemeBackend.fontFamily
                                             font.pixelSize: popup.s(10)
-                                            color: (directItemRow.isSelected && !directItemRowGlass.active) ? Qt.alpha(ThemeBackend.crust, 0.75) : ThemeBackend.subtext0
+                                            color: (directItemRow.isSelected && !ThemeBackend.liquidGlass) ? Qt.alpha(ThemeBackend.crust, 0.75) : ThemeBackend.subtext0
                                             elide: Text.ElideRight
 
                                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -398,7 +398,7 @@ Flickable {
                                                 readonly property color legacyColor: subItemRow.isSelected
                                                     ? ThemeBackend.mauve
                                                     : (subItemMa.containsMouse ? Qt.alpha(ThemeBackend.surface1, 0.6) : Qt.alpha(ThemeBackend.surface0, 0.35))
-                                                color: subItemRowGlass.active ? "transparent" : legacyColor
+                                                color: ThemeBackend.liquidGlass ? "transparent" : legacyColor
                                                 border.color: "transparent"
 
                                                 GlassFill {
@@ -455,7 +455,7 @@ Flickable {
                                                             font.family: ThemeBackend.fontFamily
                                                             font.pixelSize: popup.s(12)
                                                             font.bold: true
-                                                            color: (subItemRow.isSelected && !subItemRowGlass.active) ? ThemeBackend.crust : ThemeBackend.text
+                                                            color: (subItemRow.isSelected && !ThemeBackend.liquidGlass) ? ThemeBackend.crust : ThemeBackend.text
                                                             elide: Text.ElideRight
 
                                                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -467,7 +467,7 @@ Flickable {
                                                             visible: text !== ""
                                                             font.family: ThemeBackend.fontFamily
                                                             font.pixelSize: popup.s(10)
-                                                            color: (subItemRow.isSelected && !subItemRowGlass.active) ? Qt.alpha(ThemeBackend.crust, 0.75) : ThemeBackend.subtext0
+                                                            color: (subItemRow.isSelected && !ThemeBackend.liquidGlass) ? Qt.alpha(ThemeBackend.crust, 0.75) : ThemeBackend.subtext0
                                                             elide: Text.ElideRight
 
                                                             Behavior on color { ColorAnimation { duration: 150 } }

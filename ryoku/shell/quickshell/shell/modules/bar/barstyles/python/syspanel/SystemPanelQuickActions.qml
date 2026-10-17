@@ -26,6 +26,18 @@ Item {
         property real customFontSize: 0
         property string customFontFamily: ""
 
+        property real togglePulse: 0.0
+
+        onIsActiveChanged: {
+            if (qaGlass.active) togglePulseAnim.restart();
+        }
+
+        SequentialAnimation {
+            id: togglePulseAnim
+            NumberAnimation { target: qaBtn; property: "togglePulse"; to: 1.0; duration: 90; easing.type: Easing.OutQuad }
+            NumberAnimation { target: qaBtn; property: "togglePulse"; to: 0.0; duration: 560; easing.type: Easing.OutCubic }
+        }
+
         signal leftClicked()
         signal rightClicked()
 
@@ -39,6 +51,7 @@ Item {
             tintAmount: qaBtn.isActive ? 0.6 : 0.3
             shadow: 1
             press: qaMa.pressed ? 1 : (qaMa.containsMouse ? 0.25 : 0)
+            pulse: qaBtn.togglePulse
             Behavior on press { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
             Behavior on tintAmount { NumberAnimation { duration: 180 } }
         }

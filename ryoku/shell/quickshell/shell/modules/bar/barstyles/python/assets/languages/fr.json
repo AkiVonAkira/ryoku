@@ -566,6 +566,26 @@
       "thickness": {
         "title": "Épaisseur de la barre",
         "desc": "Modifier l'épaisseur de la barre, les modules s'adaptent"
+      },
+      "menu": {
+        "show_settings": {
+          "title": "Afficher l'icône des paramètres",
+          "desc": "Affiche le bouton qui ouvre les paramètres"
+        },
+        "show_launcher": {
+          "title": "Afficher l'icône du lanceur",
+          "desc": "Affiche le bouton de recherche qui ouvre le lanceur"
+        },
+        "style": {
+          "title": "Style",
+          "desc": "Choisissez l'apparence du module de menu",
+          "name": {
+            "button": "Bouton",
+            "icon": "Icône"
+          },
+          "button": "Boutons d'icône interactifs avec arrière-plan",
+          "icon": "Icônes épurées sans arrière-plan"
+        }
       }
     },
     "theme": {
@@ -591,6 +611,18 @@
         "select_wallpaper": "Sélectionner un fond d'écran",
         "no_wallpaper_selected": "Aucun fond d'écran sélectionné",
         "select": "Fond d'écran"
+      },
+      "element_opacity": {
+        "title": "Opacité des éléments",
+        "desc": "Opacité de la barre, du dock, des widgets et de tous les autres éléments du shell"
+      },
+      "blur_background": {
+        "title": "Ajouter un arrière-plan de fond d'écran flouté",
+        "desc": "Floute le fond d'écran derrière chaque élément utilisant la transparence",
+        "style": {
+          "blur": "Flou",
+          "liquid": "Verre liquide"
+        }
       }
     },
     "file_picker": {

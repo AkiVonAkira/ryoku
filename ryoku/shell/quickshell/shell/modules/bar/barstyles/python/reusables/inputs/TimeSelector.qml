@@ -173,7 +173,7 @@ Item {
             id: valText
             anchors.centerIn: parent
             text: segRoot.value.toString().padStart(2, '0')
-            font.family: "JetBrains Mono"
+            font.family: ThemeBackend.fontFamily
             font.weight: Font.Bold
             font.pixelSize: root.fontPixelSize
             color: (isSelected && !pillGlass.active) ? root.activeTextColor : root.textColor
@@ -184,7 +184,7 @@ Item {
         TextInput {
             id: valInput
             anchors.centerIn: parent
-            font.family: "JetBrains Mono"
+            font.family: ThemeBackend.fontFamily
             font.weight: Font.Bold
             font.pixelSize: root.fontPixelSize
             color: (isSelected && !pillGlass.active) ? root.activeTextColor : root.accentColor
@@ -289,9 +289,15 @@ Item {
         Rectangle {
             id: activePill
             property var activeSegItem: root.activeSegment === 0 ? hoursSeg : (root.activeSegment === 1 ? minsSeg : secsSeg)
-            width: activeSegItem.width
+            readonly property real targetX: mainRow.x + activeSegItem.x
+            readonly property real targetWidth: activeSegItem.width
+            readonly property bool isMoving: Math.abs(x - targetX) > 0.5 || Math.abs(width - targetWidth) > 0.5
+            property real lift: (pillGlass.active && isMoving) ? 1.0 : 0.0
+            Behavior on lift { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+            scale: 1.0 + 0.12 * lift
+            width: targetWidth
             height: activeSegItem.height
-            x: mainRow.x + activeSegItem.x
+            x: targetX
             y: mainRow.y + activeSegItem.y
             radius: root.s(8)
             z: pillGlass.active ? 2 : 0
@@ -304,7 +310,8 @@ Item {
                 tintColor: root.accentColor
                 tintAmount: 0.4
                 shadow: 1
-                press: 0.35
+                press: 0.35 + 0.65 * activePill.lift
+                pulse: Math.min(1, activePill.activeSegItem.flashOpacity * 2.5)
                 Behavior on tintAmount { NumberAnimation { duration: 180 } }
             }
 
@@ -329,7 +336,7 @@ Item {
 
             Text { 
                 text: ":"
-                font.family: "JetBrains Mono"
+                font.family: ThemeBackend.fontFamily
                 font.weight: Font.Bold
                 font.pixelSize: root.fontPixelSize
                 color: root.alpha(root.subTextColor, 0.4)
@@ -347,7 +354,7 @@ Item {
 
             Text { 
                 text: ":"
-                font.family: "JetBrains Mono"
+                font.family: ThemeBackend.fontFamily
                 font.weight: Font.Bold
                 font.pixelSize: root.fontPixelSize
                 color: root.alpha(root.subTextColor, 0.4)

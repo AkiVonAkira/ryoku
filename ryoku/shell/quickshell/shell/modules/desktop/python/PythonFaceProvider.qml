@@ -21,7 +21,11 @@ Item {
     property var optionOverrides: ({})
 
     readonly property var item: host.item
-    readonly property size defaultSize: prov._defaultSize(prov.faceId)
+    readonly property bool stretchWidth: prov.faceId === "visualizer" && prov.optionOverrides
+        && prov.optionOverrides.stretchWidth === true
+    readonly property size defaultSize: prov.stretchWidth
+        ? Qt.size(prov.screenW, prov._defaultSize(prov.faceId).height)
+        : prov._defaultSize(prov.faceId)
     readonly property size naturalSize: prov._naturalSize(prov.item, prov.defaultSize)
     readonly property real effectiveScale: prov.scaleOverride > 0 ? prov.scaleOverride : 1
 
@@ -123,7 +127,7 @@ Item {
         if (!face || !opts || typeof opts !== "object")
             return;
         for (const key in opts) {
-            if (key === "imagePath" || face[key] === undefined)
+            if (key === "imagePath" || key === "stretchWidth" || face[key] === undefined)
                 continue;
             try {
                 face[key] = opts[key];

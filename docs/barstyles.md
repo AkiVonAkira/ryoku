@@ -780,14 +780,14 @@ never replaces Ryoku Settings.
 
 ## Python Settings
 
-Python tracks Serpantinum 2.2.12. Open its guide from the bar's gear pill or
+Python tracks Serpantinum past 2.2.12 (commit `cfdd810`). Open its guide from the bar's gear pill or
 with `qs -c shell ipc call main handleCommand toggle guide`. The guide controls
 bar layout, module faces, theme, OSD, notifications, quick actions, media
 presentation and wellbeing views. It writes the `python` key in `shell.json`
 through the shell daemon and applies changes live. Bar Studio's
 **OPEN PYTHON SETTINGS** button routes to the same guide.
 
-The 2.2.12 port uses Serpantinum's orientation-aware module registry. Top,
+The port uses Serpantinum's orientation-aware module registry. Top,
 bottom and side bars share module definitions while choosing the appropriate
 face. New settings include bar thickness, edge-aware centering, music channel
 balance and the expanded face choices. Existing `python.*` settings remain
@@ -801,12 +801,21 @@ ported notification banners and OSD while active; switching
 `python.general.notifications` or `python.general.osd` off returns those roles
 to Ryoku.
 
-Liquid glass and the shader effects use Ryoku's current wallpaper and live
-poster as their backdrop; Python does not run Serpantinum's wallpaper engine or
-theme solver. The port also adds Serpantinum's circular battery, CPU, RAM, disk
+The guide's Theme tab turns on glass (`python.theme.blurBackground`) as blur
+or liquid (`python.theme.blurStyle`). It covers the whole style: the bar and
+its module pills, every popup, notifications, the OSD, quick actions, the
+guide, the Python dock and the Python desktop faces, which sample Ryoku's
+current wallpaper and live poster as their backdrop; Python does not run
+Serpantinum's wallpaper engine or theme solver. The recording pill in the bar
+follows Ryoku's recorder, so it shows the elapsed time of any capture started
+from the capture card, ryoshot or `ryoku-shell record`. The port also adds Serpantinum's circular battery, CPU, RAM, disk
 and temperature faces and its simple lyrics face to Ryoku's desktop face
 picker. They run inside the shared `WidgetSlot`: placement, size, lock, backing
-and colour modes still belong to Ryoku's Stage Editor and widget menu.
+and colour modes still belong to Ryoku's Stage Editor and widget menu. Each
+face's own options live in its Customize tab: the music face's lyric lines,
+lyric alignment and continuous ring, the circle faces' wave edge and line
+thickness, the image path, the GitHub account, and the visualizer's
+**Span the screen width**.
 
 The style's palette follows Ryoku's live wallpaper palette, with one exception:
 picking a preset in the guide's Theme tab stores that palette under

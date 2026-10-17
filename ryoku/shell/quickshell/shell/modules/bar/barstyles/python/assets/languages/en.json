@@ -568,6 +568,26 @@
       "thickness": {
         "title": "Bar thickness",
         "desc": "Change how thick the bar is, modules scale to fit"
+      },
+      "menu": {
+        "show_settings": {
+          "title": "Show settings icon",
+          "desc": "Display the button that opens settings"
+        },
+        "show_launcher": {
+          "title": "Show launcher icon",
+          "desc": "Display the search button that opens the launcher"
+        },
+        "style": {
+          "title": "Style",
+          "desc": "Choose the visual appearance of the menu module",
+          "name": {
+            "button": "Button",
+            "icon": "Icon"
+          },
+          "button": "Interactive icon buttons with background",
+          "icon": "Clean icons without background"
+        }
       }
     },
     "theme": {

@@ -28,7 +28,7 @@ Item {
     }
     readonly property bool blurBackground: overrides.blurBackground === true
     readonly property string blurStyle: overrides.blurStyle === "liquid" ? "liquid" : "blur"
-    readonly property real liquidGlassOpacity: 0.04
+    readonly property real liquidGlassOpacity: 0.1
     readonly property bool liquidGlass: blurBackground && blurStyle === "liquid"
     readonly property real elementOpacity: liquidGlass ? liquidGlassOpacity : configuredOpacity
     readonly property bool glassActive: blurBackground && elementOpacity < 0.999
@@ -50,9 +50,10 @@ Item {
     property color base: slot("base", Theme.surfaceContainerLowest)
     property color mantle: slot("mantle", Theme.surfaceContainerLow)
     property color crust: slot("crust", Theme.surface)
-    property color text: slot("text", Theme.onSurface)
-    property color subtext0: slot("subtext0", Theme.onSurfaceVariant)
-    property color subtext1: slot("subtext1", mix(Theme.onSurfaceVariant, Theme.onSurface, 0.5))
+    // Liquid glass is clear over the wallpaper, so text on it is always white.
+    readonly property color text: liquidGlass ? "#ffffff" : slot("text", Theme.onSurface)
+    readonly property color subtext0: liquidGlass ? "#ffffff" : slot("subtext0", Theme.onSurfaceVariant)
+    readonly property color subtext1: liquidGlass ? "#ffffff" : slot("subtext1", mix(Theme.onSurfaceVariant, Theme.onSurface, 0.5))
     property color surface0: slot("surface0", Theme.surfaceContainer)
     property color surface1: slot("surface1", Theme.surfaceContainerHigh)
     property color surface2: slot("surface2", Theme.surfaceContainerHighest)

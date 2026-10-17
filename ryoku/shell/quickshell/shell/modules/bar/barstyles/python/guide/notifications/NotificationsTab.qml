@@ -636,10 +636,19 @@ Item {
                                     Rectangle {
                                         anchors.fill: parent
                                         radius: rootObj.s(8)
-                                        color: ThemeBackend.base
-                                        border.width: 1
+                                        color: notifPreviewGlass.active ? "transparent" : ThemeBackend.base
+                                        border.width: ThemeBackend.liquidGlass ? 0 : 1
                                         border.color: ThemeBackend.surface0
                                         clip: true
+
+                                        GlassFill {
+                                            id: notifPreviewGlass
+                                            anchors.fill: parent
+                                            radius: parent.radius
+                                            tintColor: ThemeBackend.base
+                                            tintAmount: 0.35
+                                            shadow: 1
+                                        }
 
                                         RowLayout {
                                             anchors.fill: parent
@@ -651,7 +660,15 @@ Item {
                                                 Layout.preferredHeight: parent.height
                                                 Layout.alignment: Qt.AlignVCenter
                                                 radius: rootObj.s(6)
-                                                color: ThemeBackend.surface1
+                                                color: notifIconGlass.active ? "transparent" : ThemeBackend.surface1
+
+                                                GlassFill {
+                                                    id: notifIconGlass
+                                                    anchors.fill: parent
+                                                    radius: parent.radius
+                                                    tintColor: ThemeBackend.surface1
+                                                    tintAmount: 0.3
+                                                }
 
                                                 Text {
                                                     anchors.centerIn: parent

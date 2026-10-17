@@ -12,7 +12,7 @@ Item {
 
     property bool isActiveTab: typeof isCurrentTarget !== "undefined" ? isCurrentTarget : true
 
-    property string iconFont: "Font Awesome 6 Free Solid"
+    property string iconFont: ThemeBackend.iconFont
     property string safeActiveEdge: typeof activeEdge !== "undefined" ? activeEdge : "left"
 
     function s(val) {
@@ -1122,7 +1122,7 @@ Item {
                             model: [
                                 { id: "pen", icon: "\uF040" },
                                 { id: "brush", icon: "\uF1FC" },
-                                { id: "fill", icon: "\uF576" },
+                                { id: "fill", icon: "\uEE3F" },
                                 { id: "eraser", icon: "\uF12D" }
                             ]
 

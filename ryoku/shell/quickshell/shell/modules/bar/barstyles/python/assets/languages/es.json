@@ -567,6 +567,26 @@
       "thickness": {
         "title": "Grosor de la barra",
         "desc": "Cambia el grosor de la barra, los módulos se ajustan"
+      },
+      "menu": {
+        "show_settings": {
+          "title": "Mostrar icono de ajustes",
+          "desc": "Muestra el botón que abre los ajustes"
+        },
+        "show_launcher": {
+          "title": "Mostrar icono del lanzador",
+          "desc": "Muestra el botón de búsqueda que abre el lanzador"
+        },
+        "style": {
+          "title": "Estilo",
+          "desc": "Elige la apariencia visual del módulo de menú",
+          "name": {
+            "button": "Botón",
+            "icon": "Icono"
+          },
+          "button": "Botones de icono interactivos con fondo",
+          "icon": "Iconos limpios sin fondo"
+        }
       }
     },
     "theme": {
@@ -592,6 +612,18 @@
         "select_wallpaper": "Seleccionar fondo de pantalla",
         "no_wallpaper_selected": "Ningún fondo de pantalla seleccionado",
         "select": "Fondo de pantalla"
+      },
+      "element_opacity": {
+        "title": "Opacidad de los elementos",
+        "desc": "Opacidad de la barra, el dock, los widgets y cualquier otro elemento del shell"
+      },
+      "blur_background": {
+        "title": "Añadir un fondo de pantalla desenfocado",
+        "desc": "Desenfoca el fondo de pantalla detrás de cada elemento que usa transparencia",
+        "style": {
+          "blur": "Desenfoque",
+          "liquid": "Cristal líquido"
+        }
       }
     },
     "file_picker": {

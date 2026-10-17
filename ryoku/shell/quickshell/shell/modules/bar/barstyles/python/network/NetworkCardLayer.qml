@@ -214,9 +214,12 @@ Item {
 
             property color dynamicTextColor: {
                 if (isFailed) return ThemeBackend.red;
-                if (isHighlighted) return window.activeColor;
+                if (isHighlighted && !ThemeBackend.liquidGlass) return window.activeColor;
                 return ThemeBackend.text;
             }
+
+            property bool isAccentGlass: ThemeBackend.liquidGlass && (isHighlighted || isCurrentlyConnected)
+            property color filledContentColor: ThemeBackend.liquidGlass ? ThemeBackend.text : ThemeBackend.crust
 
             function handleTrigger() {
                 let currentCmd = typeof cmdStr !== "undefined" ? cmdStr : "";
@@ -299,11 +302,11 @@ Item {
                 buttonText: ""
                 buttonIcon: ""
                 accentColor: window.activeColor
-                baseColor: ThemeBackend.base
-                hoverColor: ThemeBackend.surface0
-                bgOpacity: ThemeBackend.elementOpacity
+                baseColor: isAccentGlass ? window.activeColor : ThemeBackend.base
+                hoverColor: isAccentGlass ? window.activeColor : ThemeBackend.surface0
+                bgOpacity: isAccentGlass ? 2.0 : ThemeBackend.elementOpacity
                 textColor: dynamicTextColor
-                filledTextColor: ThemeBackend.crust
+                filledTextColor: filledContentColor
                 action_highlight: isHighlighted
                 contentAlignment: Qt.AlignLeft
                 horizontalPadding: window.s(10)
@@ -319,7 +322,8 @@ Item {
                 enabled: !isMyBusy && !window.isBtOpBusy(itemId)
                 anchors.fill: parent
                 cornerRadius: ThemeBackend.borderRadius
-                accentColor: ThemeBackend.surface0
+                accentColor: isAccentGlass ? window.activeColor : ThemeBackend.surface0
+                glassTintScale: isAccentGlass ? 2.6 : 1.0
                 bgOpacity: ThemeBackend.elementOpacity
                 textColor: dynamicTextColor
                 action_highlight: isHighlighted
@@ -402,7 +406,7 @@ Item {
                                     text: myButtonIcon
                                     font.family: ThemeBackend.iconFont
                                     font.pixelSize: window.s(18)
-                                    color: ThemeBackend.crust
+                                    color: floatCardDelegateContainer.filledContentColor
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
 
@@ -425,7 +429,7 @@ Item {
                                                 font.family: ThemeBackend.fontFamily
                                                 font.weight: Font.Bold
                                                 font.pixelSize: window.s(12)
-                                                color: ThemeBackend.crust
+                                                color: floatCardDelegateContainer.filledContentColor
                                             }
 
                                             Text {
@@ -433,7 +437,7 @@ Item {
                                                 font.family: ThemeBackend.fontFamily
                                                 font.weight: Font.Bold
                                                 font.pixelSize: window.s(12)
-                                                color: ThemeBackend.crust
+                                                color: floatCardDelegateContainer.filledContentColor
                                                 visible: marqueeClip.canMarquee
                                             }
                                         }

@@ -33,6 +33,17 @@ Item {
 
     property real flashOpacity: 0.0
     property real popScale: 1.0
+    property real stretch: 0.0
+
+    onCheckedChanged: {
+        if (handleGlass.active) stretchAnim.restart();
+    }
+
+    SequentialAnimation {
+        id: stretchAnim
+        NumberAnimation { target: root; property: "stretch"; to: 1.0; duration: 120; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "stretch"; to: 0.0; duration: 420; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
+    }
 
     property bool isHoveredOrHighlighted: (btnMa.containsMouse || root.action_highlight) && root.enabled
 
@@ -56,7 +67,7 @@ Item {
             id: mainLabel
             visible: root.buttonText !== ""
             text: root.buttonText
-            font.family: "JetBrains Mono"
+            font.family: ThemeBackend.fontFamily
             font.weight: Font.Bold
             font.pixelSize: root.textFontSize
             color: root.textColor
@@ -89,7 +100,7 @@ Item {
 
             Rectangle {
                 id: handle
-                width: parent.height - 6 + (handleGlass.active && btnMa.pressed ? 8 : 0)
+                width: parent.height - 6 + (handleGlass.active && btnMa.pressed ? 8 : 0) + (handleGlass.active ? 10 * root.stretch : 0)
                 height: parent.height - 6
                 radius: height / 2
                 anchors.verticalCenter: parent.verticalCenter

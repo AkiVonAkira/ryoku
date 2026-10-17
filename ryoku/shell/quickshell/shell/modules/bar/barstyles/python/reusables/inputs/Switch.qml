@@ -32,6 +32,7 @@ Item {
     property real popScale: 1.0
     readonly property bool glassActive: baseGlass.active
 
+    property int itemsRevision: 0
     property real maxNeededWidth: 0
     property real totalNeededWidth: 0
     property var allocatedWidths: []
@@ -114,7 +115,7 @@ Item {
         id: bgShape
         anchors.fill: parent
         radius: root.cornerRadius
-        color: baseGlass.active ? "transparent" : root.withBgOpacity(root.baseColor)
+        color: ThemeBackend.liquidGlass ? "transparent" : root.withBgOpacity(root.baseColor)
         clip: !baseGlass.active
         opacity: root.enabled ? 1.0 : 0.5
 
@@ -143,7 +144,7 @@ Item {
                 prevIdx = curIdx;
             }
 
-            readonly property Item currentItem: (tabsRepeater && root.options && root.currentIndex >= 0 && root.currentIndex < tabsRepeater.count)
+            readonly property Item currentItem: (root.itemsRevision >= 0 && tabsRepeater && root.options && root.currentIndex >= 0 && root.currentIndex < tabsRepeater.count)
                 ? tabsRepeater.itemAt(root.currentIndex)
                 : null
 
@@ -178,7 +179,7 @@ Item {
             Behavior on topRightRadius { NumberAnimation { duration: 180 } }
             Behavior on bottomRightRadius { NumberAnimation { duration: 180 } }
 
-            color: highlightGlass.active ? "transparent" : root.accentColor
+            color: ThemeBackend.liquidGlass ? "transparent" : root.accentColor
 
             Behavior on color { ColorAnimation { duration: 180 } }
 
@@ -208,6 +209,8 @@ Item {
                 id: tabsRepeater
                 model: root.options
                 onCountChanged: root.recalculateLayout()
+                onItemAdded: root.itemsRevision++
+                onItemRemoved: root.itemsRevision++
 
                 Item {
                     id: optionItem
@@ -268,7 +271,7 @@ Item {
                         font.pixelSize: root.fontPixelSize
                         fontSizeMode: Text.Fit
                         minimumPixelSize: root.minFontPixelSize
-                        color: (root.currentIndex === optionItem.index && !highlightGlass.active) ? root.activeTextColor : root.textColor
+                        color: (root.currentIndex === optionItem.index && !ThemeBackend.liquidGlass) ? root.activeTextColor : root.textColor
                         Behavior on color { ColorAnimation { duration: 200 } }
                     }
 

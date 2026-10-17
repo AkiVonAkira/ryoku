@@ -18,12 +18,20 @@ Item {
     property real blurStrength: 1.0
     property real tint: 0.0
     property real rim: 0.45
+    property vector2d filletDir: Qt.vector2d(0, 0)
+    property real filletRadius: 0
+    property real filletInset: 0
+    property bool earsOnly: false
+    property rect boxRect: Qt.rect(0, 0, 0, 0)
+    property Item maskItem: mask
+    property real bezelSize: Math.max(5, Math.min(26, Math.min(width, height) * 0.36))
     property bool standalone: false
     property bool surfaceEnabled: true
     property var screenOverride: null
     property bool useSnapshot: false
 
     readonly property bool liquid: ThemeBackend.liquidGlass
+    readonly property real blurPad: liquid ? 0 : 64
     readonly property bool isGlassBackdrop: true
     property alias texture: glassTexture
     property int consumers: 0
@@ -46,6 +54,7 @@ Item {
     property real imageY: 0
     property real imageScale: 1
     property real imageRotation: 0
+    property rect validRect: Qt.rect(0, 0, 1, 1)
     property int revision: 0
 
     readonly property real screenWidth: hostScreen ? hostScreen.width : 1
@@ -93,6 +102,15 @@ Item {
         root.imageY = p0.y;
         root.imageScale = len;
         root.imageRotation = Math.atan2(dy, dx) * 180 / Math.PI;
+        const p1 = root.mapFromItem(null, scr.width - wx, scr.height - wy);
+        const iw = Math.max(1, root.width);
+        const ih = Math.max(1, root.height);
+        const x0 = Math.max(0, Math.min(1, Math.min(p0.x, p1.x) / iw));
+        const y0 = Math.max(0, Math.min(1, Math.min(p0.y, p1.y) / ih));
+        const x1 = Math.max(x0, Math.min(1, Math.max(p0.x, p1.x) / iw));
+        const y1 = Math.max(y0, Math.min(1, Math.max(p0.y, p1.y) / ih));
+        if (x0 !== root.validRect.x || y0 !== root.validRect.y || x1 - x0 !== root.validRect.width || y1 - y0 !== root.validRect.height)
+            root.validRect = Qt.rect(x0, y0, x1 - x0, y1 - y0);
         root.refreshTexture();
     }
 
@@ -134,14 +152,15 @@ Item {
     Item {
         id: content
         anchors.fill: parent
+        anchors.margins: -root.blurPad
         visible: false
         layer.enabled: true
         layer.mipmap: root.liquid
         layer.smooth: true
 
         Image {
-            x: root.imageX
-            y: root.imageY
+            x: root.imageX + root.blurPad
+            y: root.imageY + root.blurPad
             width: root.screenWidth
             height: root.screenHeight
             scale: root.imageScale
@@ -168,15 +187,45 @@ Item {
         anchors.fill: parent
 
         MultiEffect {
-            anchors.fill: parent
-            visible: !root.liquid
-            source: content
+            id: blurred
+            x: -root.blurPad
+            y: -root.blurPad
+            width: root.width + 2 * root.blurPad
+            height: root.height + 2 * root.blurPad
+            visible: false
+            source: root.liquid ? null : content
             autoPaddingEnabled: false
-            blurEnabled: true
+            blurEnabled: !root.liquid
             blurMax: 64
             blur: Math.min(1.0, root.blurStrength)
+        }
+
+        // The blur runs over a padded copy so its edges sample real wallpaper, then is cropped back.
+        ShaderEffectSource {
+            id: blurCrop
+            anchors.fill: parent
+            visible: false
+            sourceItem: root.liquid ? null : blurred
+            sourceRect: Qt.rect(root.blurPad, root.blurPad, root.width, root.height)
+            smooth: true
+        }
+
+        MultiEffect {
+            anchors.fill: parent
+            visible: !root.liquid && root.maskItem !== mask
+            source: visible ? blurCrop : null
             maskEnabled: true
-            maskSource: mask
+            maskSource: root.maskItem
+        }
+
+        ShaderEffect {
+            anchors.fill: parent
+            visible: !root.liquid && root.maskItem === mask
+            property variant src: blurCrop
+            property vector2d itemSize: Qt.vector2d(width, height)
+            property vector4d radii: Qt.vector4d(root.topLeftRadius, root.topRightRadius, root.bottomRightRadius, root.bottomLeftRadius)
+            property real fillAlpha: Math.min(0.98, ThemeBackend.elementOpacity)
+            fragmentShader: "file://" + Caching.assetsPath + "/shaders/ui/rounded_mask.frag.qsb"
         }
 
         LiquidGlass {
@@ -192,6 +241,14 @@ Item {
             frost: Math.max(0.5, root.blurStrength * 2.5) * 1.08 * (1 - 0.5 * root.nest)
             rim: root.rim * (1 - 0.35 * root.nest)
             nest: root.nest
+            bezel: root.bezelSize
+            filletDir: root.filletDir
+            filletRadius: root.filletRadius
+            filletInset: root.filletInset
+            earsOnly: root.earsOnly
+            boxRect: root.boxRect
+            validRect: root.validRect
+            unpremul: 1
             clear: root.nestLevel >= 1 ? 1 : 0
             cursorPos: Qt.point(root.cursorX, root.cursorY)
             hover: root.hoverAmount

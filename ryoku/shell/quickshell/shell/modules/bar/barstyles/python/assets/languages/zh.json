@@ -566,6 +566,26 @@
       "thickness": {
         "title": "栏厚度",
         "desc": "更改栏的厚度，模块会随之调整"
+      },
+      "menu": {
+        "show_settings": {
+          "title": "显示设置图标",
+          "desc": "显示打开设置的按钮"
+        },
+        "show_launcher": {
+          "title": "显示启动器图标",
+          "desc": "显示打开启动器的搜索按钮"
+        },
+        "style": {
+          "title": "样式",
+          "desc": "选择菜单模块的外观",
+          "name": {
+            "button": "按钮",
+            "icon": "图标"
+          },
+          "button": "带背景的交互式图标按钮",
+          "icon": "无背景的简洁图标"
+        }
       }
     },
     "theme": {
@@ -591,6 +611,18 @@
         "select_wallpaper": "选择壁纸",
         "no_wallpaper_selected": "未选择壁纸",
         "select": "壁纸"
+      },
+      "element_opacity": {
+        "title": "元素不透明度",
+        "desc": "状态栏、程序坞、小组件及所有其他界面元素的不透明度"
+      },
+      "blur_background": {
+        "title": "添加模糊的壁纸背景",
+        "desc": "对所有使用透明度的元素背后的壁纸进行模糊处理",
+        "style": {
+          "blur": "模糊",
+          "liquid": "液态玻璃"
+        }
       }
     },
     "file_picker": {

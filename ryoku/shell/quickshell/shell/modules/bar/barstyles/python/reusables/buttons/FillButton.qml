@@ -197,7 +197,7 @@ Item {
                                 id: charText
                                 anchors.centerIn: parent
                                 text: charSlot.modelData === " " ? "\u00A0" : charSlot.modelData
-                                font.family: "JetBrains Mono"
+                                font.family: ThemeBackend.fontFamily
                                 font.weight: Font.Bold
                                 font.pixelSize: root.textFontSize
                                 color: bRoot.contentTextColor
@@ -226,7 +226,7 @@ Item {
                     id: subTextItem
                     visible: root.subText !== ""
                     text: root.subText
-                    font.family: "JetBrains Mono"
+                    font.family: ThemeBackend.fontFamily
                     font.pixelSize: Math.max(10, root.textFontSize - 6)
                     color: bRoot.contentTextColor
                     horizontalAlignment: root.contentAlignment === Qt.AlignHCenter ? Text.AlignHCenter : I18n.textAlignment
@@ -284,7 +284,7 @@ Item {
         anchors.fill: parent
         radius: root.effectiveRadius
         clip: !glass.active
-        color: glass.active ? "transparent" : Qt.alpha(root.isHoveredOrHighlighted ? root.hoverColor : root.baseColor, root.bgOpacity * (root.isHoveredOrHighlighted ? root.hoverColor.a : root.baseColor.a))
+        color: glass.active ? "transparent" : Qt.alpha(root.isHoveredOrHighlighted ? root.hoverColor : root.baseColor, Math.min(1, root.bgOpacity * (root.isHoveredOrHighlighted ? root.hoverColor.a : root.baseColor.a)))
 
         Behavior on color { ColorAnimation { duration: 180 } }
 
@@ -343,7 +343,7 @@ Item {
             visible: glass.active && root.fillLevel > 0.001
             property real lift: (root.fillLevel > 0.001 && root.fillLevel < 0.999) ? 1.0 : 0.0
             Behavior on lift { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-            transformOrigin: Item.Center
+            transformOrigin: Item.Left
             scale: 1.0 + 0.07 * lift
         }
 

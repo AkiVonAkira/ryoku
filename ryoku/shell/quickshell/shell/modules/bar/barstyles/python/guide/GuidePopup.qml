@@ -16,7 +16,7 @@ Item {
 
     readonly property bool isGuidePopup: true
 
-    signal requestLoadAll()
+    signal requestLoad(int order)
 
     property int activationCounter: 0
     property var appPaths: Caching
@@ -24,9 +24,6 @@ Item {
     property int currentSubTab: 0
     property int expandedTab: -1
 
-    property real colorBlend: 0.0
-    property color ambientPurple: Qt.tint(ThemeBackend.mauve, Qt.rgba(ThemeBackend.pink.r, ThemeBackend.pink.g, ThemeBackend.pink.b, colorBlend))
-    property color ambientBlue: Qt.tint(ThemeBackend.blue, Qt.rgba(ThemeBackend.sapphire.r, ThemeBackend.sapphire.g, ThemeBackend.sapphire.b, colorBlend))
     property int chargingSoundHandle: -1
 
     property real introBase: 0.0
@@ -44,6 +41,43 @@ Item {
 
     property var searchIndexMap: ({})
     property var searchIndex: []
+    property int searchLoadCursor: 0
+
+    readonly property int totalTabSlots: {
+        let n = 0;
+        for (let i = 0; i < tabsModel.length; i++) {
+            let st = tabsModel[i].subtabs;
+            n += st && st.length > 0 ? st.length : 1;
+        }
+        return n;
+    }
+
+    function tabLoadOrder(tab, sub) {
+        let n = 0;
+        for (let i = 0; i < tab && i < tabsModel.length; i++) {
+            let st = tabsModel[i].subtabs;
+            n += st && st.length > 0 ? st.length : 1;
+        }
+        return n + Math.max(0, sub);
+    }
+
+    function searchHaystack(item) {
+        if (item.hay === undefined) {
+            item.hay = [
+                item.title, resolveI18nText(item.title),
+                item.desc || item.description, resolveI18nText(item.desc || item.description),
+                resolveTabTitle(item.tab), resolveSubtabTitle(item.tab, item.subtab),
+                item.tab, item.subtab, item.keywords
+            ].join("\n").toLowerCase();
+        }
+        return item.hay;
+    }
+
+    function clearSearchHaystacks() {
+        for (let k in searchIndexMap) {
+            delete searchIndexMap[k].hay;
+        }
+    }
 
     function resolveI18nText(text) {
         if (!text) return "";
@@ -303,23 +337,7 @@ Item {
     readonly property var filteredSearchResults: {
         let q = searchQuery.trim().toLowerCase();
         if (q === "") return [];
-        return searchIndex.filter(item => {
-            let rawT = (item.title || "").toLowerCase();
-            let trT = resolveI18nText(item.title).toLowerCase();
-            let rawD = (item.desc || item.description || "").toLowerCase();
-            let trD = resolveI18nText(item.desc || item.description).toLowerCase();
-            let tabT = resolveTabTitle(item.tab).toLowerCase();
-            let subT = resolveSubtabTitle(item.tab, item.subtab).toLowerCase();
-            let rawTb = (item.tab || "").toLowerCase();
-            let rawStb = (item.subtab || "").toLowerCase();
-            let kw = String(item.keywords || "").toLowerCase();
-
-            return trT.indexOf(q) !== -1 || rawT.indexOf(q) !== -1 ||
-                   trD.indexOf(q) !== -1 || rawD.indexOf(q) !== -1 ||
-                   tabT.indexOf(q) !== -1 || subT.indexOf(q) !== -1 ||
-                   rawTb.indexOf(q) !== -1 || rawStb.indexOf(q) !== -1 ||
-                   kw.indexOf(q) !== -1;
-        });
+        return searchIndex.filter(item => searchHaystack(item).indexOf(q) !== -1);
     }
 
     readonly property var groupedSearchResults: {
@@ -478,13 +496,16 @@ Item {
     }
 
     function openSearch() {
-        root.requestLoadAll();
         searchRebuildTimer.stop();
         rebuildSearchIndex();
         searchClearTimer.stop();
         searchActive = true;
         searchSelectedIndex = -1;
         searchFocusTimer.restart();
+        if (searchLoadCursor < totalTabSlots && !searchLoadTimer.running) {
+            searchLoadTimer.interval = 280;
+            searchLoadTimer.restart();
+        }
     }
 
     function closeSearch() {
@@ -676,6 +697,10 @@ Item {
         introTabs = 0.0;
         startupSequence.restart();
         Updater.checkUpdate();
+        if (searchLoadCursor < totalTabSlots) {
+            searchLoadTimer.interval = 1400;
+            searchLoadTimer.restart();
+        }
     }
 
     function nextTab() {
@@ -743,11 +768,25 @@ Item {
 
     Timer {
         id: searchClearTimer
-        interval: 260
+        interval: 900
         repeat: false
         onTriggered: {
             searchQuery = "";
             if (sidebar.searchInput) sidebar.searchInput.text = "";
+        }
+    }
+
+    Timer {
+        id: searchLoadTimer
+        interval: 280
+        repeat: true
+        onTriggered: {
+            interval = 100;
+            if (root.searchLoadCursor >= root.totalTabSlots) {
+                stop();
+                return;
+            }
+            root.requestLoad(root.searchLoadCursor++);
         }
     }
 
@@ -769,6 +808,8 @@ Item {
             highlightTimer.stop();
             searchClearTimer.stop();
             searchRebuildTimer.stop();
+            searchLoadTimer.stop();
+            clearSearchHaystacks();
             rebuildSearchIndex();
             pendingHighlightItem = null;
             introBase = 0.0;
@@ -871,13 +912,6 @@ Item {
         }
         prevTab();
         event.accepted = true;
-    }
-
-    SequentialAnimation on colorBlend {
-        loops: Animation.Infinite
-        running: root.visible
-        NumberAnimation { to: 1.0; duration: 15000; easing.type: Easing.InOutSine }
-        NumberAnimation { to: 0.0; duration: 15000; easing.type: Easing.InOutSine }
     }
 
     Timer {
@@ -1051,15 +1085,6 @@ Item {
                 bottomRightRadius: parent.bottomRightRadius
             }
 
-            property real time: 0
-            NumberAnimation on time {
-                from: 0
-                to: Math.PI * 2
-                duration: 20000
-                loops: Animation.Infinite
-                running: root.visible
-            }
-
             GuideSidebar {
                 id: sidebar
                 popup: root
@@ -1068,9 +1093,9 @@ Item {
             GuideContent {
                 id: contentArea
                 popup: root
-                x: I18n.rtl ? 1 : (sidebar.width + 1)
+                x: I18n.rtl ? 1 : (sidebar.targetWidth + 1)
                 y: 4
-                width: Math.max(0, parent.width - sidebar.width - 2)
+                width: Math.max(0, parent.width - sidebar.targetWidth - 2)
                 height: Math.max(0, parent.height - 8)
             }
         }

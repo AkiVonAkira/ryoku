@@ -82,7 +82,7 @@ Notification {
                 source: rawBgImg
                 maskSource: bgMask
                 maskEnabled: true
-                opacity: ThemeBackend.liquidGlass ? 0.3 : 0.22
+                opacity: ThemeBackend.liquidGlass ? 0.3 : 0.22 * ThemeBackend.elementOpacity
             }
 
             Rectangle {
@@ -91,8 +91,8 @@ Notification {
                 visible: !ThemeBackend.liquidGlass
                 gradient: Gradient {
                     orientation: Gradient.Vertical
-                    GradientStop { position: 0.0; color: Qt.alpha(ThemeBackend.surface0, 0.45) }
-                    GradientStop { position: 1.0; color: Qt.alpha(ThemeBackend.surface0, 0.65) }
+                    GradientStop { position: 0.0; color: Qt.alpha(ThemeBackend.surface0, 0.45 * ThemeBackend.elementOpacity) }
+                    GradientStop { position: 1.0; color: Qt.alpha(ThemeBackend.surface0, 0.65 * ThemeBackend.elementOpacity) }
                 }
             }
         }

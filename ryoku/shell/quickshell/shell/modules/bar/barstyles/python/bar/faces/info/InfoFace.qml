@@ -3,8 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 import QtQuick.Controls
 import Quickshell
-import Quickshell.Io
-import Quickshell.Wayland
+import shell.services as Ryoku
 import "../../../reusables"
 import "../../../"
 
@@ -20,12 +19,14 @@ Item {
     readonly property bool isCompact: module ? module.isCompact : false
     readonly property var barWindow: module ? module.barWindow : null
 
-    property bool isCleaningUp: false
-    property bool isRecording: false
-    property int recSeconds: 0
-    property real recStartEpoch: 0
-    property string recTimeFormatted: String(Math.floor(recSeconds / 60)).padStart(2, "0") + ":" + String(recSeconds % 60).padStart(2, "0")
-    readonly property string recCacheDir: Caching.cacheDir ? Caching.getCacheDir("recording") : ""
+    // Ryoku's Recorder follows every capture, wherever it was started (the capture card, ryoshot, the
+    // CLI), from the recorder's status file, and carries its launch time, so the pill needs no watcher.
+    readonly property bool isRecording: Ryoku.Recorder.active
+    readonly property bool isPaused: Ryoku.Recorder.paused
+    readonly property int recSeconds: Ryoku.Recorder.elapsedSec
+    readonly property string recTimeFormatted: recSeconds >= 3600
+        ? Ryoku.Recorder.elapsedText
+        : String(Math.floor(recSeconds / 60)).padStart(2, "0") + ":" + String(recSeconds % 60).padStart(2, "0")
 
     readonly property var timerEntries: TimerState.entries
     readonly property bool isTimerActive: timerEntries.length > 0
@@ -37,91 +38,6 @@ Item {
     property alias recCol: recLayout
     property alias timerRow: timerLayout
     property alias timerCol: timerLayout
-
-    function checkRecording() {
-        if (root.isCleaningUp || (module && !module.moduleActive) || root.recCacheDir === "") return;
-        recCheckProc.running = false;
-        recCheckProc.running = true;
-    }
-
-    onIsRecordingChanged: {
-        if (!isRecording) {
-            recSeconds = 0;
-            recStartEpoch = 0;
-        }
-    }
-
-    onRecCacheDirChanged: {
-        if (recCacheDir !== "") {
-            root.checkRecording();
-        }
-    }
-
-    Process {
-        id: recCheckProc
-        command: root.recCacheDir ? [
-            "bash", "-c",
-            "d='" + root.recCacheDir + "'; if [ -f \"$d/rec_pid\" ] && [ -f \"$d/rec_start_epoch\" ]; then p=$(cat \"$d/rec_pid\" 2>/dev/null); if [ -n \"$p\" ] && kill -0 \"$p\" 2>/dev/null; then cat \"$d/rec_start_epoch\" 2>/dev/null; else echo 'NONE'; fi; else echo 'NONE'; fi"
-        ] : []
-        stdout: StdioCollector {
-            id: recCheckOut
-            onStreamFinished: {
-                let txt = recCheckOut.text.trim();
-                let epoch = parseInt(txt);
-                if (!isNaN(epoch) && epoch > 0) {
-                    root.recStartEpoch = epoch;
-                    root.recSeconds = Math.max(0, Math.floor(Date.now() / 1000 - epoch));
-                    root.isRecording = true;
-                } else {
-                    root.isRecording = false;
-                }
-            }
-        }
-    }
-
-    Process {
-        id: recWatcher
-        running: !root.isCleaningUp && (!module || module.moduleActive) && root.recCacheDir !== ""
-        command: root.recCacheDir ? [
-            "bash", "-c",
-            "mkdir -p '" + root.recCacheDir + "' && exec inotifywait -m -e create,delete,modify,moved_to,moved_from '" + root.recCacheDir + "' 2>/dev/null"
-        ] : []
-        stdout: SplitParser {
-            onRead: data => {
-                root.checkRecording();
-            }
-        }
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode === 127 || root.isCleaningUp) return;
-            if ((!module || module.moduleActive) && root.recCacheDir !== "") {
-                recWatcherRestartTimer.restart();
-            }
-        }
-    }
-
-    Timer {
-        id: recWatcherRestartTimer
-        interval: 1000
-        repeat: false
-        onTriggered: {
-            if (!root.isCleaningUp && (!module || module.moduleActive) && root.recCacheDir !== "" && !recWatcher.running) {
-                recWatcher.running = true;
-            }
-        }
-    }
-
-    Timer {
-        id: recElapsedTimer
-        interval: 1000
-        running: !root.isCleaningUp && (!module || module.moduleActive) && root.isRecording
-        repeat: true
-        onTriggered: {
-            root.recSeconds = Math.max(0, Math.floor(Date.now() / 1000 - root.recStartEpoch));
-            if (root.recSeconds % 5 === 0) {
-                root.checkRecording();
-            }
-        }
-    }
 
     property real lengthPadding: barWindow ? barWindow.cs(isCompact ? 10 : 12) : (isCompact ? 10 : 12)
     property real innerSpacing: isVertical ? (barWindow ? barWindow.cs(isCompact ? 8 : 10) : (isCompact ? 8 : 10)) : (barWindow ? barWindow.cs(isCompact ? 10 : 12) : (isCompact ? 10 : 12))
@@ -173,8 +89,10 @@ Item {
                     radius: width * 0.5
                     color: root.isCompact ? Qt.lighter(ThemeBackend.red, 1.08) : ThemeBackend.red
 
+                    opacity: root.isPaused ? 0.45 : 1.0
+
                     SequentialAnimation on opacity {
-                        running: root.isRecording
+                        running: root.isRecording && !root.isPaused
                         loops: Animation.Infinite
                         NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
                         NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
@@ -212,7 +130,7 @@ Item {
 
                         Text {
                             text: timerItem.modelData.icon
-                            font.family: "Font Awesome 6 Free Solid"
+                            font.family: ThemeBackend.iconFont
                             font.pixelSize: root.isVertical ? (barWindow ? barWindow.cs(root.isCompact ? 10 : 11) : (root.isCompact ? 10 : 11)) : (barWindow ? barWindow.cs(root.isCompact ? 11 : 12) : (root.isCompact ? 11 : 12))
                             color: root.isCompact ? Qt.lighter(timerItem.entryColor, 1.08) : timerItem.entryColor
                             Behavior on color { ColorAnimation { duration: 250 } }
@@ -230,16 +148,5 @@ Item {
                 }
             }
         }
-    }
-
-    Component.onCompleted: {
-        root.checkRecording();
-    }
-
-    Component.onDestruction: {
-        root.isCleaningUp = true;
-        recWatcherRestartTimer.stop();
-        recWatcher.running = false;
-        recCheckProc.running = false;
     }
 }

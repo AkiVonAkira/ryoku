@@ -441,10 +441,19 @@ Item {
                                         Rectangle {
                                             anchors.fill: parent
                                             radius: rootObj.s(11)
-                                            color: ThemeBackend.base
-                                            border.width: 1
+                                            color: osdPreviewGlass.active ? "transparent" : ThemeBackend.base
+                                            border.width: ThemeBackend.liquidGlass ? 0 : 1
                                             border.color: ThemeBackend.surface0
                                             clip: true
+
+                                            GlassFill {
+                                                id: osdPreviewGlass
+                                                anchors.fill: parent
+                                                radius: parent.radius
+                                                tintColor: ThemeBackend.base
+                                                tintAmount: 0.35
+                                                shadow: 1
+                                            }
 
                                             RowLayout {
                                                 visible: !osdTabRoot.isVertical
@@ -458,7 +467,15 @@ Item {
                                                     Layout.preferredHeight: parent.height - rootObj.s(10)
                                                     Layout.alignment: Qt.AlignVCenter
                                                     radius: rootObj.s(7)
-                                                    color: ThemeBackend.surface1
+                                                    color: osdIconGlassH.active ? "transparent" : ThemeBackend.surface1
+
+                                                    GlassFill {
+                                                        id: osdIconGlassH
+                                                        anchors.fill: parent
+                                                        radius: parent.radius
+                                                        tintColor: ThemeBackend.surface1
+                                                        tintAmount: 0.3
+                                                    }
 
                                                     Text {
                                                         anchors.centerIn: parent
@@ -469,39 +486,21 @@ Item {
                                                     }
                                                 }
 
-                                                Item {
+                                                Draggable {
                                                     Layout.fillWidth: true
-                                                    Layout.fillHeight: true
-
-                                                    Rectangle {
-                                                        id: trackBar
-                                                        anchors.left: parent.left
-                                                        anchors.right: parent.right
-                                                        anchors.verticalCenter: parent.verticalCenter
-                                                        height: rootObj.s(9)
-                                                        radius: height / 2
-                                                        color: ThemeBackend.surface1
-
-                                                        Rectangle {
-                                                            anchors.left: parent.left
-                                                            anchors.top: parent.top
-                                                            anchors.bottom: parent.bottom
-                                                            width: parent.width * 0.65
-                                                            radius: parent.radius
-                                                            color: Qt.lighter(ThemeBackend.sapphire, 1.5)
-                                                        }
-
-                                                        Rectangle {
-                                                            x: (parent.width * 0.65) - (width / 2)
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            width: rootObj.s(16)
-                                                            height: rootObj.s(16)
-                                                            radius: width / 2
-                                                            color: Qt.lighter(ThemeBackend.sapphire, 1.3)
-                                                            border.width: 1
-                                                            border.color: Qt.rgba(0, 0, 0, 0.25)
-                                                        }
-                                                    }
+                                                    Layout.preferredHeight: rootObj.s(18)
+                                                    Layout.alignment: Qt.AlignVCenter
+                                                    showValueBubble: false
+                                                    alwaysShowHandle: true
+                                                    value: 65
+                                                    backgroundColor: ThemeBackend.surface1
+                                                    accentColor: Qt.lighter(ThemeBackend.sapphire, 1.5)
+                                                    gradColor1: accentColor
+                                                    gradColor2: Qt.lighter(accentColor, 1.05)
+                                                    gradColor3: Qt.lighter(accentColor, 1.10)
+                                                    cornerRadius: rootObj.s(5)
+                                                    handleSize: rootObj.s(16)
+                                                    handleColor: Qt.lighter(accentColor, 1.3)
                                                 }
                                             }
 
@@ -517,7 +516,15 @@ Item {
                                                     Layout.preferredHeight: parent.width - rootObj.s(10)
                                                     Layout.alignment: Qt.AlignHCenter
                                                     radius: rootObj.s(7)
-                                                    color: ThemeBackend.surface1
+                                                    color: osdIconGlassV.active ? "transparent" : ThemeBackend.surface1
+
+                                                    GlassFill {
+                                                        id: osdIconGlassV
+                                                        anchors.fill: parent
+                                                        radius: parent.radius
+                                                        tintColor: ThemeBackend.surface1
+                                                        tintAmount: 0.3
+                                                    }
 
                                                     Text {
                                                         anchors.centerIn: parent
@@ -528,38 +535,22 @@ Item {
                                                     }
                                                 }
 
-                                                Item {
-                                                    Layout.fillWidth: true
+                                                Draggable {
                                                     Layout.fillHeight: true
-
-                                                    Rectangle {
-                                                        anchors.top: parent.top
-                                                        anchors.bottom: parent.bottom
-                                                        anchors.horizontalCenter: parent.horizontalCenter
-                                                        width: rootObj.s(9)
-                                                        radius: width / 2
-                                                        color: ThemeBackend.surface1
-
-                                                        Rectangle {
-                                                            anchors.left: parent.left
-                                                            anchors.right: parent.right
-                                                            anchors.bottom: parent.bottom
-                                                            height: parent.height * 0.65
-                                                            radius: parent.radius
-                                                            color: Qt.lighter(ThemeBackend.sapphire, 1.5)
-                                                        }
-
-                                                        Rectangle {
-                                                            y: parent.height - (parent.height * 0.65) - (height / 2)
-                                                            anchors.horizontalCenter: parent.horizontalCenter
-                                                            width: rootObj.s(16)
-                                                            height: rootObj.s(16)
-                                                            radius: width / 2
-                                                            color: Qt.lighter(ThemeBackend.sapphire, 1.3)
-                                                            border.width: 1
-                                                            border.color: Qt.rgba(0, 0, 0, 0.25)
-                                                        }
-                                                    }
+                                                    Layout.preferredWidth: rootObj.s(16)
+                                                    Layout.alignment: Qt.AlignHCenter
+                                                    vertical: true
+                                                    showValueBubble: false
+                                                    alwaysShowHandle: true
+                                                    value: 65
+                                                    backgroundColor: ThemeBackend.surface1
+                                                    accentColor: Qt.lighter(ThemeBackend.sapphire, 1.5)
+                                                    gradColor1: accentColor
+                                                    gradColor2: Qt.lighter(accentColor, 1.05)
+                                                    gradColor3: Qt.lighter(accentColor, 1.10)
+                                                    cornerRadius: rootObj.s(5)
+                                                    handleSize: rootObj.s(16)
+                                                    handleColor: Qt.lighter(accentColor, 1.3)
                                                 }
                                             }
                                         }

@@ -246,7 +246,7 @@ Item {
                             height: width
                             radius: ThemeBackend.borderRadius
                             color: window.activeMute ? ThemeBackend.red : window.tabColor
-                            opacity: window.activeMute ? 0.15 : 0.06
+                            opacity: coreGlass.active ? 0.0 : (window.activeMute ? 0.15 : 0.06)
                             z: -1
                             Behavior on color { ColorAnimation { duration: 300 } }
 
@@ -260,6 +260,7 @@ Item {
                         MultiEffect {
                             source: centralCore
                             anchors.fill: centralCore
+                            visible: !coreGlass.active
                             shadowEnabled: true
                             shadowColor: "#000000"
                             shadowOpacity: 0.5
@@ -272,11 +273,22 @@ Item {
                             id: centralCore
                             anchors.fill: parent
                             radius: ThemeBackend.borderRadius
-                            color: ThemeBackend.base
+                            color: coreGlass.active ? "transparent" : ThemeBackend.base
                             border.color: window.activeMute ? ThemeBackend.red : Qt.lighter(window.tabColor, 1.1)
-                            border.width: 2
-                            clip: true
+                            border.width: coreGlass.active ? 0 : 2
+                            clip: !coreGlass.active
                             Behavior on border.color { ColorAnimation { duration: 300 } }
+
+                            GlassFill {
+                                id: coreGlass
+                                anchors.fill: parent
+                                radius: parent.radius
+                                tintColor: ThemeBackend.surface0
+                                tintAmount: 0.3
+                                shadow: 1
+                                press: coreMa.containsMouse ? 0.25 : 0
+                                Behavior on press { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                            }
 
                             FluidWave {
                                 id: orbWave
@@ -301,7 +313,25 @@ Item {
                                 vertical: 1.0
                                 color1: window.activeMute ? Qt.lighter(ThemeBackend.red, 1.15) : Qt.lighter(window.tabColor, 1.15)
                                 color2: window.activeMute ? ThemeBackend.red : window.tabColor
-                                visible: window.activeVol > 0
+                                visible: window.activeVol > 0 && !coreGlass.active
+                            }
+
+                            LiquidFill {
+                                anchors.centerIn: parent
+                                width: parent.height
+                                height: parent.width
+                                rotation: -90
+                                radius: centralCore.radius
+                                fillLevel: orbWave.fillLevel
+                                waveAmp: orbWave.waveAmp
+                                phase: orbWave.wavePhase
+                                color1: orbWave.color1
+                                color2: orbWave.color2
+                                bodyAlpha: 0.4
+                                visible: coreGlass.active && window.activeVol > 0
+                                property real lift: (orbWave.fillLevel > 0.001 && orbWave.fillLevel < 0.999) ? 1.0 : 0.0
+                                Behavior on lift { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                                scale: 1.0 + 0.07 * lift
                             }
 
                             Text {
@@ -347,7 +377,7 @@ Item {
                                     font.family: ThemeBackend.fontFamily
                                     font.weight: Font.Black
                                     font.pixelSize: window.s(26)
-                                    color: ThemeBackend.crust
+                                    color: coreGlass.active ? ThemeBackend.text : ThemeBackend.crust
                                     text: window.activeMute ? I18n.t("volumepopup.mute") : window.activeVol + "%"
                                 }
                             }
@@ -511,10 +541,10 @@ Item {
                             width: contentList.width
 
                             readonly property PwNode node: modelData
-                            readonly property bool isActiveNode: window.activeTab === "outputs" ? (node === Audio.defaultSink) : (window.activeTab === "inputs" ? (node === Audio.defaultSource) : false)
+                            readonly property bool isActiveNode: window && window.activeTab === "outputs" ? (node === Audio.defaultSink) : (window && window.activeTab === "inputs" ? (node === Audio.defaultSource) : false)
                             readonly property int nodeVol: node && node.audio ? Math.round(node.audio.volume * 100) : 0
                             readonly property bool nodeMute: node && node.audio ? node.audio.muted : false
-                            readonly property string nodeDesc: window.activeTab === "apps" ? Audio.getNodeAppName(node) : Audio.getNodeName(node)
+                            readonly property string nodeDesc: window && window.activeTab === "apps" ? Audio.getNodeAppName(node) : Audio.getNodeName(node)
                             readonly property string nodeNameStr: Audio.getNodeSubDesc(node)
 
                             property bool isLoaded: false
@@ -554,11 +584,22 @@ Item {
 
                             property bool isHovered: cardMa.containsMouse && !isActiveNode
 
-                            color: isActiveNode ? window.tabColor : (isHovered ? ThemeBackend.surface1 : ThemeBackend.surface0)
+                            color: delegateGlass.active ? "transparent" : (isActiveNode ? window.tabColor : (isHovered ? ThemeBackend.surface1 : ThemeBackend.surface0))
                             border.color: isActiveNode ? window.tabColor : ThemeBackend.surface1
-                            border.width: isActiveNode ? 2 : 1
+                            border.width: delegateGlass.active ? 0 : (isActiveNode ? 2 : 1)
                             Behavior on border.color { ColorAnimation { duration: 300 } }
                             Behavior on color { ColorAnimation { duration: 300 } }
+
+                            GlassFill {
+                                id: delegateGlass
+                                anchors.fill: parent
+                                radius: parent.radius
+                                tintColor: delegateRoot.isActiveNode ? window.tabColor : ThemeBackend.surface0
+                                tintAmount: delegateRoot.isActiveNode ? 0.55 : 0.3
+                                press: delegateRoot.isHovered ? 0.25 : 0
+                                Behavior on press { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                Behavior on tintAmount { NumberAnimation { duration: 300 } }
+                            }
 
                             MouseArea {
                                 id: cardMa
@@ -587,7 +628,7 @@ Item {
 
                                     Text {
                                         font.family: ThemeBackend.iconFont; font.pixelSize: window.s(18)
-                                        color: isActiveNode ? ThemeBackend.crust : ThemeBackend.text
+                                        color: isActiveNode && !delegateGlass.active ? ThemeBackend.crust : ThemeBackend.text
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                         text: {
                                             if (window.activeTab === "inputs") return "󰍬";
@@ -603,13 +644,13 @@ Item {
                                         Text {
                                             Layout.fillWidth: true; elide: Text.ElideRight
                                             font.family: ThemeBackend.fontFamily; font.weight: Font.Bold; font.pixelSize: window.s(13)
-                                            color: isActiveNode ? ThemeBackend.crust : ThemeBackend.text
+                                            color: isActiveNode && !delegateGlass.active ? ThemeBackend.crust : ThemeBackend.text
                                             text: delegateRoot.nodeDesc
                                         }
                                         Text {
                                             Layout.fillWidth: true; elide: Text.ElideRight
                                             font.family: ThemeBackend.fontFamily; font.pixelSize: window.s(10.5)
-                                            color: isActiveNode ? Qt.darker(ThemeBackend.crust, 1.5) : ThemeBackend.subtext0
+                                            color: isActiveNode && !delegateGlass.active ? Qt.darker(ThemeBackend.crust, 1.5) : ThemeBackend.subtext0
                                             text: isActiveNode ? I18n.t("volumepopup.active_default") : delegateRoot.nodeNameStr
                                         }
                                     }

@@ -36,7 +36,7 @@ Item {
     property int buttonSize: root.height - (root.verticalPadding * 2)
     property int buttonCornerRadius: Math.max(2, root.cornerRadius - 2)
 
-    property string fontFamily: "JetBrains Mono"
+    property string fontFamily: ThemeBackend.fontFamily
     property int fontPixelSize: 12
     property string iconFont: ThemeBackend.iconFont
     property int iconFontSize: 14
@@ -56,6 +56,19 @@ Item {
     property bool isHoveredOrHighlighted: (mainHover.hovered || root.action_highlight) && root.enabled
 
     property real focusPop: 1.0
+    property real valueDrop: 0.0
+    property int valueDir: 0
+    property real shownValue: 0.0
+
+    Component.onCompleted: shownValue = value
+
+    onValueChanged: {
+        if (glass.active && !root.isEditing) {
+            root.valueDir = root.value >= root.shownValue ? 1 : -1;
+            valueDropAnim.restart();
+        }
+        root.shownValue = root.value;
+    }
 
     property int holdDirection: 0
     property bool holdTriggered: false
@@ -273,6 +286,12 @@ Item {
     }
 
     SequentialAnimation {
+        id: valueDropAnim
+        NumberAnimation { target: root; property: "valueDrop"; to: 1.0; duration: 90; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "valueDrop"; to: 0.0; duration: 460; easing.type: Easing.OutQuint }
+    }
+
+    SequentialAnimation {
         id: focusPopAnim
         NumberAnimation { target: root; property: "focusPop"; to: 1.03; duration: 110; easing.type: Easing.OutQuad }
         NumberAnimation { target: root; property: "focusPop"; to: 1.0; duration: 380; easing.type: Easing.OutQuint }
@@ -370,9 +389,30 @@ Item {
                 Behavior on color { ColorAnimation { duration: 150 } }
             }
 
+            Item {
+                id: valueLens
+                visible: glass.active && !root.isEditing && root.valueDrop > 0.001
+                width: Math.min(parent.width, displayLabel.width + 18) * (0.82 + 0.18 * root.valueDrop)
+                height: parent.height * (0.78 + 0.22 * root.valueDrop)
+                x: (parent.width - width) / 2 + root.valueDir * 7 * (1 - root.valueDrop)
+                y: (parent.height - height) / 2
+                opacity: Math.min(1, root.valueDrop * 1.6)
+
+                GlassFill {
+                    anchors.fill: parent
+                    radius: height / 2
+                    tintColor: root.textColor
+                    tintAmount: 0.14
+                    tintStrength: 1.0
+                    press: 0.3 + 0.7 * root.valueDrop
+                    pulse: root.valueDrop
+                }
+            }
+
             Text {
                 id: displayLabel
                 anchors.centerIn: parent
+                scale: glass.active ? 1.0 + 0.1 * root.valueDrop : 1.0
                 visible: !root.isEditing
                 text: root.formatValue(root.value)
                 font.family: root.fontFamily

@@ -1272,6 +1272,26 @@
       "thickness": {
         "title": "Grubość paska",
         "desc": "Zmień grubość paska, moduły dostosują się do niej"
+      },
+      "menu": {
+        "show_settings": {
+          "title": "Pokaż ikonę ustawień",
+          "desc": "Wyświetla przycisk otwierający ustawienia"
+        },
+        "show_launcher": {
+          "title": "Pokaż ikonę launchera",
+          "desc": "Wyświetla przycisk wyszukiwania otwierający launcher"
+        },
+        "style": {
+          "title": "Styl",
+          "desc": "Wybierz wygląd modułu menu",
+          "name": {
+            "button": "Przycisk",
+            "icon": "Ikona"
+          },
+          "button": "Interaktywne przyciski z ikonami i tłem",
+          "icon": "Czyste ikony bez tła"
+        }
       }
     },
     "theme": {
@@ -1297,6 +1317,18 @@
         "select_wallpaper": "Wybierz tapetę",
         "no_wallpaper_selected": "Nie wybrano tapety",
         "select": "Tapeta"
+      },
+      "element_opacity": {
+        "title": "Przezroczystość elementów",
+        "desc": "Przezroczystość paska, docka, widżetów i wszystkich innych elementów powłoki"
+      },
+      "blur_background": {
+        "title": "Dodaj rozmyte tło z tapety",
+        "desc": "Rozmywa tapetę za każdym elementem używającym przezroczystości",
+        "style": {
+          "blur": "Rozmycie",
+          "liquid": "Płynne szkło"
+        }
       }
     },
     "file_picker": {

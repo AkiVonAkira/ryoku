@@ -43,6 +43,7 @@ var _has = {
     "pythonTemp": true,
     "pythonDisk": true,
     "pythonBattery": true,
+    "pythonVisualizer": true,
 };
 
 var _panel = {

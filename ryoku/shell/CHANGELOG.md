@@ -15,8 +15,25 @@
   and `ryoku-host` every 100 ms from login to logout. It now backs off to five
   seconds while nothing happens and wakes at once when the lock screen, an
   unlock or a guard appears (`ipc/sleepwake.go`, `ipc/daemon.go`).
+- **Python's recording pill shows while you record.** It watched Serpantinum's
+  own recorder cache, which Ryoku never writes, so it never appeared. It now
+  follows Ryoku's recorder and shows the capture's real elapsed time, with a
+  steady dot while paused, for a capture started from the capture card,
+  ryoshot or the CLI (`barstyles/python/bar/faces/info/InfoFace.qml`).
+- **Python's timer, stopwatch and draw icons draw again.** They named Font
+  Awesome 6, which no edition installs, and the bar's numbers named a plain
+  JetBrains Mono that fell back to another face. Both now use the Nerd Font the
+  style already draws with, and the unused 39 MB font folder bundled with the
+  style is gone (`barstyles/python/`).
 
 ### Changed
+- **Python follows Serpantinum's newer liquid-glass work.** Hover, lift and
+  ripple lenses on inputs, the tray, notifications and the dock, glass corner
+  fillets where the bar meets the screen, glass power and media buttons, white
+  text on liquid glass, and a blur that samples padded wallpaper so its edges
+  stop smearing. Glass reaches the Python desktop faces too, and the visualizer
+  face can span the full screen width from its Customize tab
+  (`barstyles/python/`, `modules/desktop/options/PythonVisualizerOptions.qml`).
 - **Python catches up with Serpantinum 2.2.12.** The bar moves to upstream's
   module registry, so top and side bars share one set of modules, and gains
   bar thickness and edge-centred layouts, liquid-glass surfaces drawn over the

@@ -26,12 +26,19 @@ layout(std140, binding = 0) uniform buf {
     float energy;
     float nest;
     float morph;
+    float motion;
+    vec4 fillet;
+    vec4 box;
+    float filletInset;
+    vec4 sampleBounds;
+    float unpremul;
 };
 
 layout(binding = 1) uniform sampler2D src;
 
 const int TAPS = 10;
 const float GOLDEN = 2.39996323;
+const float DARKEN = 0.15;
 const vec2 lightDir = vec2(-0.55, -0.83);
 
 float sdRoundBox(vec2 p, vec2 b, vec4 r) {
@@ -41,13 +48,36 @@ float sdRoundBox(vec2 p, vec2 b, vec4 r) {
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - rad;
 }
 
+vec2 boxHalf() {
+    return box.z > 0.0 ? box.zw : itemSize * 0.5;
+}
+
+float sdfCard(vec2 p) {
+    return sdRoundBox(p - box.xy, boxHalf() - glassPad, radii);
+}
+
+float sdfPlane(vec2 p) {
+    vec2 h = boxHalf();
+    return abs(fillet.x) * h.x + abs(fillet.y) * h.y - dot(p - box.xy, fillet.xy) - filletInset;
+}
+
 float sdf(vec2 p) {
-    return sdRoundBox(p, itemSize * 0.5 - glassPad, radii);
+    float a = sdfCard(p);
+    if (fillet.z <= 0.0) return a;
+    float b = sdfPlane(p);
+    float r = fillet.z;
+    vec2 u = max(vec2(r - a, r - b), vec2(0.0));
+    return max(r, min(a, b)) - length(u);
+}
+
+vec4 fetchLod4(vec2 p, float lod) {
+    vec2 uv = clamp((p + itemSize * 0.5) / itemSize, max(vec2(0.001), sampleBounds.xy), min(vec2(0.999), sampleBounds.zw));
+    vec4 c = textureLod(src, srcRect.xy + uv * srcRect.zw, lod);
+    return unpremul > 0.5 ? c : vec4(c.rgb, 1.0);
 }
 
 vec3 fetchLod(vec2 p, float lod) {
-    vec2 uv = clamp((p + itemSize * 0.5) / itemSize, vec2(0.001), vec2(0.999));
-    return textureLod(src, srcRect.xy + uv * srcRect.zw, lod).rgb;
+    return fetchLod4(p, lod).rgb;
 }
 
 float ign(vec2 p) {
@@ -60,26 +90,31 @@ float hash12(vec2 p) {
     return fract((p3.x + p3.y) * p3.z);
 }
 
-float blurLod(float rad) {
+float blurLod(float rad, int taps) {
     float R = max(rad, 0.5) * 1.5;
-    float gap = R * sqrt(3.14159265 / float(TAPS));
+    float gap = R * sqrt(3.14159265 / float(taps));
     return clamp(log2(max(gap, 1.0)) + 0.35, 0.0, 6.0);
 }
 
-vec3 blurredAt(vec2 p, float rad, float lod) {
+vec3 blurredAt(vec2 p, float rad, float lod, int taps) {
     float R = max(rad, 0.5) * 1.5;
     float rot = ign(gl_FragCoord.xy) * 6.2831853;
-    vec3 acc = vec3(0.0);
+    vec4 acc = vec4(0.0);
     float wsum = 0.0;
     for (int i = 0; i < TAPS; ++i) {
+        if (i >= taps) break;
         float fi = float(i) + 0.5;
-        float r = sqrt(fi / float(TAPS));
+        float r = sqrt(fi / float(taps));
         float a = fi * GOLDEN + rot;
         float w = exp(-2.2 * r * r);
-        acc += fetchLod(p + vec2(cos(a), sin(a)) * r * R, lod) * w;
+        acc += fetchLod4(p + vec2(cos(a), sin(a)) * r * R, lod) * w;
         wsum += w;
     }
-    return acc / wsum;
+    return acc.a > 1e-4 * wsum ? acc.rgb / acc.a : vec3(0.0);
+}
+
+vec3 spectrum(float x) {
+    return 0.5 + 0.5 * cos(6.2831853 * (x + vec3(0.0, 0.33, 0.67)));
 }
 
 vec2 displacement(vec3 normal, float index, float travel) {
@@ -90,6 +125,10 @@ vec2 displacement(vec3 normal, float index, float travel) {
 void main() {
     vec2 p = qt_TexCoord0 * itemSize - itemSize * 0.5;
     float dist = sdf(p);
+    if (fillet.w > 0.5 && (sdfCard(p) < 0.0 || sdfPlane(p) < 0.0)) {
+        fragColor = vec4(0.0);
+        return;
+    }
     float coverage = clamp(0.5 - dist, 0.0, 1.0);
     float shadow = 0.13 * shadowAmt * (1.0 - smoothstep(-2.0, 9.0, sdf(p - vec2(0.0, 3.0))));
     if (dist > 1.0) {
@@ -115,28 +154,37 @@ void main() {
     float reach = max(40.0, min(itemSize.x, itemSize.y) * 0.6) * (1.0 + 0.4 * morph);
     float near = hover * exp(-cd * cd / (2.0 * reach * reach));
     float sigma = reach * 0.5;
-    float bulgeH = hover * exp(-cd * cd / (2.0 * sigma * sigma)) * 0.35 * (1.0 + 1.4 * morph) * thickness * (1.0 - 0.5 * nest);
+    float bulgeH = hover * exp(-cd * cd / (2.0 * sigma * sigma)) * 0.35 * (1.0 + 1.4 * morph + 1.2 * motion) * thickness * (1.0 - 0.5 * nest);
     vec2 bulge = bulgeH * toCursor / (sigma * sigma);
     vec3 normal = normalize(vec3(g * slope - bulge, 1.0));
-    float th = thickness * 1.35 * (1.0 + (0.12 + 0.3 * morph) * near + 0.5 * energy);
+    float th = thickness * 1.35 * (1.0 + (0.12 + 0.3 * morph) * near + 0.74 * energy + 0.64 * motion);
 
-    vec2 dG = displacement(normal, ior, th);
-    vec2 dR = dG * (1.0 + dispersion * 0.6);
-    vec2 dB = dG * (1.0 - dispersion * 0.6);
+    float edgeFall = om * om;
+    float wobble = sin(dot(p, vec2(0.11, 0.09)) + t * 0.35) * 0.5 + 0.5;
+    float warpK = 1.0 + 0.644 * motion + 0.368 * energy;
+    vec2 warp = (-g * edgeFall * bz * (0.294 + 0.11 * wobble) + vec2(-g.y, g.x) * edgeFall * bz * 0.092 * (wobble - 0.5)) * warpK;
+    vec2 dG = displacement(normal, ior, th) + warp;
+    float spread = dispersion * (0.35 + 1.2 * edgeFall) * (1.0 + 2.2 * motion + 0.55 * energy);
+    vec2 dR = dG * (1.0 + spread);
+    vec2 dB = dG * (1.0 - spread);
 
     float rad = frost * mix(0.45, 1.0, smoothstep(0.0, bz, t));
     vec2 glassSize = itemSize - 2.0 * glassPad;
     vec2 zq = p / max(glassSize * 0.5, vec2(1.0));
     float zr = clamp(length(zq), 0.0, 1.0);
-    float zoomAmt = 0.10 * clamp(energy, 0.0, 1.0);
+    float zoomAmt = 0.129 * clamp(energy, 0.0, 1.0) + 0.064 * motion;
     vec2 ps = vec2(p.x, p.y * (1.0 - 0.08 * 1.5)) * (1.0 - zoomAmt * (1.0 - zr * zr));
     vec2 follow = clamp((cursor - itemSize * 0.5) / max(itemSize * 0.5, vec2(1.0)), vec2(-1.0), vec2(1.0));
     ps -= follow * 6.0 * near * morph * (1.0 - zr * zr * 0.5);
-    float lod = blurLod(rad);
-    vec3 col = blurredAt(ps + dG, rad, lod);
-    if (dot(dG, dG) > 0.25) {
-        col.r = fetchLod(ps + dR, lod + 0.5).r;
-        col.b = fetchLod(ps + dB, lod + 0.5).b;
+    bool interior = t >= bz && near < 0.02;
+    int taps = interior ? 6 : (frost <= 1.2 ? 6 : TAPS);
+    float lod = blurLod(rad, taps);
+    vec3 col = blurredAt(ps + dG, rad, lod, taps);
+    if (!interior && dot(dG, dG) > 0.25) {
+        vec4 cR = fetchLod4(ps + dR, lod + 0.5);
+        vec4 cB = fetchLod4(ps + dB, lod + 0.5);
+        if (cR.a > 0.05) col.r = cR.r / cR.a;
+        if (cB.a > 0.05) col.b = cB.b / cB.a;
     }
 
     float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
@@ -155,6 +203,13 @@ void main() {
     float edgeHi = (hair * (0.18 + 0.78 * spec) + wide * 0.10 * (0.30 + spec)) * rim * (1.0 + 0.5 * near + 0.9 * energy);
     float mx = (t - bz * 0.5) / (bz * 0.2 + 1.0);
     float men = exp(-mx * mx) * 0.07 * (0.35 + spec) * rim;
+    vec3 fringe = vec3(0.0);
+    if (t < bz * 2.5) {
+        float fb = (t - bz * 0.42) / (bz * 0.22 + 1.0);
+        float fringeBand = exp(-fb * fb);
+        float fringePhase = dot(g, vec2(0.7, 0.45)) * 0.9 + t / (bz * 1.6) + 0.15 * dot(p, vec2(0.004, 0.003));
+        fringe = (spectrum(fringePhase) - 0.5) * fringeBand * (0.018 + 0.036 * spec) * rim * (1.0 + 3.0 * motion);
+    }
     float chroma = max(tintColor.r, max(tintColor.g, tintColor.b)) - min(tintColor.r, min(tintColor.g, tintColor.b));
     float neutralK = 1.0 - smoothstep(0.10, 0.18, chroma);
     vec3 tcol = mix(tintColor.rgb, vec3(0.5), neutralK);
@@ -163,6 +218,7 @@ void main() {
     float lift = mix(mix(0.07, 0.04, dark), mix(0.03, 0.02, dark), clear) * (1.0 - 0.85 * nest);
     float sheen = (1.0 - ty) * mix(0.03, 0.02, clear) * (1.0 - 0.8 * nest);
     vec3 light = vec3(edgeHi + men + sheen + near * 0.015 * rim + energy * 0.03);
+    light += fringe;
     light += vec3(lift) * mix(1.0, smoothstep(0.0, 1.0, length(dG) * 0.5), clear);
 
     float tA = clamp(tAmt * (0.7 + 0.6 * l), 0.0, 1.0);
@@ -172,8 +228,11 @@ void main() {
     float clearA = lensA * (1.0 - tA) + tA;
 
     vec3 premul = mix(opaqueRgb, clearRgb, clear);
+    float veil = DARKEN * smoothstep(0.35, 0.9, l) * (1.0 - clear) * (1.0 - nest);
+    premul *= 1.0 - veil;
     premul += light;
     float alpha = mix(1.0, clearA, clear);
+    alpha += veil * (1.0 - alpha);
 
     float gn = hash12(gl_FragCoord.xy) + hash12(gl_FragCoord.xy * 1.7 + 17.0) - 1.0;
     premul += vec3(gn * 0.03 * (1.0 - 0.7 * nest)) * alpha;

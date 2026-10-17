@@ -8,6 +8,7 @@ Item {
     property var widget: null
 
     readonly property bool isVertical: widget ? widget.orientation === "vertical" : false
+    readonly property int activeIdx: widget ? Number(widget.activeIndex) : -1
 
     implicitWidth: wsLayout.implicitWidth
     implicitHeight: wsLayout.implicitHeight
@@ -24,7 +25,7 @@ Item {
             radius: parent.radius
             tintColor: ThemeBackend.mauve
             tintAmount: 0.5
-            press: 0.3
+            press: 0.3 + 0.7 * activeHighlight.lift
         }
 
         property int prevIdx: 0
@@ -74,6 +75,12 @@ Item {
         Behavior on actualStart { NumberAnimation { id: startAnim; duration: 380; easing.type: Easing.OutQuint } }
         Behavior on actualEnd { NumberAnimation { id: endAnim; duration: 380; easing.type: Easing.OutQuint } }
 
+        readonly property bool isMoving: Math.abs(actualStart - targetStart) > 0.5 || Math.abs(actualEnd - targetEnd) > 0.5
+        property real lift: (pillsGlass.active && isMoving) ? 1.0 : 0.0
+        Behavior on lift { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+        scale: 1.0 + 0.14 * lift
+        transformOrigin: Item.Center
+
         readonly property real thickness: widget ? widget.s(widget.isCompact ? 16 : 18) : 18
 
         x: pillsFaceRoot.isVertical ? wsLayout.x + (wsLayout.width - width) / 2 : wsLayout.x + actualStart
@@ -101,7 +108,7 @@ Item {
                 required property int index
 
                 property bool isOccupied: widget ? widget.isOccupied(index) : false
-                property bool isActive: widget ? (index === widget.activeIndex) : false
+                property bool isActive: pillsFaceRoot ? index === pillsFaceRoot.activeIdx : false
                 property bool initAnimTrigger: false
                 property bool shown: widget && typeof widget.isShown === "function" ? widget.isShown(index) : true
 

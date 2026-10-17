@@ -29,6 +29,15 @@ Item {
     property color handleDragColor: Qt.lighter(root.handleColor, 1.30)
     property color handleBorderColor: Qt.rgba(0, 0, 0, root.isDragging ? 0.20 : 0.10)
 
+    readonly property real accentHue: Math.max(0, root.accentColor.hslHue)
+    readonly property real accentSat: root.accentColor.hslSaturation
+    readonly property real accentLight: root.accentColor.hslLightness
+    readonly property real glassTint: 0.12 + 0.16 * root.accentSat
+    readonly property real glassFrost: 0.8 + 2.4 * root.accentLight
+    readonly property real glassRim: 0.3 + 0.5 * root.accentSat
+    readonly property real glassSaturation: 1.0 + 0.5 * root.accentSat
+    readonly property real glassThickness: 0.5 + 0.7 * (0.5 + 0.5 * Math.sin(root.accentHue * 6.2832))
+
     property real cornerRadius: (root.vertical ? width : height) / 2
     property real handleSize: root.vertical ? root.width : root.height
     property real handleRadius: handleSize / 2
@@ -52,6 +61,33 @@ Item {
     property real visualPosition: Math.max(0.0, Math.min(1.0, (root.effectiveValue - from) / Math.max(0.0001, to - from)))
     property real animPosition: visualPosition
     readonly property real percentage: root.visualPosition * 100
+
+    property real flow: 0
+    property real lastPosition: 0
+
+    Component.onCompleted: lastPosition = animPosition
+
+    onAnimPositionChanged: {
+        const span = root.vertical ? root.height : root.width;
+        const d = Math.abs(animPosition - lastPosition) * span;
+        lastPosition = animPosition;
+        if (!handleGlass.active || d < 0.05) return;
+        flow = Math.min(1, flow + d / 28);
+        if (!flowDecay.running) flowDecay.start();
+    }
+
+    Timer {
+        id: flowDecay
+        interval: 16
+        repeat: true
+        onTriggered: {
+            root.flow *= 0.88;
+            if (root.flow < 0.01) {
+                root.flow = 0;
+                stop();
+            }
+        }
+    }
 
     Behavior on animPosition {
         enabled: !root.isDragging
@@ -146,7 +182,7 @@ Item {
             anchors.fill: parent
             radius: root.cornerRadius
             tintColor: root.backgroundColor
-            tintAmount: 0.22
+            tintAmount: 0.1
         }
 
         Behavior on color { ColorAnimation { duration: 150 } }
@@ -184,8 +220,12 @@ Item {
                 radius: root.cornerRadius
                 forceClear: true
                 tintColor: root.accentColor
-                tintAmount: 0.6
+                tintAmount: root.glassTint
                 tintStrength: 1.0
+                frost: root.glassFrost
+                rim: root.glassRim
+                saturation: root.glassSaturation
+                thickness: Math.max(3, Math.min(14, Math.min(width, height) * 0.28)) * root.glassThickness
                 press: root.isDragging ? 0.5 : (root.isHoveredOrHighlighted ? 0.2 : 0)
                 Behavior on press { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
             }
@@ -222,7 +262,11 @@ Item {
             anchors.fill: parent
             radius: parent.radius
             tintColor: root.handleColor
-            tintAmount: 0.45
+            tintAmount: root.glassTint * 0.8
+            frost: root.glassFrost
+            rim: root.glassRim
+            saturation: root.glassSaturation
+            thickness: Math.max(3, Math.min(14, Math.min(width, height) * 0.28)) * root.glassThickness
             shadow: 1
             press: root.isDragging ? 1 : (root.isHoveredOrHighlighted ? 0.3 : 0)
             pulse: Math.min(1, handle.flashOpacity * 2.5)
@@ -234,6 +278,12 @@ Item {
 
         opacity: root.enabled ? 1.0 : 0.5
         scale: root.targetScale * popScale
+        transform: Scale {
+            origin.x: handle.width / 2
+            origin.y: handle.height / 2
+            xScale: root.vertical ? 1 - 0.12 * root.flow : 1 + 0.45 * root.flow
+            yScale: root.vertical ? 1 + 0.45 * root.flow : 1 - 0.12 * root.flow
+        }
 
         Behavior on color { ColorAnimation { duration: 150 } }
         Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -284,7 +334,7 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: root.valueFormatter(root.effectiveValue)
             color: handleGlass.active ? ThemeBackend.text : Qt.hsla(root.accentColor.hslHue, root.accentColor.hslSaturation, 0.12, 1.0)
-            font.family: "JetBrains Mono"
+            font.family: ThemeBackend.fontFamily
             font.weight: Font.Bold
             font.pixelSize: Math.max(8, Math.round(root.handleSize * 0.42 * handle.fontScale))
             visible: root.showValueBubble
@@ -360,7 +410,7 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: root.valueFormatter(valueBubble.previewVal)
             color: Qt.hsla(root.accentColor.hslHue, root.accentColor.hslSaturation, 0.12, 1.0)
-            font.family: "JetBrains Mono"
+            font.family: ThemeBackend.fontFamily
             font.weight: Font.Bold
             font.pixelSize: 11
         }

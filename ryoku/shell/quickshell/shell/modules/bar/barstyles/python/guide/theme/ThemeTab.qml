@@ -41,7 +41,7 @@ Item {
     property bool currentBlurBackground: themeSettings.blurBackground !== undefined ? Boolean(themeSettings.blurBackground) : false
     property string currentPreset: themeSettings.activePreset !== undefined ? themeSettings.activePreset : "Matugen"
 
-    readonly property var curatedFonts: [ThemeBackend.iconFont, "JetBrainsMono Nerd Font", "JetBrains Mono"]
+    readonly property var curatedFonts: ["JetBrainsMono Nerd Font", "FiraCode Nerd Font", "Hack Nerd Font"]
     property var blockedFontPatterns: [".notdef", "cursor", "emoji", "symbol", "pcf"]
     property var availableFonts: []
 

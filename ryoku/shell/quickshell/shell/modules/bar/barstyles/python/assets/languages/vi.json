@@ -566,6 +566,26 @@
       "thickness": {
         "title": "Độ dày thanh",
         "desc": "Thay đổi độ dày của thanh, các mô-đun sẽ tự điều chỉnh"
+      },
+      "menu": {
+        "show_settings": {
+          "title": "Hiện biểu tượng cài đặt",
+          "desc": "Hiển thị nút mở cài đặt"
+        },
+        "show_launcher": {
+          "title": "Hiện biểu tượng trình khởi chạy",
+          "desc": "Hiển thị nút tìm kiếm mở trình khởi chạy"
+        },
+        "style": {
+          "title": "Kiểu dáng",
+          "desc": "Chọn giao diện của mô-đun menu",
+          "name": {
+            "button": "Nút bấm",
+            "icon": "Biểu tượng"
+          },
+          "button": "Nút biểu tượng tương tác có nền",
+          "icon": "Biểu tượng gọn gàng không có nền"
+        }
       }
     },
     "theme": {
@@ -591,6 +611,18 @@
         "select_wallpaper": "Chọn hình nền",
         "no_wallpaper_selected": "Chưa chọn hình nền nào",
         "select": "Hình nền"
+      },
+      "element_opacity": {
+        "title": "Độ mờ của phần tử",
+        "desc": "Độ mờ của thanh, dock, tiện ích và mọi phần tử khác của shell"
+      },
+      "blur_background": {
+        "title": "Thêm nền hình nền làm mờ",
+        "desc": "Làm mờ hình nền phía sau mọi phần tử sử dụng độ trong suốt",
+        "style": {
+          "blur": "Làm mờ",
+          "liquid": "Kính lỏng"
+        }
       }
     },
     "file_picker": {

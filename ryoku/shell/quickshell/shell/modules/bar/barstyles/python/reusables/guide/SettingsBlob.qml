@@ -19,6 +19,7 @@ Rectangle {
     clip: true
 
     implicitHeight: blobCol.implicitHeight
+    Layout.preferredHeight: implicitHeight
 
     GlassFill {
         id: blobGlass

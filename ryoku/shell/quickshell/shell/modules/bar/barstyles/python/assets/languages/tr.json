@@ -566,6 +566,26 @@
       "thickness": {
         "title": "Çubuk kalınlığı",
         "desc": "Çubuğun kalınlığını değiştirin, modüller buna uyum sağlar"
+      },
+      "menu": {
+        "show_settings": {
+          "title": "Ayarlar simgesini göster",
+          "desc": "Ayarları açan düğmeyi gösterir"
+        },
+        "show_launcher": {
+          "title": "Başlatıcı simgesini göster",
+          "desc": "Başlatıcıyı açan arama düğmesini gösterir"
+        },
+        "style": {
+          "title": "Stil",
+          "desc": "Menü modülünün görünümünü seçin",
+          "name": {
+            "button": "Düğme",
+            "icon": "Simge"
+          },
+          "button": "Arka planlı etkileşimli simge düğmeleri",
+          "icon": "Arka plansız sade simgeler"
+        }
       }
     },
     "theme": {
@@ -591,6 +611,18 @@
         "select_wallpaper": "Duvar kâğıdı seç",
         "no_wallpaper_selected": "Duvar kâğıdı seçilmedi",
         "select": "Duvar Kâğıdı"
+      },
+      "element_opacity": {
+        "title": "Öğe opaklığı",
+        "desc": "Çubuğun, dock'un, widget'ların ve diğer tüm kabuk öğelerinin opaklığı"
+      },
+      "blur_background": {
+        "title": "Bulanık duvar kağıdı arka planı ekle",
+        "desc": "Saydamlık kullanan her öğenin arkasındaki duvar kağıdını bulanıklaştırır",
+        "style": {
+          "blur": "Bulanıklık",
+          "liquid": "Sıvı cam"
+        }
       }
     },
     "file_picker": {

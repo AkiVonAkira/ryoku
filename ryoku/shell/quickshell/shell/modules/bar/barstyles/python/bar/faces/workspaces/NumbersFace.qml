@@ -55,7 +55,7 @@ Item {
             radius: parent.radius
             tintColor: ThemeBackend.mauve
             tintAmount: 0.5
-            press: 0.3
+            press: 0.3 + 0.7 * activeHighlight.lift
         }
 
         property int prevIdx: 0
@@ -100,6 +100,12 @@ Item {
 
         Behavior on actualStart { NumberAnimation { id: startAnim; duration: 250; easing.type: Easing.OutExpo } }
         Behavior on actualEnd { NumberAnimation { id: endAnim; duration: 250; easing.type: Easing.OutExpo } }
+
+        readonly property bool isMoving: Math.abs(actualStart - targetStart) > 0.5 || Math.abs(actualEnd - targetEnd) > 0.5
+        property real lift: (numbersGlass.active && isMoving) ? 1.0 : 0.0
+        Behavior on lift { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+        scale: 1.0 + 0.14 * lift
+        transformOrigin: Item.Center
 
         opacity: (widget && widget.workspaceCount > 0 && widget.activeIndex >= 0) ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 200 } }
@@ -181,7 +187,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: (wsPill.index + 1).toString()
-                    font.family: "JetBrains Mono"
+                    font.family: ThemeBackend.fontFamily
                     font.pixelSize: widget ? widget.s(widget.isCompact ? 12 : 14) : 14
                     font.weight: wsPill.isActive ? Font.Black : (wsPill.isOccupied ? Font.Bold : Font.Medium)
 

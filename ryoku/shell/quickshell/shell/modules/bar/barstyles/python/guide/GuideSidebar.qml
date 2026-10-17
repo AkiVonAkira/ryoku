@@ -12,11 +12,13 @@ Rectangle {
     property alias searchResults: searchResultsList
     property alias tabsView: tabsFlickable
     property alias tabsItems: tabsRepeater
+    property Item hoverItem: null
     x: I18n.rtl ? (parent.width - width) : 0
     anchors.top: parent.top
     anchors.bottom: parent.bottom
-    width: popup.searchActive ? popup.s(340) : popup.s(260)
-
+    readonly property real targetWidth: popup.searchActive ? popup.s(340) : popup.s(260)
+    width: targetWidth
+    
     topLeftRadius: !I18n.rtl ? ThemeBackend.clampedBorderRadius : 0
     bottomLeftRadius: !I18n.rtl ? ThemeBackend.clampedBorderRadius : 0
     topRightRadius: I18n.rtl ? ThemeBackend.clampedBorderRadius : 0
@@ -242,8 +244,13 @@ Rectangle {
                         radius: parent.radius
                         tintColor: ThemeBackend.mauve
                         tintAmount: 0.5
-                        press: 0.3
+                        press: 0.3 + 0.7 * activeHighlight.lift
                     }
+
+                    readonly property bool isMoving: Math.abs(x - targetX) > 0.5 || Math.abs(y - targetY) > 0.5 || Math.abs(width - targetW) > 0.5 || Math.abs(height - targetH) > 0.5
+                    property real lift: (activeGlass.active && isMoving) ? 1.0 : 0.0
+                    Behavior on lift { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                    scale: 1.0 + 0.04 * lift
 
                     property Item activeGroupItem: (popup.currentTab >= 0 && tabsRepeater && popup.currentTab < tabsRepeater.count) ? tabsRepeater.itemAt(popup.currentTab) : null
                     property bool isSubActive: popup.currentTab === popup.expandedTab && popup.expandedTab !== -1
@@ -271,6 +278,29 @@ Rectangle {
                     Behavior on y { enabled: !sidebarWidthAnim.running; NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
                     Behavior on width { enabled: !sidebarWidthAnim.running; NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
                     Behavior on height { enabled: !sidebarWidthAnim.running; NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
+                }
+
+                GlassLens {
+                    id: hoverLens
+                    z: -1
+                    readonly property rect hoverRect: {
+                        void tabsCol.implicitHeight;
+                        void tabsCol.width;
+                        if (!sidebar.hoverItem) return Qt.rect(0, 0, 0, 0);
+                        const p = sidebar.hoverItem.mapToItem(tabsFlickable.contentItem, 0, 0);
+                        return Qt.rect(p.x, p.y, sidebar.hoverItem.width, sidebar.hoverItem.height);
+                    }
+                    targetX: hoverRect.x
+                    targetY: hoverRect.y
+                    targetWidth: hoverRect.width
+                    targetHeight: hoverRect.height
+                    radius: ThemeBackend.borderRadius
+                    tintColor: ThemeBackend.surface1
+                    tintAmount: 0.25
+                    shadow: 0
+                    restPress: 0.2
+                    magnify: popup.s(4)
+                    press: sidebar.hoverItem && sidebar.hoverItem.pressed ? 0.8 : 0
                 }
 
                 ColumnLayout {
@@ -313,15 +343,25 @@ Rectangle {
                                 z: 1
 
                                 property bool isDirectActive: tabDelegate.hasSubtabs ? (popup.currentTab === tabDelegate.tabIndex && !tabDelegate.isExpanded) : (popup.currentTab === tabDelegate.tabIndex)
+                                readonly property bool pressed: tabHeaderMa.pressed
+                                readonly property bool lensWanted: tabHeaderMa.containsMouse && !isDirectActive
 
-                                color: (tabHoverGlass.active || !(tabHeaderMa.containsMouse && !isDirectActive)) ? "transparent" : Qt.alpha(ThemeBackend.surface1, 0.5)
+                                onLensWantedChanged: {
+                                    if (lensWanted) sidebar.hoverItem = tabHeaderItem;
+                                    else if (sidebar.hoverItem === tabHeaderItem) sidebar.hoverItem = null;
+                                }
+                                Component.onDestruction: {
+                                    if (sidebar.hoverItem === tabHeaderItem) sidebar.hoverItem = null;
+                                }
+
+                                color: (tabHoverGlass.active || hoverLens.glassActive || !(tabHeaderMa.containsMouse && !isDirectActive)) ? "transparent" : Qt.alpha(ThemeBackend.surface1, 0.5)
                                 Behavior on color { ColorAnimation { duration: 150 } }
 
                                 GlassFill {
                                     id: tabHoverGlass
                                     anchors.fill: parent
                                     radius: parent.radius
-                                    allowed: tabHeaderMa.containsMouse && !tabHeaderItem.isDirectActive
+                                    allowed: tabHeaderMa.containsMouse && !tabHeaderItem.isDirectActive && !hoverLens.glassActive
                                     tintColor: ThemeBackend.surface1
                                     tintAmount: 0.25
                                     press: tabHeaderMa.pressed ? 0.8 : 0.2
@@ -461,15 +501,25 @@ Rectangle {
                                                 z: 1
 
                                                 property bool isSubActive: popup.currentTab === parentIndex && popup.expandedTab === parentIndex && popup.currentSubTab === subIndex
+                                                readonly property bool pressed: subtabMa.pressed
+                                                readonly property bool lensWanted: subtabMa.containsMouse && !isSubActive
 
-                                                color: (subHoverGlass.active || !(subtabMa.containsMouse && !isSubActive)) ? "transparent" : Qt.alpha(ThemeBackend.surface1, 0.5)
+                                                onLensWantedChanged: {
+                                                    if (lensWanted) sidebar.hoverItem = subtabItem;
+                                                    else if (sidebar.hoverItem === subtabItem) sidebar.hoverItem = null;
+                                                }
+                                                Component.onDestruction: {
+                                                    if (sidebar.hoverItem === subtabItem) sidebar.hoverItem = null;
+                                                }
+
+                                                color: (subHoverGlass.active || hoverLens.glassActive || !(subtabMa.containsMouse && !isSubActive)) ? "transparent" : Qt.alpha(ThemeBackend.surface1, 0.5)
                                                 Behavior on color { ColorAnimation { duration: 150 } }
 
                                                 GlassFill {
                                                     id: subHoverGlass
                                                     anchors.fill: parent
                                                     radius: parent.radius
-                                                    allowed: subtabMa.containsMouse && !subtabItem.isSubActive
+                                                    allowed: subtabMa.containsMouse && !subtabItem.isSubActive && !hoverLens.glassActive
                                                     tintColor: ThemeBackend.surface1
                                                     tintAmount: 0.25
                                                     press: subtabMa.pressed ? 0.8 : 0.2
