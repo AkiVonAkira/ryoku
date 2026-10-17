@@ -749,6 +749,11 @@
   status items loaded through `shell.json` no longer fall back to their default
   lists after a save or shell restart
   (`quickshell/shell/modules/bar/barstyles/orpheus/settings/Prefs.qml`).
+- **Unreadable mouse devices no longer make the shell daemon spin.** The mouse
+  remapper keeps failed nodes on a capped exponential retry, resets that delay
+  on hotplug, and logs one useful error per failure streak instead of rescanning
+  continuously. It also leaves input nodes closed until a binding or button
+  capture needs them (`ipc/mousemap.go`, `ipc/mousemap_test.go`).
 - **The dock's sports scoreboard no longer eats all memory and the network.**
   On a fractional display scale, a team logo still loading dropped out of its
   layout slot, so its width became its own decoded width; `StyledImage` asked
