@@ -274,6 +274,18 @@ jq -e '.monitors[] | select(.output == "eDP-1") | .disabled == true' "$dock_appl
   || fail "fallback overwrote the saved panel-off preference"
 runD "$tmp/dock-both.json" autoscale >/dev/null
 eDP | grep -qF 'disabled = true' || fail "reconnected HDMI did not restore the panel-off preference"
+# Booted undocked: the disabled panel reports 0x0 and Hyprland adds its FALLBACK
+# placeholder. The placeholder is not a display, so the saved layout still
+# governs and the panel comes back instead of a black screen.
+cat >"$tmp/dock-boot.json" <<'JSON'
+[
+  {"name":"eDP-1","make":"Acme","model":"Panel","serial":"P1","width":0,"height":0,"refreshRate":0,"x":0,"y":0,"scale":1.0,"transform":0,"vrr":false,"disabled":true,"focused":false,"availableModes":["2560x1600@165.000Hz"]},
+  {"name":"FALLBACK","make":"","model":"","serial":"","width":1920,"height":1080,"refreshRate":60.0,"x":0,"y":0,"scale":1.0,"transform":0,"vrr":false,"disabled":false,"focused":true,"availableModes":[]}
+]
+JSON
+runD "$tmp/dock-boot.json" autoscale >/dev/null
+eDP | grep -qF 'mode = "2560x1600@165"' || fail "booting undocked left the panel off behind the FALLBACK output"
+grep -qF '"FALLBACK"' "$conf" && fail "the FALLBACK placeholder was written into monitors.lua"
 
 # --- settle: recover a display a degraded link left below its resolution -------
 # settle re-asserts each output's intended mode from monitors.lua; --check reports

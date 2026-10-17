@@ -146,6 +146,11 @@ require_jq() {
 # (width/height 0), while a user-disabled one is removed from the layout and so
 # also reports 0x0. This is stable across Hyprland versions and leaves a sleeping
 # (DPMS-off) panel, which keeps its mode, enabled.
+#
+# FALLBACK is the placeholder Hyprland creates when no real output is enabled
+# (the internal panel saved as disabled and the external monitor unplugged). It
+# is not a display: counting it made the saved layout look unmatched, so the
+# panel was never re-enabled and the screen stayed black.
 monitors_json() {
   local raw
   if [[ -n ${RYOKU_MONITOR_JSON:-} ]]; then
@@ -153,7 +158,7 @@ monitors_json() {
   else
     raw="$(hyprctl monitors all -j)"
   fi
-  printf '%s' "$raw" | jq -c 'if type == "array" then map(.disabled = (((.width // 0) <= 0) or ((.height // 0) <= 0))) else . end' 2>/dev/null \
+  printf '%s' "$raw" | jq -c 'if type == "array" then map(select(.name != "FALLBACK") | .disabled = (((.width // 0) <= 0) or ((.height // 0) <= 0))) else . end' 2>/dev/null \
     || printf '%s' "$raw"
 }
 
@@ -523,7 +528,8 @@ cmd_list() {
 }
 
 # apply an explicit layout (JSON array of monitor specs on stdin) live, one
-# hl.monitor per entry.
+# hl.monitor per entry. A live rule keeps an output's earlier disabled state
+# unless it says otherwise, so an enabled entry carries disabled = false.
 apply_specs() {
   local args
   while IFS= read -r args; do
@@ -535,7 +541,7 @@ apply_specs() {
     # the Lua string and inject into the hl.monitor(...) call.
     .[] |
     if .disabled then "output = \((.output // "")|@json), disabled = true"
-    else "output = \((.output // "")|@json), mode = \((.mode // "")|@json), position = \((.position // "")|@json), scale = \(.scale)"
+    else "output = \((.output // "")|@json), disabled = false, mode = \((.mode // "")|@json), position = \((.position // "")|@json), scale = \(.scale)"
       + (if (.transform // 0) != 0 then ", transform = \(.transform)" else "" end)
       + (if (.vrr // 0) != 0 then ", vrr = \(.vrr)" else "" end)
       + (if (.mirror // "") != "" and (.mirror // "") != "none" then ", mirror = \(.mirror|@json)" else "" end)
@@ -563,6 +569,8 @@ sanitize_layout() {
 # output the layout enables is unplugged. The generated config is rebuilt again
 # on monitor add/remove, so the fallback panel returns to disabled as soon as a
 # configured enabled output is connected.
+# A disabled stanza may carry no geometry, so the fallback falls back to the
+# panel's preferred mode instead of writing nulls Hyprland rejects.
 ensure_connected_output() {
   local live
   live="$(monitors_json)"
@@ -582,7 +590,10 @@ ensure_connected_output() {
          | sort_by([if .panel then 0 else 1 end, .key])
          | .[0].key // null) as $fallback
         | if $fallback == null then .
-          else .[$fallback].disabled = false
+          else .[$fallback] |= (.disabled = false
+                                | .mode = (.mode // "preferred")
+                                | .position = (.position // "auto")
+                                | .scale = (.scale // 1))
           end
       end'
 }
