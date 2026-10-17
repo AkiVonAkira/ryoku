@@ -90,16 +90,16 @@ var diagnosticServices = []diagnosticService{
 
 // Whether a service is running, as far as this report is allowed to look.
 //
-// runit answers `is-active` by running `sv status` against the supervise
-// directory, and for a system service that directory is root's. The report is
-// deliberately unprivileged, so the query fails and the host layer reports the
-// service absent. Printing "absent" for a service that is plainly running is
-// worse than printing nothing: every Void bundle has said the display manager,
-// the network and bluetooth were all down, and the state was never read at all.
-// systemd has no such problem, which is why this went unnoticed.
-func serviceActiveLabel(initSystem host.InitSystem, service diagnosticService) string {
+// runit answers `is-active` by statting `supervise/stat`. That stat is denied
+// to an unprivileged user for system services, and the host layer reports the
+// service absent. A service with no definition or no enabled link really is
+// absent; systemd does not have this ambiguity.
+func serviceActiveLabel(initSystem host.InitSystem, service diagnosticService, enabled int) string {
 	code := doctorService(service.scope, "is-active", service.name)
-	if initSystem == host.Runit && service.scope == "--system" && code == host.ExitAbsent {
+	// Only a service runit supervises hides behind root's supervise directory;
+	// one with no definition or no link really is absent.
+	if initSystem == host.Runit && service.scope == "--system" && code == host.ExitAbsent &&
+		enabled == host.ExitOK && os.Geteuid() != 0 {
 		return "unreadable without root"
 	}
 	return hostStateLabel(code)
@@ -244,8 +244,9 @@ func gatherReport(findings []finding) string {
 	} else {
 		line("service manager: %s", initSystem)
 		for _, service := range diagnosticServices {
-			active := serviceActiveLabel(initSystem, service)
-			enabled := hostStateLabel(doctorService(service.scope, "is-enabled", service.name))
+			enabledCode := doctorService(service.scope, "is-enabled", service.name)
+			active := serviceActiveLabel(initSystem, service, enabledCode)
+			enabled := hostStateLabel(enabledCode)
 			line("%s %s: active=%s enabled=%s", strings.TrimPrefix(service.scope, "--"), service.name, active, enabled)
 		}
 	}

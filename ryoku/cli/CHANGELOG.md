@@ -61,7 +61,7 @@
   spellings (`internal/doctor/report.go`).
 - **A service state the report could not read is no longer printed as absent.**
   runit answers `is-active` for a system service by reading root's supervise
-  directory, and the report is deliberately unprivileged, so the query failed
+  directory, and the report is normally unprivileged, so the query failed
   and the host layer called the service absent. Every Void bundle therefore
   claimed sddm, NetworkManager and bluetooth were all down while they were
   running, with and without a sudo ticket, because sudo is never invoked. The
