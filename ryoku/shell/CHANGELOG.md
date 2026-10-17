@@ -3,6 +3,14 @@
 ## Unreleased
 
 ### Changed
+- **Audio downloads keep the stream they came with.** The stash helper no
+  longer transcodes every audio download to mp3: yt-dlp takes the best audio
+  stream as it is and cobalt is asked for `best`, so nothing is re-encoded on
+  the way in (`scripts/stash-cobalt.sh`, `tests/stash-probe.sh`).
+- **A download notification says which video it was.** Finished and failed
+  downloads carry the title: the probed one when the link was read first,
+  otherwise the name the file landed under (`scripts/stash-cobalt.sh`,
+  `quickshell/shell/services/Stash.qml`).
 - **Ask and Agent point at the Hub when Rashin is off.** A read-only ask or an
   Agent message on a box without `ryoku-rashin` says to switch Rashin on in
   Ryoku Hub instead of naming a package to install by hand.
@@ -17,6 +25,27 @@
   in the picture directory and the rest at home.
 
 ### Added
+- **The ask box shows what a link can be fetched as before it downloads.**
+  Paste a link and press Enter (or pick "Download URL"): the box reads the
+  formats once and lists one row per tier under the file's own title, with a
+  resolution or bitrate, an estimated size and its own Download button. The
+  mode chips answer from that one probe, a link asked about before answers
+  from a day-long cache, and a link that cannot be read shows the helper's
+  reason and offers "Download best". The field's border turns green once the
+  text is a link and never red, since the field also takes commands
+  (`quickshell/shell/modules/ask/AskTools.qml`,
+  `quickshell/shell/modules/ask/AskField.qml`,
+  `quickshell/shell/services/Stash.qml`).
+- **A download in flight can be stopped.** A running queue row carries the
+  same cross the finished rows use; pressing it stops the job, cleans its
+  partial files, and leaves the row reading "cancelled" with retry and dismiss
+  (`quickshell/shell/modules/ask/AskTools.qml`,
+  `quickshell/shell/services/Stash.qml`).
+- **`stash-cobalt.sh probe <url>` answers with the tiers.** One `TIERS` line
+  lists three heights for video and mute and the 320/128/64k rungs for audio,
+  each with an estimated size and the selector that lands on it; `download`
+  takes that selector, so the tier picked is the tier that downloads
+  (`scripts/stash-cobalt.sh`, `tests/stash-probe.sh`).
 - **Ask and Agent are separate modes in the Rashin bar.** Ask keeps its own
   read-only history and route picker; Agent keeps the persistent machine
   conversation, session history, and harness models. Continue with the agent

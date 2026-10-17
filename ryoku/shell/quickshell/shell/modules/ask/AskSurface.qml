@@ -609,6 +609,7 @@ Rectangle {
                 query: root.query
                 tool: root.tool
                 maximumHeight: root.bodyBudget
+                onAccepted: root.query = ""
             }
 
             AskWeb {
