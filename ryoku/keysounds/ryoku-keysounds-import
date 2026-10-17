@@ -51,11 +51,13 @@ def ffmpeg(src, dst, start_ms=None, length_ms=None):
     cut = []
     if start_ms is not None:
         cut = ["-ss", f"{start_ms / 1000:.3f}", "-t", f"{length_ms / 1000:.3f}"]
-    probe = subprocess.run(["ffmpeg", "-v", "info", *cut, "-i", src, "-af", "volumedetect", "-f", "null", "-"],
+    # -nostdin: ffmpeg otherwise reads its interactive keys from stdin and eats the
+    # caller's input, such as the next line of the profile list the build loops over.
+    probe = subprocess.run(["ffmpeg", "-nostdin", "-v", "info", *cut, "-i", src, "-af", "volumedetect", "-f", "null", "-"],
                            capture_output=True, text=True)
     m = re.search(r"max_volume: (-?[\d.]+) dB", probe.stderr)
     gain = PEAK_DB - float(m.group(1)) if m else 0.0
-    subprocess.run(["ffmpeg", "-v", "error", "-y", *cut, "-i", src, "-af", f"volume={gain:.2f}dB",
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", *cut, "-i", src, "-af", f"volume={gain:.2f}dB",
                     "-ac", "1", "-ar", "48000", "-sample_fmt", "s16", dst], check=True)
 
 

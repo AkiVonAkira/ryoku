@@ -142,6 +142,11 @@
   the other plugin packages.
 
 ### Fixed
+- **The Void key-sound profiles build again.** Void's ffmpeg 6 read the
+  importer's stdin, which was the profile list the build loops over, so it ate
+  the next line and the build died on a half-read profile name, failing the
+  whole XBPS publish. `ryoku-keysounds-import` now runs ffmpeg with `-nostdin`
+  (`ryoku/keysounds/ryoku-keysounds-import`).
 - **Updates past the prowl switch no longer fail on prowl-agent.** prowl
   conflicted with the prowl-agent it replaces, and `ryoku update` moves the
   Ryoku set with an explicit `pacman -S`, which never applies a replacement, so
