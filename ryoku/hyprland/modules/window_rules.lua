@@ -18,6 +18,9 @@ local function settings_fraction(value)
     return math.max(0.25, math.min(tonumber(value) or 0.5, 1))
 end
 
+-- The Settings layout needs this much room to remain usable.
+local SETTINGS_MIN_WIDTH, SETTINGS_MIN_HEIGHT = 1120, 820
+
 local function page()
     if settings_window.mode == "custom" then
         return {
@@ -48,8 +51,8 @@ local function fit_page_to_work_area(win)
     local aw, ah = mw - left - right, mh - top - bottom
     local width, height = aw, ah
     if settings_window.mode == "custom" then
-        width = aw * settings_fraction(settings_window.width)
-        height = ah * settings_fraction(settings_window.height)
+        width = math.max(aw * settings_fraction(settings_window.width), math.min(SETTINGS_MIN_WIDTH, aw))
+        height = math.max(ah * settings_fraction(settings_window.height), math.min(SETTINGS_MIN_HEIGHT, ah))
     end
     local x = mon.x + left + (aw - width) / 2
     local y = mon.y + top + (ah - height) / 2

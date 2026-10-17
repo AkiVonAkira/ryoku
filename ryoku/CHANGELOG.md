@@ -4,9 +4,10 @@
 
 ### Added
 - **Ryoku Settings has a per-compositor window size.** Full page remains the
-  default; Custom opens it centred at the chosen percentage of the monitor work
-  area on Hyprland, niri and Wayfire
-  (`wm/{hyprland,niri,wayfire}/`, `hyprland/modules/window_rules.lua`).
+  default on Hyprland and Wayfire; niri keeps its normal column unless Custom
+  is chosen. Custom centres a percentage-based size without shrinking below
+  the Settings layout's usable floor (`wm/{hyprland,niri,wayfire}/`,
+  `hyprland/modules/window_rules.lua`).
 - **Phone windows float on every compositor.** The scrcpy mirror and app
   windows (`ryoku-phone-*`) open floating at a phone's proportions on Hyprland,
   niri and Wayfire, and the Super+K bind is listed as Kit

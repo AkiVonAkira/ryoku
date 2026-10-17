@@ -730,15 +730,8 @@ func TestApplySettingsWindowSize(t *testing.T) {
 		store := writeStore(t, `{}`)
 		capApply(t, store)
 		settings := readGen(t, dir, "settings.kdl")
-		for _, want := range []string{
-			`match title="^Ryoku Settings$"`,
-			"open-floating true",
-			"default-column-width { proportion 1; }",
-			"default-window-height { proportion 1; }",
-		} {
-			if !strings.Contains(settings, want) {
-				t.Errorf("default settings window rule missing %q\n%s", want, settings)
-			}
+		if strings.Contains(settings, `match title="^Ryoku Settings$"`) {
+			t.Fatalf("default settings must keep niri's normal column:\n%s", settings)
 		}
 		validateGen(t, dir, "settings.kdl", "rebinds.kdl")
 	})

@@ -77,7 +77,9 @@ func writeWindowRules(b *strings.Builder, a Appearance, settingsWindow SettingsW
 		b.WriteString("}\n\n")
 	}
 	writeOpacityRules(b, a)
-	writeRuleBlock(b, "", "^Ryoku Settings$", settingsWindowRuleProps(settingsWindow))
+	if props := settingsWindowRuleProps(settingsWindow); len(props) > 0 {
+		writeRuleBlock(b, "", "^Ryoku Settings$", props)
+	}
 	for _, r := range builtinWindowRules {
 		writeRuleBlock(b, r.class, r.title, r.props)
 	}
@@ -105,14 +107,13 @@ type builtinRule struct {
 
 func settingsWindowRuleProps(v SettingsWindow) []string {
 	v = normalizeSettingsWindow(v)
-	width, height := 1.0, 1.0
-	if v.Mode == "custom" {
-		width, height = v.Width, v.Height
+	if v.Mode != "custom" {
+		return nil
 	}
 	return []string{
 		"open-floating true",
-		fmt.Sprintf("default-column-width { proportion %s; }", kdlNum(width)),
-		fmt.Sprintf("default-window-height { proportion %s; }", kdlNum(height)),
+		fmt.Sprintf("default-column-width { proportion %s; }", kdlFloat(v.Width)),
+		fmt.Sprintf("default-window-height { proportion %s; }", kdlFloat(v.Height)),
 	}
 }
 

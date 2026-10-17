@@ -10,9 +10,9 @@
   writes the shell's opt-in image setting; off keeps the shipped text-only
   notification look (`quickshell/schema/DesktopPage.js`).
 - **Window Manager can size the Settings window.** Each compositor's page
-  offers Full page (the existing default) or a centred custom width and height
-  measured as percentages of the monitor work area
-  (`../wm/{hyprland,niri,wayfire}/schema.json`).
+  offers Full page or a centred percentage-based custom size that stays large
+  enough for the Settings layout; on niri Full page preserves its existing
+  normal column (`../wm/{hyprland,niri,wayfire}/schema.json`).
 - **Connections > Phone.** One switch installs or removes everything the phone
   feature needs on Arch, CachyOS, Fedora and Void (KDE Connect, scrcpy, adb,
   v4l2loopback and the helpers). The card says where the phone stands
