@@ -104,3 +104,25 @@ func TestBuiltinGeometryAndUserRulesCompose(t *testing.T) {
 		t.Errorf("Hub rule = %q", got)
 	}
 }
+
+func TestSettingsWindowCustomRuleAndWorkAreaRect(t *testing.T) {
+	s := defaultStore()
+	s.Wayfire.SettingsWindow = SettingsWindow{Mode: "custom", Width: 0.5, Height: 0.5}
+	doc := genWindowRules(s)
+	if got, _ := doc.get("window-rules", "ryoku_builtin_hub"); got != `on created if title is "Ryoku Settings" then set geometry_ppt 25 25 50 50` {
+		t.Fatalf("custom Hub rule = %q", got)
+	}
+
+	out := wayfireOutput{
+		Geometry: wayfireGeometry{Width: 1280, Height: 900},
+		Workarea: wayfireGeometry{X: 0, Y: 40, Width: 1200, Height: 800},
+	}
+	got := settingsWindowRect(out, fitInsets{horiz: 20, vert: 20}, s.Wayfire.SettingsWindow)
+	want := wayfireGeometry{X: 310, Y: 250, Width: 580, Height: 380}
+	if got != want {
+		t.Fatalf("custom Hub rect = %+v, want %+v", got, want)
+	}
+	if full := settingsWindowRect(out, fitInsets{horiz: 20, vert: 20}, defaultStore().Wayfire.SettingsWindow); full != fitRect(out, fitInsets{horiz: 20, vert: 20}) {
+		t.Fatalf("default Hub rect = %+v, want the existing full-page fit", full)
+	}
+}

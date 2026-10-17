@@ -1,6 +1,48 @@
 [
   {
     "tab": "Layout",
+    "group": "SETTINGS WINDOW",
+    "key": "wm.wayfire.settingsWindow.mode",
+    "label": "Settings window size",
+    "desc": "Fill the work area or use a custom centred size",
+    "ctl": "seg",
+    "src": "desktop.json",
+    "opts": ["full", "custom"],
+    "optLabels": {"full": "Full page", "custom": "Custom"},
+    "page": "windowmanager"
+  },
+  {
+    "tab": "Layout",
+    "group": "SETTINGS WINDOW",
+    "key": "wm.wayfire.settingsWindow.width",
+    "label": "Settings width",
+    "desc": "Share of the monitor work area used by Settings",
+    "ctl": "slid",
+    "src": "desktop.json",
+    "lo": 0.25,
+    "hi": 1,
+    "unit": "%",
+    "pct": true,
+    "page": "windowmanager",
+    "when": {"wm.wayfire.settingsWindow.mode": ["custom"]}
+  },
+  {
+    "tab": "Layout",
+    "group": "SETTINGS WINDOW",
+    "key": "wm.wayfire.settingsWindow.height",
+    "label": "Settings height",
+    "desc": "Share of the monitor work area used by Settings",
+    "ctl": "slid",
+    "src": "desktop.json",
+    "lo": 0.25,
+    "hi": 1,
+    "unit": "%",
+    "pct": true,
+    "page": "windowmanager",
+    "when": {"wm.wayfire.settingsWindow.mode": ["custom"]}
+  },
+  {
+    "tab": "Layout",
     "group": "TILING",
     "key": "wm.wayfire.tiling.tileByDefault",
     "label": "New windows",

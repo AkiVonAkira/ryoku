@@ -694,3 +694,63 @@ func TestWindowStyleReasonPointsAtAnimations(t *testing.T) {
 		t.Errorf("borderAngleSpeed should name niri's static gradient: %q", r)
 	}
 }
+
+func TestApplySettingsWindowSize(t *testing.T) {
+	t.Run("full page default", func(t *testing.T) {
+		dir := niriHome(t)
+		store := writeStore(t, `{}`)
+		capApply(t, store)
+		settings := readGen(t, dir, "settings.kdl")
+		for _, want := range []string{
+			`match title="^Ryoku Settings$"`,
+			"open-floating true",
+			"default-column-width { proportion 1; }",
+			"default-window-height { proportion 1; }",
+		} {
+			if !strings.Contains(settings, want) {
+				t.Errorf("default settings window rule missing %q\n%s", want, settings)
+			}
+		}
+		validateGen(t, dir, "settings.kdl", "rebinds.kdl")
+	})
+
+	t.Run("custom half", func(t *testing.T) {
+		dir := niriHome(t)
+		store := writeStore(t, `{"wm":{"niri":{"settingsWindow":{"mode":"custom","width":0.5,"height":0.5}}}}`)
+		capApply(t, store)
+		settings := readGen(t, dir, "settings.kdl")
+		want := "window-rule {\n" +
+			"    match title=\"^Ryoku Settings$\"\n" +
+			"    open-floating true\n" +
+			"    default-column-width { proportion 0.5; }\n" +
+			"    default-window-height { proportion 0.5; }\n" +
+			"}\n"
+		if !strings.Contains(settings, want) {
+			t.Fatalf("custom settings window rule missing:\n%s", settings)
+		}
+		validateGen(t, dir, "settings.kdl", "rebinds.kdl")
+	})
+}
+
+func TestSettingsWindowSchemaAndDefaults(t *testing.T) {
+	if got := defaultStore().Niri.SettingsWindow; got != (SettingsWindow{Mode: "full", Width: 0.5, Height: 0.5}) {
+		t.Fatalf("default settings window = %+v", got)
+	}
+	rows, err := loadSchemaRows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob, err := json.Marshal(rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{
+		`"wm.niri.settingsWindow.mode"`,
+		`"wm.niri.settingsWindow.width"`,
+		`"wm.niri.settingsWindow.height"`,
+	} {
+		if !bytes.Contains(blob, []byte(key)) {
+			t.Errorf("schema missing %s", key)
+		}
+	}
+}

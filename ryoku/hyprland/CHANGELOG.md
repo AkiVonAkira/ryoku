@@ -25,6 +25,10 @@
   (`modules/binds.lua`, `modules/ryoshot.lua`).
 
 ### Fixed
+- **A custom Settings size is no longer overwritten after open.** The generated
+  Settings window module drives both its opening rule and work-area fit hook, so
+  custom percentages stay centred while Full page keeps the existing fit
+  (`modules/window_rules.lua`, `user.lua`, `../wm/hyprland/`).
 - **Hyprland reloads no longer duplicate `~/.local/bin` in PATH.** Reapplying
   the environment keeps the directory first without growing PATH on each
   config reload (`modules/env.lua`).

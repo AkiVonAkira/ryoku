@@ -164,6 +164,22 @@ const (
 	phoneGeometry   = "set geometry_ppt 31 6 38 88"
 )
 
+func settingsWindowAction(v SettingsWindow) string {
+	v = normalizeSettingsWindow(v)
+	if v.Mode != "custom" {
+		return pageFit
+	}
+	width, height := v.Width*100, v.Height*100
+	x, y := (100-width)/2, (100-height)/2
+	return fmt.Sprintf(
+		"set geometry_ppt %s %s %s %s",
+		strconv.FormatFloat(x, 'f', -1, 64),
+		strconv.FormatFloat(y, 'f', -1, 64),
+		strconv.FormatFloat(width, 'f', -1, 64),
+		strconv.FormatFloat(height, 'f', -1, 64),
+	)
+}
+
 var wayfireBuiltinRules = []wayfireBuiltinRule{
 	{key: "system_pavucontrol", condition: `app_id is "pavucontrol"`, floating: true},
 	{key: "system_network", condition: `app_id is "nm-connection-editor"`, floating: true},
@@ -227,11 +243,15 @@ func tileByDefaultMatcher() string {
 	return defaultTileByMatcher
 }
 
-func genBuiltinWindowRules(d *iniDoc) {
+func genBuiltinWindowRules(d *iniDoc, settingsWindow SettingsWindow) {
 	for _, r := range wayfireBuiltinRules {
-		if r.action != "" {
+		action := r.action
+		if r.key == "hub" {
+			action = settingsWindowAction(settingsWindow)
+		}
+		if action != "" {
 			d.set("window-rules", "ryoku_builtin_"+r.key,
-				"on created if "+r.condition+" then "+r.action)
+				"on created if "+r.condition+" then "+action)
 		}
 	}
 }
@@ -243,7 +263,7 @@ func genBuiltinWindowRules(d *iniDoc) {
 // so their more specific alpha value wins.
 func genWindowRules(s wayfireStore) iniDoc {
 	var d iniDoc
-	genBuiltinWindowRules(&d)
+	genBuiltinWindowRules(&d, s.Wayfire.SettingsWindow)
 	if a := s.Appearance.ActiveOpacity; a >= 0 && a < 1 {
 		d.set("window-rules", "ryoku_active_opacity",
 			"on created if type is \"toplevel\" then set alpha "+strconv.FormatFloat(a, 'f', -1, 64))

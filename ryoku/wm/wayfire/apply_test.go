@@ -1216,3 +1216,18 @@ func TestApplyRefusesWhenTheShippedDefaultsAreMissing(t *testing.T) {
 		t.Errorf("apply overwrote the live file without its first layer: %q", got)
 	}
 }
+
+func TestApplyWritesCustomSettingsWindowRule(t *testing.T) {
+	dir := wayfireHome(t)
+	withDefaults(t, "[core]\nplugins = window-rules place simple-tile\n")
+	store := writeStore(t, `{"wm":{"wayfire":{"settingsWindow":{"mode":"custom","width":0.5,"height":0.5}}}}`)
+	rep := capApply(t, store)
+	if len(rep.Written) != 1 {
+		t.Fatalf("written = %v, want wayfire.ini", rep.Written)
+	}
+	config := readGen(t, dir, "wayfire.ini")
+	want := `ryoku_builtin_hub = on created if title is "Ryoku Settings" then set geometry_ppt 25 25 50 50`
+	if !strings.Contains(config, want) {
+		t.Fatalf("custom settings window rule missing %q:\n%s", want, config)
+	}
+}

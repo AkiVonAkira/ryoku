@@ -71,6 +71,22 @@ func fitRect(out wayfireOutput, in fitInsets) wayfireGeometry {
 	}
 }
 
+func settingsWindowRect(out wayfireOutput, in fitInsets, v SettingsWindow) wayfireGeometry {
+	full := fitRect(out, in)
+	v = normalizeSettingsWindow(v)
+	if v.Mode != "custom" {
+		return full
+	}
+	width := math.Round(math.Max(full.Width*v.Width, 1))
+	height := math.Round(math.Max(full.Height*v.Height, 1))
+	return wayfireGeometry{
+		X:      math.Round(full.X + (full.Width-width)/2),
+		Y:      math.Round(full.Y + (full.Height-height)/2),
+		Width:  width,
+		Height: height,
+	}
+}
+
 func restoreRect(out wayfireOutput) wayfireGeometry {
 	wa := workArea(out)
 	w := math.Min(restoreWidth, math.Round(wa.Width*0.92))
