@@ -1643,7 +1643,7 @@ func (d *daemon) dispatch(line string) string {
 		if len(args) != 1 || !knownSound(args[0]) {
 			return "err sound: expected a known event"
 		}
-		playSound(args[0])
+		d.playSound(args[0])
 		return "ok"
 	case "record":
 		return d.record(args)

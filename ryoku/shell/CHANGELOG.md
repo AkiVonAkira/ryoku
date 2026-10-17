@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+- **Desktop sounds can be tuned, swapped and switched off.** The daemon's cues
+  now read a `sounds` key in `shell.json`: one switch and one volume for all of
+  them, and per cue an on/off switch and an optional file of your own (a missing
+  file falls back to the built-in clip). New cues join the old ones: a chime for
+  new and urgent notifications (quiet under Do Not Disturb or when the sender
+  asks for silence), battery full, and USB device connected and removed (off
+  until you turn them on). The Hub auditions a cue through `sounds.preview`
+  (`ipc/sounds.go`, `ipc/powersounds.go`, `ipc/devicesounds.go`,
+  `quickshell/shell/services/Notifs.qml`).
+
 ### Fixed
 - **Workshop downloads no longer stay stuck at Preparing.** Ryogami stops a
   silent Steam helper, gives large scenes a generous overall limit, and always

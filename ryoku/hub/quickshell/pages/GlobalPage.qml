@@ -7,15 +7,17 @@ import "../schema/GlobalPage.js" as GlobalSchema
 
 // Global: the cross-cutting preferences that are not tied to one surface: the
 // interface language, regional formats used for dates and numbers, machine
-// location, UI font and terminal font. Rendered through the shared SchemaPage;
-// the ledger and action bar belong to the shell.
+// location, UI font and terminal font, and on a tab of their own the desktop's
+// sounds. Rendered through the shared SchemaPage; the ledger and action bar
+// belong to the shell.
 Item {
     id: pg
     property var hub
 
     readonly property string pTitle: I18n.tr("Global")
     readonly property string pEyebrow: I18n.tr("GLOBAL")
-    readonly property string pBlurb: I18n.tr("Language, regional formats, location and fonts.")
+    readonly property string pBlurb: I18n.tr("Language, regional formats, location, fonts and sounds.")
+    readonly property string soundsTab: "Sounds"
     function focusKey(k) { sp.focusKey(k) }
     function resetDefaults() {
         if (!pg.hub)
@@ -122,6 +124,14 @@ Item {
         onEdited: (k, v) => { if (pg.hub) pg.hub.edit(k, v); }
         onPickRequested: (r) => { if (pg.hub) pg.hub.openPick(r); }
         onTimezonePickRequested: (r) => tzMap.open()
+        // The sounds are a list of cues with their own play, choose and remove
+        // buttons rather than schema rows, so they get a tab of their own.
+        tailTabs: [pg.soundsTab]
+
+        SoundsSettings {
+            width: parent.width
+            visible: sp.tab === pg.soundsTab
+        }
     }
 
     TimezoneMap {

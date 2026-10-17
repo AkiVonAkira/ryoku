@@ -101,6 +101,17 @@ come from Monkeytype (https://github.com/monkeytypegame/monkeytype), released
 under the GNU General Public License version 3 only; the pinned upstream commit
 is recorded in the manifests beside them.
 
+The built-in desktop sounds under ryoku/shell/ipc/assets/ come from the
+freedesktop.org sound theme, renamed after the event they play for. Per that
+theme's credits: the notification sound (message-new-instant) is by Damien
+Sandras, GNU General Public License version 2 or later; battery-full (complete)
+is by Dr. Richard Boulanger et al, Creative Commons Attribution 3.0 Unported;
+the shutter (camera-shutter) is by freesound user horsthorstensen and
+volume-change (audio-volume-change) by Lucas McCallister, both Creative Commons
+Attribution-ShareAlike; the warning, plug, unplug and device sounds
+(dialog-warning, power-plug, power-unplug, device-added, device-removed) are by
+Ivica Bukvic, Creative Commons Attribution-ShareAlike.
+
 The QS Bar style at
 ryoku/shell/quickshell/shell/modules/bar/barstyles/qsbar/ is a port of
 Quickshell Rise by HANCORE-linux

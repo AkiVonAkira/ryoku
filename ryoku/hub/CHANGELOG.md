@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Added
+- **General has a Sounds tab.** Turn the desktop's sounds on or off, set
+  their volume, and for each one (notifications, charger plugged and
+  unplugged, low and full battery, USB devices, screenshots, volume keys) play
+  it, choose your own audio file, go back to the built-in sound or switch it
+  off. The language, region, location and font rows sit under Region & fonts
+  (`quickshell/pages/SoundsSettings.qml`, `quickshell/pages/SoundEventRow.qml`).
 - **Window Manager can install optional package-backed features.** Its generic
   install row opens a privileged package install in a terminal, then starts the
   feature without waiting for the next login (`quickshell/SettingsSheet.qml`).
