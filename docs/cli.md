@@ -95,6 +95,9 @@ apply to the Testing gate: the checkout fast-forwards only to the last commit
 that passed every required check, `--wait` polls a gate still running, and
 `--force` deploys the tip unchecked.
 
+- `ryoku update -h` (`--help`) prints the options; an unknown option is refused
+  before the run starts.
+
 - `ryoku update -v` (`--verbose`) streams the raw output instead, including the
   native package manager's own progress.
 - `ryoku update --gui` is the Hub's path: it starts the run in the background

@@ -61,27 +61,13 @@ var (
 	}
 )
 
-// Update runs the whole safe update. On hosts that provide Ryoku's snapshot
-// stack it wraps the run in a snapper pre/post pair; elsewhere the snapshot
-// step explains why it is skipped. A checkout box follows the git channel and
-// redeploys. A packaged box updates the Ryoku packages, then hands off to the
-// binary pacman just installed (--stage2) so the new release's deploy and
-// doctor semantics apply during this same update. Stage2 quiesces the shell,
-// materializes, brings the desktop back, and runs `ryoku doctor` before the
-// optional post snapshot. Each stage is published to the run-state file so the
-// update island and Hub show real, determinate progress.
-//
-// It updates the Ryoku set only (ryokuset.go). The base system and its kernel
-// come from Arch or CachyOS, whichever the box installed, and stay the user's
-// to take with `sudo pacman -Syu`; the run reports what is waiting there.
-// `--system` runs that lane too, in one command.
-// updateOptions is every option `ryoku update` acts on. An option outside this
-// set used to be ignored, so a mistyped flag, or `--help`, ran a full system
-// update instead of being answered: the password prompt, the whole config tree
-// re-laid, the desktop restarted.
+// updateOptions is every user option `ryoku update` acts on. An option outside
+// this set used to be ignored, so a mistyped flag, or `--help`, ran a full
+// system update instead of being answered: the password prompt, the whole
+// config tree re-laid, the desktop restarted.
 var updateOptions = map[string]bool{
-	"--stage2": true, "-v": true, "--verbose": true, "--channel-switch": true,
-	"--system": true, "--full": true, "--wait": true, "--force": true, "--unchecked": true,
+	"-v": true, "--verbose": true, "--channel-switch": true, "--system": true,
+	"--full": true, "--wait": true, "--force": true, "--unchecked": true,
 	// The Hub's plumbing. It is answered above, where only the first argument
 	// is read, so these are named here too rather than refused in any other
 	// position.
@@ -89,17 +75,11 @@ var updateOptions = map[string]bool{
 }
 
 // readUpdateOptions reports whether the run was only asking for help, and the
-// first option this command does not know. The argument after --stage2 is a
-// value, not an option, and is skipped.
+// first option this command does not know.
 func readUpdateOptions(args []string) (help bool, unknown string) {
-	for i := 0; i < len(args); i++ {
-		a := args[i]
+	for _, a := range args {
 		if a == "-h" || a == "--help" {
 			return true, ""
-		}
-		if a == "--stage2" {
-			i++
-			continue
 		}
 		if !strings.HasPrefix(a, "-") || updateOptions[a] {
 			continue
@@ -107,6 +87,17 @@ func readUpdateOptions(args []string) (help bool, unknown string) {
 		return false, a
 	}
 	return false, ""
+}
+
+// readUpdateInvocation keeps the internal stage2 handoff out of user option
+// parsing. A newer stage1 may pass flags an older installed binary does not
+// know, after the package transaction is already complete.
+func readUpdateInvocation(args []string) (stage2, help bool, unknown string) {
+	if len(args) > 0 && args[0] == "--stage2" {
+		return true, false, ""
+	}
+	help, unknown = readUpdateOptions(args)
+	return false, help, unknown
 }
 
 func updateUsage() string {
@@ -124,6 +115,20 @@ heals what the doctor finds. The base system stays as it is unless --system.
 `)
 }
 
+// Update runs the whole safe update. On hosts that provide Ryoku's snapshot
+// stack it wraps the run in a snapper pre/post pair; elsewhere the snapshot
+// step explains why it is skipped. A checkout box follows the git channel and
+// redeploys. A packaged box updates the Ryoku packages, then hands off to the
+// binary pacman just installed (--stage2) so the new release's deploy and
+// doctor semantics apply during this same update. Stage2 quiesces the shell,
+// materializes, brings the desktop back, and runs `ryoku doctor` before the
+// optional post snapshot. Each stage is published to the run-state file so the
+// update island and Hub show real, determinate progress.
+//
+// It updates the Ryoku set only (ryokuset.go). The base system and its kernel
+// come from Arch or CachyOS, whichever the box installed, and stay the user's
+// to take with `sudo pacman -Syu`; the run reports what is waiting there.
+// `--system` runs that lane too, in one command.
 func Update(args []string) (err error) {
 	// The Hub's plumbing: start a background run, hand it the password, stop it.
 	if len(args) > 0 {
@@ -138,14 +143,17 @@ func Update(args []string) (err error) {
 			return cancelRun()
 		}
 	}
-	if help, unknown := readUpdateOptions(args); help || unknown != "" {
-		if unknown != "" {
-			return fmt.Errorf(i18n.T("`ryoku update` does not take %s; `ryoku update --help` lists what it does take"), unknown)
-		}
+	stage2, help, unknown := readUpdateInvocation(args)
+	if unknown != "" {
+		return fmt.Errorf(i18n.T("`ryoku update` does not take %s; `ryoku update --help` lists what it does take"), unknown)
+	}
+	if help {
 		fmt.Print(updateUsage())
 		return nil
 	}
-	stage2 := len(args) >= 2 && args[0] == "--stage2"
+	if stage2 && len(args) < 2 {
+		return errors.New(i18n.T("the update stage2 handoff is missing its snapshot value"))
+	}
 	channelSwitch := false
 	withSystem := false
 	updateWait = false
@@ -254,6 +262,13 @@ func Update(args []string) (err error) {
 	}
 	stopKeepalive := sudoKeepalive()
 	defer stopKeepalive()
+
+	if snapshotPreview() != "" {
+		_, reason := snapshotCapability()
+		err := errors.New(reason)
+		progress.fail(err)
+		return err
+	}
 
 	progress.at("snapshot")
 	snapshotsSupported, _ := snapshotCapability()
@@ -1067,6 +1082,7 @@ func updateStage2(pre string, withSystem bool) (err error) {
 			progress.fail(err)
 			return fmt.Errorf("reload compositor power bindings: %w", err)
 		}
+		shellStarted := time.Now()
 		if err := startShell(); err != nil {
 			restartWallpaper(wallpaperWasActive)
 			progress.fail(err)
@@ -1086,7 +1102,7 @@ func updateStage2(pre string, withSystem bool) (err error) {
 			}
 		}
 		restartWallpaper(wallpaperWasActive)
-		if !waitForDesktopLoaded() {
+		if !waitForDesktopLoaded(shellStarted) {
 			progress.logf(i18n.T("the desktop has not reported a finished load yet; `ryoku doctor` says why"))
 		}
 		dropAbort("shell")
@@ -1919,7 +1935,7 @@ func fedoraRestoreGuide(id string) {
 	}
 	fmt.Println(i18n.T("The restore runs from the boot menu:"))
 	fmt.Printf(i18n.T("  1. Boot the snapshot: hold Shift (or press Esc) while the machine starts and\n     pick Ryoku snapshots -> Snapshot %s, or send only the next boot there:\n       sudo grub2-reboot '%s'\n"), id, snapshotEntryID(id))
-	fmt.Println(i18n.T("     It runs read-only with changes kept in RAM; nothing on disk changes."))
+	fmt.Println(i18n.T("     The root and /home run read-only, with their changes kept in RAM."))
 	fmt.Println(i18n.T("  2. If it is the one, make it the system:  sudo ryoku boot-menu restore"))
 	fmt.Println(i18n.T("  3. Reboot into the restored system. The one it replaced is kept for two weeks."))
 }
@@ -2037,6 +2053,8 @@ func printSnapshotTable(rows []snapshotRow) {
 	switch {
 	case updatePackageManager() == host.DNF && snapshotsListed():
 		summary += i18n.T(", listed in the GRUB boot menu")
+	case updatePackageManager() == host.DNF:
+		summary += i18n.T(", NOT in the GRUB boot menu (`journalctl -u ryoku-snapshot-menu` says why)")
 	case snapshotsInBootMenu():
 		summary += i18n.T(", listed in the Limine boot menu")
 	default:
@@ -2899,14 +2917,17 @@ var desktopLoadWait = 25 * time.Second
 // load failure the update is still in the middle of causing, and the desktop
 // then comes back only because the doctor restarts the daemon afterwards.
 //
-// The daemon recreates this file with os.Create on every spawn attempt, so the
-// marker can only come from the attempt that is running now.
-func waitForDesktopLoaded() bool {
+// The daemon recreates this file with os.Create on every spawn attempt. Its
+// modification time must be at least the time this update started the shell, so
+// a finished-load line left by the previous run cannot satisfy the wait.
+func waitForDesktopLoaded(started time.Time) bool {
 	path := filepath.Join(sys.Xdg("XDG_STATE_HOME", ".local/state"), "ryoku", "surfaces", "shell.log")
 	deadline := time.Now().Add(desktopLoadWait)
 	for {
+		info, statErr := os.Stat(path)
 		b, _ := os.ReadFile(path)
-		if strings.Contains(string(b), "Configuration Loaded") {
+		if statErr == nil && !info.ModTime().Before(started) &&
+			strings.Contains(string(b), "Configuration Loaded") {
 			return true
 		}
 		if !time.Now().Before(deadline) {

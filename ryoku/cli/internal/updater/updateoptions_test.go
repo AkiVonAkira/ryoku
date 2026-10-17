@@ -37,8 +37,12 @@ func TestEveryOptionUpdateActsOnIsAccepted(t *testing.T) {
 	}
 }
 
-func TestTheValueAfterStage2IsNotMistakenForAnOption(t *testing.T) {
-	if _, unknown := readUpdateOptions([]string{"--stage2", "--whatever-the-run-hands-itself"}); unknown != "" {
-		t.Errorf("the stage2 value was refused as an option: %q", unknown)
+func TestStage2HandoffSkipsUserOptionParsing(t *testing.T) {
+	stage2, help, unknown := readUpdateInvocation([]string{
+		"--stage2", "--whatever-the-run-hands-itself", "--future-handoff-flag",
+	})
+	if !stage2 || help || unknown != "" {
+		t.Fatalf("stage2 handoff was parsed as user input: stage2=%v help=%v unknown=%q",
+			stage2, help, unknown)
 	}
 }

@@ -52,6 +52,29 @@
   what the switch itself installed (`internal/host/phone.go`).
 
 ### Fixed
+- **`ryoku update --help` prints help instead of updating the machine.** Any
+  option update did not know used to fall through into a full run: the password
+  prompt, the config re-laid, the desktop restarted. `-h` and `--help` now
+  print the usage, and an unknown option is refused before anything starts
+  (`internal/updater/update.go`).
+- **An update waits for the desktop to load before healing it.** The healing
+  step started as soon as the shell's sleep guard answered, while Quickshell
+  could still be loading the new tree, so the doctor flagged "desktop loads"
+  on every update on slower boxes. The run now waits up to 25 seconds for
+  Quickshell's finished-load line and says so in one line if it never comes
+  (`internal/updater/update.go`).
+- **The line after an update names the box's own package manager.** Void and
+  Fedora boxes were told prowl is managed by pacman; it now says xbps or dnf
+  (`internal/updater/update.go`).
+- **`ryoku doctor` waits for a just-started Prowl gateway to listen.** A
+  successful service start could be reported as failed before the gateway
+  opened its socket. The doctor now waits up to 15 seconds for it to answer
+  (`internal/doctor/reconcile_rashin_daemon.go`).
+- **Snapshot boots explain their read-only state and refuse updates.** The
+  `ryoku rollback` and `ryoku status` messages now say the boot runs a snapshot
+  read-only and point at the restore command. `ryoku update` refuses before its
+  package steps, avoiding writes to the live disk's boot files from a
+  RAM-backed root (`internal/updater/update.go`).
 - **`ryoku debug` stops reporting the shell as missing.** The desktop section
   ran `pgrep -af quickshell`, but the shell is invoked as `qs -c shell`, and
   only ryogami and the lockscreen carry `quickshell` in their command line. So
