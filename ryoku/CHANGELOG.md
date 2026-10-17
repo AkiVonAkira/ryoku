@@ -240,6 +240,11 @@
   CLI path now waits for the start command, and enabling Rashin completes
   `loginctl enable-linger` before a gateway start failure can be returned
   (`rashin/backend/prowlgw.go`, `rashin/backend/server.go`).
+- **Niri keeps a connected display on after undocking.** Its provider watches
+  the output-changing workspace event and transiently enables the built-in
+  panel whenever every connected output is off. The generated KDL keeps the
+  user's panel-off preference, so reconnecting the configured external display
+  restores the chosen layout (`wm/niri/outputs.go`, `wm/niri/watch.go`).
 - **Model choices no longer reset to Prowl auto.** The saved choice is keyed
   only by harness and is reapplied to every new, loaded, or respawned session;
   an unavailable choice stays saved and is reported honestly
