@@ -695,6 +695,21 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **The dock's sports scoreboard no longer eats all memory and the network.**
+  On a fractional display scale, a team logo still loading dropped out of its
+  layout slot, so its width became its own decoded width; `StyledImage` asked
+  for a decode at that width times the scale, the logo came back bigger, and it
+  loaded again. Each round re-downloaded the logo, and the shell reached 40 GB
+  within a minute whenever a match was on the dock, starving the machine until
+  connections dropped. `StyledImage` now keeps its last decode size while the
+  image sizes itself, sets both sides in one step, and caps the request at the
+  window (`ui/widgets/StyledImage.qml` in the ii dock and
+  `stage/modules/common/widgets/StyledImage.qml`).
+- **A runaway surface can no longer take the machine down with it.** The
+  daemon samples each supervised `qs` once a second and kills one whose
+  resident plus swapped memory passes a quarter of RAM (never under 3 GiB),
+  then respawns it with a growing delay and logs why, instead of waiting for
+  the kernel to act once swap is full (`ipc/memwatch.go`).
 - **Every ii dock widget works on Hyprland and niri.** A panel or menu now
   opens one at a time, switches straight to another tile's panel, takes typing
   in its fields, and closes on Escape, a click on the desktop or an app, or a

@@ -970,6 +970,7 @@ func tailLines(path string, n int) string {
 // it dies immediately so a broken config does not spin the CPU.
 func (d *daemon) supervise(name string) {
 	backoff := time.Second
+	memoryLimit := memoryCeiling(systemMemory())
 	for {
 		select {
 		case <-d.quit:
@@ -1019,10 +1020,13 @@ func (d *daemon) supervise(name string) {
 			// which reverts an update whose next boots never get here.
 			go recordBootOK(exited)
 		}
+		heldAtKill := make(chan uint64, 1)
+		go watchSurfaceMemory(cmd.Process.Pid, memoryLimit, exited, heldAtKill)
 
 		start := time.Now()
 		_ = cmd.Wait()
 		close(exited)
+		killedHolding := <-heldAtKill
 		if name == "shell" && d.keypress != nil {
 			d.keypress.configure(false, d.keypress.currentMode())
 		}
@@ -1053,7 +1057,17 @@ func (d *daemon) supervise(name string) {
 			return
 		default:
 		}
-		if time.Since(start) < 3*time.Second {
+		if killedHolding > 0 {
+			why := fmt.Sprintf("killed holding %d MiB, over its %d MiB memory ceiling",
+				killedHolding>>20, memoryLimit>>20)
+			d.failMu.Lock()
+			d.lastFail[name] = why
+			d.failMu.Unlock()
+			fmt.Fprintf(os.Stderr, "%s %s\n", name, why)
+			// A leak that comes back on every start must not turn into a kill loop.
+			backoff = capDur(backoff*2, 30*time.Second)
+			time.Sleep(backoff)
+		} else if time.Since(start) < 3*time.Second {
 			if line := tailLine(logPath); line != "" {
 				d.failMu.Lock()
 				d.lastFail[name] = line
