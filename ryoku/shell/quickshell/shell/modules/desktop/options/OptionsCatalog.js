@@ -37,9 +37,26 @@ var _has = {
     "pythonTime": true,
     "pythonMusic": true,
     "pythonImage": true,
-    "pythonGithub": true
+    "pythonGithub": true,
+    "pythonCpu": true,
+    "pythonRam": true,
+    "pythonTemp": true,
+    "pythonDisk": true,
+    "pythonBattery": true,
+};
+
+var _panel = {
+    "pythonCpu": "PythonCircleOptions.qml",
+    "pythonRam": "PythonCircleOptions.qml",
+    "pythonTemp": "PythonCircleOptions.qml",
+    "pythonDisk": "PythonCircleOptions.qml",
+    "pythonBattery": "PythonCircleOptions.qml"
 };
 
 function has(widget) {
     return _has[widget] === true;
+}
+
+function panelFile(widget) {
+    return _panel[widget] || "";
 }

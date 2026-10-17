@@ -11,6 +11,7 @@ import "../reusables"
 
 Item {
     id: window
+    visible: false
     focus: true
 
     function s(val) {
@@ -25,7 +26,16 @@ Item {
         else if (t === "app" || t === "apps" || t === "stream" || t === "streams") window.activeTab = "apps";
     }
 
+    property var exitCallback: null
+
+    function startExit(onFinished) {
+        introAnim.stop();
+        exitCallback = onFinished;
+        exitAnim.restart();
+    }
+
     function resetAndPlayIntro() {
+        exitAnim.stop();
         introMain = 0;
         introHeader = 0;
         introContent = 0;
@@ -46,6 +56,7 @@ Item {
             resetAndPlayIntro();
         } else {
             introAnim.stop();
+            exitAnim.stop();
             introMain = 0;
             introHeader = 0;
             introContent = 0;
@@ -85,11 +96,6 @@ Item {
         if (activeTab === "outputs") return ThemeBackend.blue;
         if (activeTab === "inputs") return ThemeBackend.mauve;
         return ThemeBackend.green;
-    }
-
-    property real globalOrbitAngle: 0
-    NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible
     }
 
     readonly property PwNode activeNode: {
@@ -144,6 +150,31 @@ Item {
         }
     }
 
+    SequentialAnimation {
+        id: exitAnim
+        running: false
+        ParallelAnimation {
+            NumberAnimation { target: window; property: "introContent"; to: 0.0; duration: 150; easing.type: Easing.InCubic }
+            SequentialAnimation {
+                PauseAnimation { duration: 30 }
+                NumberAnimation { target: window; property: "introHeader"; to: 0.0; duration: 160; easing.type: Easing.InBack }
+            }
+            SequentialAnimation {
+                PauseAnimation { duration: 50 }
+                NumberAnimation { target: window; property: "introMain"; to: 0.0; duration: 180; easing.type: Easing.InQuart }
+            }
+        }
+        ScriptAction {
+            script: {
+                if (window.exitCallback) {
+                    let cb = window.exitCallback;
+                    window.exitCallback = null;
+                    cb();
+                }
+            }
+        }
+    }
+
     Item {
         anchors.fill: parent
         scale: 0.95 + (0.05 * introMain)
@@ -153,26 +184,18 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: ThemeBackend.borderRadius
-            color: ThemeBackend.base
-            border.color: ThemeBackend.surface0
-            border.width: 1
+            color: Qt.alpha(ThemeBackend.base, ThemeBackend.elementOpacity)
+            border.width: 0
+            border.color: "transparent"
             clip: true
 
-            Rectangle {
-                width: parent.width * 0.8; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(120)
-                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(80)
-                opacity: 0.06
-                color: window.tabColor
-                Behavior on color { ColorAnimation { duration: 800 } }
-            }
-            Rectangle {
-                width: parent.width * 0.9; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-120)
-                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-80)
-                opacity: 0.04
-                color: Qt.lighter(window.tabColor, 1.3)
-                Behavior on color { ColorAnimation { duration: 800 } }
+            WallpaperBlur {
+                z: -1
+                anchors.fill: parent
+                topLeftRadius: parent.topLeftRadius
+                topRightRadius: parent.topRightRadius
+                bottomLeftRadius: parent.bottomLeftRadius
+                bottomRightRadius: parent.bottomRightRadius
             }
 
             ColumnLayout {
@@ -255,69 +278,30 @@ Item {
                             clip: true
                             Behavior on border.color { ColorAnimation { duration: 300 } }
 
-                            Canvas {
+                            FluidWave {
                                 id: orbWave
                                 anchors.fill: parent
 
-                                property real wavePhase: 0.0
-                                NumberAnimation on wavePhase {
-                                    running: window.visible && window.activeVol > 0 && window.activeVol < 100
+                                property real wavePhase: 0.8
+                                NumberAnimation {
+                                    id: orbWaveAnim
+                                    target: orbWave
+                                    property: "wavePhase"
+                                    running: window.visible && coreMa.containsMouse && window.activeVol > 0 && window.activeVol < 100
                                     loops: Animation.Infinite
-                                    from: 0; to: Math.PI * 2; duration: 1200
-                                }
-                                onWavePhaseChanged: requestPaint()
-
-                                Connections {
-                                    target: window
-                                    function onActiveVolChanged() { orbWave.requestPaint() }
-                                    function onActiveMuteChanged() { orbWave.requestPaint() }
-                                    function onTabColorChanged() { orbWave.requestPaint() }
+                                    from: 0
+                                    to: Math.PI * 2
+                                    duration: 1200
                                 }
 
-                                onPaint: {
-                                    var ctx = getContext("2d");
-                                    ctx.clearRect(0, 0, width, height);
-                                    if (window.activeVol <= 0) return;
-
-                                    var fillRatio = window.activeVol / 100.0;
-                                    var fillY = height * (1.0 - fillRatio);
-
-                                    ctx.save();
-
-                                    ctx.beginPath();
-                                    ctx.roundedRect(0, 0, width, height, ThemeBackend.borderRadius, ThemeBackend.borderRadius);
-                                    ctx.clip();
-
-                                    ctx.beginPath();
-                                    ctx.moveTo(0, fillY);
-
-                                    if (fillRatio < 0.99) {
-                                        var waveAmp = window.s(6) * Math.sin(fillRatio * Math.PI);
-                                        var cp1y = fillY + Math.sin(wavePhase) * waveAmp;
-                                        var cp2y = fillY + Math.cos(wavePhase + Math.PI) * waveAmp;
-                                        ctx.bezierCurveTo(width * 0.33, cp2y, width * 0.66, cp1y, width, fillY);
-                                        ctx.lineTo(width, height);
-                                        ctx.lineTo(0, height);
-                                    } else {
-                                        ctx.lineTo(width, 0);
-                                        ctx.lineTo(width, height);
-                                        ctx.lineTo(0, height);
-                                    }
-                                    ctx.closePath();
-
-                                    var grad = ctx.createLinearGradient(0, 0, 0, height);
-                                    if (window.activeMute) {
-                                        grad.addColorStop(0, Qt.lighter(ThemeBackend.red, 1.15).toString());
-                                        grad.addColorStop(1, ThemeBackend.red.toString());
-                                    } else {
-                                        grad.addColorStop(0, Qt.lighter(window.tabColor, 1.15).toString());
-                                        grad.addColorStop(1, window.tabColor.toString());
-                                    }
-                                    ctx.fillStyle = grad;
-                                    ctx.globalAlpha = 1.0;
-                                    ctx.fill();
-                                    ctx.restore();
-                                }
+                                radius: ThemeBackend.borderRadius
+                                fillLevel: Math.max(0.0, Math.min(1.0, window.activeVol / 100.0))
+                                waveAmp: fillLevel < 0.99 ? (window.s(6) * Math.sin(fillLevel * Math.PI)) : 0
+                                phase: wavePhase
+                                vertical: 1.0
+                                color1: window.activeMute ? Qt.lighter(ThemeBackend.red, 1.15) : Qt.lighter(window.tabColor, 1.15)
+                                color2: window.activeMute ? ThemeBackend.red : window.tabColor
+                                visible: window.activeVol > 0
                             }
 
                             Text {
@@ -369,6 +353,7 @@ Item {
                             }
 
                             MouseArea {
+                                id: coreMa
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
@@ -516,7 +501,7 @@ Item {
                             ColumnLayout {
                                 anchors.centerIn: parent
                                 spacing: window.s(8)
-                                Text { Layout.alignment: Qt.AlignHCenter; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(28); color: ThemeBackend.surface2; text: "󰖁" }
+                                Text { Layout.alignment: Qt.AlignHCenter; font.family: ThemeBackend.iconFont; font.pixelSize: window.s(28); color: ThemeBackend.surface2; text: "󰖁" }
                                 Text { Layout.alignment: Qt.AlignHCenter; font.family: ThemeBackend.fontFamily; font.pixelSize: window.s(13); color: ThemeBackend.overlay0; text: I18n.t("volumepopup.no_active_streams") }
                             }
                         }
@@ -601,7 +586,7 @@ Item {
                                     spacing: window.s(10)
 
                                     Text {
-                                        font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(18)
+                                        font.family: ThemeBackend.iconFont; font.pixelSize: window.s(18)
                                         color: isActiveNode ? ThemeBackend.crust : ThemeBackend.text
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                         text: {

@@ -90,8 +90,7 @@ Item {
     property bool isFirstLoad: true
     readonly property bool isTodaySelected: getIsoDate(tabRoot.activeDate) === getIsoDate(new Date())
 
-    readonly property string scriptsDir: rootObj.appPaths.qsDir + "/guide/wellbeing"
-    readonly property string stateFilePath: rootObj.appPaths.getRunDir("focustime") + "/focustime_state.json"
+    readonly property string scriptsDir: Caching.payloadDir + "/guide/wellbeing"
 
     property real introHeader: 0.0
     property real introStats: 0.0
@@ -145,8 +144,15 @@ Item {
         });
     }
 
+    Timer {
+        id: dataUpdateDebounceTimer
+        interval: 200
+        repeat: false
+        onTriggered: requestDataUpdate()
+    }
+
     function activateTab() {
-        requestDataUpdate();
+        dataUpdateDebounceTimer.restart();
         introHeader = 0.0; introStats = 0.0; introMidLeft = 0.0;
         introMidRight = 0.0; introBottom = 0.0; introAppBars = 0.0;
         introAnim.restart();
@@ -157,7 +163,7 @@ Item {
     }
 
     Component.onCompleted: {
-        activateTab();
+        if (visible) activateTab();
     }
 
     function updateFromData(data) {
@@ -235,38 +241,18 @@ Item {
     }
 
     function requestDataUpdate() {
-        if (tabRoot.selectedAppClass === "" && getIsoDate(tabRoot.activeDate) === getIsoDate(new Date())) {
-            liveFileReader.running = true;
-        } else {
-            let cmd = ["python3", tabRoot.scriptsDir + "/get_stats.py", getIsoDate(tabRoot.activeDate)];
-            if (tabRoot.selectedAppClass !== "") {
-                cmd.push("--app");
-                cmd.push(tabRoot.selectedAppClass);
-            }
-            cmd.push("--db-dir");
-            cmd.push(rootObj.appPaths.getStateDir("focustime"));
-            statsPoller.command = cmd;
-            statsPoller.running = true;
+        let cmd = ["python3", tabRoot.scriptsDir + "/get_stats.py", getIsoDate(tabRoot.activeDate)];
+        if (tabRoot.selectedAppClass !== "") {
+            cmd.push("--app");
+            cmd.push(tabRoot.selectedAppClass);
         }
+        statsPoller.command = cmd;
+        statsPoller.running = true;
     }
 
-    Process {
-        id: liveFileReader
-        command: ["cat", tabRoot.stateFilePath]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let raw = this.text.trim();
-                if (raw === "") return;
-                try {
-                    let data = JSON.parse(raw);
-                    tabRoot.updateFromData(data);
-                } catch(e) {}
-            }
-        }
-    }
-
+    // Ryoku's ScreenTime service banks a sample every 10 s and writes it to disk every 30 s.
     Timer {
-        interval: 1000
+        interval: 10000
         running: tabRoot.isTodaySelected && tabRoot.visible
         repeat: true
         onTriggered: tabRoot.requestDataUpdate()
@@ -452,7 +438,6 @@ Item {
                     cornerRadius: ThemeBackend.borderRadius
                     buttonIcon: "󰒓"
                     iconFontSize: rootObj.s(16)
-                    iconOffsetX: -1
                     accentColor: ThemeBackend.surface0
                     textColor: isHoveredOrHighlighted ? ThemeBackend.text : ThemeBackend.overlay0
                     onClicked: tabRoot.isSettingsView = !tabRoot.isSettingsView
@@ -493,7 +478,6 @@ Item {
                         cornerRadius: ThemeBackend.borderRadius
                         buttonIcon: "󰃭"
                         iconFontSize: rootObj.s(16)
-                        iconOffsetX: -1
                         accentColor: ThemeBackend.surface0
                         textColor: isHoveredOrHighlighted ? ThemeBackend.text : ThemeBackend.overlay0
                         opacity: (tabRoot.selectedAppClass === "" && !tabRoot.isWeekView && !tabRoot.isSettingsView) ? 1.0 : 0.0
@@ -604,7 +588,15 @@ Item {
                         Layout.fillHeight: true
                         Layout.preferredWidth: rootObj.s(190)
                         radius: ThemeBackend.borderRadius
-                        color: Qt.alpha(ThemeBackend.surface0, 0.4)
+                        color: gf1.active ? "transparent" : Qt.alpha(ThemeBackend.surface0, 0.4)
+
+                        GlassFill {
+                            id: gf1
+                            anchors.fill: parent
+                            radius: parent.radius
+                            tintColor: Qt.alpha(ThemeBackend.surface0, 0.4)
+                            tintAmount: 0.25
+                        }
                         border.color: Qt.alpha(ThemeBackend.surface1, 0.3)
                         border.width: 1
 
@@ -668,7 +660,15 @@ Item {
                         Layout.fillHeight: true
                         Layout.preferredWidth: rootObj.s(260)
                         radius: ThemeBackend.borderRadius
-                        color: Qt.alpha(ThemeBackend.surface0, 0.5)
+                        color: gf2.active ? "transparent" : Qt.alpha(ThemeBackend.surface0, 0.5)
+
+                        GlassFill {
+                            id: gf2
+                            anchors.fill: parent
+                            radius: parent.radius
+                            tintColor: Qt.alpha(ThemeBackend.surface0, 0.5)
+                            tintAmount: 0.25
+                        }
                         border.color: Qt.alpha(ThemeBackend.surface1, 0.4)
                         border.width: 1
 
@@ -687,7 +687,15 @@ Item {
                         Layout.fillHeight: true
                         Layout.preferredWidth: rootObj.s(190)
                         radius: ThemeBackend.borderRadius
-                        color: Qt.alpha(ThemeBackend.surface0, 0.4)
+                        color: gf3.active ? "transparent" : Qt.alpha(ThemeBackend.surface0, 0.4)
+
+                        GlassFill {
+                            id: gf3
+                            anchors.fill: parent
+                            radius: parent.radius
+                            tintColor: Qt.alpha(ThemeBackend.surface0, 0.4)
+                            tintAmount: 0.25
+                        }
                         border.color: Qt.alpha(ThemeBackend.surface1, 0.3)
                         border.width: 1
 
@@ -763,7 +771,15 @@ Item {
                         Layout.fillHeight: true
                         Layout.preferredWidth: rootObj.s(440)
                         radius: ThemeBackend.borderRadius
-                        color: Qt.alpha(ThemeBackend.surface0, 0.4)
+                        color: gf4.active ? "transparent" : Qt.alpha(ThemeBackend.surface0, 0.4)
+
+                        GlassFill {
+                            id: gf4
+                            anchors.fill: parent
+                            radius: parent.radius
+                            tintColor: Qt.alpha(ThemeBackend.surface0, 0.4)
+                            tintAmount: 0.25
+                        }
                         border.color: Qt.alpha(ThemeBackend.surface1, 0.3)
                         border.width: 1
 
@@ -843,7 +859,15 @@ Item {
                         Layout.fillHeight: true
                         Layout.preferredWidth: rootObj.s(260)
                         radius: ThemeBackend.borderRadius
-                        color: Qt.alpha(ThemeBackend.surface0, 0.4)
+                        color: gf5.active ? "transparent" : Qt.alpha(ThemeBackend.surface0, 0.4)
+
+                        GlassFill {
+                            id: gf5
+                            anchors.fill: parent
+                            radius: parent.radius
+                            tintColor: Qt.alpha(ThemeBackend.surface0, 0.4)
+                            tintAmount: 0.25
+                        }
                         border.color: Qt.alpha(ThemeBackend.surface1, 0.3)
                         border.width: 1
 
@@ -992,7 +1016,15 @@ Item {
                                     Layout.preferredHeight: rootObj.s(32)
                                     Layout.alignment: Qt.AlignVCenter
                                     radius: Math.round(rootObj.s(32) * 0.28)
-                                    color: ThemeBackend.surface0
+                                    color: gf6.active ? "transparent" : ThemeBackend.surface0
+
+                                    GlassFill {
+                                        id: gf6
+                                        anchors.fill: parent
+                                        radius: parent.radius
+                                        tintColor: ThemeBackend.surface0
+                                        tintAmount: 0.25
+                                    }
                                     clip: true
 
                                     Image {
@@ -1079,7 +1111,15 @@ Item {
                         id: appChartCard
                         anchors.fill: parent
                         radius: ThemeBackend.borderRadius
-                        color: Qt.alpha(ThemeBackend.surface0, 0.4)
+                        color: gf7.active ? "transparent" : Qt.alpha(ThemeBackend.surface0, 0.4)
+
+                        GlassFill {
+                            id: gf7
+                            anchors.fill: parent
+                            radius: parent.radius
+                            tintColor: Qt.alpha(ThemeBackend.surface0, 0.4)
+                            tintAmount: 0.25
+                        }
                         border.color: Qt.alpha(ThemeBackend.surface1, 0.3)
                         border.width: 1
 
@@ -1184,7 +1224,15 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: rootObj.s(230)
                     radius: ThemeBackend.borderRadius
-                    color: Qt.alpha(ThemeBackend.surface0, 0.4)
+                    color: gf8.active ? "transparent" : Qt.alpha(ThemeBackend.surface0, 0.4)
+
+                    GlassFill {
+                        id: gf8
+                        anchors.fill: parent
+                        radius: parent.radius
+                        tintColor: Qt.alpha(ThemeBackend.surface0, 0.4)
+                        tintAmount: 0.25
+                    }
                     border.color: Qt.alpha(ThemeBackend.surface1, 0.3)
                     border.width: 1
 
@@ -1299,7 +1347,15 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 radius: ThemeBackend.borderRadius
-                                color: Qt.alpha(ThemeBackend.surface1, 0.35)
+                                color: gf9.active ? "transparent" : Qt.alpha(ThemeBackend.surface1, 0.35)
+
+                                GlassFill {
+                                    id: gf9
+                                    anchors.fill: parent
+                                    radius: parent.radius
+                                    tintColor: Qt.alpha(ThemeBackend.surface1, 0.35)
+                                    tintAmount: 0.25
+                                }
                                 border.color: Qt.alpha(ThemeBackend.surface2, 0.35)
                                 border.width: 1
 
@@ -1343,7 +1399,15 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 radius: ThemeBackend.borderRadius
-                                color: Qt.alpha(ThemeBackend.surface1, 0.35)
+                                color: gf10.active ? "transparent" : Qt.alpha(ThemeBackend.surface1, 0.35)
+
+                                GlassFill {
+                                    id: gf10
+                                    anchors.fill: parent
+                                    radius: parent.radius
+                                    tintColor: Qt.alpha(ThemeBackend.surface1, 0.35)
+                                    tintAmount: 0.25
+                                }
                                 border.color: Qt.alpha(ThemeBackend.surface2, 0.35)
                                 border.width: 1
 
@@ -1452,7 +1516,15 @@ Item {
                                     Layout.preferredHeight: rootObj.s(32)
                                     Layout.alignment: Qt.AlignVCenter
                                     radius: Math.round(rootObj.s(32) * 0.28)
-                                    color: ThemeBackend.surface0
+                                    color: gf11.active ? "transparent" : ThemeBackend.surface0
+
+                                    GlassFill {
+                                        id: gf11
+                                        anchors.fill: parent
+                                        radius: parent.radius
+                                        tintColor: ThemeBackend.surface0
+                                        tintAmount: 0.25
+                                    }
                                     clip: true
 
                                     Image {

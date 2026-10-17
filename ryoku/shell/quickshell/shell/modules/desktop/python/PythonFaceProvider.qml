@@ -94,6 +94,7 @@ Item {
         case "music:full":            return cMusicFull;
         case "music:round":           return cMusicRound;
         case "music:lyrics":          return cMusicLyrics;
+        case "music:simpleLyrics":    return cMusicLyricsSimple;
         case "weather:compact":       return cWeatherCompact;
         case "weather:full":          return cWeatherFull;
         case "weather:round":         return cWeatherRound;
@@ -102,10 +103,15 @@ Item {
         case "image:round":           return cImageRound;
         case "user:default":          return cUser;
         case "cpu:default":           return cCpu;
+        case "cpu:circle":            return cCpuCircle;
         case "ram:default":           return cRam;
+        case "ram:circle":            return cRamCircle;
         case "temp:default":          return cTemp;
+        case "temp:circle":           return cTempCircle;
         case "disk:default":          return cDisk;
+        case "disk:circle":           return cDiskCircle;
         case "battery:default":       return cBattery;
+        case "battery:circle":        return cBatteryCircle;
         case "github:default":        return cGithub;
         }
         return null;
@@ -154,6 +160,7 @@ Item {
     Component { id: cMusicFull; PythonFaces.MusicFace {} }
     Component { id: cMusicRound; PythonFaces.MusicFaceRound {} }
     Component { id: cMusicLyrics; PythonFaces.MusicFaceLyrics {} }
+    Component { id: cMusicLyricsSimple; PythonFaces.MusicFaceLyricsSimple {} }
     Component { id: cWeatherCompact; PythonFaces.WeatherFaceCompact {} }
     Component { id: cWeatherFull; PythonFaces.WeatherFaceFull {} }
     Component { id: cWeatherRound; PythonFaces.WeatherFaceRound {} }
@@ -162,9 +169,14 @@ Item {
     Component { id: cImageRound; PythonFaces.ImageFaceRound { imagePath: prov.imagePath } }
     Component { id: cUser; PythonFaces.UserFace {} }
     Component { id: cCpu; PythonFaces.CpuFace {} }
+    Component { id: cCpuCircle; PythonFaces.CpuFaceCircle {} }
     Component { id: cRam; PythonFaces.RamFace {} }
+    Component { id: cRamCircle; PythonFaces.RamFaceCircle {} }
     Component { id: cTemp; PythonFaces.TempFace {} }
+    Component { id: cTempCircle; PythonFaces.TempFaceCircle {} }
     Component { id: cDisk; PythonFaces.DiskFace {} }
+    Component { id: cDiskCircle; PythonFaces.DiskFaceCircle {} }
     Component { id: cBattery; PythonFaces.BatteryFace {} }
+    Component { id: cBatteryCircle; PythonFaces.BatteryFaceCircle {} }
     Component { id: cGithub; PythonFaces.GithubFace {} }
 }

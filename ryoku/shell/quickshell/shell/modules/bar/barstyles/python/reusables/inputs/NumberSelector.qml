@@ -38,7 +38,7 @@ Item {
 
     property string fontFamily: "JetBrains Mono"
     property int fontPixelSize: 12
-    property string iconFont: "Iosevka Nerd Font"
+    property string iconFont: ThemeBackend.iconFont
     property int iconFontSize: 14
     property string leftIcon: "󰅁"
     property string rightIcon: "󰅂"
@@ -56,6 +56,12 @@ Item {
     property bool isHoveredOrHighlighted: (mainHover.hovered || root.action_highlight) && root.enabled
 
     property real focusPop: 1.0
+
+    property int holdDirection: 0
+    property bool holdTriggered: false
+    property int holdInitialDelay: 400
+    property int holdStartInterval: 130
+    property int holdMinInterval: 30
 
     signal triggered()
     signal clicked()
@@ -120,6 +126,29 @@ Item {
 
     function triggerShake() {
         shakeAnim.restart();
+    }
+
+    function beginHold(direction) {
+        root.holdDirection = direction;
+        root.holdTriggered = false;
+        holdDelay.restart();
+    }
+
+    function endHold() {
+        holdDelay.stop();
+        holdRepeat.stop();
+        root.holdDirection = 0;
+    }
+
+    function holdStep() {
+        if (root.isEditing) root.commitValue();
+        if (root.holdDirection > 0) {
+            if (root.value >= root.to) { root.endHold(); return; }
+            root.stepUp();
+        } else if (root.holdDirection < 0) {
+            if (root.value <= root.from) { root.endHold(); return; }
+            root.stepDown();
+        }
     }
 
     function updateScroll() {
@@ -213,6 +242,27 @@ Item {
         id: copyProc
     }
 
+    Timer {
+        id: holdDelay
+        interval: root.holdInitialDelay
+        repeat: false
+        onTriggered: {
+            root.holdTriggered = true;
+            holdRepeat.interval = root.holdStartInterval;
+            root.holdStep();
+            if (root.holdDirection !== 0) holdRepeat.restart();
+        }
+    }
+
+    Timer {
+        id: holdRepeat
+        repeat: true
+        onTriggered: {
+            root.holdStep();
+            interval = Math.max(root.holdMinInterval, Math.round(interval * 0.88));
+        }
+    }
+
     SequentialAnimation {
         id: shakeAnim
         NumberAnimation { target: shakeT; property: "x"; from: 0; to: -5; duration: 45 }
@@ -249,12 +299,23 @@ Item {
         anchors.fill: parent
         radius: root.cornerRadius
         clip: true
-        color: root.isHoveredOrHighlighted ? Qt.darker(root.baseColor, 1.14) : root.baseColor
+        color: glass.active ? "transparent" : (root.isHoveredOrHighlighted ? Qt.darker(root.baseColor, 1.14) : root.baseColor)
         opacity: root.enabled ? 1.0 : 0.5
 
         Behavior on color { ColorAnimation { duration: 180 } }
         Behavior on border.color { ColorAnimation { duration: 180 } }
         Behavior on opacity { NumberAnimation { duration: 180 } }
+
+        GlassFill {
+            id: glass
+            anchors.fill: parent
+            radius: parent.radius
+            tintColor: root.baseColor
+            press: root.isEditing ? 0.55 : (root.isHoveredOrHighlighted ? 0.2 : 0)
+            Behavior on press { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            tintAmount: (root.isEditing ? 0.38 : (root.isHoveredOrHighlighted ? 0.3 : 0.22))
+            Behavior on tintAmount { NumberAnimation { duration: 180 } }
+        }
 
         scale: (root.isEditing ? 1.02 : 1.0) * root.focusPop
         Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
@@ -280,7 +341,13 @@ Item {
             enabled: root.enabled && root.value > root.from
             Layout.alignment: Qt.AlignVCenter
 
+            onPressedChanged: pressed ? root.beginHold(-1) : root.endHold()
+
             onClicked: {
+                if (root.holdTriggered) {
+                    root.holdTriggered = false;
+                    return;
+                }
                 if (root.isEditing) {
                     root.commitValue();
                 }
@@ -523,7 +590,13 @@ Item {
             enabled: root.enabled && root.value < root.to
             Layout.alignment: Qt.AlignVCenter
 
+            onPressedChanged: pressed ? root.beginHold(1) : root.endHold()
+
             onClicked: {
+                if (root.holdTriggered) {
+                    root.holdTriggered = false;
+                    return;
+                }
                 if (root.isEditing) {
                     root.commitValue();
                 }

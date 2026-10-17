@@ -38,6 +38,7 @@ Item {
 
     RowLayout {
         id: mainRow
+        layoutDirection: I18n.layoutDirection
         anchors.centerIn: parent
         spacing: 10
 
@@ -45,7 +46,7 @@ Item {
             id: iconLabel
             visible: root.buttonIcon !== ""
             text: root.buttonIcon
-            font.family: "Iosevka Nerd Font"
+            font.family: ThemeBackend.iconFont
             font.pixelSize: root.iconFontSize
             color: root.textColor
             Layout.alignment: Qt.AlignVCenter
@@ -67,25 +68,47 @@ Item {
             implicitWidth: 44
             implicitHeight: 24
             radius: height / 2
-            color: root.checked ? root.accentColor : (root.isHoveredOrHighlighted ? Qt.lighter(root.baseColor, 1.2) : root.baseColor)
+            color: trackGlass.active ? "transparent" : (root.checked ? root.accentColor : (root.isHoveredOrHighlighted ? Qt.lighter(root.baseColor, 1.2) : root.baseColor))
             opacity: root.enabled ? 1.0 : 0.5
             Layout.alignment: Qt.AlignVCenter
 
             Behavior on color { ColorAnimation { duration: 200 } }
             Behavior on opacity { NumberAnimation { duration: 180 } }
 
+            GlassFill {
+                id: trackGlass
+                anchors.fill: parent
+                radius: parent.radius
+                tintColor: root.checked ? root.accentColor : root.baseColor
+                tintAmount: root.checked ? 0.7 : (root.isHoveredOrHighlighted ? 0.4 : 0.3)
+                Behavior on tintAmount { NumberAnimation { duration: 200 } }
+            }
+
             scale: (!root.enabled ? 1.0 : (btnMa.pressed ? 0.95 : (root.isHoveredOrHighlighted ? 1.04 : 1.0))) * root.popScale
             Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
 
             Rectangle {
                 id: handle
-                width: parent.height - 6
+                width: parent.height - 6 + (handleGlass.active && btnMa.pressed ? 8 : 0)
                 height: parent.height - 6
                 radius: height / 2
                 anchors.verticalCenter: parent.verticalCenter
                 x: root.checked ? parent.width - width - 3 : 3
-                color: root.checked ? root.handleColor : root.handleOffColor
+                color: handleGlass.active ? "transparent" : (root.checked ? root.handleColor : root.handleOffColor)
 
+                GlassFill {
+                    id: handleGlass
+                    anchors.fill: parent
+                    radius: parent.radius
+                    tintColor: root.checked ? root.handleColor : root.handleOffColor
+                    tintAmount: 0.45
+                    shadow: 1
+                    press: btnMa.pressed ? 1 : 0
+                    pulse: Math.min(1, root.flashOpacity * 2.5)
+                    Behavior on press { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                }
+
+                Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 1.3 } }
                 Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
                 Behavior on color { ColorAnimation { duration: 180 } }
             }
@@ -95,6 +118,7 @@ Item {
                 radius: parent.radius
                 color: "#ffffff"
                 opacity: root.flashOpacity
+                visible: !trackGlass.active
                 PropertyAnimation on opacity { id: btnFlashAnim; to: 0; duration: 350; easing.type: Easing.OutExpo }
             }
         }

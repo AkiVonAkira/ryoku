@@ -17,6 +17,19 @@
   unlock or a guard appears (`ipc/sleepwake.go`, `ipc/daemon.go`).
 
 ### Changed
+- **Python catches up with Serpantinum 2.2.12.** The bar moves to upstream's
+  module registry, so top and side bars share one set of modules, and gains
+  bar thickness and edge-centred layouts, liquid-glass surfaces drawn over the
+  current wallpaper, shader-drawn waves, visualizers, seek bars and gauges, a
+  searchable guide, a Notes quick action, music balance controls and a dock
+  app menu. The desktop face picker adds the circular battery, CPU, RAM, disk
+  and temperature faces and a simple lyrics face. The Wellbeing tab now shows
+  real usage from Ryoku's screen-time record instead of staying empty, icons
+  stay icons when the global font is not a Nerd Font, and the pill and pacman
+  workspace marks show their empty slots again. Ryoku still owns the launcher,
+  clipboard, wallpaper, lock, capture, notifications, idle service, updates,
+  desktop widgets and compositor integration
+  (`quickshell/shell/modules/bar/barstyles/python/`, `services/ScreenTime.qml`).
 - **Audio downloads keep the stream they came with.** The stash helper no
   longer transcodes every audio download to mp3: yt-dlp takes the best audio
   stream as it is and cobalt is asked for `best`, so nothing is re-encoded on
