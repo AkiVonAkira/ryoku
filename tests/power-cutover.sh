@@ -462,6 +462,7 @@ if (( EUID == 0 )); then
 fi
 
 mkdir -p "$tmp/bin" "$tmp/state" "$tmp/runtime-user"
+export RYOKU_SESSION_DISPLAY_TRIES=0
 cat >"$tmp/bin/fake" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -1048,6 +1049,49 @@ grep -qx 'DISPLAY=:0' <<<"$envmap" \
   || fail "the session environment lost the X server's DISPLAY"
 rm -rf "$tmp/proc/90009" "$tmp/proc/90010"
 printf '%s\n' "$session_env_pid" >"$tmp/cgroup/test.scope/cgroup.procs"
+
+test_late_session_display_bind() {
+  local envmap publisher_pid
+  mkdir -p "$tmp/proc/90019"
+  printf 'Name:\tkitty\nUid:\t%s\t%s\t%s\t%s\n' \
+    "$(id -u)" "$(id -u)" "$(id -u)" "$(id -u)" >"$tmp/proc/90019/status"
+  printf 'XDG_SESSION_ID=9\0WAYLAND_DISPLAY=wayland-late\0' \
+    >"$tmp/proc/90019/environ"
+  printf 'kitty\0--class=early\0\0' >"$tmp/proc/90019/cmdline"
+  printf '%s\n90019\n' "$session_env_pid" \
+    >"$tmp/cgroup/test.scope/cgroup.procs"
+  (
+    sleep 0.05
+    mkdir -p "$tmp/proc/90020"
+    printf 'Name:\txwayland-satellite\nUid:\t%s\t%s\t%s\t%s\n' \
+      "$(id -u)" "$(id -u)" "$(id -u)" "$(id -u)" >"$tmp/proc/90020/status"
+    printf 'XDG_CURRENT_DESKTOP=testwm\0WAYLAND_DISPLAY=wayland-late\0DISPLAY=:7\0' \
+      >"$tmp/proc/90020/environ"
+    printf 'xwayland-satellite\0:7\0\0' >"$tmp/proc/90020/cmdline"
+  ) &
+  publisher_pid=$!
+  : >"$tmp/calls"
+  rm -f "$tmp/runtime-user/ryoku-session.9.environment"
+  ONLY_SESSION_NINE=1 EXTRA_SESSION=1 RYOKU_SESSION_DISPLAY_TRIES=10 \
+    XDG_RUNTIME_DIR="$tmp/runtime-user" RYOKU_PROC_ROOT="$tmp/proc" \
+    CUTOVER_LOG="$tmp/calls" CUTOVER_STATE="$tmp/state" \
+    RYOKU_CUTOVER_PROVIDER_ROOT="$tmp/bin" \
+    PATH="$tmp/bin:$PATH" \
+    bash -c 'source "$1"; bind_session_environment 9' _ "$helper"
+  wait "$publisher_pid"
+  envmap="$(tr '\0' '\n' <"$tmp/runtime-user/ryoku-session.9.environment")"
+  grep -qx 'DISPLAY=:7' <<<"$envmap" \
+    || fail "the session bind did not wait for the late X server"
+  grep -q '^systemctl --user set-environment .*DISPLAY=:7' "$tmp/calls" \
+    || fail "the session bind did not publish the late X display"
+  if grep -q '^systemctl --user restart ryoku-shell.service' "$tmp/calls"; then
+    fail "the late X display restarted the shell"
+  fi
+  rm -rf "$tmp/proc/90019" "$tmp/proc/90020"
+  printf '%s\n' "$session_env_pid" >"$tmp/cgroup/test.scope/cgroup.procs"
+}
+
+test_late_session_display_bind
 
 mkdir -p "$tmp/watch-bin" "$tmp/watch-runtime"
 watch_runtime_root="$tmp/watch-user-runtime"

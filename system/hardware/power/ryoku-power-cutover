@@ -707,7 +707,8 @@ session_scope_display() {
     proc_uid="$(awk '/^Uid:/ { print $2; exit }' "$proc_root/$pid/status" 2>/dev/null || true)"
     [[ $proc_uid == "$self_uid" ]] || continue
     cmdline="$(cat "$proc_root/$pid/cmdline" 2>/dev/null | tr '\0' ' ' 2>/dev/null || true)"
-    [[ $cmdline == *Xwayland* || $cmdline == *Xorg* ]] || continue
+    cmdline=${cmdline,,}
+    [[ $cmdline == *xwayland* || $cmdline == *xorg* ]] || continue
     proc_sid="" display=""
     while IFS= read -r -d '' entry; do
       key=${entry%%=*}
@@ -718,6 +719,46 @@ session_scope_display() {
       esac
     done < <(cat "$proc_root/$pid/environ" 2>/dev/null || true)
     [[ $proc_sid == "$sid" && -n $display ]] || continue
+    printf '%s\n' "$display"
+    return 0
+  done
+  return 1
+}
+
+# niri and uwsm keep the compositor tree in the user manager rather than the
+# login1 scope. Accept its X server only with an exact session id, or with the
+# same compositor name when this user has one unambiguous graphical session.
+session_user_display() {
+  local sid=$1 provider=$2 proc_root=${RYOKU_PROC_ROOT:-/proc}
+  local self_uid proc pid proc_uid cmdline entry key value
+  local proc_sid desktop wayland_display display
+  self_uid="$(id -u)"
+  for proc in "$proc_root"/[0-9]*; do
+    pid=${proc##*/}
+    [[ $pid =~ ^[0-9]+$ && -r $proc/status && -r $proc/environ ]] || continue
+    proc_uid="$(awk '/^Uid:/ { print $2; exit }' "$proc/status" 2>/dev/null || true)"
+    [[ $proc_uid == "$self_uid" ]] || continue
+    cmdline="$(cat "$proc/cmdline" 2>/dev/null | tr '\0' ' ' 2>/dev/null || true)"
+    cmdline=${cmdline,,}
+    [[ $cmdline == *xwayland* || $cmdline == *xorg* ]] || continue
+    proc_sid="" desktop="" wayland_display="" display=""
+    while IFS= read -r -d '' entry; do
+      key=${entry%%=*}
+      value=${entry#*=}
+      case "$key" in
+        XDG_SESSION_ID) proc_sid=$value ;;
+        XDG_CURRENT_DESKTOP) desktop=${value,,} ;;
+        WAYLAND_DISPLAY) wayland_display=$value ;;
+        DISPLAY) display=$value ;;
+      esac
+    done < <(cat "$proc/environ" 2>/dev/null || true)
+    [[ -n $display ]] || continue
+    if [[ $proc_sid == "$sid" ]]; then
+      printf '%s\n' "$display"
+      return 0
+    fi
+    [[ -z $proc_sid && -n $wayland_display && $desktop == *"$provider"* ]] || continue
+    single_user_session "$sid" || continue
     printf '%s\n' "$display"
     return 0
   done
@@ -779,7 +820,7 @@ write_session_environment_from_pid() {
   local sid=$1 session_type=$2 provider=$3 provider_bin=$4 pid=$5 path=$6
   local allow_missing_sid=${7:-0}
   local proc_root=${RYOKU_PROC_ROOT:-/proc}
-  local entry key value tmp display_from_scope
+  local entry key value tmp display_from_session
   local -a keys=(
     XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP
     XDG_SEAT XDG_VTNR WAYLAND_DISPLAY DISPLAY
@@ -804,12 +845,14 @@ write_session_environment_from_pid() {
   [[ $session_type == wayland && -n ${found[WAYLAND_DISPLAY]:-} ]] || return 1
   # Xwayland starts lazily with the first X client, so a compositor child
   # snapshotted before that moment carries no DISPLAY while the session still
-  # has a live X server. Resolve it from the session's own X server process
-  # instead of leaving the key absent, or the manager bind that replays this
-  # file would strip a DISPLAY the compositor bootstrap had already pushed.
+  # has a live X server. Resolve it from that server whether the compositor
+  # lives in the login1 scope or the user manager.
   if [[ -z ${found[DISPLAY]:-} ]]; then
-    display_from_scope="$(session_scope_display "$sid" 2>/dev/null || true)"
-    [[ -n $display_from_scope ]] && found[DISPLAY]=$display_from_scope
+    display_from_session="$(session_scope_display "$sid" 2>/dev/null || true)"
+    if [[ -z $display_from_session ]]; then
+      display_from_session="$(session_user_display "$sid" "$provider" 2>/dev/null || true)"
+    fi
+    [[ -n $display_from_session ]] && found[DISPLAY]=$display_from_session
   fi
   tmp="$path.$$"
   if ! (
@@ -911,6 +954,31 @@ single_user_session() {
   [[ $count == 1 ]]
 }
 
+session_environment_has_display() {
+  local path=$1 entry
+  [[ -r $path ]] || return 1
+  while IFS= read -r -d '' entry; do
+    [[ $entry == DISPLAY=?* ]] && return 0
+  done <"$path"
+  return 1
+}
+
+wait_for_session_display() {
+  local sid=$1 path=$2 attempt
+  # The X server is forked within a second of the compositor starting; the cap
+  # only bounds a session that runs without one.
+  local tries=${RYOKU_SESSION_DISPLAY_TRIES:-25}
+  [[ $tries =~ ^[0-9]+$ ]] || tries=25
+  (( tries > 75 )) && tries=75
+  session_environment_has_display "$path" && return 0
+  for ((attempt = 0; attempt < tries; attempt++)); do
+    sleep 0.2
+    discover_session_environment "$sid" >/dev/null 2>&1 || true
+    session_environment_has_display "$path" && return 0
+  done
+  return 1
+}
+
 bind_session_environment() {
   local sid=$1 path entry key value session_type seen_sid="" wayland_display=""
   local -a assignments=()
@@ -919,6 +987,10 @@ bind_session_environment() {
     log "cannot resolve compositor environment for login1 session $sid" >&2
     return 1
   }
+  # The compositor starts its login command before its X server has necessarily
+  # created a socket. Keep the service start behind that bounded race so the
+  # shell inherits DISPLAY once, rather than restarting it after login.
+  wait_for_session_display "$sid" "$path" || true
   while IFS= read -r -d '' entry; do
     key=${entry%%=*}
     value=${entry#*=}

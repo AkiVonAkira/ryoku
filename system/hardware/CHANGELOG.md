@@ -17,6 +17,13 @@
   headless one exits at once.
 
 ### Fixed
+- `power/ryoku-power-cutover`: **launcher apps inherit the late X display at
+  login.** The first fix preserved `DISPLAY` only when Xwayland was already in
+  the session scope as the environment bind ran. The bind now waits a bounded
+  interval for the compositor's X server before it starts the shell services,
+  so Zoom, Nuvio, Java and other X11 clients open from the launcher without a
+  second shell restart. Covered by `test_late_session_display_bind` in
+  `tests/power-cutover.sh`.
 - **`ryoku-wifi-backend` keeps iwd supervised on a runit host.** Switching the
   backend on Void wrote the drop-in and restarted NetworkManager, which cannot
   D-Bus-activate iwd there; the switch now maintains
