@@ -759,6 +759,13 @@
   stride with it, so the last column stays visible at whole and fractional
   display scales (`quickshell/shell/modules/launcher/variants/main/ResultGrid.qml`,
   `Launcher.qml`).
+- **Each ii dock keeps running apps on its own monitor, and an empty pin list
+  stays empty.** Isolate monitors now scopes every app's windows to the dock's
+  output while retaining pinned apps and windows whose output is not known yet.
+  Turning isolation off keeps the shared list, and removing the final pin records
+  that the empty list was chosen instead of restoring starter apps after reload
+  (`quickshell/shell/modules/dock/ii/DockContent.qml`,
+  `quickshell/shell/services/Dock.qml`).
 - **The dock's sports scoreboard no longer eats all memory and the network.**
   On a fractional display scale, a team logo still loading dropped out of its
   layout slot, so its width became its own decoded width; `StyledImage` asked
