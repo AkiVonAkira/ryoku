@@ -4,10 +4,12 @@ Ryoku ships seven bar styles, and a single key decides which one runs. The
 shipped default is **Orpheus** (`orpheus`), the liquid top bar. **QS Bar**
 (`qsbar`) is the full-colour top bar. **Shima** (`iris`), **Python** (`python`),
 and **Nomarchy** (`nomarchy`) are the frame family: whole-desktop systems hosted
-once on the primary output. Shima is an
-island on any screen edge that morphs into whatever you clicked, with glass
-popups, bubbles, a dock, a live Studio and its own settings overlay. Python is a
-bar of pill widgets that open into one morphing stage (its own guide carries its
+once on the primary output. Shima is an island on any screen edge that morphs
+into whatever you clicked, with glass popups, bubbles, a dock, a live Studio and
+settings that can open over the desktop or as an application window. Its frame,
+surfaces and widget faces can also wear Afterglow or Light leak film textures
+without replacing Ryogami's wallpaper or Ryoku's palette. Python is a bar of
+pill widgets that open into one morphing stage (its own guide carries its
 settings), based on Serpantinum by ilyamiro. Nomarchy preserves Omarchy
 quattro's bar, panels, widgets and plugin host while routing desktop state and
 actions through Ryoku. **Sumi** is the monochrome left rail, and **Kairos** is a

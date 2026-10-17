@@ -38,6 +38,15 @@
   used to open in the shell's working directory; the image choosers now start
   in the picture directory and the rest at home.
 
+- **Shima tracks iNiR 2.33.0's surface work.** Afterglow and Light leak can
+  texture Shima's frame, islands, panels and widget faces without taking over
+  Ryogami's wallpaper or Ryoku's palette. Six matching looks join the theme
+  gallery, updated custom Shima faces reload without restarting the shell, and
+  toolbar labels stay centred inside their controls. Shima Settings can stay
+  over the desktop or open as a normal window. The window is found and focused
+  through Ryoku's compositor-neutral workspace service, so the choice works
+  under Hyprland, niri and Wayfire (`quickshell/inir/`).
+
 ### Added
 - **A surface request can name the trigger it was opened from.**
   `ShellState.requestSurfaceActive` now forwards its context the way
@@ -479,10 +488,10 @@
   menu blurs the whole wallpaper, and a busy I2C bus at login no longer loses
   the monitor. The package-manager probes now also read XBPS, and battery,
   network and Bluetooth gained simulate verbs for testing. What stays out is
-  upstream's washi palette solver and Afterglow texture (they drive the app
-  theming Ryoku owns through matugen), the iRiS login screen, Void distro
-  support, the settings-as-window host, Orbit, and the lock and niri-only
-  pages (`quickshell/inir/`).
+  upstream's washi palette solver and wallpaper-grade texture effects, since
+  Ryoku's matugen daemon and Ryogami own those jobs, plus the iRiS login screen,
+  Void distro setup, Orbit, and the lock and niri-only pages
+  (`quickshell/inir/`).
 - **Per-widget Depth: in front or behind.** Right-clicking a desktop widget or
   a store tile, and the visualiser's own editor, now offer a Depth control
   that lifts just that widget above the subject cut-out or drops it behind
