@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fixed
+- **The shell daemon stops burning a core on an idle session.** The watcher
+  that releases qylock's fallback sleep guard asked two questions on a fixed
+  100 ms tick, and each one costs a process: `pgrep` for the lock screen and
+  `ryoku-host` for the guard. The sleep cycle stays set after a resume, so
+  that was twenty forks a second from the first suspend until logout, for work
+  that is owed once per unlock. It now eases off to five seconds while nothing
+  is happening and goes back to full speed the moment anything does, so an
+  unlock is still followed immediately by the release. It cannot simply stop:
+  a guard that reappears while qylock is not running still has to be cleared,
+  or it becomes an inhibitor nothing removes and the machine stops suspending
+  (`ipc/sleepwake.go`).
+
 ### Changed
 - **Audio downloads keep the stream they came with.** The stash helper no
   longer transcodes every audio download to mp3: yt-dlp takes the best audio
