@@ -27,6 +27,9 @@
   running, with and without a sudo ticket, because sudo is never invoked. The
   report now says the state is unreadable without root
   (`internal/doctor/report.go`).
+- **`ryoku doctor` recognizes displays attached to the discrete GPU.** A
+  never-suspended card now reports the dGPU-wired output as expected load instead
+  of blaming processes for idle drain (`internal/doctor/reconcile_dgpu_panel.go`).
 - **Updates preserve installer package choices.** Control-manifest convergence
   now excludes browser, login-shell, and compositor packages selected per box,
   so it cannot install alternatives the user did not choose.
