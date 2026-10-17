@@ -68,6 +68,12 @@
   each with an estimated size and the selector that lands on it; `download`
   takes that selector, so the tier picked is the tier that downloads
   (`scripts/stash-cobalt.sh`, `tests/stash-probe.sh`).
+- **Notification images are opt-in.** The reference text-only card remains the
+  default and the server no longer advertises image support in that state.
+  Turning images on adds a rounded thumbnail for the sent image, or the resolved
+  app icon when there is no image (`quickshell/shell/modules/notifications/`,
+  `quickshell/shell/services/{Config,Notifs}.qml`, `ipc/settings.go`,
+  `../assets/rices/default/rice.json`).
 - **Ask and Agent are separate modes in the Rashin bar.** Ask keeps its own
   read-only history and route picker; Agent keeps the persistent machine
   conversation, session history, and harness models. Continue with the agent

@@ -260,6 +260,7 @@ type menuWidget struct {
 type notificationsSettings struct {
 	NotificationPosition string `json:"notification_position"`
 	PopupWindowMargins   int    `json:"popup_window_margins"`
+	ShowImages           bool   `json:"show_images"`
 }
 
 type wallpaperSettings struct {
@@ -435,7 +436,7 @@ func defaultSettings() *settings {
 			LeftMenuExpansionType:  "AlwaysExpanded",
 			RightMenuExpansionType: "AlwaysExpanded",
 		},
-		Notifications: notificationsSettings{NotificationPosition: "Right", PopupWindowMargins: 0},
+		Notifications: notificationsSettings{NotificationPosition: "Right", PopupWindowMargins: 0, ShowImages: false},
 		Wallpaper:     wallpaperSettings{ContentFit: "Cover", TransitionPreset: "random", VideoEngine: "ryogami", VideoEnabled: true, VideoTranscodeFps: 24, VideoTranscodeWidth: 1920},
 		Ask:           askSettings{Bubble: askBubbleSettings{Enabled: false, X: 0.94, Y: 0.68, Screen: ""}},
 		Phone: phoneSettings{

@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **Desktop > Notifications can show notification images.** The new switch
+  writes the shell's opt-in image setting; off keeps the shipped text-only
+  notification look (`quickshell/schema/DesktopPage.js`).
 - **Connections > Phone.** One switch installs or removes everything the phone
   feature needs on Arch, CachyOS, Fedora and Void (KDE Connect, scrcpy, adb,
   v4l2loopback and the helpers). The card says where the phone stands

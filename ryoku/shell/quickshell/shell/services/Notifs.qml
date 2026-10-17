@@ -234,7 +234,7 @@ Singleton {
         keepOnReload: true
         bodySupported: true
         actionsSupported: true
-        imageSupported: true
+        imageSupported: Config.notifications?.show_images === true
 
         Component.onCompleted: {
             var l = trackedNotifications.values;

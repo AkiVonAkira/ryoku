@@ -2642,7 +2642,8 @@
       },
       "notifications": {
         "notification_position": "Right",
-        "popup_window_margins": 0
+        "popup_window_margins": 0,
+        "show_images": false
       },
       "obi": {},
       "osdOpacity": 1,

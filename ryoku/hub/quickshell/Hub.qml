@@ -570,6 +570,7 @@ Rectangle {
         "general.clock_format_24_h": false,
         "reloadCover": ReloadCoverModel.empty(),
         "language": "Auto", "barStyle": "orpheus", "obi": {}, "nacre": NacreConfig.defaultConfig(), "qsbar": {}, "dock": {},
+        "notifications.show_images": false,
         "clipboard.widthPercent": 65, "clipboard.heightPercent": 42, "clipboard.bottomPercent": 0,
         "clipboard.panelRadius": 18, "clipboard.paneRadius": 12, "clipboard.cardRadius": 9,
         "clipboard.pruneWeekly": false
