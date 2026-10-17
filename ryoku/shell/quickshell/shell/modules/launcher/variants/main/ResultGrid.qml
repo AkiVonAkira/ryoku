@@ -203,7 +203,6 @@ Flickable {
                 }
 
                 Grid {
-                    anchors.horizontalCenter: parent.horizontalCenter
                     columns: grid.columns
                     columnSpacing: grid.columnSpacing
                     rowSpacing: grid.columnSpacing
