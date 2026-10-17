@@ -72,11 +72,12 @@ check "the CLI rescans until /.snapshots holds still" grep -q 'modTime(snapshots
 check "the restored unit runs the CLI follow-up" line "$bm/ryoku-snapshot-restored.service" "ExecStart=/usr/bin/ryoku boot-menu restored"
 check "the restored unit waits for the restore's flag" line "$bm/ryoku-snapshot-restored.service" \
   "ConditionPathExists=/etc/ryoku/snapshot-restored"
+check "the restored unit stays off during a look boot" line "$bm/ryoku-snapshot-restored.service" \
+  "ConditionKernelCommandLine=!rd.ryoku.preview"
 check "the CLI writes the flag the unit waits for" grep -q 'restoredFlag = "/etc/ryoku/snapshot-restored"' "$restore"
 check "the CLI restores from the snapshot the look hook mounted" grep -q 'previewLower = "/run/ryoku/preview/lower"' "$restore"
 check "the look hook mounts it there" has "$mod/ryoku-snapshot-preview.sh" 'base="$run/ryoku/preview"'
 check "the CLI builds images with the shipped module" grep -q 'snapshotDracutMod *= "ryoku-snapshot"' "$cli"
-check "the CLI detects the menu by the tool the package ships" grep -q 'snapshotMenuTool *= "/usr/bin/ryoku-grub-menu"' "$cli"
 check "the snippet sources the file the CLI writes" has "$bm/grub/15_ryoku_snapshots" 'source "${config_directory}/ryoku-snapshots.cfg"'
 check "the grub.d snippet renders" sh -c "sh '$bm/grub/15_ryoku_snapshots' | grep -q '^if \\[ -f '"
 check "the module is only built in on request" grep -q '^  return 255$' "$mod/module-setup.sh"

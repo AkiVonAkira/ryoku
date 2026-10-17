@@ -37,10 +37,7 @@ import (
 //     that boot, makes it the root again, as limine-snapper-restore does on
 //     Arch (bootmenu_restore.go).
 const (
-	snapshotMenuID = "ryoku-snapshots"
-	// ships beside /etc/grub.d/15_ryoku_snapshots; /etc/grub.d is root-only
-	// and `ryoku snapshots` runs as the user.
-	snapshotMenuTool  = "/usr/bin/ryoku-grub-menu"
+	snapshotMenuID    = "ryoku-snapshots"
 	snapshotDracutMod = "ryoku-snapshot"
 	// what a new kernel copy must leave free on /boot, so a Fedora kernel
 	// update still fits after it.

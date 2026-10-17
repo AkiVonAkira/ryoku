@@ -228,6 +228,14 @@
   `hub/quickshell/schema/DesktopScenePage.js`, `shell/ipc/control.go`).
 
 ### Fixed
+- **The palette bridge waits for the first login instead of restart-looping at
+  boot.** It starts without a palette, reports it unavailable until one is
+  written, and watches for the cache directory to appear
+  (`palette-bridge/main.go`, `palette-bridge/main_test.go`).
+- **`ryoku-rashin ensure` starts Prowl's gateway before it exits.** The short
+  CLI path now waits for the start command, and enabling Rashin completes
+  `loginctl enable-linger` before a gateway start failure can be returned
+  (`rashin/backend/prowlgw.go`, `rashin/backend/server.go`).
 - **Model choices no longer reset to Prowl auto.** The saved choice is keyed
   only by harness and is reapplied to every new, loaded, or respawned session;
   an unavailable choice stays saved and is reported honestly

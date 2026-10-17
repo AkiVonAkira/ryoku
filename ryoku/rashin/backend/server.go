@@ -541,9 +541,7 @@ func cmdEnable(atBoot bool) error {
 		if err := systemctlUser("enable", "--now", rashinUnit); err != nil {
 			return err
 		}
-		if err := startGateway(); err != nil {
-			return err
-		}
+		bootLingering := false
 		if atBoot {
 			// Lingering starts the user manager (and this unit) at BOOT,
 			// before login. Needs polkit auth or root once.
@@ -554,9 +552,15 @@ func cmdEnable(atBoot bool) error {
 			if err := lc.Run(); err != nil {
 				fmt.Fprintln(os.Stderr, "ryoku-rashin: enable-linger failed (dashboard will start at login instead of boot):", err)
 			} else {
-				fmt.Println("rashin enabled (starts at boot via lingering)")
-				return nil
+				bootLingering = true
 			}
+		}
+		if err := startGateway(); err != nil {
+			return err
+		}
+		if bootLingering {
+			fmt.Println("rashin enabled (starts at boot via lingering)")
+			return nil
 		}
 		fmt.Println("rashin enabled (systemd user unit, starts at login)")
 		return nil

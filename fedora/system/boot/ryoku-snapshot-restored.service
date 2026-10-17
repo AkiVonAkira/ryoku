@@ -6,6 +6,7 @@
 # entries, and the kernel this boot runs becomes the default.
 Description=Ryoku boot entries after a snapshot restore
 ConditionPathExists=/etc/ryoku/snapshot-restored
+ConditionKernelCommandLine=!rd.ryoku.preview
 RequiresMountsFor=/boot /.snapshots
 
 [Service]
