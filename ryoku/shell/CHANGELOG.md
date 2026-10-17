@@ -754,6 +754,11 @@
   on hotplug, and logs one useful error per failure streak instead of rescanning
   continuously. It also leaves input nodes closed until a binding or button
   capture needs them (`ipc/mousemap.go`, `ipc/mousemap_test.go`).
+- **The Main launcher keeps every app tile inside the palette.** The all-apps
+  grid now sizes its columns from its actual inner width and adapts the arrow-key
+  stride with it, so the last column stays visible at whole and fractional
+  display scales (`quickshell/shell/modules/launcher/variants/main/ResultGrid.qml`,
+  `Launcher.qml`).
 - **The dock's sports scoreboard no longer eats all memory and the network.**
   On a fractional display scale, a team logo still loading dropped out of its
   layout slot, so its width became its own decoded width; `StyledImage` asked

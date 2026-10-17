@@ -329,7 +329,7 @@ Item {
         }
     }
 
-    readonly property int gridColumnsForMove: MainMetrics.gridColumns
+    readonly property int gridColumnsForMove: appGrid.columns
 
     Rectangle {
         id: divider
