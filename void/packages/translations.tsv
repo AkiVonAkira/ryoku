@@ -98,7 +98,7 @@ lib32-nvidia-utils	-	hardware:nvidia	Deferred with nvidia-utils: the 32-bit libr
 lib32-vulkan-intel	mesa-vulkan-intel-32bit	hardware:intel	repo=multilib
 lib32-vulkan-radeon	mesa-vulkan-radeon-32bit	hardware:amd	repo=multilib
 lib32-vulkan-swrast	mesa-vulkan-lavapipe-32bit	hardware:vm	repo=multilib
-libcanberra	-	hyprland	Hyprland is not packaged on Void.
+libcanberra	libcanberra	optional	
 libdrm	libdrm	desktop	
 libgcc	libgcc	desktop	
 libglvnd	libglvnd	desktop	
@@ -201,6 +201,8 @@ ryoku-hub	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-hypr-plugins	-	hyprland	Hyprland is not packaged on Void.
 ryoku-keyring	ryoku-keyring	desktop	repo=ryoku
 ryoku-keysounds	-	hyprland	Hyprland is not packaged on Void.
+ryoku-keysounds-niri	@repo	optional	Ryoku-owned package built from the checkout.
+ryoku-keysounds-profiles	@repo	optional	Ryoku-owned package built from the checkout.
 ryoku-oh-my-zsh	ryoku-oh-my-zsh	desktop	repo=ryoku
 ryoku-palette-bridge	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-rashin	@repo	desktop	Ryoku-owned package built from the checkout.

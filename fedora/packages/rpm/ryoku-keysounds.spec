@@ -4,12 +4,11 @@ Name:           ryoku-keysounds
 Version:        0.1
 Release:        1%{?dist}
 Summary:        Keyboard sound plugin for Hyprland
-License:        GPL-3.0-or-later AND MIT
+License:        GPL-3.0-or-later
 URL:            https://ryoku.dev
 Source0:        ryoku-%{version}.tar.gz
 BuildRequires:  bash
 BuildRequires:  coreutils
-BuildRequires:  ffmpeg-free
 BuildRequires:  findutils
 BuildRequires:  gcc-c++
 BuildRequires:  libcanberra-devel
@@ -17,14 +16,15 @@ BuildRequires:  libdrm-devel
 BuildRequires:  make
 BuildRequires:  pkgconf-pkg-config
 BuildRequires:  pixman-devel
-BuildRequires:  python3
 BuildRequires:  hyprland-devel
 Requires:       hyprland%{?_isa} = %{hyprland_evr}
 Requires:       libcanberra
+Requires:       ryoku-keysounds-profiles = %{version}-%{release}
 
 %description
-Ryoku's Hyprland key sound plugin and switch recording profiles, built against
-the exact compositor ABI.
+Ryoku's Hyprland key sound plugin, built against the exact compositor ABI. The
+sample profiles and the importer come from ryoku-keysounds-profiles, shared with
+niri's key-sounds engine.
 
 %prep
 %setup -q -n ryoku-%{version}

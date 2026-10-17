@@ -30,12 +30,11 @@ truth for the live desktop.
   (`env`, `input`, `displays`, `decoration`, `animations`, `binds`, `ryoshot`,
   `window_rules`, `fullscreen`, `autostart`). `scripts/` holds Hyprland's own
   leaf helpers, the ones bound to the compositor: `ryoku-monitor` (output
-  arrangement), `ryoku-workspace`, and the `ryoku-keysounds-import` sample
-  importer. The neutral screen and UI helpers the shell drives by bare name (the
-  `ryoku-cmd-*` tools, `ryoku-sysinfo`, the recorder chain) moved to the shell
-  tree, so every compositor ships them. `plugins/` holds the one compositor
-  plugin Ryoku authors, `keysounds` (C++ against the Hyprland plugin API, with
-  its `hyprpm.toml` recipe and the sample generator; see
+  arrangement) and `ryoku-workspace`. The neutral screen and UI helpers the
+  shell drives by bare name (the `ryoku-cmd-*` tools, `ryoku-sysinfo`, the
+  recorder chain) moved to the shell tree, so every compositor ships them.
+  `plugins/` holds the one compositor plugin Ryoku authors, `keysounds` (C++
+  against the Hyprland plugin API, with its `hyprpm.toml` recipe; see
   `docs/hyprland-plugins.md`); it ships as a package, not with the config. The
   rest of the directory deploys to `~/.config/hypr/`.
 - `niri/` the niri config, authored in **KDL**. `config.kdl` is the entry point
@@ -47,6 +46,13 @@ truth for the live desktop.
   `modules/` and no `scripts/`, since the neutral settings come from the store
   and the keybind helpers are shell verbs. It deploys to `~/.config/niri/`.
   See `docs/compositors.md`.
+- `keysounds/` the key-press sounds both compositors share: `profiles.txt`
+  (the Mechvibes packs the eleven shipped profiles are cut from) and
+  `ryoku-keysounds-import`, the tool a user runs on any pack from mechvibes.com.
+  `main.rs` is the standalone engine niri runs in place of Hyprland's plugin: it
+  reads the keyboard from evdev and plays through libcanberra, no crates. The
+  Hyprland plugin reads the same samples; `usage.md` is the user's guide. See
+  `docs/hyprland-plugins.md`.
 - `lockscreen/` `qylock/` (the lock theme and its quickshell lockscreen),
   `install-qylock`, and `sddm/` (the greeter setup).
 - `shell/` the desktop shell subsystem: `quickshell/` (the QML UI. Every surface
@@ -241,11 +247,14 @@ serves them with no release infrastructure.
 ## `release/` packaging
 
 - `packages/` one directory per pacman package in the `[ryoku]` repo, each a
-  `PKGBUILD`. 40 in all, in four groups by why they exist:
+  `PKGBUILD`. 42 in all, in four groups by why they exist:
   - built from the checked-out monorepo: the components (`ryoku-shell`,
     `ryoku-hub`, `ryoku-rashin`, `ryoku`, `ryoku-blobs`,
     `ryotunes`, `ryogami` the wallpaper daemon), the `ryoku-desktop` umbrella,
-    `ryoku-keyring`, and the `gpk` package manager.
+    `ryoku-keyring`, the `gpk` package manager, and the on-demand key sounds:
+    `ryoku-keysounds-profiles` (the samples and the importer, shared) and
+    `ryoku-keysounds-niri` (niri's standalone engine, installed from the Hub's
+    Window Manager page, never by default).
   - Hyprland plugins: `hypr-dynamic-cursors`, `ryoku-hypr-plugins`, `hyprglass`,
     `imgborders`, `ryoku-keysounds`; each lays an `.abi` receipt beside its
     `.so` (see `docs/hyprland-plugins.md`).

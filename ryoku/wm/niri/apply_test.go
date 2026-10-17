@@ -97,6 +97,35 @@ func TestApplyPublishesGreeterNumlock(t *testing.T) {
 	}
 }
 
+// TestApplyWritesKeysoundsConf: apply hands the key-sounds daemon its settings
+// as a neutral key=value file, not the namespaced store, because the daemon
+// holds no compositor knowledge. The leaves come from wm.niri.keysounds, so a
+// change on the Hub's Behaviour tab reaches the running engine on Save.
+func TestApplyWritesKeysoundsConf(t *testing.T) {
+	niriHome(t)
+	store := writeStore(t, `{"wm":{"niri":{"keysounds":{"enabled":false,"profile":"topre","volume":0.25,"release":false}}}}`)
+	capApply(t, store)
+	b, err := os.ReadFile(keysoundsConfPath())
+	if err != nil {
+		t.Fatalf("apply wrote no keysounds conf: %v", err)
+	}
+	got := string(b)
+	for _, want := range []string{"enabled=false", "profile=topre", "volume=0.25", "release=false"} {
+		if !strings.Contains(got, want+"\n") {
+			t.Errorf("keysounds conf missing %q\n%s", want, got)
+		}
+	}
+}
+
+// TestKeysoundsDefaultsOn: a box whose provider has never applied (fresh login,
+// nothing saved yet) still sounds, matching the Hyprland plugin's defaults.
+func TestKeysoundsDefaultsOn(t *testing.T) {
+	k := defaultStore().Niri.Keysounds
+	if !k.Enabled || !k.Release || k.Profile != "cherry-mx-brown" || k.Volume != 0.6 {
+		t.Fatalf("keysounds defaults = %+v, want enabled/release on, cherry-mx-brown at 0.6", k)
+	}
+}
+
 func readGen(t *testing.T, dir, name string) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join(dir, name))

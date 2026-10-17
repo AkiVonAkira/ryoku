@@ -15,6 +15,9 @@ Requires:       niri
 Requires:       xwayland-satellite
 Requires:       xdg-desktop-portal-gnome
 Requires:       wlsunset
+Recommends:     ryoku-keysounds-niri
+Recommends:     ryoku-keysounds-profiles
+Recommends:     libcanberra
 Provides:       ryoku-desktop-compositor
 
 %description

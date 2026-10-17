@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -254,6 +255,16 @@ type LayerRule struct {
 	BabaIsFloat  bool    `json:"babaIsFloat"`
 }
 
+// Keysounds configures the optional key-press engine. niri has no plugins, so
+// this is how it gets the key sounds Hyprland gets from its own plugin: apply
+// writes the leaves to a neutral file (keysoundsConfPath) the daemon reads.
+type Keysounds struct {
+	Enabled bool    `json:"enabled"`
+	Profile string  `json:"profile"`
+	Volume  float64 `json:"volume"`
+	Release bool    `json:"release"`
+}
+
 // Niri holds the wm.niri.* exclusives: niri behaviours with no neutral key. This
 // is the niri twin of wm.hyprland.*, so the Hub can surface them without every
 // other compositor pretending to have them.
@@ -306,6 +317,7 @@ type Niri struct {
 	DndWsDelayMs         int            `json:"dndEdgeWorkspaceDelayMs"`
 	DndWsMaxSpeed        int            `json:"dndEdgeWorkspaceMaxSpeed"`
 	SettingsWindow       SettingsWindow `json:"settingsWindow"`
+	Keysounds            Keysounds      `json:"keysounds"`
 	LayerRules           []LayerRule    `json:"layerRules"`
 }
 
@@ -441,6 +453,7 @@ func defaultStore() niriStore {
 			DndWsTriggerHeight:   50,
 			DndWsDelayMs:         100,
 			DndWsMaxSpeed:        1500,
+			Keysounds:            Keysounds{Enabled: true, Profile: "cherry-mx-brown", Volume: 0.6, Release: true},
 			LayerRules:           []LayerRule{},
 		},
 	}
@@ -520,6 +533,13 @@ func configHome() string {
 	return filepath.Join(os.Getenv("HOME"), ".config")
 }
 
+func dataHome() string {
+	if d := os.Getenv("XDG_DATA_HOME"); d != "" {
+		return d
+	}
+	return filepath.Join(os.Getenv("HOME"), ".local", "share")
+}
+
 // storePath is the neutral settings store this provider reads for the runtime
 // behaviours that never reach the config file, like taming a maximised open.
 func storePath() string {
@@ -564,6 +584,27 @@ func borderPaletteColors() (active, inactive string, ok bool) {
 // the same bytes into the live niri dir so a reload picks them up at once.
 func userEditsNiriDir() string {
 	return filepath.Join(configHome(), "ryoku", "user_edits", "niri")
+}
+
+// keysoundsConfPath is the neutral `key=value` file the ryoku-keysounds daemon
+// reads. It is generated at runtime, so it lives under state beside the border
+// palette rather than in the shipped config.
+func keysoundsConfPath() string {
+	dir := os.Getenv("XDG_STATE_HOME")
+	if dir == "" {
+		dir = filepath.Join(os.Getenv("HOME"), ".local", "state")
+	}
+	return filepath.Join(dir, "ryoku", "keysounds.conf")
+}
+
+// writeKeysounds feeds the daemon the store's keysounds leaves. A profile with a
+// newline is stripped so it cannot forge a second setting.
+func writeKeysounds(k Keysounds) error {
+	profile := strings.NewReplacer("\n", "", "\r", "").Replace(k.Profile)
+	body := fmt.Sprintf("enabled=%s\nprofile=%s\nvolume=%s\nrelease=%s\n",
+		strconv.FormatBool(k.Enabled), profile,
+		strconv.FormatFloat(k.Volume, 'f', -1, 64), strconv.FormatBool(k.Release))
+	return atomicWrite(keysoundsConfPath(), []byte(body), 0o644)
 }
 
 // --- disk ------------------------------------------------------------------

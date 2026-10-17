@@ -5,14 +5,15 @@ Mechvibes packs (mechvibes.com, and the packs in its MIT-licensed repository)
 are recordings of real switches keyed by evdev keycode, in two shapes: one
 sprite file with [start_ms, length_ms] per key ("single"), or one file per key
 ("multi", with a v2 variant that adds release sounds). This slices or copies
-them into the profile the keysounds plugin reads: 48 kHz mono WAVs named by
-role (down-N, up-N, space-N, enter-N, backspace-N).
+them into the profile key sounds read: 48 kHz mono WAVs named by role
+(down-N, up-N, space-N, enter-N, backspace-N).
 
 Usage: ryoku-keysounds-import <pack-dir> [--name <profile>] [--to <dir>]
 
 <pack-dir> holds config.json. The profile lands under --to (default
 ~/.local/share/ryoku/keysounds), as <profile> (default: the pack's name,
-slugged). Pick it as the profile in Settings > Plugins > Key sounds.
+slugged). Pick it as the profile in Settings > Plugins > Key sounds, or
+Settings > Window Manager > Behaviour on niri.
 Needs ffmpeg.
 """
 

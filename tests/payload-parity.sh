@@ -16,6 +16,8 @@ packages=(
   ryoku-desktop-hyprland
   ryoku-blobs
   ryogami
+  ryoku-keysounds-profiles
+  ryoku-keysounds-niri
 )
 
 fail() {
@@ -83,6 +85,14 @@ prepare_prebuilt() {
       mkdir -p "$dir/qml/Ryoku/Ryogami"
       printf 'module Ryoku.Ryogami\n' > "$dir/qml/Ryoku/Ryogami/qmldir"
       fake_binary "$dir/qml/Ryoku/Ryogami/libryogami-picker.so"
+      ;;
+    ryoku-keysounds-profiles)
+      mkdir -p "$dir/sounds/cherry-mx-brown"
+      printf 'RIFF fixture\n' > "$dir/sounds/cherry-mx-brown/down-1.wav"
+      printf 'MIT fixture\n' > "$dir/sounds/LICENSE.mechvibes"
+      ;;
+    ryoku-keysounds-niri)
+      fake_binary "$dir/ryoku-keysounds"
       ;;
   esac
 }
