@@ -2918,15 +2918,18 @@ var desktopLoadWait = 25 * time.Second
 // then comes back only because the doctor restarts the daemon afterwards.
 //
 // The daemon recreates this file with os.Create on every spawn attempt. Its
-// modification time must be at least the time this update started the shell, so
-// a finished-load line left by the previous run cannot satisfy the wait.
+// modification time must not predate the moment this update started the shell,
+// so a finished-load line left by the previous run cannot satisfy the wait. The
+// kernel stamps files from a coarse clock that can lag time.Now by a tick, hence
+// the second of slack.
 func waitForDesktopLoaded(started time.Time) bool {
 	path := filepath.Join(sys.Xdg("XDG_STATE_HOME", ".local/state"), "ryoku", "surfaces", "shell.log")
 	deadline := time.Now().Add(desktopLoadWait)
+	notBefore := started.Add(-time.Second)
 	for {
 		info, statErr := os.Stat(path)
 		b, _ := os.ReadFile(path)
-		if statErr == nil && !info.ModTime().Before(started) &&
+		if statErr == nil && !info.ModTime().Before(notBefore) &&
 			strings.Contains(string(b), "Configuration Loaded") {
 			return true
 		}
