@@ -75,6 +75,55 @@ var (
 // come from Arch or CachyOS, whichever the box installed, and stay the user's
 // to take with `sudo pacman -Syu`; the run reports what is waiting there.
 // `--system` runs that lane too, in one command.
+// updateOptions is every option `ryoku update` acts on. An option outside this
+// set used to be ignored, so a mistyped flag, or `--help`, ran a full system
+// update instead of being answered: the password prompt, the whole config tree
+// re-laid, the desktop restarted.
+var updateOptions = map[string]bool{
+	"--stage2": true, "-v": true, "--verbose": true, "--channel-switch": true,
+	"--system": true, "--full": true, "--wait": true, "--force": true, "--unchecked": true,
+	// The Hub's plumbing. It is answered above, where only the first argument
+	// is read, so these are named here too rather than refused in any other
+	// position.
+	"--gui": true, "--gui-host": true, "--auth": true, "--cancel": true,
+}
+
+// readUpdateOptions reports whether the run was only asking for help, and the
+// first option this command does not know. The argument after --stage2 is a
+// value, not an option, and is skipped.
+func readUpdateOptions(args []string) (help bool, unknown string) {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "-h" || a == "--help" {
+			return true, ""
+		}
+		if a == "--stage2" {
+			i++
+			continue
+		}
+		if !strings.HasPrefix(a, "-") || updateOptions[a] {
+			continue
+		}
+		return false, a
+	}
+	return false, ""
+}
+
+func updateUsage() string {
+	return i18n.T(`usage: ryoku update [options]
+
+Updates the Ryoku packages, re-lays the configuration, reloads the desktop and
+heals what the doctor finds. The base system stays as it is unless --system.
+
+  --system, --full    update the base system packages too
+  --channel-switch    allow the run to move between release channels
+  --force, --unchecked  update even when the release checks say to wait
+  --wait              wait for a run that is already in progress
+  -v, --verbose       keep the full package output on screen
+  -h, --help          show this
+`)
+}
+
 func Update(args []string) (err error) {
 	// The Hub's plumbing: start a background run, hand it the password, stop it.
 	if len(args) > 0 {
@@ -88,6 +137,13 @@ func Update(args []string) (err error) {
 		case "--cancel":
 			return cancelRun()
 		}
+	}
+	if help, unknown := readUpdateOptions(args); help || unknown != "" {
+		if unknown != "" {
+			return fmt.Errorf(i18n.T("`ryoku update` does not take %s; `ryoku update --help` lists what it does take"), unknown)
+		}
+		fmt.Print(updateUsage())
+		return nil
 	}
 	stage2 := len(args) >= 2 && args[0] == "--stage2"
 	channelSwitch := false
@@ -1030,6 +1086,9 @@ func updateStage2(pre string, withSystem bool) (err error) {
 			}
 		}
 		restartWallpaper(wallpaperWasActive)
+		if !waitForDesktopLoaded() {
+			progress.logf(i18n.T("the desktop has not reported a finished load yet; `ryoku doctor` says why"))
+		}
 		dropAbort("shell")
 		reopen()
 	}
@@ -1422,18 +1481,30 @@ func rashinReindex() {
 	}
 }
 
+// prowlManagedLine names the package manager that owns prowl. The line used to
+// say "pacman" on every distribution, which is wrong on the two that are not
+// Arch: the ownership lookup behind it already asks whichever manager the host
+// runs.
+func prowlManagedLine(manager host.PackageManager) string {
+	if manager == "" {
+		return i18n.T("prowl comes from a package; refreshed with the system packages")
+	}
+	return fmt.Sprintf(i18n.T("prowl is managed by %s; refreshed with the system packages"), manager)
+}
+
 // prowlRefresh keeps a dev box's prowl current after an update. A packaged box
-// already got it through `pacman -Syu`, so this runs `<bin> update` only when
-// the binary is on PATH but not owned by a pacman package (a dev or manual
-// install). Best effort, one line either way.
+// already got it with the rest of the system packages, so this runs
+// `<bin> update` only when the binary is on PATH but not owned by a package (a
+// dev or manual install). Best effort, one line either way.
 func prowlRefresh() {
 	path, err := exec.LookPath("prowl")
 	if err != nil {
 		return
 	}
-	switch prowlDecide(true, prowlPacmanOwned(path)) {
+	switch prowlDecide(true, prowlPackageOwned(path)) {
 	case prowlManaged:
-		progress.detailf(i18n.T("prowl is managed by pacman; refreshed with the system packages"))
+		manager, _ := host.Default().PackageManager()
+		progress.detailf("%s", prowlManagedLine(manager))
 	case prowlSelfUpdate:
 		progress.detailf(i18n.T("Updating prowl"))
 		if err := sys.Run(path, "update"); err != nil {
@@ -1442,8 +1513,8 @@ func prowlRefresh() {
 	}
 }
 
-// prowlPacmanOwned reports whether path belongs to an installed package.
-func prowlPacmanOwned(path string) bool {
+// prowlPackageOwned reports whether path belongs to an installed package.
+func prowlPackageOwned(path string) bool {
 	_, err := host.Default().PackageOwner(path)
 	return err == nil
 }
@@ -2741,6 +2812,35 @@ func graphicalSessionState() (present bool, active bool, local bool, err error) 
 		return false, false, false, fmt.Errorf("inspect login1 sessions: %w", inspectErr)
 	}
 	return present, false, local, nil
+}
+
+// desktopLoadWait bounds the wait for Quickshell to finish parsing the tree the
+// update just laid down. A box that loads the desktop in a second is the norm;
+// a slow one with many plugins takes several.
+var desktopLoadWait = 25 * time.Second
+
+// waitForDesktopLoaded waits until Quickshell reports a finished load, which is
+// not what `sleep-ready` proves. That answers as soon as the daemon's sleep
+// guard exists, while Quickshell may still be parsing QML or respawning after a
+// load failure. Handing that state to the healing step makes the doctor report a
+// load failure the update is still in the middle of causing, and the desktop
+// then comes back only because the doctor restarts the daemon afterwards.
+//
+// The daemon recreates this file with os.Create on every spawn attempt, so the
+// marker can only come from the attempt that is running now.
+func waitForDesktopLoaded() bool {
+	path := filepath.Join(sys.Xdg("XDG_STATE_HOME", ".local/state"), "ryoku", "surfaces", "shell.log")
+	deadline := time.Now().Add(desktopLoadWait)
+	for {
+		b, _ := os.ReadFile(path)
+		if strings.Contains(string(b), "Configuration Loaded") {
+			return true
+		}
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
 }
 
 func waitForShellReady(expected bool) (bool, error) {
