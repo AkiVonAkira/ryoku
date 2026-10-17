@@ -152,7 +152,7 @@ payload="$(cut -f2- <<<"$out")"
 [[ "$(val "$payload" '[.tiers.mute[].height] | join(",")')" == "2160,1440,1080" ]] || fail "mute picks the same rungs"
 [[ "$(val "$payload" '.tiers.auto[0].fmt')" == "bv[height<=2160]+ba/bv*[height<=2160]" ]] ||
   fail "a video tier must merge the best video with the best audio"
-[[ "$(val "$payload" '.tiers.mute[0].fmt')" == "bv[height<=2160]" ]] ||
+[[ "$(val "$payload" '.tiers.mute[0].fmt')" == "bv[height<=2160]/bv*[height<=2160]" ]] ||
   fail "a muted tier must be video-only"
 # 4500 + 128 kbit/s over an hour for the merge, video alone for the mute
 [[ "$(val "$payload" '.tiers.auto[2].sizeMB')" == 2082.6 ]] || fail "size estimate math is wrong"
@@ -258,6 +258,37 @@ EOF
 payload="$(probe medium.json | cut -f2-)"
 [[ "$(val "$payload" '[.tiers.audio[].key] | join(",")')" == "std,light" ]] ||
   fail "a rung above the strongest stream must be dropped, not faked"
+
+# muxed formats can report only tbr. They must not displace the audio-only
+# streams that back the bitrate rungs.
+cat >"$tmp/muxed.json" <<'EOF'
+{"title":"Muxed","duration":240,"formats":[
+{"format_id":"137","vcodec":"avc1","acodec":"none","height":1080,"tbr":4500,"abr":0},
+{"format_id":"18","vcodec":"avc1","acodec":"mp4a","height":360,"tbr":500,"abr":null},
+{"format_id":"251","acodec":"opus","vcodec":"none","tbr":130,"abr":130}
+]}
+EOF
+payload="$(probe muxed.json | cut -f2-)"
+[[ "$(val "$payload" '[.tiers.audio[].key] | join(",")')" == "std,light" ]] ||
+  fail "a muxed format must not hide the audio streams"
+
+# Some sites offer no audio-only format. Keep one honest extraction choice and
+# let mute fall back to the muxed video stream.
+cat >"$tmp/muxed-only.json" <<'EOF'
+{"title":"Muxed Only","duration":240,"formats":[
+{"format_id":"hd","vcodec":"avc1","acodec":"mp4a","height":1080,"tbr":4500,"abr":null},
+{"format_id":"sd","vcodec":"avc1","acodec":"mp4a","height":480,"tbr":900,"abr":null}
+]}
+EOF
+payload="$(probe muxed-only.json | cut -f2-)"
+[[ "$(val "$payload" '[.tiers.audio[].key] | join(",")')" == "audio" ]] ||
+  fail "a muxed-only source must offer audio extraction"
+[[ "$(val "$payload" '.tiers.audio[0].fmt')" == "ba/b" ]] ||
+  fail "muxed-only audio must fall back to the best voiced format"
+[[ "$(val "$payload" '.tiers.audio[0].bitrate, .tiers.audio[0].sizeMB')" == "$(printf 'null\nnull')" ]] ||
+  fail "muxed-only audio must not invent a bitrate or size"
+[[ "$(val "$payload" '.tiers.mute[0].fmt')" == "bv[height<=1080]/bv*[height<=1080]" ]] ||
+  fail "muxed-only mute must fall back to a voiced video format"
 
 # a link with no video has nothing to ladder, so every mode answers with the
 # audio rungs rather than an empty card the user cannot act on
@@ -407,7 +438,7 @@ chmod 700 "$rodir"
 
 # ---- download without a selector is exactly the command it always was -------
 sel720='bv[height<=720]+ba/bv*[height<=720]'
-selmute='bv[height<=480]'
+selmute='bv[height<=480]/bv*[height<=480]'
 selaudio='ba[abr<=128]/ba'
 
 rm -f "$tmp/ytdlp.argv"
@@ -421,9 +452,9 @@ dl mute
 
 rm -f "$tmp/ytdlp.argv"
 dl audio
-[[ "$(fmt_arg)" == 'ba' ]] || fail "audio download must fall back to best audio, got: $(fmt_arg)"
-[[ "$(argv '-x')" -eq 0 ]] || fail "audio download must not re-encode (no -x)"
-[[ "$(argv '--audio-format')" -eq 0 ]] || fail "audio download must not force a container"
+[[ "$(fmt_arg)" == 'ba/b' ]] || fail "audio download must fall back through muxed formats, got: $(fmt_arg)"
+[[ "$(argv '-x')" -eq 1 ]] || fail "audio download must extract without re-encoding"
+[[ "$(argv '--audio-format')" -eq 0 ]] || fail "audio download must keep the source codec"
 
 # ---- with a selector, the tier the user picked is the tier yt-dlp gets ------
 rm -f "$tmp/ytdlp.argv"
@@ -439,8 +470,8 @@ dl mute "$selmute"
 # the audio rung picks the stream; nothing rewrites it afterwards
 rm -f "$tmp/ytdlp.argv"
 dl audio "$selaudio"
-[[ "$(fmt_arg)" == "$selaudio" ]] || fail "audio with a selector must use it"
-[[ "$(argv '-x')" -eq 0 ]] || fail "a selected audio download must not re-encode"
+[[ "$(fmt_arg)" == "$selaudio/b" ]] || fail "selected audio must fall back through muxed formats"
+[[ "$(argv '-x')" -eq 1 ]] || fail "a selected audio download must extract without re-encoding"
 
 # ---- cobalt takes a rung, so the selector's height has to reach the body ----
 rm -f "$tmp/cobalt.body"
@@ -452,6 +483,13 @@ grep -q '"audioFormat":"best"' "$tmp/cobalt.body" ||
 if grep -q 'audioBitrate' "$tmp/cobalt.body"; then
   fail "audioBitrate is ignored for best audio and must not be sent: $(cat "$tmp/cobalt.body")"
 fi
+
+for rung in 1440 2160; do
+  rm -f "$tmp/cobalt.body"
+  dl auto "bv[height<=$rung]+ba/bv*[height<=$rung]"
+  grep -q "\"videoQuality\":\"$rung\"" "$tmp/cobalt.body" ||
+    fail "cobalt should receive its $rung rung, got: $(cat "$tmp/cobalt.body")"
+done
 
 # a selector from a site whose ladder has no rung cobalt knows keeps the default
 rm -f "$tmp/cobalt.body"

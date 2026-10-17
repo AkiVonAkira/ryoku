@@ -23,10 +23,7 @@ Rectangle {
     property alias inputItem: input
     readonly property bool motionAllowed: !Tokens.reduceMotion && !Motion.reduce
     readonly property bool workingActive: phase === "working" || (mode === "chat" && chatBusy)
-    // Whether the text is a link the Tools mode could read: an http(s) scheme
-    // and a non-empty, whitespace-free authority. The border says yes and says
-    // nothing otherwise. It never says no, because this field takes commands
-    // and questions too, and painting ordinary typing as broken would be a lie.
+    // Green for a readable link only; ordinary typing is never marked wrong.
     readonly property bool linkOk: mode === "tools"
         && /^https?:\/\/[^\s\/?#]+(?:[\/?#][^\s]*)?$/i.test(String(text).trim())
 
@@ -46,8 +43,7 @@ Rectangle {
     radius: Tokens.radius * s
     color: Tokens.paperLift
     border.width: workingActive ? 2 * s : input.activeFocus ? 1.5 * s : Tokens.border
-    // Green only while it holds a link Tools could read. Scheme's tertiary is
-    // the palette's green slot, so it follows the wallpaper.
+    // Tertiary follows the wallpaper.
     border.color: workingActive ? Tokens.bone
         : root.linkOk ? Scheme.tertiary
         : input.activeFocus ? Qt.alpha(Tokens.bone, 0.72) : Tokens.line

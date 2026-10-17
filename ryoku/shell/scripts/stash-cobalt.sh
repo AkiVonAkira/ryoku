@@ -24,13 +24,8 @@ set -m
 # shellcheck disable=SC2154  # j is bound by the for inside the trap body
 trap 'for j in $(jobs -p); do kill -- -$j 2>/dev/null || kill $j 2>/dev/null; done; sweep; exit 143' TERM INT
 
-# a cancel must leave the stash as it found it: a transfer killed mid-write
-# leaves half a file, and a private work dir behind, and the user is left
-# sorting out rubbish they never asked for. every job registers the exact paths
-# it may leave behind (never the stash directory itself, which holds finished
-# downloads from other jobs), and the trap takes them with it. COMPLETED is set
-# the moment a file is announced as SAVED: past that line the download is the
-# user's, and a cancel must not take it away.
+# A cancel removes only paths this job registered, never a file already
+# announced as SAVED.
 COMPLETED=0
 # the name a finished download is announced under, so the desktop notification
 # can name it rather than just say that something landed. the shell passes the
@@ -82,11 +77,8 @@ dest_for() {
 
 cobalt_up() { curl -fsS --max-time 2 -H "Accept: application/json" "$COBALT/" >/dev/null 2>&1; }
 
-# what a notification says about a finished download: the literal prefix, then
-# the title once the job has had its say about it. the shell passes the probed
-# title and it wins whole; otherwise the file that landed stands in with its
-# extension off, and only that fallback loses one, because a real title carries
-# dots of its own. with no title at all the bare prefix stands, colon and all.
+# Notification text: the probed title, else the landed file's name without its
+# extension.
 notify_body() {
   local t="${STASH_TITLE:-}"
   [ -n "$t" ] || t="${JOB_NAME:+${JOB_NAME%.*}}"
@@ -126,9 +118,8 @@ ytdlp() {
   track_dir "$wd"
   local fmt=(--merge-output-format mp4)
   case "$mode" in
-  audio) # the rung picks the stream, and the file keeps its own container
-    # and its own bitrate, so nothing is re-encoded on the way in
-    fmt=(-f "${sel:-ba}")
+  audio) # Extract the chosen stream without re-encoding it.
+    fmt=(-x -f "${sel:-ba}/b")
     ;;
   mute) if [ -n "$sel" ]; then
     fmt=(-f "$sel" --merge-output-format mp4)
@@ -142,7 +133,7 @@ ytdlp() {
   # stash under a free name, matching the cobalt path. stdin from /dev/null so a
   # postprocessor (ffmpeg merge) can never block on the inherited pipe.
   (yt-dlp --no-playlist --no-mtime --no-warnings --restrict-filenames --newline \
-    "${fmt[@]}" -P "$wd" -o "%(title).80s.%(ext)s" "$url" </dev/null >"$out" 2>"$err") &
+    "${fmt[@]}" -P "$wd" -o "%(title).80s.%(ext)s" -- "$url" </dev/null >"$out" 2>"$err") &
   local pid=$!
   (tail -f --pid=$pid "$out" 2>/dev/null | stdbuf -oL grep -oE '\[download\] +[0-9]{1,3}\.[0-9]%' |
     while read -r line; do
@@ -179,7 +170,7 @@ cobalt_get() {
   if [ -n "$sel" ] && { [ "$mode" = auto ] || [ "$mode" = mute ]; }; then
     n=${sel#*height<=}
     n=${n%%]*}
-    case "$n" in 1080 | 720 | 480 | 360) vq="$n" ;; esac
+    case "$n" in 144 | 240 | 360 | 480 | 720 | 1080 | 1440 | 2160 | 4320) vq="$n" ;; esac
   fi
   body=$(printf '{"url":%s,"downloadMode":"%s","videoQuality":"%s","audioFormat":"best","filenameStyle":"basic"}' "$(printf '%s' "$url" | jq -Rs .)" "$mode" "$vq")
   resp=$(curl -fsS --max-time 60 -X POST "$COBALT/" \
@@ -303,7 +294,8 @@ probe() {
     return 0
   fi
   err=$(mktemp)
-  if ! json=$(yt-dlp -J --no-playlist --socket-timeout 10 "$url" 2>"$err"); then
+  track_file "$err"
+  if ! json=$(yt-dlp -J --no-playlist --socket-timeout 10 -- "$url" 2>"$err"); then
     msg=$(tr '\n' ' ' <"$err" | tr -s ' ' | sed 's/^ //; s/ $//')
     rm -f "$err"
     emit ERROR "probe failed: ${msg:-yt-dlp could not read the link}"
@@ -329,19 +321,19 @@ def size_mb($f; $tbr; $d):
 # 320 label off a 160 stream is a lie the size column would contradict.
 def audio_tiers($al; $d):
   if ($al | length) == 0 then [] else
-  ($al[0].abr) as $top
+  ($al[0] | abr) as $top
   | [{key: "high", kbps: 320}, {key: "std", kbps: 128}, {key: "light", kbps: 64}]
   | map(. as $r
-      | ($al | map(select(.abr <= $r.kbps)) | .[0] // $al[0]) as $f
+      | ($al | map(select(abr <= $r.kbps)) | .[0] // $al[0]) as $f
       | select($r.kbps <= $top)
-      | {key: $r.key, bitrate: $r.kbps, sizeMB: size_mb(null; $f.abr; $d),
+      | {key: $r.key, bitrate: $r.kbps, sizeMB: size_mb(null; ($f | abr); $d),
          fmt: "ba[abr<=\($r.kbps)]/ba"})
   end;
 # two tiers that resolve to the same height are one tier, not two rows claiming
 # the same file. A muted source has no audio to price and no audio to fetch.
 def video_tiers($v; $al; $d; $silent):
   if ($v | length) == 0 then [] else
-  ($al[0].abr // 0) as $audio
+  (($al[0] | abr) // 0) as $audio
   | ([$v[].height] | unique) as $hs
   | $hs[-1] as $best
   | (([$hs[] | select(. <= 720)] | last) // $hs[(($hs | length) / 2 | floor)]) as $mid
@@ -353,16 +345,17 @@ def video_tiers($v; $al; $d; $silent):
   | map({key: .key, height: .v.height,
          sizeMB: size_mb(.v; (if $silent then (.v.tbr // 0)
                               else ((.v.tbr // 0) + $audio) end); $d),
-         fmt: (if $silent then "bv[height<=\(.v.height)]"
+         fmt: (if $silent then "bv[height<=\(.v.height)]/bv*[height<=\(.v.height)]"
                else "bv[height<=\(.v.height)]+ba/bv*[height<=\(.v.height)]" end)})
   end;
 (.formats // []) as $f
 | (.duration // null) as $d
 | (.title // "") as $ti
 | [$f[] | select((.vcodec // "none") != "none" and .height != null)] as $v
-| ([$f[] | select((.acodec // "none") != "none" and abr != null)] | sort_by(-abr)) as $al
-| if ($v | length) == 0 and ($al | length) == 0 then error("no usable format")
-  else (audio_tiers($al; $d)) as $at
+| ([$f[] | select((.acodec // "none") != "none" and (.vcodec // "none") == "none" and abr != null)] | sort_by(-abr)) as $al
+| ([$f[] | select((.acodec // "none") != "none")] | length > 0) as $voiced
+| if ($v | length) == 0 and ($al | length) == 0 and ($voiced | not) then error("no usable format")
+  else (audio_tiers($al; $d) | if length == 0 and $voiced then [{key: "audio", bitrate: null, sizeMB: null, fmt: "ba/b"}] else . end) as $at
     | {duration: $d, title: $ti,
        tiers: (if ($v | length) == 0 then {auto: $at, audio: $at, mute: $at}
                else {auto: video_tiers($v; $al; $d; false),
@@ -387,7 +380,9 @@ probe_cache_write() {
   local cdir="$1" ckey="$2" payload="$3" now tmp
   [ -n "$payload" ] || return 0
   now=$(date +%s)
+  find "$cdir" -name '*.json' -mmin +1440 -delete 2>/dev/null
   tmp=$(mktemp "$cdir/.${ckey}.XXXXXX" 2>/dev/null) || return 0
+  track_file "$tmp"
   if ! jq -cn --argjson ts "$now" --argjson p "$payload" \
     '{cached_at: $ts, payload: $p}' >"$tmp" 2>/dev/null; then
     rm -f "$tmp"

@@ -411,13 +411,11 @@ Item {
                         border.color: Tokens.lineSoft
                         Behavior on color { enabled: root.motionAllowed; ColorAnimation { duration: Tokens.snap } }
 
-                        // The list arrives as the answer to a press, so it is
-                        // staggered rather than dropped in flat: the eye is
-                        // still on the keycap that asked.
+                        // Staggered in after the press.
                         opacity: 0
                         SequentialAnimation on opacity {
-                            PauseAnimation { duration: root.motionAllowed ? tierRow.index * 45 : 0 }
-                            NumberAnimation { to: 1; duration: Tokens.move; easing.type: Tokens.ease }
+                            PauseAnimation { duration: root.motionAllowed ? tierRow.index * Tokens.snap / 2 : 0 }
+                            NumberAnimation { to: 1; duration: root.motionAllowed ? Tokens.move : 0; easing.type: Tokens.ease }
                         }
 
                         // Hover only. The button on the right owns the action,
@@ -425,11 +423,7 @@ Item {
                         // start anything.
                         HoverHandler { id: tierHover }
 
-                        // Both lines live in one Column so the row can measure
-                        // what it actually draws. Centring the name and hanging
-                        // the detail off its bottom edge measured one line and
-                        // drew two, which is what spilled the detail past the
-                        // row's own border and into the row below.
+                        // One Column so the row measures both lines it draws.
                         Column {
                             id: tierColumn
                             anchors.left: parent.left
@@ -496,12 +490,7 @@ Item {
             }
         }
 
-        // One probe answers every mode at once, so a source can succeed and
-        // still have nothing for the chip now selected: a silent video has no
-        // audio rungs to draw. That is a true answer rather than a failure, so
-        // it wears the same bare line the read wore: no box, no red and no
-        // fallback button, because anything else here would claim the link
-        // could not be read when it very much could.
+        // The link read fine but this mode has no rungs: say so quietly.
         Row {
             width: parent.width
             height: Tokens.fBody * root.s * 1.6

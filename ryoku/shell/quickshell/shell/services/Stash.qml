@@ -215,13 +215,8 @@ Singleton {
     }
 
     // ── Format probe ────────────────────────────────────────────────────
-    // What a link can be fetched as, read with yt-dlp while the field is
-    // being typed. The mode travels with the probe because the three modes
-    // ask different questions: a video wants a resolution ladder, a track
-    // wants a bitrate, and Mute wants the ladder with the sound dropped.
-    // The engine is irrelevant here on purpose: a format list is a yt-dlp
-    // fact, and asking cobalt what it can do would make the picker change
-    // with a switch the user did not think about.
+    // One yt-dlp read per link answers all three modes; chips re-render from
+    // probeTiersAll. Cobalt never enters it.
     property string probeState: "idle"   // idle | probing | ready | error
     // All three mode lists from one extraction: the script answers once with
     // tiers.auto/audio/mute, so switching chips re-renders from this instead of
