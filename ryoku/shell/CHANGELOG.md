@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Fixed
+- **Workshop downloads no longer stay stuck at Preparing.** Ryogami stops a
+  silent Steam helper, gives large scenes a generous overall limit, and always
+  reports a finished or actionable failed state. SteamCMD ownership and login
+  failures now explain that Wallpaper Engine must be owned and show the one-time
+  login command. Downloads still run in the daemon and an Apply request survives
+  hiding the picker (`ryogami/daemon/workshop_{library,steamcmd,steamworks}.go`,
+  `ryogami/picker/qml/browser/BrowserPanel.qml`).
 - **The shell daemon stops forking two processes ten times a second on an idle
   session.** The watcher that clears qylock's fallback sleep guard ran `pgrep`
   and `ryoku-host` every 100 ms from login to logout. It now backs off to five
