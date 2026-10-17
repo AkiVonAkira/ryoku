@@ -1004,6 +1004,29 @@ func TestUnlockIsRejectedDuringSleepOrAnInactiveSession(t *testing.T) {
 	})
 }
 
+func TestUnlockPrepareKicksFallbackGuardWatcher(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	t.Setenv("XDG_SESSION_ID", "unlock-kick")
+	cycle := &sleepCycle{
+		block: &fakeSleepInhibitor{heldState: true},
+		delay: &fakeSleepInhibitor{heldState: true},
+	}
+	cycle.setSessionActive(true)
+	d := &daemon{
+		sleep:     cycle,
+		guardKick: make(chan struct{}, 1),
+	}
+
+	if got := d.dispatch("unlock-prepare session unlock-kick"); got != "ok" {
+		t.Fatalf("unlock prepare = %q, want ok", got)
+	}
+	select {
+	case <-d.guardKick:
+	default:
+		t.Fatal("unlock prepare did not kick the fallback guard watcher")
+	}
+}
+
 func TestResumeClearsSleepPhaseBeforeUnlock(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
 	t.Setenv("XDG_SESSION_ID", "resume-test")
@@ -1240,9 +1263,9 @@ func TestSessionActivationReacquiresGlobalBlock(t *testing.T) {
 
 // An idle session must not pay for this watcher. Both questions it asks cost
 // a process, and on a fixed 100 ms tick that was twenty forks a second from
-// the first suspend until logout (#411). The numbers here are the point: at
-// the old rate a second and a half is fifteen rounds, so anything near that
-// means the easing off is gone.
+// login until logout (#411). The numbers here are the point: at the old rate
+// a second and a half is fifteen rounds, so anything near that means the
+// easing off is gone.
 func TestUnlockFallbackGuardStopsAskingWhileNothingHappens(t *testing.T) {
 	t.Setenv("XDG_SESSION_ID", "session-c")
 	cycle := &sleepCycle{
@@ -1263,8 +1286,8 @@ func TestUnlockFallbackGuardStopsAskingWhileNothingHappens(t *testing.T) {
 	var mu sync.Mutex
 	asked := 0
 	looked := 0
-	// The steady state of a session that has resumed once and been unlocked:
-	// no lock screen, no guard, and nothing that will ever change on its own.
+	// The steady state of an unlocked session: no lock screen, no guard, and
+	// nothing that will ever change on its own.
 	lockProcessRunning = func() bool {
 		mu.Lock()
 		looked++
@@ -1300,8 +1323,82 @@ func TestUnlockFallbackGuardStopsAskingWhileNothingHappens(t *testing.T) {
 	}
 }
 
+func TestUnlockFallbackGuardKickRousesIdleWatcher(t *testing.T) {
+	t.Setenv("XDG_SESSION_ID", "session-kick")
+	oldPoll, oldPollMax := qylockGuardPoll, qylockGuardPollMax
+	qylockGuardPoll = 10 * time.Millisecond
+	qylockGuardPollMax = 10 * time.Second
+	t.Cleanup(func() {
+		qylockGuardPoll, qylockGuardPollMax = oldPoll, oldPollMax
+	})
+
+	cycle := &sleepCycle{
+		block: &fakeSleepInhibitor{heldState: true},
+		delay: &fakeSleepInhibitor{heldState: true},
+	}
+	cycle.setSessionActive(true)
+	d := &daemon{
+		quit:      make(chan struct{}),
+		guardKick: make(chan struct{}, 1),
+	}
+	d.setSleepCycle(cycle)
+
+	oldActive, oldStop := qylockUnlockGuardActive, qylockUnlockGuardStop
+	oldRunning := lockProcessRunning
+	t.Cleanup(func() {
+		qylockUnlockGuardActive, qylockUnlockGuardStop = oldActive, oldStop
+		lockProcessRunning = oldRunning
+	})
+
+	checks := make(chan struct{}, 8)
+	lockProcessRunning = func() bool {
+		select {
+		case checks <- struct{}{}:
+		default:
+		}
+		return false
+	}
+	qylockUnlockGuardActive = func(string) bool { return false }
+	qylockUnlockGuardStop = func(string) error {
+		t.Error("released a guard that was never there")
+		return nil
+	}
+
+	done := make(chan struct{})
+	go func() {
+		d.releaseQylockUnlockGuardWhenReady()
+		close(done)
+	}()
+	t.Cleanup(func() {
+		close(d.quit)
+		<-done
+	})
+
+	// Six empty checks leave the next timer 640 ms away. The kick must reset
+	// that idle wait rather than leaving unlock cleanup behind it.
+	for range 6 {
+		select {
+		case <-checks:
+		case <-time.After(time.Second):
+			t.Fatal("watcher did not reach its idle backoff")
+		}
+	}
+	d.guardKick <- struct{}{}
+	select {
+	case <-checks:
+	case <-time.After(300 * time.Millisecond):
+		t.Fatal("guard kick did not rouse the idle watcher")
+	}
+}
+
 func TestUnlockFallbackGuardReleasedOnlyByReadyOwningSession(t *testing.T) {
 	t.Setenv("XDG_SESSION_ID", "session-b")
+	oldPoll, oldPollMax := qylockGuardPoll, qylockGuardPollMax
+	qylockGuardPoll = 10 * time.Millisecond
+	qylockGuardPollMax = 20 * time.Millisecond
+	t.Cleanup(func() {
+		qylockGuardPoll, qylockGuardPollMax = oldPoll, oldPollMax
+	})
 	cycle := &sleepCycle{
 		block: &fakeSleepInhibitor{heldState: true},
 		delay: &fakeSleepInhibitor{heldState: true},
@@ -1312,10 +1409,10 @@ func TestUnlockFallbackGuardReleasedOnlyByReadyOwningSession(t *testing.T) {
 
 	oldActive, oldStop := qylockUnlockGuardActive, qylockUnlockGuardStop
 	oldRunning := lockProcessRunning
-	defer func() {
+	t.Cleanup(func() {
 		qylockUnlockGuardActive, qylockUnlockGuardStop = oldActive, oldStop
 		lockProcessRunning = oldRunning
-	}()
+	})
 	var mu sync.Mutex
 	present := true
 	clientRunning := true
@@ -1337,8 +1434,15 @@ func TestUnlockFallbackGuardReleasedOnlyByReadyOwningSession(t *testing.T) {
 		defer mu.Unlock()
 		return clientRunning
 	}
-	go d.releaseQylockUnlockGuardWhenReady()
-	defer close(d.quit)
+	done := make(chan struct{})
+	go func() {
+		d.releaseQylockUnlockGuardWhenReady()
+		close(done)
+	}()
+	t.Cleanup(func() {
+		close(d.quit)
+		<-done
+	})
 
 	select {
 	case unit := <-stopped:

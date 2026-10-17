@@ -1059,7 +1059,7 @@ var (
 // should not be followed by a visible wait, and eases off while nothing is
 // happening, because the only thing a tick can notice then is a guard
 // appearing and nobody is waiting on that.
-const (
+var (
 	qylockGuardPoll    = 100 * time.Millisecond
 	qylockGuardPollMax = 5 * time.Second
 )
@@ -1067,10 +1067,10 @@ const (
 // Release the fallback sleep guard once qylock is gone.
 //
 // Both questions this asks cost a process: lockProcessRunning runs pgrep and
-// qylockUnlockGuardActive runs ryoku-host. The sleep cycle stays set for the
-// rest of the session after a resume, so a fixed 100 ms tick meant twenty
-// forks a second from the first suspend until logout, for work that is owed
-// once per unlock (#411).
+// qylockUnlockGuardActive runs ryoku-host. The sleep cycle is published at
+// login and stays set for the session, so a fixed 100 ms tick meant twenty
+// forks a second from login until logout, for work that is owed once per
+// unlock (#411).
 //
 // It cannot simply stop: a guard that reappears while qylock is not running
 // still has to be released, or it becomes an inhibitor nothing clears and the
@@ -1103,6 +1103,8 @@ func (d *daemon) releaseQylockUnlockGuardWhenReady() {
 		select {
 		case <-d.quit:
 			return
+		case <-d.guardKick:
+			rouse()
 		case <-ticker.C:
 			cycle := d.currentSleepCycle()
 			if cycle == nil || !cycle.ready() || !cycle.sessionActive() {

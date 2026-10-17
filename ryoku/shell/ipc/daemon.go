@@ -120,6 +120,7 @@ type daemon struct {
 	stageNotice  atomic.Value         // why the last reconcile could not produce a cut ("" when fine)
 	ledsSig      chan struct{}        // coalescing wake for the OpenRGB worker
 	widgetSig    chan struct{}        // coalescing wake for the widget-occupancy gate
+	guardKick    chan struct{}        // coalescing wake for the qylock fallback-guard watcher
 	quit         chan struct{}
 	closed       bool
 	ln           net.Listener
@@ -301,6 +302,7 @@ func runDaemon() error {
 		stageSig:    make(chan struct{}, 1),
 		ledsSig:     make(chan struct{}, 1),
 		widgetSig:   make(chan struct{}, 1),
+		guardKick:   make(chan struct{}, 1),
 		quit:        make(chan struct{}),
 		gateWant:    map[string]bool{},
 		gateWake:    map[string]chan struct{}{},
@@ -1407,6 +1409,10 @@ func (d *daemon) dispatch(line string) string {
 		}
 		if err := cycle.prepareUnlock(); err != nil {
 			return "err unlock-prepare: " + err.Error()
+		}
+		select {
+		case d.guardKick <- struct{}{}:
+		default:
 		}
 		return "ok"
 	case "sleep-ready":
