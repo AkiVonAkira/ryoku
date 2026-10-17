@@ -745,6 +745,10 @@
   sets it. Edge bubbles also sit a little off the band so their ring never
   grazes the frame.
 ### Fixed
+- **Orpheus keeps every saved module choice.** System readings, shortcuts and
+  status items loaded through `shell.json` no longer fall back to their default
+  lists after a save or shell restart
+  (`quickshell/shell/modules/bar/barstyles/orpheus/settings/Prefs.qml`).
 - **The dock's sports scoreboard no longer eats all memory and the network.**
   On a fractional display scale, a team logo still loading dropped out of its
   layout slot, so its width became its own decoded width; `StyledImage` asked
